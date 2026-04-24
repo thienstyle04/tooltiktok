@@ -1,0 +1,17 @@
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_InstanceLoader] [39m[32mAppModule2 dependencies initialized[39m[38;5;3m +11ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RoutesResolver] [39m[32mGuideController2 {/}:[39m[38;5;3m +3ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/, GET} route[39m[38;5;3m +3ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/styles.css, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/app.js, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/fonts/:fileName, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/health, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/guide-data, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/ai/deepseek/caption, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/decks/generate-from-caption, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/dalat/:fileName, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/tiktok/:folderName/:fileName, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/workspace, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/library, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 7144  - [39m04/20/2026, 7:24:34 PM [32m    LOG[39m [38;5;3m[_NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +1ms[39m
+Dalat carousel tool ready: http://127.0.0.1:3028/

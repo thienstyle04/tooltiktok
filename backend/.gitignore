@@ -1,0 +1,9 @@
+
+# Ignore temp files
+.temp/
+.tmp-*
+
+
+# Environment files
+.env
+

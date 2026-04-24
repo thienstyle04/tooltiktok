@@ -1,0 +1,854 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-23T09:45:52.697Z",
+  "workbookName": "F&B ĐÀ LẠT.xlsx",
+  "workbookMtimeMs": 1776937502920.4702,
+  "items": {
+    "quan_an|pho_nguyen_gia|33_ngo_quyen": {
+      "key": "quan_an|pho_nguyen_gia|33_ngo_quyen",
+      "sectionKey": "quan_an",
+      "name": "Phở Nguyên Gia",
+      "address": "33 Ngô Quyền",
+      "sourceLink": "https://drive.google.com/drive/folders/16vnP1LKjH-Tcq3z24JzD5mS8AkgNMdke?usp=sharing",
+      "fileId": "1DfY3Hgu8qF5wulNiRdOqaV6tZltVc4EK",
+      "fileName": "1.jpg"
+    },
+    "quan_an|banh_beo_ba_trieu|hem_4_ba_trieu": {
+      "key": "quan_an|banh_beo_ba_trieu|hem_4_ba_trieu",
+      "sectionKey": "quan_an",
+      "name": "Bánh Bèo Bà Triệu",
+      "address": "Hẻm 4 Bà Triệu",
+      "sourceLink": "https://drive.google.com/drive/folders/1-5ktGMsNNG6iPuvrM0eJLViZAIESmpdo?usp=drive_link",
+      "fileId": "1w0WMUUG_5y6aPCwfkIRP-roQxou6jrpj",
+      "fileName": "2.jpg"
+    },
+    "quan_an|bun_bo_hue_loan|4_4_hoang_van_thu": {
+      "key": "quan_an|bun_bo_hue_loan|4_4_hoang_van_thu",
+      "sectionKey": "quan_an",
+      "name": "Bún Bò Huế Loan",
+      "address": "4/4 Hoàng Văn Thụ",
+      "sourceLink": "https://drive.google.com/drive/folders/1QRINWXSxb6d8HmUXY3luYgfoGyZm4ork?usp=drive_link",
+      "fileId": "1hwxTXOWK1Um3hT7xCv41CSGXNRADP_26",
+      "fileName": "3.jpg"
+    },
+    "quan_an|yummy_noodle|19_10_dao_duy_tu": {
+      "key": "quan_an|yummy_noodle|19_10_dao_duy_tu",
+      "sectionKey": "quan_an",
+      "name": "Yummy Noodle",
+      "address": "19/10 Đào Duy Từ",
+      "sourceLink": "https://drive.google.com/drive/folders/1PIZ3oDFk7XdzYDoBnx5L1RHnD3esUPzr?usp=drive_link",
+      "fileId": "1OEzmKJtj8H0l0zZtxCHynwDayDQPcwUp",
+      "fileName": "4.jpg"
+    },
+    "quan_an|banh_uot_long_ga_long_chuyen|hem_202_phan_dinh_phung": {
+      "key": "quan_an|banh_uot_long_ga_long_chuyen|hem_202_phan_dinh_phung",
+      "sectionKey": "quan_an",
+      "name": "Bánh ướt lòng gà Long Chuyên",
+      "address": "Hẻm 202 Phan Đình Phùng",
+      "sourceLink": "https://drive.google.com/drive/folders/1AgSX4MFl47gTGCYOi0B7LoFWQHEfm9gL?usp=drive_link",
+      "fileId": "1oxQUTxYU5HwzZ8qc4AWPYhTfQQKlwC8-",
+      "fileName": "600365773_3718965625064202_6108985398709087646_n.jpg"
+    },
+    "quan_an|bun_bo_35k|218_nguyen_cong_tru": {
+      "key": "quan_an|bun_bo_35k|218_nguyen_cong_tru",
+      "sectionKey": "quan_an",
+      "name": "Bún Bò 35K",
+      "address": "218 Nguyễn Công Trứ",
+      "sourceLink": "https://drive.google.com/drive/folders/1oh6_lbBcANdszuQOUD-f0zq3fJ4UXmnm?usp=drive_link",
+      "fileId": "1fYQ_W3pi7m6H8EJjmAjIzuuyjvNkEpLO",
+      "fileName": "600236034_122093939721182953_6326604104650989111_n.jpg"
+    },
+    "quan_an|banh_beo_ba_huong|402_phan_dinh_phung": {
+      "key": "quan_an|banh_beo_ba_huong|402_phan_dinh_phung",
+      "sectionKey": "quan_an",
+      "name": "Bánh bèo Bà Hường",
+      "address": "402 Phan Đình Phùng",
+      "sourceLink": "https://drive.google.com/drive/folders/136la4UNWTRdi66gWfUjuj8ISqgPYstfW?usp=drive_link",
+      "fileId": "1fBSFrNEx7ragRMJREAUYIvvbWIocksB2",
+      "fileName": "471947555_617259240644104_8648943089396019114_n.jpg"
+    },
+    "quan_an|banh_canh_huong_cho_lau_da_lat|tang_2_cho_da_lat": {
+      "key": "quan_an|banh_canh_huong_cho_lau_da_lat|tang_2_cho_da_lat",
+      "sectionKey": "quan_an",
+      "name": "Bánh canh Hường chợ Lầu Đà Lạt",
+      "address": "Tầng 2 chợ Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1sQhHuz1de27MkwlFwk5cKpwNP9fiEANo?usp=drive_link",
+      "fileId": "1k84PuGvaU9d0Q228PqaqXBI_XBKVN8_Y",
+      "fileName": "40506392_1959655724327316_2261106307736010752_n.jpg"
+    },
+    "quan_an|banh_mi_xiu_mai_yet_kieu|41_yet_kieu": {
+      "key": "quan_an|banh_mi_xiu_mai_yet_kieu|41_yet_kieu",
+      "sectionKey": "quan_an",
+      "name": "Bánh Mì Xíu Mại Yết Kiêu",
+      "address": "41 Yết Kiêu",
+      "sourceLink": "https://drive.google.com/drive/folders/1DJLlb8nwcLdW2LPJY4eBy9nZlSKe8cxt?usp=drive_link",
+      "fileId": "1Z0H0AefZYUrqMvi3qHTRXrYOeTMQr-yU",
+      "fileName": "119470811_110248894159886_948563902079105170_n.jpg"
+    },
+    "cafe|ca_phe_capulus|90_to_ngoc_van": {
+      "key": "cafe|ca_phe_capulus|90_to_ngoc_van",
+      "sectionKey": "cafe",
+      "name": "Cà Phê Capulus",
+      "address": "90 Tô Ngọc Vân",
+      "sourceLink": "https://drive.google.com/drive/folders/1cwzRfrBfuKpfLs7pQXH4HfpgEjZqaNfS?usp=drive_link",
+      "fileId": "1cfR-orhrFDn-W4AxBu2qnk0vWGoG1Ghb",
+      "fileName": "Cà Phê Capulus.jpg"
+    },
+    "cafe|ca_phe_linh_lam|14_1_khoi_nghia_bac_son": {
+      "key": "cafe|ca_phe_linh_lam|14_1_khoi_nghia_bac_son",
+      "sectionKey": "cafe",
+      "name": "Cà Phê Linh Lam",
+      "address": "14/1 Khởi Nghĩa Bắc Sơn",
+      "sourceLink": "https://drive.google.com/drive/folders/1nZcXzVcZzqGejSl4Oxne2Lk0zIvswK_z?usp=drive_link",
+      "fileId": "11CY3B2-AkWEeFIpaa3AydHgrMYWFW7PM",
+      "fileName": "Cà phê Linh Lam.jpg"
+    },
+    "cafe|ca_phe_doi_mot_nguoi|24_yersin": {
+      "key": "cafe|ca_phe_doi_mot_nguoi|24_yersin",
+      "sectionKey": "cafe",
+      "name": "Cà Phê Đợi Một Người",
+      "address": "24 Yersin",
+      "sourceLink": "https://drive.google.com/drive/folders/1mfSy4BJRjnFD_T6h2-nCacLpuBbA5rlp?usp=drive_link",
+      "fileId": "1Qu8FoZtH6dzGdW0pUTGMf87GL5Iv98AT",
+      "fileName": "Cà Phê Đợi Một Người.jpg"
+    },
+    "cafe|ca_phe_di|02_khoi_nghia_bac_son": {
+      "key": "cafe|ca_phe_di|02_khoi_nghia_bac_son",
+      "sectionKey": "cafe",
+      "name": "Cà Phê Đi",
+      "address": "02 Khởi Nghĩa Bắc Sơn",
+      "sourceLink": "https://drive.google.com/drive/folders/13tLH4Xb0qTnVCP91xE-oh8wNNWfSBek0?usp=drive_link",
+      "fileId": "1bXS8ecTuYg-yd1heWosqppkSCu7EDAih",
+      "fileName": "Cà Phê Đi.jpg"
+    },
+    "cafe|dam_ca_phe|138_yersin": {
+      "key": "cafe|dam_ca_phe|138_yersin",
+      "sectionKey": "cafe",
+      "name": "Đậm Cà Phê",
+      "address": "138 Yersin",
+      "sourceLink": "https://drive.google.com/drive/folders/1DvZE39tuy5Ol7Vx_m1MT9j96b55_rs9J?usp=drive_link",
+      "fileId": "1CxvKdr4n61fFIgaONsydiak1U8Vjyykh",
+      "fileName": "Đậm Cà Phê.jpg"
+    },
+    "cafe|gat_tan_doi|19_dang_thai_than": {
+      "key": "cafe|gat_tan_doi|19_dang_thai_than",
+      "sectionKey": "cafe",
+      "name": "Gạt tàn đời",
+      "address": "19 Đặng Thái Thân",
+      "sourceLink": "https://drive.google.com/drive/folders/1k-jqdaP6L7ZPWxjjI5JtN152AdV79X8D?usp=drive_link",
+      "fileId": "1VDmrJwUxbjtirb76xFqsFxkweydvoBxw",
+      "fileName": "Gạt Tàn Đời.jpg"
+    },
+    "cafe|gap_gap_ca_phe|17_4_ba_trieu": {
+      "key": "cafe|gap_gap_ca_phe|17_4_ba_trieu",
+      "sectionKey": "cafe",
+      "name": "Gấp Gáp Cà Phê",
+      "address": "17/4 Bà Triệu",
+      "sourceLink": "https://drive.google.com/drive/folders/1EYvIghWLFKBJWZl3H8lpGj4tnVDWOi84?usp=drive_link",
+      "fileId": "1mzsBnaYxgOZJSIdrhgXV8E6-zm5FGDgV",
+      "fileName": "Gấp Gáp Cà Phê.jpg"
+    },
+    "cafe|la_lapine_ca_phe|86_ba_thang_hai": {
+      "key": "cafe|la_lapine_ca_phe|86_ba_thang_hai",
+      "sectionKey": "cafe",
+      "name": "La Lapine Cà Phê",
+      "address": "86 Ba Tháng Hai",
+      "sourceLink": "https://drive.google.com/drive/folders/1sMnKYfrRU8JydW2sEyaA5wtOO-ZY3sMP?usp=drive_link",
+      "fileId": "1DyrWBAzlCFV1rkWE_B-Y3r8GAfQW7PVc",
+      "fileName": "La Lapine Cà Phê.jpg"
+    },
+    "cafe|nha_nhan_ca_phe|51_4_quang_trung": {
+      "key": "cafe|nha_nhan_ca_phe|51_4_quang_trung",
+      "sectionKey": "cafe",
+      "name": "Nhà Nhãn Cà Phê",
+      "address": "51/4 Quang Trung",
+      "sourceLink": "https://drive.google.com/drive/folders/1lxOCHCG1wbP9kjN0qBhxcloAZUdNKu64?usp=drive_link",
+      "fileId": "1yJBrNQcTfiiQrKezW-uUrkL6lfM4o8P2",
+      "fileName": "Nhà Nhãn Cà Phê.jpg"
+    },
+    "cafe|ca_phe_ngu_ngay|82_nguyen_thi_nghia": {
+      "key": "cafe|ca_phe_ngu_ngay|82_nguyen_thi_nghia",
+      "sectionKey": "cafe",
+      "name": "Cà Phê Ngủ Ngày",
+      "address": "82 Nguyễn Thị Nghĩa",
+      "sourceLink": "https://drive.google.com/drive/folders/1yp1jk4s53D-whtvB3IVXz2KpiN-TsuxI?usp=drive_link",
+      "fileId": "1lxCdhx3XaAGng507LOQOfvl_SUZn8482",
+      "fileName": "Ngủ Ngày Cafe.jpg"
+    },
+    "cafe|hai_nguoi_coffee|6a_co_giang": {
+      "key": "cafe|hai_nguoi_coffee|6a_co_giang",
+      "sectionKey": "cafe",
+      "name": "Hai Người Coffee",
+      "address": "6A Cô Giang",
+      "sourceLink": "https://drive.google.com/drive/folders/1lO0kuTS04x7k_Vc3mskoV-Wk5pZWbv-9?usp=drive_link",
+      "fileId": "1B0mD5BwKCDn2VUYuBLp3IYrtRArUD8wa",
+      "fileName": "Cafe Hai Người.jpg"
+    },
+    "cafe|ban_ca_phe|hem_29_3_4_phuong_3_da_lat": {
+      "key": "cafe|ban_ca_phe|hem_29_3_4_phuong_3_da_lat",
+      "sectionKey": "cafe",
+      "name": "Bản Cà Phê",
+      "address": "Hẻm 29 3/4, Phường 3, Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/19ak36EZYT9-fjI5i916I3i8MYpLwQ67d?usp=drive_link",
+      "fileId": "1j2dr5_l-FLdkaV5m3BTVMmrxNXQujvOQ",
+      "fileName": "IMG_8788.PNG"
+    },
+    "cafe|chip_corner|16_3_hem_1_khoi_nghia_bac_son": {
+      "key": "cafe|chip_corner|16_3_hem_1_khoi_nghia_bac_son",
+      "sectionKey": "cafe",
+      "name": "Chip Corner",
+      "address": "16/3 Hẻm 1 - Khởi Nghĩa Bắc Sơn",
+      "sourceLink": "https://drive.google.com/drive/folders/1E9j_jRljumjRW1SClT244-klCIfXTMRI?usp=drive_link",
+      "fileId": "1428VDfImtdwJdF_L92UZlIfC4T51kI-g",
+      "fileName": "Chip Corner.jpg"
+    },
+    "cafe|1_2_cricle_coffee|04_dang_thai_than": {
+      "key": "cafe|1_2_cricle_coffee|04_dang_thai_than",
+      "sectionKey": "cafe",
+      "name": "1/2 Cricle Coffee",
+      "address": "04 Đặng Thái Thân",
+      "sourceLink": "https://drive.google.com/drive/folders/14upRvGa2YUiRCI4Bz2L_9u5Sn_07YqlN?usp=drive_link",
+      "fileId": "1psWZ9HRCCXX9irtacfDx5jlzvClyf7yK",
+      "fileName": "12 Cricle Coffee.jpg"
+    },
+    "cafe|w_a_i_ca_phe|72_tran_thai_tong": {
+      "key": "cafe|w_a_i_ca_phe|72_tran_thai_tong",
+      "sectionKey": "cafe",
+      "name": "W.A.I? cà phê",
+      "address": "72 Trần Thái Tông",
+      "sourceLink": "https://drive.google.com/drive/folders/1JEhlX2sCIbk5x0-VXMaJ0gV9SoAZ-hYu?usp=drive_link",
+      "fileId": "1An7WOQR9z5AvaNUm-DRBuEfFiMcI_nB3",
+      "fileName": "W.A. cà phê.jpg"
+    },
+    "cafe|matcha_3_con_meo|05_yagout": {
+      "key": "cafe|matcha_3_con_meo|05_yagout",
+      "sectionKey": "cafe",
+      "name": "Matcha 3 Con Mèo",
+      "address": "05 Yagout",
+      "sourceLink": "https://drive.google.com/drive/folders/1gAicWrcfz7UOFOUh6PFZBtcK63TnWJJw?usp=drive_link",
+      "fileId": "1PGn1de_r2mvngikNHKBevcsj5DRrMCcC",
+      "fileName": "Matcha 3 Con Mèo.jpg"
+    },
+    "cafe|ngay_binh_thuong_ca_phe|84_6_tran_quang_khai": {
+      "key": "cafe|ngay_binh_thuong_ca_phe|84_6_tran_quang_khai",
+      "sectionKey": "cafe",
+      "name": "Ngày Bình Thường Cà Phê",
+      "address": "84/6 Trần Quang Khải",
+      "sourceLink": "https://drive.google.com/drive/folders/1xOBGw1fQ0PHhYQVHtPtsJXV14k4qbvgq?usp=drive_link",
+      "fileId": "18YYaAOnajoE17NDsK1lZ29H87bsNSpms",
+      "fileName": "Ngày Bình Thường Cà Phê.jpg"
+    },
+    "cafe|lai_ca_phe|hem_12_phu_dong_thien_vuong": {
+      "key": "cafe|lai_ca_phe|hem_12_phu_dong_thien_vuong",
+      "sectionKey": "cafe",
+      "name": "Lài cà phê",
+      "address": "Hẻm 12 Phù Đổng Thiên Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1RCJCoTPGjenJkAE85qPvfdNkZ88Pfs3k?usp=drive_link",
+      "fileId": "1QGcXQAgwjTu4nT_Tip-WWCFFSY9rzuU1",
+      "fileName": "Lài cà phê.jpg"
+    },
+    "cafe|cai_coc_me|15_ngo_huy_dien": {
+      "key": "cafe|cai_coc_me|15_ngo_huy_dien",
+      "sectionKey": "cafe",
+      "name": "Cái Cốc Mẻ",
+      "address": "15 Ngô Huy Diễn",
+      "sourceLink": "https://drive.google.com/drive/folders/10TYTledKob3M3FF0XMExTdj3JNEAe6M0?usp=drive_link",
+      "fileId": "1as3nJDeHttGNHeZt7DF1ENNN3HuvU1FL",
+      "fileName": "Cái Cóc Mẻ.jpg"
+    },
+    "cafe|duong_ca_phe|152_pham_ngoc_thach": {
+      "key": "cafe|duong_ca_phe|152_pham_ngoc_thach",
+      "sectionKey": "cafe",
+      "name": "Đương Cà Phê",
+      "address": "152 Phạm Ngọc Thạch",
+      "sourceLink": "https://drive.google.com/drive/folders/1pNnBeSlQbXi_1RxC1K7At-11DrlM_KV4?usp=drive_link",
+      "fileId": "12gx-_40-a58bXqe60fUpylJ25lGJI4J4",
+      "fileName": "đương.jfif"
+    },
+    "cafe|la_tho|hem_15_tran_nhan_tong": {
+      "key": "cafe|la_tho|hem_15_tran_nhan_tong",
+      "sectionKey": "cafe",
+      "name": "Là Thơ",
+      "address": "Hẻm 15 Trần Nhân Tông",
+      "sourceLink": "https://drive.google.com/drive/folders/1DCf6JIcFZQuLJrU5-XYvGD4LXpai_oQl?usp=drive_link",
+      "fileId": "1ZMKv75ssESlVpSCaAvR023sPRwLXhzwZ",
+      "fileName": "Là Thơ.jpg"
+    },
+    "cafe|le_j_ca_phe|hem_51_yersin": {
+      "key": "cafe|le_j_ca_phe|hem_51_yersin",
+      "sectionKey": "cafe",
+      "name": "Le J Cà Phê",
+      "address": "Hẻm 51 Yersin",
+      "sourceLink": "https://drive.google.com/drive/folders/1CDcG3MIgQqNaqsAx2FTkStQor3XccCF-?usp=drive_link",
+      "fileId": "1J0SpQVVIfykHev2bQ7AW4hAC7UB3PSaC",
+      "fileName": "Le J Cà Phê.jpg"
+    },
+    "cafe|ca_phe_muoi|112_duong_ly_tu_trong": {
+      "key": "cafe|ca_phe_muoi|112_duong_ly_tu_trong",
+      "sectionKey": "cafe",
+      "name": "Cà Phê Mười",
+      "address": "112 Đường Lý Tự Trọng",
+      "sourceLink": "https://drive.google.com/drive/folders/1hvfINzre81mkfDgJ-UzPo0JOyJVsuwWu?usp=drive_link",
+      "fileId": "1CnNskgNIKsnJuB73xQTlqzE1tesQIk6e",
+      "fileName": "Cà Phê Mười.jpg"
+    },
+    "cafe|thi_tuan_ca_phe|03_yagout": {
+      "key": "cafe|thi_tuan_ca_phe|03_yagout",
+      "sectionKey": "cafe",
+      "name": "Thi Tuấn Cà phê",
+      "address": "03 Yagout",
+      "sourceLink": "https://drive.google.com/drive/folders/1ZSYTkzkupVaKQDuW6zfvwkQp_T1gGsda?usp=drive_link",
+      "fileId": "1ZUE4ZHIvIGzhwciZgCqSe0h3COjmeMlS",
+      "fileName": "Thi Tuấn Cà phê.jpg"
+    },
+    "cafe|mien_du_muc|duong_lam_van_thanh": {
+      "key": "cafe|mien_du_muc|duong_lam_van_thanh",
+      "sectionKey": "cafe",
+      "name": "Miền Du Mục",
+      "address": "Đường Lâm Vạn Thạnh",
+      "sourceLink": "https://drive.google.com/drive/folders/1Ml6Nhe0_Gd2ehVXHThjB3rVSDEVeb8mG?usp=drive_link",
+      "fileId": "1tZeeoAQB67XohmdJjaiRl8P8vahGWlaD",
+      "fileName": "IMG_8524.JPG"
+    },
+    "cafe|me_la|27_thi_sach": {
+      "key": "cafe|me_la|27_thi_sach",
+      "sectionKey": "cafe",
+      "name": "Mê Lá",
+      "address": "27 Thi Sách",
+      "sourceLink": "https://drive.google.com/drive/folders/1XgKBxBB56WEcbBn8S8ZS2dkWzZ9f_wg_?usp=drive_link",
+      "fileId": "1xGGivALllxLILxBk5IEXNUDGkCZv9ik8",
+      "fileName": "Mê Lá.jpg"
+    },
+    "cafe|tiem_ca_phe_trung_co_ba|105_hai_ba_trung": {
+      "key": "cafe|tiem_ca_phe_trung_co_ba|105_hai_ba_trung",
+      "sectionKey": "cafe",
+      "name": "Tiệm cà phê trứng Cô Ba",
+      "address": "105 Hai Bà Trưng",
+      "sourceLink": "https://drive.google.com/drive/folders/1lk1h5lK3k1KxFj5osSMa77qDrNyDi4VY?usp=drive_link",
+      "fileId": "19GXnA4DJU4fpINQ0QuRHb7TXc4BJYsPh",
+      "fileName": "Tiệm cà phê trứng Cô Ba.jpg"
+    },
+    "cafe|tiem_ca_phe_cheo_veoo|116_hung_vuong": {
+      "key": "cafe|tiem_ca_phe_cheo_veoo|116_hung_vuong",
+      "sectionKey": "cafe",
+      "name": "Tiệm cà phê Cheo veoo",
+      "address": "116 Hùng Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1eBsxMdkoEXRcNzDxFUilwCRCtXMvARF_?usp=drive_link",
+      "fileId": "1fkS_G1gOCMWqmv-9iWK-4kIOO8Cvr9pf",
+      "fileName": "Tiệm cà phê Cheo veoo.jpg"
+    },
+    "cafe|ca_phe_binh_bong_bup|hem_10_xo_viet_nghe_tinh": {
+      "key": "cafe|ca_phe_binh_bong_bup|hem_10_xo_viet_nghe_tinh",
+      "sectionKey": "cafe",
+      "name": "Cà phê Bình Bông Bụp",
+      "address": "Hẻm 10 Xô Viết Nghệ Tĩnh",
+      "sourceLink": "https://drive.google.com/drive/folders/124nL9iEdwmAYnTu3A-uURTMRRTd6tL7u?usp=drive_link",
+      "fileId": "15kr6o07bu279FgwJ53AlTRXJaf4VW7JE",
+      "fileName": "Cà phê Bình Bông Bụp.jpg"
+    },
+    "cafe|ca_phe_tiem_may_nho_hoai|09_tran_hung_dao": {
+      "key": "cafe|ca_phe_tiem_may_nho_hoai|09_tran_hung_dao",
+      "sectionKey": "cafe",
+      "name": "Cà phê Tiệm may Nhớ Hoài",
+      "address": "09 Trần Hưng Đạo",
+      "sourceLink": "https://drive.google.com/drive/folders/1V33F2qUBTvOIlMgLsfW52A4f1Lol09m0?usp=drive_link",
+      "fileId": "1k4Jrs9Szv48DISgluwrLY8b-SPWW-JJH",
+      "fileName": "Cafe Nhớ Hoài.jpg"
+    },
+    "cafe|still_cafe|59_nguyen_trai": {
+      "key": "cafe|still_cafe|59_nguyen_trai",
+      "sectionKey": "cafe",
+      "name": "Still Cafe",
+      "address": "59 Nguyễn Trãi",
+      "sourceLink": "https://drive.google.com/drive/folders/1FsKICSKlGco1FmnVqE1bXs_wnWBlCDOB?usp=drive_link",
+      "fileId": "1kXbTsjnhpmZ6Zk7cYYhmzGbxXB-urzpe",
+      "fileName": "Still Cafe.jpg"
+    },
+    "cafe|cay_cam_ngot|hem_50_khe_sanh": {
+      "key": "cafe|cay_cam_ngot|hem_50_khe_sanh",
+      "sectionKey": "cafe",
+      "name": "Cây cam ngọt",
+      "address": "Hẻm 50 Khe Sanh",
+      "sourceLink": "https://drive.google.com/drive/folders/1_7UjaDdks2Mv36E_dR7zXcr-LYo9HtkI?usp=drive_link",
+      "fileId": "1v__7ewHFDtkY3T2D1ZvsNvflL0rOF2TD",
+      "fileName": "Cây cam ngọt.jpg"
+    },
+    "cafe|quan_van|8b_trieu_viet_vuong": {
+      "key": "cafe|quan_van|8b_trieu_viet_vuong",
+      "sectionKey": "cafe",
+      "name": "Quán Văn",
+      "address": "8B Triệu Việt Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1PlLuAOnWIXYl7ZcMz8zq1RL89Q4zbERQ?usp=drive_link",
+      "fileId": "1cZUb0EOO_EXGxIkBNk-JQmrUmw7vfPgV",
+      "fileName": "10. Quán Văn..jpg"
+    },
+    "cafe|si_dalat|42_phu_dong_thien_vuong": {
+      "key": "cafe|si_dalat|42_phu_dong_thien_vuong",
+      "sectionKey": "cafe",
+      "name": "Si Dalat",
+      "address": "42 Phù Đổng Thiên Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1BicsetGtY2E0Z8m8Jv6ujw5cEU9UxRTo?usp=drive_link",
+      "fileId": "1z8O-hx6fg3xZ9zjA0191VD_m8J1TSapp",
+      "fileName": "Si Dalat.jpg"
+    },
+    "cafe|papacino|6b_tran_hung_dao": {
+      "key": "cafe|papacino|6b_tran_hung_dao",
+      "sectionKey": "cafe",
+      "name": "Papacino",
+      "address": "6B Trần Hưng Đạo",
+      "sourceLink": "https://drive.google.com/drive/folders/1fc_unnN3S8LYBeFUl0ww-02ins0A-SaJ?usp=drive_link",
+      "fileId": "1aLhR-WoFx0fD-NDJVmZt4zX-GP5ze-3z",
+      "fileName": "Papacino.jpg"
+    },
+    "cafe|quan_quyt|172_3_nguyen_van_troi": {
+      "key": "cafe|quan_quyt|172_3_nguyen_van_troi",
+      "sectionKey": "cafe",
+      "name": "Quấn Quýt",
+      "address": "172/3 Nguyễn Văn Trỗi",
+      "sourceLink": "https://drive.google.com/drive/folders/1z6PR9AnPvfYDrg98C-R69CbsqQVOy-u-?usp=drive_link",
+      "fileId": "1zfx0noVOkaODnRpqDXtJUn1kqeKCgzSr",
+      "fileName": "Quấn Quýt.jpg"
+    },
+    "cafe|mountain_chill|118_hung_vuong": {
+      "key": "cafe|mountain_chill|118_hung_vuong",
+      "sectionKey": "cafe",
+      "name": "Mountain Chill",
+      "address": "118 Hùng Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1wBYVE2hrb-5SWOv3LB6pakQv7Gw1xrQG?usp=drive_link",
+      "fileId": "1xmRfzGi8_EiqPj2ZjqTxgFcddc9JGd3w",
+      "fileName": "Mountain Chill.jpg"
+    },
+    "cafe|doc_thi|108_hung_vuong": {
+      "key": "cafe|doc_thi|108_hung_vuong",
+      "sectionKey": "cafe",
+      "name": "Dốc Thị",
+      "address": "108 Hùng Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1EnwNB5eamTq2CrHL5rZWzFSeHrN_x9Gm?usp=drive_link",
+      "fileId": "1ZyiUMBZaDl4LIHZL1H8ZGuQ1_UwmHa1R",
+      "fileName": "dốc thị.jfif"
+    },
+    "cafe|soho_coffee|21_hoang_hoa_tham": {
+      "key": "cafe|soho_coffee|21_hoang_hoa_tham",
+      "sectionKey": "cafe",
+      "name": "Soho Coffee",
+      "address": "21 Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1zcfXcW4KEeuKREDsnO8fsr9xaA4nQtSn?usp=drive_link",
+      "fileId": "1F-DfZA1nilcpDeONpMQ0FUSu-X8AR0YK",
+      "fileName": "soho.jfif"
+    },
+    "cafe|tiem_ca_phe_tui_mo_to|hem_31_sao_nam": {
+      "key": "cafe|tiem_ca_phe_tui_mo_to|hem_31_sao_nam",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Túi Mơ To",
+      "address": "Hẻm 31 Sào Nam",
+      "sourceLink": "https://drive.google.com/drive/folders/1P6hAlfHqtItBtPM3KMltP8P1rBNSRZRL?usp=drive_link",
+      "fileId": "1M7nFctjXub9r_zO-j5SeoGnstEIT39Yb",
+      "fileName": "2054224474574357476 (13).jpg"
+    },
+    "cafe|in_the_florest|31d_khe_sanh": {
+      "key": "cafe|in_the_florest|31d_khe_sanh",
+      "sectionKey": "cafe",
+      "name": "In The Florest",
+      "address": "31d Khe Sanh",
+      "sourceLink": "https://drive.google.com/drive/folders/1jd6QR15PudqKaTp6HutuvHG8Fq8tmjCc?usp=drive_link",
+      "fileId": "1OyuwEImwTCphFSIVbEH6TPjABnr0SLAn",
+      "fileName": "IMG_8544.JPG"
+    },
+    "cafe|suoi_binh_yen|d_hoa_cam_tu_cau": {
+      "key": "cafe|suoi_binh_yen|d_hoa_cam_tu_cau",
+      "sectionKey": "cafe",
+      "name": "Suối Bình Yên",
+      "address": "Đ. Hoa Cẩm Tú Cầu",
+      "sourceLink": "https://drive.google.com/drive/folders/1yjZ_3LYdA8IPyr1GoWL0Z9foWKnZVcCj?usp=drive_link",
+      "fileId": "1lVNk41wGyPZ34uZ8xYyW5CcrmzLh34yy",
+      "fileName": "Suối Bình Yên.jpg"
+    },
+    "cafe|cala_lily_dalat|hem_55_han_thuyen": {
+      "key": "cafe|cala_lily_dalat|hem_55_han_thuyen",
+      "sectionKey": "cafe",
+      "name": "Cala Lily Dalat",
+      "address": "Hẻm 55, Hàn Thuyên",
+      "sourceLink": "https://drive.google.com/drive/folders/1XX85YBVvAdU64o8tFC8IiTZUMNzpAnOv?usp=drive_link",
+      "fileId": "1BCDE13tZMwYoZB-2ie7U6dmi2wOKbnpI",
+      "fileName": "Cala Lily.jpg"
+    },
+    "cafe|tiem_ca_phe_tavi|phuoc_thanh": {
+      "key": "cafe|tiem_ca_phe_tavi|phuoc_thanh",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Tavi",
+      "address": "Phước Thành",
+      "sourceLink": "https://drive.google.com/drive/folders/1m3LVA8N27rIg_jVZ7s7g5u1aXX9_Jjzt?usp=drive_link",
+      "fileId": "1isprdU2RUhzFQrqGeBHHhDqChqchci18",
+      "fileName": "Tiệm Cà Phê Tavi.jpg"
+    },
+    "cafe|haiyih_coffee|tram_hanh": {
+      "key": "cafe|haiyih_coffee|tram_hanh",
+      "sectionKey": "cafe",
+      "name": "Haiyih Coffee",
+      "address": "Trạm Hành",
+      "sourceLink": "https://drive.google.com/drive/folders/1jp8bnxcepAymrzoi0WHf0lgzivMLWx3Q?usp=drive_link",
+      "fileId": "1SEid7q_PbsGI2Nq6kcHcar8d4QhbfxXS",
+      "fileName": "Haiyih Coffee.jpg"
+    },
+    "cafe|tiem_ca_phe_nang|18_2_duong_khoi_nghia_bac_son": {
+      "key": "cafe|tiem_ca_phe_nang|18_2_duong_khoi_nghia_bac_son",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Nàng",
+      "address": "18/2 Đường Khởi Nghĩa Bắc Sơn",
+      "sourceLink": "https://drive.google.com/drive/folders/1m1T0dvBgKmrMkGItYcECABR1NR_h2mv0?usp=drive_link",
+      "fileId": "16iNr7NMKRgcc90r3dI68W59drW3NvbWe",
+      "fileName": "Tiệm Cà Phê Nàng.jpg"
+    },
+    "cafe|trong_trai_tra|12_tran_nhan_tong": {
+      "key": "cafe|trong_trai_tra|12_tran_nhan_tong",
+      "sectionKey": "cafe",
+      "name": "Trông Trại Trà",
+      "address": "12 Trần Nhân Tông",
+      "sourceLink": "https://drive.google.com/drive/folders/1awh4RNuPU1-_yUyvJ_5FmyF8f1UqlnuJ?usp=drive_link",
+      "fileId": "1ALA1WVQSEbc-Ta08E3tz21EwlMYdq7Tv",
+      "fileName": "Trông Trại Trà.jpg"
+    },
+    "cafe|r1998|24b_1_hung_vuong": {
+      "key": "cafe|r1998|24b_1_hung_vuong",
+      "sectionKey": "cafe",
+      "name": "R1998",
+      "address": "24B/1 Hùng Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1IrQQAUhHAkTs0OFaKHUwURo7zzFh6TuU?usp=drive_link",
+      "fileId": "1XFl94icerQ3vL8_oWPL0dcvNQvFYou0C",
+      "fileName": "R1998.jpg"
+    },
+    "cafe|sitooterie|hem_2_35_khoi_nghia_bac_son": {
+      "key": "cafe|sitooterie|hem_2_35_khoi_nghia_bac_son",
+      "sectionKey": "cafe",
+      "name": "Sitooterie",
+      "address": "Hẻm 2/35 Khởi Nghĩa Bắc Sơn",
+      "sourceLink": "https://drive.google.com/drive/folders/187QwVT89fI6SGb7im6oBBIqNA3b75FbE?usp=drive_link",
+      "fileId": "1cZoyEpTZYe1MPc5hCp3rzDIUTnj-7exB",
+      "fileName": "Sitooterie.jpg"
+    },
+    "cafe|tho_s_artisan_coffee|10_phan_boi_chau": {
+      "key": "cafe|tho_s_artisan_coffee|10_phan_boi_chau",
+      "sectionKey": "cafe",
+      "name": "Thô's Artisan Coffee",
+      "address": "10 Phan Bội Châu",
+      "sourceLink": "https://drive.google.com/drive/folders/1C33oM7KIbx5xYtoDOhAU_K0PWtYzCfvg?usp=drive_link",
+      "fileId": "1nEEdN0tT3DFFP1MZ2QcswsxpCOS_qJvc",
+      "fileName": "Thô's Artisan Coffee.jpg"
+    },
+    "cafe|quan_cua_thoi_thanh_xuan|09_trieu_viet_vuong": {
+      "key": "cafe|quan_cua_thoi_thanh_xuan|09_trieu_viet_vuong",
+      "sectionKey": "cafe",
+      "name": "Quán Của Thời Thanh Xuân",
+      "address": "09 Triệu Việt Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1wd3kj6oy96aKPR3tc9nN0OJcWbgCNOGQ?usp=drive_link",
+      "fileId": "1XUWF2PAoa40Je2aGbkXSzbvk6YHfcRkv",
+      "fileName": "7. thời thanh xuân.jpg"
+    },
+    "cafe|binh_minh_oi_hoa_xuong_rong|89_hoang_hoa_tham": {
+      "key": "cafe|binh_minh_oi_hoa_xuong_rong|89_hoang_hoa_tham",
+      "sectionKey": "cafe",
+      "name": "Bình Minh Ơi-Hoa Xương Rồng",
+      "address": "89 Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1WcafiKYiE-QkmIXiV0StNpm7ijnvEBMW?usp=drive_link",
+      "fileId": "1lY3EAT3vE7apeZpr5yspbuSFObQCWjm9",
+      "fileName": "9. HOA XƯƠNG RỒNG.jpg"
+    },
+    "cafe|quan_duong|152_pham_ngoc_thach": {
+      "key": "cafe|quan_duong|152_pham_ngoc_thach",
+      "sectionKey": "cafe",
+      "name": "Quán Đương",
+      "address": "152 Phạm Ngọc Thạch",
+      "sourceLink": "https://drive.google.com/drive/folders/1pNnBeSlQbXi_1RxC1K7At-11DrlM_KV4?usp=drive_link",
+      "fileId": "12gx-_40-a58bXqe60fUpylJ25lGJI4J4",
+      "fileName": "đương.jfif"
+    },
+    "check_in|biet_thu_dong_da|duong_dong_da": {
+      "key": "check_in|biet_thu_dong_da|duong_dong_da",
+      "sectionKey": "check_in",
+      "name": "Biệt Thự Đống Đa",
+      "address": "Đường Đống Đa",
+      "sourceLink": "https://drive.google.com/drive/folders/1ftZq44_LWzWtPrSzg4qIO-lrItCMjGS6?usp=drive_link",
+      "fileId": "1XzFQBIdK_TVrP3vCm6C6PAoGnbbqqQUr",
+      "fileName": "535468963_807553028622967_1504965877944712846_n.jpg"
+    },
+    "check_in|cung_duong_bac_au|duong_nguyen_huu_canh": {
+      "key": "check_in|cung_duong_bac_au|duong_nguyen_huu_canh",
+      "sectionKey": "check_in",
+      "name": "Cung đường Bắc Âu",
+      "address": "Đường Nguyễn Hữu Cảnh",
+      "sourceLink": "https://drive.google.com/drive/folders/13q-8n8vni2N4ufvwxDpuoc4z56tSm9w9?usp=drive_link",
+      "fileId": "1rjWjFa58_D6Edw9lkQMeRBI4CTrStCzz",
+      "fileName": "504265705_763679016343702_3317565924084263414_n.jpg"
+    },
+    "check_in|doc_nha_bo|duong_dao_duy_tu": {
+      "key": "check_in|doc_nha_bo|duong_dao_duy_tu",
+      "sectionKey": "check_in",
+      "name": "Dốc Nhà Bò",
+      "address": "Đường Đào Duy Từ",
+      "sourceLink": "https://drive.google.com/drive/folders/1kZ93Ln8BKceraXl-ZLRaxZlvTRCcpZmC?usp=drive_link",
+      "fileId": "1FuCyeybBldjn_W6Ff0cJLx6eiI_dlXpK",
+      "fileName": "131989920_1067467633759796_7871020391537234452_n.jpg"
+    },
+    "check_in|doc_le_dai_hanh|duong_le_dai_thanh": {
+      "key": "check_in|doc_le_dai_hanh|duong_le_dai_thanh",
+      "sectionKey": "check_in",
+      "name": "Dốc Lê Đại Hành",
+      "address": "Đường Lê Đại Thành",
+      "sourceLink": "https://drive.google.com/drive/folders/1imAc8U9k8AGG6CHgzhlhxu319TRX_-0Z?usp=drive_link",
+      "fileId": "1DbsqG3tVhOv9pLLDu4h0P70LOyvAC23j",
+      "fileName": "480455970_1967304367127300_7429553591686692869_n.jpg"
+    },
+    "check_in|thap_truyen_hinh|14b_dong_da": {
+      "key": "check_in|thap_truyen_hinh|14b_dong_da",
+      "sectionKey": "check_in",
+      "name": "Tháp Truyền Hình",
+      "address": "14B Đống Đa",
+      "sourceLink": "https://drive.google.com/drive/folders/19phfNH0_OnLyJB_ebVDBdITgj17AwHTt?usp=drive_link",
+      "fileId": "1zlsQxr2AQxJaSF70rv7pH9323E73XwC9",
+      "fileName": "THÁP TRUYỀN HÌNH.jpg"
+    },
+    "check_in|thap_vinaphone|duong_nha_chung": {
+      "key": "check_in|thap_vinaphone|duong_nha_chung",
+      "sectionKey": "check_in",
+      "name": "Tháp Vinaphone",
+      "address": "Đường Nhà Chung",
+      "sourceLink": "https://drive.google.com/drive/folders/1OFfWeUZ0bA8wHoHpejb8C3E0e83OfpK-?usp=drive_link",
+      "fileId": "1w9tRT91tcQw2X166jV_CpENWKucAFhqT",
+      "fileName": "539475419_1757987852259810_4342289574842545654_n.jpg"
+    },
+    "check_in|doc_suong_nguyet_anh|doc_suong_nguyet_anh": {
+      "key": "check_in|doc_suong_nguyet_anh|doc_suong_nguyet_anh",
+      "sectionKey": "check_in",
+      "name": "Dốc Sương Nguyệt Ánh",
+      "address": "Dốc Sương Nguyệt Anh",
+      "sourceLink": "https://drive.google.com/drive/folders/1GCKMDurPPqleOPBb2cFgSimgd9vx_J6I?usp=drive_link",
+      "fileId": "10B1O0qaY83lbwl5EvAZxgNKYgOmHuMOd",
+      "fileName": "489803324_1142122437912438_4302804040552384912_n.jpg"
+    },
+    "check_in|ho_xuan_huong|duong_tran_quoc_toan": {
+      "key": "check_in|ho_xuan_huong|duong_tran_quoc_toan",
+      "sectionKey": "check_in",
+      "name": "Hồ Xuân Hương",
+      "address": "Đường Trần Quốc Toản",
+      "sourceLink": "https://drive.google.com/drive/folders/1hx32HNeprM0MNzb1khtaQ3G8FcAR-AAU?usp=drive_link",
+      "fileId": "1jZQPNDZNZvkQiL051n8t69uCqyQKDawG",
+      "fileName": "473710876_122182707296150097_4064863085412576561_n.jpg"
+    },
+    "check_in|ho_tuyen_lam|p_xuan_huong_tp_da_lat": {
+      "key": "check_in|ho_tuyen_lam|p_xuan_huong_tp_da_lat",
+      "sectionKey": "check_in",
+      "name": "Hồ Tuyền Lâm",
+      "address": "P. Xuân Hương, Tp. Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1Q9cQ1bXtHh76-hztC5iwD-hvhb80ZptQ?usp=drive_link",
+      "fileId": "11V0ozqg0X9N2z0ZNPxziIVzSvp45_iWz",
+      "fileName": "477441654_1357440342072236_5985045227891806983_n.jpg"
+    },
+    "check_in|suoi_tia|ho_tuyen_lam": {
+      "key": "check_in|suoi_tia|ho_tuyen_lam",
+      "sectionKey": "check_in",
+      "name": "Suối Tía",
+      "address": "Hồ Tuyền lâm",
+      "sourceLink": "https://drive.google.com/drive/folders/1iqqImQ6kmuSqBccugrgroTQcwOksCCht?usp=drive_link",
+      "fileId": "1W6k5m-ZCO_q2Ai4CzIduq6qUfNzIO3BP",
+      "fileName": "488918809_9528636067252018_435692132301621795_n.jpg"
+    },
+    "check_in|doi_ngo_quyen|doi_ngo_quyen_p_langbiang": {
+      "key": "check_in|doi_ngo_quyen|doi_ngo_quyen_p_langbiang",
+      "sectionKey": "check_in",
+      "name": "Đồi Ngô Quyền",
+      "address": "Đồi Ngô Quyền, P. Langbiang",
+      "sourceLink": "https://drive.google.com/drive/folders/1bNFD22S3tuwqN2e4KwBTLtVMRJ_skJJn?usp=drive_link",
+      "fileId": "1sVA6a92z4fN9AeJVX1j9CTYWrR24sRXW",
+      "fileName": "472833285_615304220912809_4265054597061276553_n.jpg"
+    },
+    "check_in|doi_mang_lin|doi_ma_thanh_mang_lin": {
+      "key": "check_in|doi_mang_lin|doi_ma_thanh_mang_lin",
+      "sectionKey": "check_in",
+      "name": "Đồi Măng Lin",
+      "address": "Đồi Mả Thánh, Măng Lin",
+      "sourceLink": "https://drive.google.com/drive/folders/1WIfETOyarJ0vfCqsKCE_Ro973d_A1lnk?usp=drive_link",
+      "fileId": "1FJNaOt33KbBE7zv2OulA456tgWp8_iVO",
+      "fileName": "2015375602277604419 (1).jpg"
+    },
+    "check_in|duong_nguyen_khuyen|p_cam_ly": {
+      "key": "check_in|duong_nguyen_khuyen|p_cam_ly",
+      "sectionKey": "check_in",
+      "name": "Đường Nguyễn Khuyến",
+      "address": "P. Cam Ly",
+      "sourceLink": "https://drive.google.com/drive/folders/1zgWkwqXyVIM36qFvR2B-ghoCpdHKsq6e?usp=drive_link",
+      "fileId": "1SG4MYLlDtuGUA2jEscmoxP-t16Rb_-cn",
+      "fileName": "486253739_695932146451723_5716597108810290120_n.jpg"
+    },
+    "check_in|duong_han_thuyen|p_cam_ly": {
+      "key": "check_in|duong_han_thuyen|p_cam_ly",
+      "sectionKey": "check_in",
+      "name": "Đường Hàn Thuyên",
+      "address": "P. Cam Ly",
+      "sourceLink": "https://drive.google.com/drive/folders/1Uhw65RH9E6PZPhNwvMYeYLDGd2yvPBk4?usp=drive_link",
+      "fileId": "1b4YxYjejYTssUs_pcPXl6PQ4xh09A716",
+      "fileName": "495089258_1946808682519600_2793442842403805133_n.jpg"
+    },
+    "check_in|duong_co_bac_co_giang|p_lam_vien": {
+      "key": "check_in|duong_co_bac_co_giang|p_lam_vien",
+      "sectionKey": "check_in",
+      "name": "Đường Cô Bắc - Cô Giang",
+      "address": "P.Lâm Viên",
+      "sourceLink": "https://drive.google.com/drive/folders/1d9TT0yQ75fsaDh2VuwEN3PNSfKhvtQUx?usp=drive_link",
+      "fileId": "1i2EY2zCQM3JJyc7F6ogX8JZpKnNlzzAZ",
+      "fileName": "485790417_689093617135576_183886581431340590_n.jpg"
+    },
+    "check_in|con_doc_nhat_ban|doc_yersin": {
+      "key": "check_in|con_doc_nhat_ban|doc_yersin",
+      "sectionKey": "check_in",
+      "name": "Con Dốc Nhật Bản",
+      "address": "Dốc yersin",
+      "sourceLink": "https://drive.google.com/drive/folders/15lzOlQW933ewOmIlnnZm-MFtjlu1vFYW?usp=drive_link",
+      "fileId": "1k-7Yu-4d8Zjj8sve3PGYKFgGFeBF8qpX",
+      "fileName": "557160865_843347471710189_6431728214365207051_n.jpg"
+    },
+    "check_in|chung_vien_minh_hoa|59_van_kiep": {
+      "key": "check_in|chung_vien_minh_hoa|59_van_kiep",
+      "sectionKey": "check_in",
+      "name": "Chủng Viện Minh Hòa",
+      "address": "59 Vạn Kiếp",
+      "sourceLink": "https://drive.google.com/drive/folders/1jITbcFqwE72yyUu9DyN3cHG9Kk4pUlw5?usp=drive_link",
+      "fileId": "19azJP3oL2PB1W7lkoe60fw4YP83wNneI",
+      "fileName": "472209985_1270600554246743_2204407375020172392_n.jpg"
+    },
+    "check_in|truong_cao_dang_da_lat|109_yersin": {
+      "key": "check_in|truong_cao_dang_da_lat|109_yersin",
+      "sectionKey": "check_in",
+      "name": "Trường Cao Đẳng Đà Lạt",
+      "address": "109 Yersin,",
+      "sourceLink": "https://drive.google.com/drive/folders/16hkALwk1XAVdjCG1Me3Q8l2KVe8KxOc9?usp=drive_link",
+      "fileId": "1zVUjdgjMyqeRsu3_ofrBl_vPVPUZYIzS",
+      "fileName": "185359359_457855065502523_4121524789856628975_n.jpg"
+    },
+    "check_in|cung_van_hoa_thieu_nhi|13_dinh_tien_hoang": {
+      "key": "check_in|cung_van_hoa_thieu_nhi|13_dinh_tien_hoang",
+      "sectionKey": "check_in",
+      "name": "Cung văn hóa Thiếu Nhi",
+      "address": "13 Đinh Tiên Hoàng",
+      "sourceLink": "https://drive.google.com/drive/folders/1KTER1CGyouZvLwnXRqQb0VyBaZR8eRoY?usp=drive_link",
+      "fileId": "1A9Xvpl_RBbsfBHboKB1e-fg9qWl10H5I",
+      "fileName": "474467995_938461618403376_5951808236307532047_n.jpg"
+    },
+    "check_in|chung_cu_yersin|p_lam_vien": {
+      "key": "check_in|chung_cu_yersin|p_lam_vien",
+      "sectionKey": "check_in",
+      "name": "Chung Cư Yersin",
+      "address": "P. Lâm Viên",
+      "sourceLink": "https://drive.google.com/drive/folders/1XVlRDuHBFpaH0gtdRthWvWsJC19heIUd?usp=drive_link",
+      "fileId": "1eWzG51Gm4sMCoEQOUT63wHIfeWB-O_qj",
+      "fileName": "593547740_895982519780017_1949183224543525561_n.jpg"
+    },
+    "check_in|doi_che_cau_dat|xuan_truong_da_lat": {
+      "key": "check_in|doi_che_cau_dat|xuan_truong_da_lat",
+      "sectionKey": "check_in",
+      "name": "Đồi Chè Cầu Đất",
+      "address": "Xuân Trường, Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1ByFmpMNXhe10uwodUiWL_KqrpDvdDPIB?usp=drive_link",
+      "fileId": "1BwFUY7E5nWo5HhA_fzjROL3irdVgTMOk",
+      "fileName": "481082750_1208210584241764_9219759074973837371_n.jpg"
+    },
+    "check_in|dap_ankoret|lac_duong": {
+      "key": "check_in|dap_ankoret|lac_duong",
+      "sectionKey": "check_in",
+      "name": "Đập Ankoret",
+      "address": "Lạc Dương",
+      "sourceLink": "https://drive.google.com/drive/folders/1nSNNjElFcFyr9m7E7AZMc3wQ3VUqMLxV?usp=drive_link",
+      "fileId": "1FNtR_qg5530glkCJP5qSVPHlXwSQX7eT",
+      "fileName": "472175739_612046654571899_3151260283377292763_n.jpg"
+    },
+    "check_in|doi_hoa_co_hong|p_xuan_huong": {
+      "key": "check_in|doi_hoa_co_hong|p_xuan_huong",
+      "sectionKey": "check_in",
+      "name": "Đồi Hoa Cỏ Hồng",
+      "address": "P. Xuân Hương",
+      "sourceLink": "https://drive.google.com/drive/folders/1i44L8w5tKOIdMWIix9aoY-otsbTCMsez?usp=drive_link",
+      "fileId": "1rQ41UrlsPt4BaAZb6vKh0lhHrGAO7stI",
+      "fileName": "483519367_681088531269418_2784870550050031573_n.jpg"
+    },
+    "check_in|san_van_dong_da_lat|hem_xo_viet_nghe_tinh": {
+      "key": "check_in|san_van_dong_da_lat|hem_xo_viet_nghe_tinh",
+      "sectionKey": "check_in",
+      "name": "Sân Vận Động Đà Lạt",
+      "address": "Hẻm Xô Viết Nghệ Tĩnh",
+      "sourceLink": "https://drive.google.com/drive/folders/1iqqImQ6kmuSqBccugrgroTQcwOksCCht?usp=drive_link",
+      "fileId": "1W6k5m-ZCO_q2Ai4CzIduq6qUfNzIO3BP",
+      "fileName": "488918809_9528636067252018_435692132301621795_n.jpg"
+    },
+    "check_in|doc_nho_hoai|09_tran_hung_dao": {
+      "key": "check_in|doc_nho_hoai|09_tran_hung_dao",
+      "sectionKey": "check_in",
+      "name": "Dốc Nhớ Hoài",
+      "address": "09 Trần Hưng Đạo",
+      "sourceLink": "https://drive.google.com/drive/folders/1BMBZJ0EP3yXN4Tl9It3U0ilKtROuPo6j?usp=drive_link",
+      "fileId": "1OktPtWYuDa-0-qqKD7sAb3MLGv4Q6qIF",
+      "fileName": "534186999_805082088870061_7184696841153776455_n.jpg"
+    },
+    "check_in|xom_leo|huynh_tan_phat": {
+      "key": "check_in|xom_leo|huynh_tan_phat",
+      "sectionKey": "check_in",
+      "name": "Xóm Lèo",
+      "address": "Huỳnh Tấn Phát",
+      "sourceLink": "https://drive.google.com/drive/folders/1dCjNqGj-4Yiz-x2dBZAg3dI2iGa0BktE?usp=drive_link",
+      "fileId": "1AMh5y-gYbqgYTG-Tg_M8D02eRK175ZuH",
+      "fileName": "547492594_1774438873948041_743423774791575184_n.jpg"
+    },
+    "check_in|duong_yen_the|p_xuan_huong": {
+      "key": "check_in|duong_yen_the|p_xuan_huong",
+      "sectionKey": "check_in",
+      "name": "Đường Yên Thế",
+      "address": "P. Xuân Hương",
+      "sourceLink": "https://drive.google.com/drive/folders/1ERh5cW4i5ytMYeGCpgu_cCxTk48uiXv5?usp=drive_link",
+      "fileId": "1K-WaNk1p7Wupxz2fWDa86WG62BqOtoZ_",
+      "fileName": "576969358_872246922153577_1945278406445090997_n.jpg"
+    },
+    "check_in|nha_tho_con_ga|15_tran_phu": {
+      "key": "check_in|nha_tho_con_ga|15_tran_phu",
+      "sectionKey": "check_in",
+      "name": "Nhà Thờ Con Gà",
+      "address": "15 Trần Phú",
+      "sourceLink": "https://drive.google.com/drive/folders/1h7FhT33TQM9KiEktRFeHvOgKDSC7II7y?usp=drive_link",
+      "fileId": "1A2hSnKC7T3iCw1MX5RxceZr87GYU9Rca",
+      "fileName": "181921528_1966166193562563_5968646087558329023_n.jpg"
+    },
+    "check_in|nha_tho_domain|01_ngo_quyen": {
+      "key": "check_in|nha_tho_domain|01_ngo_quyen",
+      "sectionKey": "check_in",
+      "name": "Nhà Thờ Domain",
+      "address": "01 Ngô Quyền",
+      "sourceLink": "https://drive.google.com/drive/folders/1MWnRwrxQjKT__qQq-7qnRkb5R8jay0UI?usp=drive_link",
+      "fileId": "1_fb1HNOLKtK0H5OcJRGLRNuj5VtZMqcV",
+      "fileName": "Nhà Thờ Domain.jpg"
+    },
+    "check_in|https_drive_google_com_drive_folders_1ftzq44_lwzwtprszg4qio_lritcmjgs6_usp_drive_link|152_pham_ngoc_thach": {
+      "key": "check_in|https_drive_google_com_drive_folders_1ftzq44_lwzwtprszg4qio_lritcmjgs6_usp_drive_link|152_pham_ngoc_thach",
+      "sectionKey": "check_in",
+      "name": "https://drive.google.com/drive/folders/1ftZq44_LWzWtPrSzg4qIO-lrItCMjGS6?usp=drive_link",
+      "address": "152 Phạm Ngọc Thạch,",
+      "sourceLink": "https://drive.google.com/drive/folders/1Z4KM8VSfsugA0B2lofkxEIT6nCyIfsRX?usp=drive_link",
+      "fileId": "1ocoRBWHExMxRcHVm3YfFxK1yRq5XOEKH",
+      "fileName": "481152470_1160126742417488_6230995543992933165_n.jpg"
+    },
+    "check_in|ga_xe_lua_da_lat|01_quang_trung": {
+      "key": "check_in|ga_xe_lua_da_lat|01_quang_trung",
+      "sectionKey": "check_in",
+      "name": "Ga Xe Lửa Đà Lạt",
+      "address": "01 Quang Trung",
+      "sourceLink": "https://drive.google.com/drive/folders/173suzxzPaeamTr9t7ogI4O1wX9XszDyp?usp=drive_link",
+      "fileId": "17uXDFxMRTEdq5zzrZ7IzZDFbD-bYwdJI",
+      "fileName": "ga đÀ LẠT.jpg"
+    },
+    "check_in|dinh_tinh_truong|d_ly_tu_trong": {
+      "key": "check_in|dinh_tinh_truong|d_ly_tu_trong",
+      "sectionKey": "check_in",
+      "name": "Dinh Tỉnh Trưởng",
+      "address": "Đ. Lý Tự Trọng",
+      "sourceLink": "https://drive.google.com/drive/folders/1ff1WUH9iqOqOHXVXZSxyGKWkPyqZ542X?usp=drive_link",
+      "fileId": "1XzA8NQI2vC0GImHE0GcQgSV0CMpOr07f",
+      "fileName": "481069217_1160118752418287_7929280533797637652_n.jpg"
+    }
+  }
+}
