@@ -46,10 +46,16 @@ import { fetchDriveFileAsset, getDriveImageProxyUrl } from '../sync/drive-images
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from '../sync/sheet-drive-manifest';
 import { findWorkbookPath, syncWorkbookFromSheet } from '../sync/workbook-source';
 
+function resolveToolRoot(): string {
+  const currentDir = path.resolve(__dirname);
+  if (fs.existsSync(path.join(currentDir, 'image-mapping.json'))) return currentDir;
+  return path.resolve(currentDir, '../../');
+}
+
 @Injectable()
 export class GuideService {
   // toolRoot points to the backend folder root
-  readonly toolRoot = path.resolve(__dirname, '../../');
+  readonly toolRoot = resolveToolRoot();
   readonly frontendRoot = path.resolve(this.toolRoot, '../frontend');
   readonly workspaceRoot = path.resolve(this.toolRoot, '../../');
   private readonly dalatImageDir = 'C:\\Data\\tn\\Hình cảnh ĐL-20260417T122322Z-3-001\\Hình cảnh ĐL';
@@ -525,6 +531,7 @@ export class GuideService {
       imageMapped: resolvedImage.imageMapped,
       imageMappingKey: resolvedImage.imageMappingKey,
       imageSource: resolvedImage.imageSource,
+      candidateImageUrls: resolvedImage.candidateImageUrls,
     };
   }
 

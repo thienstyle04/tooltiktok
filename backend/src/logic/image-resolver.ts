@@ -75,6 +75,19 @@ export function imageUrlsForDirectory(directory: string, routePrefix: string): s
     .map((fileName) => `${routePrefix}/${encodeURIComponent(fileName)}`);
 }
 
+function imageFileNamesForDirectory(directory: string): string[] {
+  if (!fs.existsSync(directory) || !fs.statSync(directory).isDirectory()) return [];
+  const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.jfif']);
+  return fs
+    .readdirSync(directory)
+    .filter((entry) => imageExtensions.has(path.extname(entry).toLowerCase()))
+    .sort((left, right) => {
+      const ln = extractFirstNumber(left);
+      const rn = extractFirstNumber(right);
+      return ln !== rn ? ln - rn : left.localeCompare(right, 'vi');
+    });
+}
+
 // ─── Image library ────────────────────────────────────────────────────────────
 
 export function getImageLibraryRoot(workspaceRoot: string): string | null {
@@ -315,12 +328,8 @@ export function resolveMappedImage(
       };
     }
 
-    // Check if it's a directory
     if (libraryRoot && safeRelative(libraryRoot, libraryAbsolutePath) && isDir(libraryAbsolutePath)) {
-      const ext = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-      const files = fs.readdirSync(libraryAbsolutePath)
-        .filter(f => ext.has(path.extname(f).toLowerCase()))
-        .sort();
+      const files = imageFileNamesForDirectory(libraryAbsolutePath);
       if (files.length > 0) {
         const candidates = files.map(f => `/assets/library?root=${encodeURIComponent(mappingRootKey)}&path=${encodeURIComponent(path.join(relativePath, f).replaceAll('\\', '/'))}`);
         return {
@@ -340,6 +349,20 @@ export function resolveMappedImage(
         imageMappingKey: mappingKey,
         imageSource: 'manual',
       };
+    }
+
+    if (safeRelative(workspaceRoot, workspaceAbsolutePath) && isDir(workspaceAbsolutePath)) {
+      const files = imageFileNamesForDirectory(workspaceAbsolutePath);
+      if (files.length > 0) {
+        const candidates = files.map(f => `/assets/workspace?path=${encodeURIComponent(path.join(relativePath, f).replaceAll('\\', '/'))}`);
+        return {
+          imageUrl: candidates[sequence % candidates.length],
+          imageMapped: true,
+          imageMappingKey: mappingKey,
+          imageSource: 'manual',
+          candidateImageUrls: candidates,
+        };
+      }
     }
   }
 

@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-23T09:45:52.697Z",
+  "generatedAt": "2026-04-24T09:23:27.678Z",
   "workbookName": "F&B ĐÀ LẠT.xlsx",
-  "workbookMtimeMs": 1776937502920.4702,
+  "workbookMtimeMs": 1777022546977.4783,
   "items": {
     "quan_an|pho_nguyen_gia|33_ngo_quyen": {
       "key": "quan_an|pho_nguyen_gia|33_ngo_quyen",
@@ -319,6 +319,15 @@
       "fileId": "1xGGivALllxLILxBk5IEXNUDGkCZv9ik8",
       "fileName": "Mê Lá.jpg"
     },
+    "cafe|tiem_ca_phe_binh_minh_oi|89_hoang_hoa_tham": {
+      "key": "cafe|tiem_ca_phe_binh_minh_oi|89_hoang_hoa_tham",
+      "sectionKey": "cafe",
+      "name": "Tiệm cà phê Bình Minh Ơi",
+      "address": "89 Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1WcafiKYiE-QkmIXiV0StNpm7ijnvEBMW?usp=drive_link",
+      "fileId": "1wtu5aWv3yiZVhWq_rf6m-qMEJrJW_TyW",
+      "fileName": "8. BÌNH MIINH ƠI.jpg"
+    },
     "cafe|tiem_ca_phe_trung_co_ba|105_hai_ba_trung": {
       "key": "cafe|tiem_ca_phe_trung_co_ba|105_hai_ba_trung",
       "sectionKey": "cafe",
@@ -426,6 +435,87 @@
       "sourceLink": "https://drive.google.com/drive/folders/1EnwNB5eamTq2CrHL5rZWzFSeHrN_x9Gm?usp=drive_link",
       "fileId": "1ZyiUMBZaDl4LIHZL1H8ZGuQ1_UwmHa1R",
       "fileName": "dốc thị.jfif"
+    },
+    "cafe|hoang_hon_chieu|doc_so_9_trai_mat": {
+      "key": "cafe|hoang_hon_chieu|doc_so_9_trai_mat",
+      "sectionKey": "cafe",
+      "name": "Hoàng Hôn Chiều",
+      "address": "Dốc số 9, Trại Mát",
+      "sourceLink": "https://drive.google.com/drive/folders/1Y5qjapA-tvUPzL72SOoJmLSLjSntSvD6?usp=drive_link",
+      "fileId": "1_ESIm9L-Mlw6wuzSOlah6PgWV2EXbkG2",
+      "fileName": "Cafe Hoàng Hôn Chiều.jpg"
+    },
+    "cafe|goc_cua_tung|32_2_duong_3_4": {
+      "key": "cafe|goc_cua_tung|32_2_duong_3_4",
+      "sectionKey": "cafe",
+      "name": "Góc của Tùng",
+      "address": "32/2 đường 3/4",
+      "sourceLink": "https://drive.google.com/drive/folders/1PHoGzl8UaomUiPFQh1dtSySWISvtm_b9?usp=drive_link",
+      "fileId": "14QVJNU2jO1dCrFnl6P_T40DSmzULgwww",
+      "fileName": "Góc của Tùng.jpg"
+    },
+    "cafe|o_cua_mua_dong|88_dong_tam": {
+      "key": "cafe|o_cua_mua_dong|88_dong_tam",
+      "sectionKey": "cafe",
+      "name": "Ô cửa mùa đông",
+      "address": "88 Đồng Tâm",
+      "sourceLink": "https://drive.google.com/drive/folders/1Bj1mk9qPlNSUrU6tuK97I9kLQahCEu_Q?usp=drive_link",
+      "fileId": "1mKHF1-oz8e3w9xP3Ga579_q5-SfUiMNK",
+      "fileName": "Ô cửa mùa đông.jpg"
+    },
+    "cafe|gau_chay_bo|83_yersin": {
+      "key": "cafe|gau_chay_bo|83_yersin",
+      "sectionKey": "cafe",
+      "name": "Gấu chạy bộ",
+      "address": "83 Yersin",
+      "sourceLink": "https://drive.google.com/drive/folders/1f-3RduR42zgh-W1AHXTIEBTtSB82rsyy?usp=drive_link",
+      "fileId": "1EbFdcl26WqlKmar9aV3Lze819y72ox26",
+      "fileName": "Gấu chạy bộ.jpg"
+    },
+    "cafe|di_cung_mua|kdl_cap_treo": {
+      "key": "cafe|di_cung_mua|kdl_cap_treo",
+      "sectionKey": "cafe",
+      "name": "Đi Cùng Mưa",
+      "address": "KDL Cáp Treo",
+      "sourceLink": "https://drive.google.com/drive/folders/10AQ2FG5CIODTCxRnPslVQXj0TSj5LDxL?usp=drive_link",
+      "fileId": "1PtLR4ke-weiC9E8oQGyXoSBdnPmGIEh7",
+      "fileName": "Đi Cùng Mưa.jpg"
+    },
+    "cafe|la_creme|17_phu_dong_thien_vuong": {
+      "key": "cafe|la_creme|17_phu_dong_thien_vuong",
+      "sectionKey": "cafe",
+      "name": "La Crème",
+      "address": "17 Phù Đổng Thiên Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1FliCEquyPzVbv_HLdmBxeiTP3q91J-sT?usp=drive_link",
+      "fileId": "18B9fa0qEkNVuEx63qnotRP5EpzAAXLhH",
+      "fileName": "La Crème.jpg"
+    },
+    "cafe|tram_ky_uc|87_huynh_tan_phat": {
+      "key": "cafe|tram_ky_uc|87_huynh_tan_phat",
+      "sectionKey": "cafe",
+      "name": "Trạm ký ức",
+      "address": "87 Huỳnh Tấn Phát",
+      "sourceLink": "https://drive.google.com/drive/folders/13PNEX0Ns7w5ZKefQm0kvWHzQ4dAWGjcJ?usp=drive_link",
+      "fileId": "1lWD50nFtGZ-jTKKKD7_LXHD6kydJxmvE",
+      "fileName": "Trạm ký ức.jpg"
+    },
+    "cafe|him_cafe|2_2_2_duong_khoi_nghia_bac": {
+      "key": "cafe|him_cafe|2_2_2_duong_khoi_nghia_bac",
+      "sectionKey": "cafe",
+      "name": "Him Cafe",
+      "address": "2/2 2 đường Khởi Nghĩa Bắc",
+      "sourceLink": "https://drive.google.com/drive/folders/1031iE-L4HEfGHJA-0lCHNfEf0QkASMGg?usp=drive_link",
+      "fileId": "1fgNoOF3pSS8SnlxP_GKVeSDUD0zMgzUI",
+      "fileName": "Him Cafe.jpg"
+    },
+    "cafe|tiem_ca_phe_nha_cua_thong|to_45_khu_pho_4": {
+      "key": "cafe|tiem_ca_phe_nha_cua_thong|to_45_khu_pho_4",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Nhà Của Thông",
+      "address": "Tổ 45 Khu Phố 4",
+      "sourceLink": "https://drive.google.com/drive/folders/1oiIyzQWrBELGd2AWqdDdXev4dxTTO6rr?usp=drive_link",
+      "fileId": "1PbOD9xl-Hn4pl4hMh7i72y3NjUXBVOok",
+      "fileName": "Tiệm Cà Phê Nhà Của Thông.jpg"
     },
     "cafe|soho_coffee|21_hoang_hoa_tham": {
       "key": "cafe|soho_coffee|21_hoang_hoa_tham",
@@ -535,6 +625,51 @@
       "fileId": "1nEEdN0tT3DFFP1MZ2QcswsxpCOS_qJvc",
       "fileName": "Thô's Artisan Coffee.jpg"
     },
+    "cafe|shancha|61_d_ba_thang_hai": {
+      "key": "cafe|shancha|61_d_ba_thang_hai",
+      "sectionKey": "cafe",
+      "name": "Shancha",
+      "address": "61 Đ. Ba Tháng Hai",
+      "sourceLink": "https://drive.google.com/drive/folders/1VflHh2neqzA9X-16de1_iUtPjwJs2Dte?usp=drive_link",
+      "fileId": "1tf8CbBIY2JjWIZgNluAQ_3V4yK2FrXNs",
+      "fileName": "Shancha.jpg"
+    },
+    "cafe|noi_bestis_coffee|49_2d_pham_hong_thai": {
+      "key": "cafe|noi_bestis_coffee|49_2d_pham_hong_thai",
+      "sectionKey": "cafe",
+      "name": "Nơi Bestis Coffee",
+      "address": "49/2D Phạm Hồng Thái",
+      "sourceLink": "https://drive.google.com/drive/folders/1Qo_VJI_OoZN_MIU3e7plf8GZboNLTsNb?usp=drive_link",
+      "fileId": "1rUeHaEOIQrx8TE-Z92Zoi72phWuX7gE2",
+      "fileName": "Nơi Bestis Coffee.jpg"
+    },
+    "cafe|tiem_ca_phe_toi_den|15a_tran_hung_dao": {
+      "key": "cafe|tiem_ca_phe_toi_den|15a_tran_hung_dao",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Tỏi Đen",
+      "address": "15A Trần Hưng Đạo",
+      "sourceLink": "https://drive.google.com/drive/folders/13kq200IcNGuhkqCEL5m9NROUMApda5u-?usp=drive_link",
+      "fileId": "1RYT9y_wvh7cnIfxtq4sAckaYKt7d90bB",
+      "fileName": "Tiệm Cà Phê Tỏi Đen.jpg"
+    },
+    "cafe|do_do|31_8_c_3_thang_4": {
+      "key": "cafe|do_do|31_8_c_3_thang_4",
+      "sectionKey": "cafe",
+      "name": "Đo Đo",
+      "address": "31/8 C, 3 Tháng 4",
+      "sourceLink": "https://drive.google.com/drive/folders/1kmM4iZlNafFpBB4_Zriv4ivYVTRJsxm5?usp=drive_link",
+      "fileId": "1qevsP6iHXvoKJYet5gLM00ybS811jRuC",
+      "fileName": "Đo Đo.jpg"
+    },
+    "cafe|thung_mo_garden|to_5_thon_5_ta_nung": {
+      "key": "cafe|thung_mo_garden|to_5_thon_5_ta_nung",
+      "sectionKey": "cafe",
+      "name": "Thung Mơ Garden",
+      "address": "Tổ 5 thôn 5, Tà Nung",
+      "sourceLink": "https://drive.google.com/drive/folders/1OVsnTH3OPYtfCRQZey5vDtv5kDJCmCJZ?usp=drive_link",
+      "fileId": "1Y-y4tFZ7x6dfteR9jIPxC4BhB4tGHmk7",
+      "fileName": "Thung Mơ Garden.jpg"
+    },
     "cafe|quan_cua_thoi_thanh_xuan|09_trieu_viet_vuong": {
       "key": "cafe|quan_cua_thoi_thanh_xuan|09_trieu_viet_vuong",
       "sectionKey": "cafe",
@@ -543,6 +678,42 @@
       "sourceLink": "https://drive.google.com/drive/folders/1wd3kj6oy96aKPR3tc9nN0OJcWbgCNOGQ?usp=drive_link",
       "fileId": "1XUWF2PAoa40Je2aGbkXSzbvk6YHfcRkv",
       "fileName": "7. thời thanh xuân.jpg"
+    },
+    "cafe|tiem_ca_phe_nha_ben_rung|to_tay_ho_2": {
+      "key": "cafe|tiem_ca_phe_nha_ben_rung|to_tay_ho_2",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Nhà Bên Rừng",
+      "address": "Tổ Tây Hồ 2",
+      "sourceLink": "https://drive.google.com/drive/folders/1rkOP3gMYQzieI9qNnA4KyRCNZ2QW8lzh?usp=drive_link",
+      "fileId": "1INUVTlPikZqlxpnN3U6ZmFuQjPuh0wNT",
+      "fileName": "Tiệm Cà Phê Nhà Bên Rừng.jpg"
+    },
+    "cafe|lung_chung_coffee|31_8_d_3_4": {
+      "key": "cafe|lung_chung_coffee|31_8_d_3_4",
+      "sectionKey": "cafe",
+      "name": "Lưng Chừng Coffee",
+      "address": "31/8 Đ.3/4",
+      "sourceLink": "https://drive.google.com/drive/folders/1zgzYpMs-X7T7VjqWqLnkQyAehZ-Ql_EG?usp=drive_link",
+      "fileId": "15GM_FVjn-qu84cx_-AcE7HN5xqqs7mSo",
+      "fileName": "Lưng Chừng Coffee.jpg"
+    },
+    "cafe|gio_da_lat_the_coffee|33_hoang_hoa_tham": {
+      "key": "cafe|gio_da_lat_the_coffee|33_hoang_hoa_tham",
+      "sectionKey": "cafe",
+      "name": "Gió Đà Lạt The Coffee",
+      "address": "33 Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1cE0PM256KXWgaAaFRWrNg-ooWdDfevTE?usp=drive_link",
+      "fileId": "1k2Zw3-r2xzuWNgnSg0v_j7Fg7-b4W6MN",
+      "fileName": "Gió Đà Lạt The Coffee.jpg"
+    },
+    "cafe|kien_coffee|38_d_nguyen_sieu": {
+      "key": "cafe|kien_coffee|38_d_nguyen_sieu",
+      "sectionKey": "cafe",
+      "name": "Kiến Coffee",
+      "address": "38 Đ.Nguyễn Siêu",
+      "sourceLink": "https://drive.google.com/drive/folders/1p8z30qJ3zklu6nLsf8lwlTfdJIsZBKvf?usp=drive_link",
+      "fileId": "13NyX_-xRdf0VBfW-t883HAST8vzrzYh1",
+      "fileName": "494592241_1053465986917399_4655793245167352418_n.jpg"
     },
     "cafe|binh_minh_oi_hoa_xuong_rong|89_hoang_hoa_tham": {
       "key": "cafe|binh_minh_oi_hoa_xuong_rong|89_hoang_hoa_tham",
@@ -553,6 +724,42 @@
       "fileId": "1lY3EAT3vE7apeZpr5yspbuSFObQCWjm9",
       "fileName": "9. HOA XƯƠNG RỒNG.jpg"
     },
+    "cafe|petit_duong|114_ly_tu_trong": {
+      "key": "cafe|petit_duong|114_ly_tu_trong",
+      "sectionKey": "cafe",
+      "name": "Pétit Dưỡng",
+      "address": "114 Lý Tự Trọng",
+      "sourceLink": "https://drive.google.com/drive/folders/1OiLSJ4EmEpFyJegmc-14Xr1PkcC-9rMB?usp=drive_link",
+      "fileId": "1lZ-s0Yo4xGJyko0iIGnIEzTidPi1z85h",
+      "fileName": "Pétit Dưỡng.jpg"
+    },
+    "cafe|dream_garden_coffee|thon_03_ta_nung": {
+      "key": "cafe|dream_garden_coffee|thon_03_ta_nung",
+      "sectionKey": "cafe",
+      "name": "Dream Garden Coffee",
+      "address": "Thôn 03, Tà Nung",
+      "sourceLink": "https://drive.google.com/drive/folders/1qG0A_EdlpBnakZfYo5cIR1L-IuM4nSs0?usp=drive_link",
+      "fileId": "1RRObqf2Vdj_nOLArz29-q06c5HefVFgx",
+      "fileName": "Dream Garden Coffee.jpg"
+    },
+    "cafe|tiem_ca_phe_tach|lam_van_thanh": {
+      "key": "cafe|tiem_ca_phe_tach|lam_van_thanh",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Tách",
+      "address": "Lâm Văn Thạnh",
+      "sourceLink": "https://drive.google.com/drive/folders/1VfvxpihCoVf7tUSSQXDJdJLN_rd6Chxu?usp=drive_link",
+      "fileId": "1Wt3ThXBNybfMRrKuS0Rf9z55nuxMPced",
+      "fileName": "Tiệm Cà Phê Tách.jpg"
+    },
+    "cafe|hoa_cafe|49_23_3_pham_hong_thai": {
+      "key": "cafe|hoa_cafe|49_23_3_pham_hong_thai",
+      "sectionKey": "cafe",
+      "name": "Hoa Cafe",
+      "address": "49/23/3 Phạm Hồng Thái",
+      "sourceLink": "https://drive.google.com/drive/folders/1_-rtd9VDo5pk7t8CQEotdIQOLXPtW_dp?usp=drive_link",
+      "fileId": "1vpKEqV77c3lIQB5v1W3JCPjkg4aczrk5",
+      "fileName": "Hoa Cafe.jpg"
+    },
     "cafe|quan_duong|152_pham_ngoc_thach": {
       "key": "cafe|quan_duong|152_pham_ngoc_thach",
       "sectionKey": "cafe",
@@ -561,6 +768,33 @@
       "sourceLink": "https://drive.google.com/drive/folders/1pNnBeSlQbXi_1RxC1K7At-11DrlM_KV4?usp=drive_link",
       "fileId": "12gx-_40-a58bXqe60fUpylJ25lGJI4J4",
       "fileName": "đương.jfif"
+    },
+    "cafe|tiem_ca_phe_vung_ngoai_o|to_03_da_quy_xuan_tho": {
+      "key": "cafe|tiem_ca_phe_vung_ngoai_o|to_03_da_quy_xuan_tho",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Vùng Ngoại Ô",
+      "address": "Tổ 03 Đa Quý, Xuân Thọ",
+      "sourceLink": "https://drive.google.com/drive/folders/1qGznb71f1F2w4LgjvZI_mVuDSWaClQfR?usp=drive_link",
+      "fileId": "1JZnkEuGf1-ZS5np9QTxgwdUErsA2bh8q",
+      "fileName": "Tiệm Cà Phê Vùng Ngoại Ô.jpg"
+    },
+    "cafe|waken_beans_coffee|04_ngo_thi_sy": {
+      "key": "cafe|waken_beans_coffee|04_ngo_thi_sy",
+      "sectionKey": "cafe",
+      "name": "Waken Beans Coffee",
+      "address": "04 Ngô Thị Sỹ",
+      "sourceLink": "https://drive.google.com/drive/folders/1Hwn96gKkDEM-IhV5wD_hUvoZQz1kVRLV?usp=drive_link",
+      "fileId": "1aS4VvCrBOrDkz3m_OG8hn2zmVKiTUkPp",
+      "fileName": "Waken Beans Coffee.jpg"
+    },
+    "cafe|the_hien|25_30_d_nha_chung": {
+      "key": "cafe|the_hien|25_30_d_nha_chung",
+      "sectionKey": "cafe",
+      "name": "The Hiên",
+      "address": "25/30 Đ. Nhà Chung",
+      "sourceLink": "https://drive.google.com/drive/folders/1mO2qBs-iCYDnMRBD0wWDDI4qww8uQyIT?usp=drive_link",
+      "fileId": "1vn4hxPfZasF7NYHvhLwMrwca1lVevsdQ",
+      "fileName": "The Hiên.jpg"
     },
     "check_in|biet_thu_dong_da|duong_dong_da": {
       "key": "check_in|biet_thu_dong_da|duong_dong_da",

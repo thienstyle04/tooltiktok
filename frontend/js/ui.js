@@ -28,6 +28,9 @@ export function pageCounter(index, total) {
   return `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
 }
 
+function isGridLayout(page) {
+  return page.layoutVariant === 'grid-6' || page.layoutVariant === 'grid-4';
+}
 
 export function renderInlineHashtags(hashtags) {
   if (!Array.isArray(hashtags) || hashtags.length === 0) {
@@ -48,9 +51,10 @@ export function renderInlineHashtags(hashtags) {
 }
 
 export function renderCoverPage(page, index, total, listId, hashtags = []) {
-  if (page.layoutVariant === 'grid-6') {
+  if (isGridLayout(page)) {
+    const grid4Class = page.layoutVariant === 'grid-4' ? ' grid4-cover' : '';
     return `
-      <article class="story-page grid6-cover" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <article class="story-page grid6-cover${grid4Class}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid6-cover-bg">
           <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
         </div>
@@ -58,6 +62,27 @@ export function renderCoverPage(page, index, total, listId, hashtags = []) {
            <div class="grid6-cover-header">ĐÀ LẠT</div>
            <h1 class="grid6-cover-title">${escapeHtml(page.title)}</h1>
            <div class="grid6-cover-subtitle">${escapeHtml(page.subtitle)}</div>
+        </div>
+      </article>
+    `;
+  }
+
+  if (page.layoutVariant === 'journey-4n3d') {
+    return `
+      <article class="story-page journey-cover" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+        <div class="journey-cover-photo">
+          <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
+        </div>
+        <div class="journey-cover-panel">
+          <div class="journey-cover-kicker">LỊCH TRÌNH 4N3Đ</div>
+          <h1 class="journey-cover-title">${escapeHtml(page.title)}</h1>
+          <p class="journey-cover-subtitle">${escapeHtml(page.subtitle)}</p>
+          <div class="journey-route-pills">
+            <span>Day 01</span>
+            <span>Day 02</span>
+            <span>Day 03</span>
+            <span>Day 04</span>
+          </div>
         </div>
       </article>
     `;
@@ -139,16 +164,19 @@ export function renderPhotomodeItems(items) {
   `).join('');
 }
 
-export function renderGrid6Items(items) {
-  return items.map((item) => `
+export function renderGrid6Items(items, { numbered = false } = {}) {
+  return items.map((item, index) => {
+    const itemName = numbered ? `${index + 1}. ${item.name}` : item.name;
+    return `
     <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
       <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
       <div class="grid6-overlay">
-        <div class="grid6-name">${escapeHtml(item.name)}</div>
+        <div class="grid6-name">${escapeHtml(itemName)}</div>
         <div class="grid6-address">${escapeHtml(item.metaPrimary)}</div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 export function renderItineraryItems(items) {
@@ -170,6 +198,28 @@ export function renderItineraryItems(items) {
   `).join('');
 }
 
+export function renderJourney4N3DItems(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return '';
+  }
+
+  return `
+    <div class="journey-timeline">
+      ${items.map((item) => `
+        <article class="journey-time-row ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
+          <div class="journey-stop-thumb">
+            <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+          </div>
+          <div class="journey-time-copy">
+            <strong>${escapeHtml(item.name)}</strong>
+            <p>${escapeHtml(item.metaPrimary)}</p>
+          </div>
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
 export function renderListPage(page, index, total, listId, hashtags = []) {
   if (page.layoutVariant === 'photomode') {
     return `
@@ -181,14 +231,36 @@ export function renderListPage(page, index, total, listId, hashtags = []) {
     `;
   }
 
-  if (page.layoutVariant === 'grid-6') {
+  if (isGridLayout(page)) {
+    const grid4Class = page.layoutVariant === 'grid-4' ? ' grid4' : '';
+    const grid4BodyClass = page.layoutVariant === 'grid-4' ? ' grid4-body' : '';
     return `
-      <article class="story-page grid6" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <article class="story-page grid6${grid4Class}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid6-header">
            <div class="grid6-header-top">${escapeHtml(page.title)}</div>
         </div>
-        <div class="grid6-body">
-          ${renderGrid6Items(page.items)}
+        <div class="grid6-body${grid4BodyClass}">
+          ${renderGrid6Items(page.items, { numbered: page.layoutVariant === 'grid-4' })}
+        </div>
+      </article>
+    `;
+  }
+
+  if (page.layoutVariant === 'journey-4n3d') {
+    const hashtagsHtml = renderInlineHashtags(hashtags);
+    const hashtagClass = Array.isArray(hashtags) && hashtags.length > 0 ? ' has-inline-hashtags' : '';
+    const dayNumber = String(Math.max(index, 1)).padStart(2, '0');
+    return `
+      <article class="story-page journey4 journey-page-${dayNumber}${hashtagClass}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        <div class="journey-bg" style="background-image: url('${escapeHtml(page.backgroundImage)}');"></div>
+        <div class="journey-day-badge">${escapeHtml(page.chipText)}</div>
+        <div class="journey-card">
+          <div class="journey-header">
+            <h3>${escapeHtml(page.title)}</h3>
+            <p>${escapeHtml(page.subtitle)}</p>
+            ${hashtagsHtml}
+          </div>
+          ${renderJourney4N3DItems(page.items)}
         </div>
       </article>
     `;
