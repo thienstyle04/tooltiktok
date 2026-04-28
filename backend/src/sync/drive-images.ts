@@ -1,5 +1,6 @@
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 30 * 60 * 1000;
+const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const folderEntriesCache = new Map<string, { expiresAt: number; entries: DriveFolderEntry[] }>();
 const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFileAsset }>();
@@ -87,6 +88,40 @@ function sniffImageContentType(body: Buffer): string {
   }
   if (body.length >= 2 && body[0] === 0x42 && body[1] === 0x4d) return 'image/bmp';
   return '';
+}
+
+function escapeSvgText(value: string): string {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+function createDriveFallbackAsset(fileId: string): DriveFileAsset {
+  const safeFileId = escapeSvgText(fileId);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6f1e8"/>
+      <stop offset="1" stop-color="#dfe9df"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <rect x="130" y="120" width="940" height="660" rx="34" fill="#fffdf8" stroke="#d8d0c1" stroke-width="6"/>
+  <circle cx="382" cy="340" r="78" fill="#d8e6d8"/>
+  <path d="M210 700 480 455l156 140 112-98 242 203H210Z" fill="#9fb89d"/>
+  <path d="M210 700 530 510l138 118 94-78 228 150H210Z" fill="#6f9270" opacity=".78"/>
+  <text x="600" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" font-weight="700" fill="#274d3d">Drive image unavailable</text>
+  <text x="600" y="310" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#6c655c">File needs public access or sign-in</text>
+  <text x="600" y="820" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#8a8175">fileId=${safeFileId}</text>
+</svg>`;
+  const body = Buffer.from(svg, 'utf8');
+  return {
+    body,
+    contentLength: body.byteLength,
+    contentType: 'image/svg+xml',
+  };
 }
 
 export function extractDriveFolderId(value: string): string {
@@ -217,13 +252,18 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
   ];
 
   for (const url of candidateUrls) {
-    const response = await fetch(url, {
-      headers: {
-        Referer: 'https://drive.google.com/',
-        'User-Agent': 'Codex Drive Image Proxy',
-      },
-      redirect: 'follow',
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          Referer: 'https://drive.google.com/',
+          'User-Agent': 'Codex Drive Image Proxy',
+        },
+        redirect: 'follow',
+      });
+    } catch {
+      continue;
+    }
     if (!response.ok) continue;
 
     const body = Buffer.from(await response.arrayBuffer());
@@ -244,5 +284,10 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
     return asset;
   }
 
-  throw new Error(`Không tải được ảnh Drive cho fileId=${fileId}`);
+  const fallbackAsset = createDriveFallbackAsset(fileId);
+  driveFileAssetCache.set(fileId, {
+    expiresAt: now + DRIVE_FILE_FALLBACK_CACHE_TTL_MS,
+    asset: fallbackAsset,
+  });
+  return fallbackAsset;
 }

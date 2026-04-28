@@ -43,6 +43,9 @@ export async function syncWorkbookFromSheet(workspaceRoot: string): Promise<{ wo
   const workbookPath = path.join(workspaceRoot, PREFERRED_WORKBOOK_NAME);
   const tempPath = `${workbookPath}.download`;
   fs.writeFileSync(tempPath, workbookBuffer);
-  fs.renameSync(tempPath, workbookPath);
+  fs.copyFileSync(tempPath, workbookPath);
+  // Windows/Node 24 can crash natively when deleting the freshly downloaded
+  // xlsx temp file while another file handle is settling. Keep one stable temp
+  // file and overwrite it on the next sync instead of deleting it here.
   return { workbookPath, bytes: workbookBuffer.byteLength };
 }

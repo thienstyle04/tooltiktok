@@ -1,5 +1,4 @@
-import { state, elements, escapeHtml, sanitizeFilePart, setStatus } from './state.js';
-import { exportBatch } from './export.js';
+import { state, elements, escapeHtml, persistSelection, sanitizeFilePart, setStatus } from './state.js';
 
 export function currentDeck() {
   if (!state.dataset) {
@@ -24,12 +23,41 @@ export function currentPageLabel() {
   return `${state.selectedPageIndex + 1}/${list.pages.length}`;
 }
 
+function countDeckPages(deck) {
+  return (deck?.lists || []).reduce((total, list) => total + (list.pages?.length || 0), 0);
+}
+
+function listIsMain(list) {
+  return /-main$/i.test(String(list?.id || ''));
+}
+
+function generatedDeckGroups() {
+  if (!state.dataset) return [];
+  return state.dataset.decks
+    .map((deck) => ({
+      deck,
+      lists: deck.lists.filter((list) => !listIsMain(list)),
+    }))
+    .filter((group) => group.lists.length > 0);
+}
+
+function sourceLabel(item) {
+  const source = item?.imageSource || (item?.imageMapped ? 'manual' : 'fallback');
+  if (source === 'manual') return 'Đúng ảnh';
+  if (source === 'auto') return 'Tự map';
+  return 'Minh họa';
+}
+
+function imageSourceClass(item) {
+  return item?.imageSource || (item?.imageMapped ? 'manual' : 'fallback');
+}
+
 export function pageCounter(index, total) {
   return `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
 }
 
 function isGridLayout(page) {
-  return page.layoutVariant === 'grid-6' || page.layoutVariant === 'grid-4';
+  return page.layoutVariant === 'grid-6' || page.layoutVariant === 'grid-8' || page.layoutVariant === 'grid-4';
 }
 
 export function renderInlineHashtags(hashtags) {
@@ -51,10 +79,30 @@ export function renderInlineHashtags(hashtags) {
 }
 
 export function renderCoverPage(page, index, total, listId, hashtags = []) {
-  if (isGridLayout(page)) {
-    const grid4Class = page.layoutVariant === 'grid-4' ? ' grid4-cover' : '';
+  if (page.layoutVariant === 'grid-8') {
     return `
-      <article class="story-page grid6-cover${grid4Class}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <article class="story-page grid8-cover-page" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+        <div class="grid8-cover-photo">
+          <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
+        </div>
+        <div class="grid8-cover-shade"></div>
+        <div class="grid8-cover-copy">
+          <div class="grid8-cover-kicker">8 lựa chọn / 1 trang</div>
+          <h1 class="grid8-cover-title">${escapeHtml(page.title)}</h1>
+          <p class="grid8-cover-subtitle">${escapeHtml(page.subtitle)}</p>
+        </div>
+      </article>
+    `;
+  }
+
+  if (isGridLayout(page)) {
+    const gridVariantClass = page.layoutVariant === 'grid-4'
+      ? ' grid4-cover'
+      : page.layoutVariant === 'grid-8'
+        ? ' grid8-cover'
+        : '';
+    return `
+      <article class="story-page grid6-cover${gridVariantClass}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid6-cover-bg">
           <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
         </div>
@@ -145,6 +193,61 @@ function renderPhotomodePin() {
   `;
 }
 
+function cleanGridAddress(value) {
+  return String(value || '')
+    .replace(/^\s*(đường|duong|đ\.|hẻm|hem|dốc|doc)\s+/i, '')
+    .replace(/(^|\s)(đường|duong|đ\.)\s+/gi, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function renderGridAddress(value) {
+  const cleanAddress = cleanGridAddress(value);
+  if (!cleanAddress) {
+    return '';
+  }
+
+  return `
+    <div class="grid6-address">
+      <span class="grid6-address-pin">${renderPhotomodePin()}</span>
+      <span class="grid6-address-text">${escapeHtml(cleanAddress)}</span>
+    </div>
+  `;
+}
+
+function normalizeGridText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase();
+}
+
+function compactGridItemName(value) {
+  const original = String(value || '').replace(/\s+/g, ' ').trim();
+  const normalized = normalizeGridText(original);
+
+  if (normalized.includes('nha tho domaine de marie')) return 'Nhà thờ Domain';
+  if (normalized.includes('kdl the florest') || normalized.includes('the florest')) return 'The Florest';
+
+  const cleaned = original
+    .replace(/^\s*KDL\s+/i, '')
+    .replace(/\s*-\s*(Hoa Trong Rung|Hoa Trong Rừng|Da Lat|Đa Lat|Đà Lạt).*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (cleaned.length <= 24) return cleaned;
+  const words = cleaned.split(' ');
+  const kept = [];
+  for (const word of words) {
+    const next = [...kept, word].join(' ');
+    if (next.length > 24) break;
+    kept.push(word);
+  }
+  return kept.length > 0 ? kept.join(' ') : cleaned.slice(0, 24).trim();
+}
+
 export function renderPhotomodeItems(items) {
   return items.map((item) => `
     <section class="photomode-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
@@ -164,19 +267,75 @@ export function renderPhotomodeItems(items) {
   `).join('');
 }
 
-export function renderGrid6Items(items, { numbered = false } = {}) {
+export function renderGrid6Items(items, { numbered = false, twoDigitNumber = false } = {}) {
   return items.map((item, index) => {
-    const itemName = numbered ? `${index + 1}. ${item.name}` : item.name;
+    const displayName = compactGridItemName(item.name);
+    const itemNumber = twoDigitNumber ? String(index + 1).padStart(2, '0') : String(index + 1);
+    const itemName = numbered ? `${itemNumber}. ${displayName}` : displayName;
     return `
     <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
       <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
       <div class="grid6-overlay">
         <div class="grid6-name">${escapeHtml(itemName)}</div>
-        <div class="grid6-address">${escapeHtml(item.metaPrimary)}</div>
+        ${renderGridAddress(item.metaPrimary)}
       </div>
     </div>
   `;
   }).join('');
+}
+
+function renderGrid8Meta(value) {
+  const cleanAddress = cleanGridAddress(value);
+  if (!cleanAddress) {
+    return '';
+  }
+
+  return `
+    <div class="grid8-meta">
+      <span class="grid8-pin">${renderPhotomodePin()}</span>
+      <span>${escapeHtml(cleanAddress)}</span>
+    </div>
+  `;
+}
+
+export function renderGrid8Items(items, title, chipText, backgroundImage) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return '';
+  }
+  const centerStyle = backgroundImage
+    ? ` style="--grid8-center-image: url(&quot;${escapeHtml(backgroundImage)}&quot;)"`
+    : '';
+
+  return `
+    ${items.slice(0, 4).map((item) => {
+      const displayName = compactGridItemName(item.name);
+      return `
+        <article class="grid8-cell ${escapeHtml(imageSourceClass(item))}">
+          <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+          <div class="grid8-cell-copy">
+            <strong>${escapeHtml(displayName)}</strong>
+            ${renderGrid8Meta(item.metaPrimary)}
+          </div>
+        </article>
+      `;
+    }).join('')}
+    <article class="grid8-center"${centerStyle}>
+      <span class="grid8-center-chip">${escapeHtml(chipText || 'List')}</span>
+      <h3>${escapeHtml(title || '')}</h3>
+    </article>
+    ${items.slice(4, 8).map((item) => {
+        const displayName = compactGridItemName(item.name);
+        return `
+          <article class="grid8-cell ${escapeHtml(imageSourceClass(item))}">
+            <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+            <div class="grid8-cell-copy">
+              <strong>${escapeHtml(displayName)}</strong>
+              ${renderGrid8Meta(item.metaPrimary)}
+            </div>
+          </article>
+        `;
+      }).join('')}
+  `;
 }
 
 export function renderItineraryItems(items) {
@@ -220,6 +379,18 @@ export function renderJourney4N3DItems(items) {
   `;
 }
 
+function journey4N3DTitle(chipText, title) {
+  const chip = String(chipText || '').trim();
+  const cleanTitle = String(title || '').trim();
+  if (!chip || !cleanTitle) {
+    return cleanTitle || chip;
+  }
+  if (cleanTitle.toLowerCase().startsWith(`${chip.toLowerCase()} - `)) {
+    return cleanTitle;
+  }
+  return `${chip} - ${cleanTitle}`;
+}
+
 export function renderListPage(page, index, total, listId, hashtags = []) {
   if (page.layoutVariant === 'photomode') {
     return `
@@ -231,34 +402,49 @@ export function renderListPage(page, index, total, listId, hashtags = []) {
     `;
   }
 
-  if (isGridLayout(page)) {
-    const grid4Class = page.layoutVariant === 'grid-4' ? ' grid4' : '';
-    const grid4BodyClass = page.layoutVariant === 'grid-4' ? ' grid4-body' : '';
+  if (page.layoutVariant === 'grid-8') {
     return `
-      <article class="story-page grid6${grid4Class}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <article class="story-page grid8-page" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        <div class="grid8-matrix">
+          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage)}
+        </div>
+      </article>
+    `;
+  }
+
+  if (isGridLayout(page)) {
+    const gridVariantClass = page.layoutVariant === 'grid-4'
+      ? ' grid4'
+      : page.layoutVariant === 'grid-8'
+        ? ' grid8'
+        : '';
+    const gridBodyClass = page.layoutVariant === 'grid-4'
+      ? ' grid4-body'
+      : page.layoutVariant === 'grid-8'
+        ? ' grid8-body'
+        : '';
+    return `
+      <article class="story-page grid6${gridVariantClass}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid6-header">
            <div class="grid6-header-top">${escapeHtml(page.title)}</div>
         </div>
-        <div class="grid6-body${grid4BodyClass}">
-          ${renderGrid6Items(page.items, { numbered: page.layoutVariant === 'grid-4' })}
+        <div class="grid6-body${gridBodyClass}">
+          ${renderGrid6Items(page.items)}
         </div>
       </article>
     `;
   }
 
   if (page.layoutVariant === 'journey-4n3d') {
-    const hashtagsHtml = renderInlineHashtags(hashtags);
-    const hashtagClass = Array.isArray(hashtags) && hashtags.length > 0 ? ' has-inline-hashtags' : '';
     const dayNumber = String(Math.max(index, 1)).padStart(2, '0');
     return `
-      <article class="story-page journey4 journey-page-${dayNumber}${hashtagClass}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <article class="story-page journey4 journey-page-${dayNumber}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="journey-bg" style="background-image: url('${escapeHtml(page.backgroundImage)}');"></div>
         <div class="journey-day-badge">${escapeHtml(page.chipText)}</div>
         <div class="journey-card">
-          <div class="journey-header">
-            <h3>${escapeHtml(page.title)}</h3>
-            <p>${escapeHtml(page.subtitle)}</p>
-            ${hashtagsHtml}
+          <div class="journey-title-block">
+            <h3 class="page-title">${escapeHtml(journey4N3DTitle(page.chipText, page.title))}</h3>
+            ${page.subtitle ? `<p class="page-lead">${escapeHtml(page.subtitle)}</p>` : ''}
           </div>
           ${renderJourney4N3DItems(page.items)}
         </div>
@@ -300,6 +486,10 @@ export function updateSelectedPageUi() {
     const listId = node.dataset.listId;
     node.classList.toggle('is-selected', listId === state.activeListId && index === state.selectedPageIndex);
   });
+
+  elements.pageGrid.querySelectorAll('.list-preview-section').forEach((section) => {
+    section.classList.toggle('active', section.dataset.listSectionId === state.activeListId);
+  });
 }
 
 export function bindPageSelection() {
@@ -307,20 +497,61 @@ export function bindPageSelection() {
     node.addEventListener('click', () => {
       state.activeListId = node.dataset.listId;
       state.selectedPageIndex = Number(node.dataset.pageIndex);
+      persistSelection();
       updateSelectedPageUi();
-      const list = currentList();
-      if (list) {
-        // Cập nhật trạng thái trang chọn
-      }
+      renderListSwitcher();
+      renderPageInspector();
+      scrollActivePageIntoView();
       setStatus(`Đã chọn trang ${currentPageLabel()} để xuất PNG.`);
     });
   });
 }
 
+function resetPreviewScroll() {
+  const scrollToPreviewStart = () => {
+    const previewContainers = [
+      elements.pageGrid,
+      elements.pageGrid?.closest('.preview-panel'),
+      elements.pageGrid?.closest('.workspace-grid'),
+      elements.pageGrid?.closest('.studio-shell'),
+      document.scrollingElement,
+    ];
+
+    previewContainers.forEach((container) => {
+      if (!container) return;
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
+      container.scrollTop = 0;
+      container.scrollLeft = 0;
+    });
+
+    elements.pageGrid?.querySelectorAll('.list-preview-grid').forEach((grid) => {
+      grid.scrollTop = 0;
+      grid.scrollLeft = 0;
+    });
+  };
+
+  scrollToPreviewStart();
+  requestAnimationFrame(scrollToPreviewStart);
+  setTimeout(scrollToPreviewStart, 80);
+}
+
+function scrollActivePageIntoView() {
+  const selectedPage = elements.pageGrid?.querySelector('.story-page.is-selected')
+    || elements.pageGrid?.querySelector('.story-page');
+
+  selectedPage?.scrollIntoView({
+    behavior: 'auto',
+    block: 'nearest',
+    inline: 'start',
+  });
+}
+
 export function renderListSection(list, isActive, deckId) {
-  const isMainList = /-main$/i.test(String(list.id || ''));
-  const badgeText = isMainList ? 'Gốc' : `AI ${list.navTitle}`;
-  const sectionDescription = list.description || (isMainList
+  const isMain = listIsMain(list);
+  const badgeText = isMain ? 'Gốc' : `AI ${list.navTitle}`;
+  const sectionDescription = list.description || (isMain
     ? 'Bản gốc đang dùng làm layout chuẩn.'
     : 'Bản AI được sinh mới từ caption và đặt bên dưới bản gốc.');
   const pagesHtml = list.pages.map((page, index) => {
@@ -331,7 +562,7 @@ export function renderListSection(list, isActive, deckId) {
   }).join('');
 
   const sectionTone = list.navTitle.toLowerCase().includes('ai') ? 'ai' : 'main';
-  const deleteButtonHtml = !isMainList ? `
+  const deleteButtonHtml = !isMain ? `
     <button
       class="list-delete-btn"
       type="button"
@@ -370,7 +601,15 @@ export function renderListSection(list, isActive, deckId) {
 export function renderDeckSwitcher() {
   if (!state.dataset || !state.dataset.decks.length) {
     elements.deckSwitcher.innerHTML = '';
+    if (elements.deckStats) {
+      elements.deckStats.textContent = '0 mẫu';
+    }
     return;
+  }
+
+  if (elements.deckStats) {
+    const listCount = state.dataset.decks.reduce((total, deck) => total + deck.lists.length, 0);
+    elements.deckStats.textContent = `${state.dataset.decks.length} mẫu · ${listCount} list`;
   }
 
   elements.deckSwitcher.innerHTML = state.dataset.decks.map((deck) => `
@@ -379,7 +618,8 @@ export function renderDeckSwitcher() {
       type="button"
       data-deck-id="${escapeHtml(deck.id)}"
     >
-      ${escapeHtml(deck.navTitle)}
+      <span class="deck-chip-name">${escapeHtml(deck.navTitle)}</span>
+      <span class="deck-chip-meta">${deck.lists.length} list · ${countDeckPages(deck)} trang</span>
     </button>
   `).join('');
 
@@ -389,8 +629,8 @@ export function renderDeckSwitcher() {
       const deck = currentDeck();
       state.activeListId = deck && deck.lists.length > 0 ? deck.lists[0].id : null;
       state.selectedPageIndex = 0;
+      persistSelection();
       renderDeckSwitcher();
-      renderListSwitcher();
       renderDeck();
       setStatus(`Đang xem deck: ${button.textContent.trim()}.`);
     });
@@ -398,7 +638,100 @@ export function renderDeckSwitcher() {
 }
 
 export function renderListSwitcher() {
-  elements.listSwitcher.innerHTML = '';
+  if (!elements.listSwitcher) return;
+  const deck = currentDeck();
+  if (!deck || !deck.lists.length) {
+    if (elements.listStats) {
+      elements.listStats.textContent = '0 list';
+    }
+    elements.listSwitcher.innerHTML = '<div class="sidebar-empty">Chưa có list.</div>';
+    return;
+  }
+
+  if (elements.listStats) {
+    elements.listStats.textContent = `${deck.lists.length} list`;
+  }
+
+  elements.listSwitcher.innerHTML = deck.lists.map((list) => `
+    <button
+      class="list-chip ${list.id === state.activeListId ? 'active' : ''}"
+      type="button"
+      data-list-id="${escapeHtml(list.id)}"
+    >
+      <span>${escapeHtml(list.navTitle || list.title)}</span>
+      <small>${String(list.pages.length).padStart(2, '0')} trang</small>
+    </button>
+  `).join('');
+
+  elements.listSwitcher.querySelectorAll('[data-list-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.activeListId = button.dataset.listId;
+      state.selectedPageIndex = 0;
+      persistSelection();
+      renderDeck();
+      setStatus(`Đang xem list: ${button.textContent.trim()}.`);
+    });
+  });
+}
+
+export function renderPageInspector() {
+  if (!elements.pageInspector) return;
+  const deck = currentDeck();
+  const list = currentList();
+  const page = list?.pages?.[state.selectedPageIndex];
+
+  if (!deck || !list || !page) {
+    elements.pageInspector.innerHTML = '<p class="empty-inspector">Chọn một trang trong preview để xem dữ liệu và ảnh đang dùng.</p>';
+    return;
+  }
+
+  const items = Array.isArray(page.items) ? page.items : [];
+  const hasItems = items.length > 0;
+  const mappedCount = items.filter((item) => item.imageSource === 'manual' || item.imageSource === 'auto' || item.imageMapped).length;
+  const fallbackCount = items.filter((item) => imageSourceClass(item) === 'fallback').length;
+  const coverImage = hasItems ? (items[0]?.imageUrl || page.backgroundImage || '') : (page.backgroundImage || '');
+  const itemRows = hasItems
+    ? items.map((item) => `
+      <li class="inspector-item rich">
+        <img class="inspector-item-thumb" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+        <span class="inspector-item-copy">
+          <span class="inspector-item-label">${escapeHtml(item.label || '')}</span>
+          <span class="inspector-item-name">${escapeHtml(item.name)}</span>
+          <span class="inspector-item-meta">${escapeHtml(item.metaPrimary || '')}</span>
+        </span>
+        <span class="inspector-item-source ${escapeHtml(imageSourceClass(item))}">${escapeHtml(sourceLabel(item))}</span>
+      </li>
+    `).join('')
+    : '';
+  const inspectorBody = hasItems
+    ? `
+      <div class="inspector-stats">
+        <div><strong>${items.length}</strong><span>dữ liệu</span></div>
+        <div><strong>${mappedCount}</strong><span>có ảnh</span></div>
+        <div><strong>${fallbackCount}</strong><span>minh họa</span></div>
+      </div>
+      <ul class="inspector-list">
+        ${itemRows}
+      </ul>
+    `
+    : `
+      <div class="inspector-cover-note">
+        <strong>Trang này là cover</strong>
+        <span>Cover chỉ dùng ảnh nền và tiêu đề. Dữ liệu địa điểm/dịch vụ sẽ hiện khi chọn các trang nội dung phía sau.</span>
+      </div>
+    `;
+
+  elements.pageInspector.innerHTML = `
+    <div class="inspector-summary">
+      ${coverImage ? `<img class="inspector-thumb" src="${escapeHtml(coverImage)}" alt="${escapeHtml(page.title || list.title)}">` : ''}
+      <div class="inspector-copy">
+        <p class="inspector-eyebrow">${escapeHtml(deck.navTitle)} · ${escapeHtml(list.navTitle || list.title)}</p>
+        <h4>${escapeHtml(page.title || list.title)}</h4>
+        <p>${hasItems ? 'Trang dữ liệu' : 'Trang bìa'} · ${escapeHtml(page.chipText || 'Cover')} · Trang ${currentPageLabel()}</p>
+      </div>
+    </div>
+    ${inspectorBody}
+  `;
 }
 
 export function renderDeck() {
@@ -407,30 +740,37 @@ export function renderDeck() {
     elements.deckTitle.textContent = 'Không có dữ liệu';
     elements.deckSubtitle.textContent = '';
     elements.pageGrid.innerHTML = '<div class="empty-state">Không có deck nào để hiển thị.</div>';
+    renderListSwitcher();
+    renderPageInspector();
     return;
   }
 
   const list = currentList();
   if (!list) {
     elements.pageGrid.innerHTML = '<div class="empty-state">Không có list nào để hiển thị.</div>';
+    renderListSwitcher();
+    renderPageInspector();
     return;
   }
 
   if (state.selectedPageIndex >= list.pages.length) {
     state.selectedPageIndex = 0;
+    persistSelection();
   }
 
   elements.deckTitle.textContent = deck.title;
   elements.deckSubtitle.textContent = deck.description;
-  elements.pageGrid.innerHTML = deck.lists.map((item) => renderListSection(item, item.id === state.activeListId, deck.id)).join('');
+  elements.pageGrid.innerHTML = renderListSection(list, true, deck.id);
+  resetPreviewScroll();
 
   bindPageSelection();
   updateSelectedPageUi();
+  renderListSwitcher();
+  renderPageInspector();
 }
 
 export function render() {
   renderDeckSwitcher();
-  renderListSwitcher();
   renderDeck();
 }
 
@@ -442,6 +782,130 @@ export function showExportModal() {
 
 export function hideExportModal() {
   elements.exportModal.classList.add('hidden');
+}
+
+export function showDeleteListsModal() {
+  const deck = currentDeck();
+  if (!deck) return;
+  state.selectedListsForDelete.clear();
+  const list = currentList();
+  if (list && !listIsMain(list)) {
+    state.selectedListsForDelete.add(list.id);
+  }
+  elements.deleteListsModal.classList.remove('hidden');
+  renderDeleteListsModalContent();
+}
+
+export function hideDeleteListsModal() {
+  elements.deleteListsModal.classList.add('hidden');
+}
+
+export function renderDeleteListsModalContent() {
+  const groups = generatedDeckGroups();
+
+  if (groups.length === 0) {
+    elements.deleteDeckList.innerHTML = `
+      <div class="delete-empty-state">
+        <strong>Không có list AI để xóa</strong>
+        <span>Hiện chưa có mẫu nào có list AI. List chính của các mẫu sẽ luôn được giữ lại.</span>
+      </div>
+    `;
+    updateDeleteSelectedListsButton();
+    return;
+  }
+
+  elements.deleteDeckList.innerHTML = groups.map(({ deck, lists }) => {
+    const allSelected = lists.every((list) => state.selectedListsForDelete.has(list.id));
+    return `
+      <div class="export-deck-group delete-deck-group" data-deck-id="${escapeHtml(deck.id)}">
+        <div class="export-group-head">
+          <h4 class="export-group-title">${escapeHtml(deck.navTitle)}</h4>
+          <label class="export-select-all-label">
+            <input type="checkbox" class="delete-select-all-checkbox" ${allSelected ? 'checked' : ''}>
+            <span>Chọn tất cả</span>
+          </label>
+        </div>
+        <div class="export-group-lists">
+          ${lists.map((list) => {
+            const isChecked = state.selectedListsForDelete.has(list.id);
+            return `
+              <label class="export-list-item delete-list-item" data-deck-id="${escapeHtml(deck.id)}" data-list-id="${escapeHtml(list.id)}">
+                <input type="checkbox" class="delete-list-checkbox" ${isChecked ? 'checked' : ''}>
+                <div class="export-list-info">
+                  <p class="export-list-title">${escapeHtml(list.navTitle || list.title)}</p>
+                  <p class="export-list-meta">${escapeHtml(list.title)} · ${list.pages.length} trang</p>
+                </div>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  elements.deleteDeckList.querySelectorAll('.delete-list-checkbox').forEach((checkbox) => {
+    checkbox.addEventListener('change', (event) => {
+      const item = event.target.closest('.delete-list-item');
+      const group = event.target.closest('.delete-deck-group');
+      const deckId = group?.dataset?.deckId;
+      const listId = item?.dataset?.listId;
+      if (!listId) return;
+      if (event.target.checked) {
+        state.selectedListsForDelete.add(listId);
+      } else {
+        state.selectedListsForDelete.delete(listId);
+      }
+      const selectAll = group?.querySelector('.delete-select-all-checkbox');
+      const groupLists = groups.find((candidate) => candidate.deck.id === deckId)?.lists || [];
+      if (selectAll && groupLists.length > 0) {
+        selectAll.checked = groupLists.every((list) => state.selectedListsForDelete.has(list.id));
+      }
+      updateDeleteSelectedListsButton();
+    });
+  });
+
+  elements.deleteDeckList.querySelectorAll('.delete-select-all-checkbox').forEach((selectAll) => {
+    selectAll.addEventListener('change', (event) => {
+      const group = event.target.closest('.delete-deck-group');
+      const deckId = group?.dataset?.deckId;
+      const groupLists = groups.find((candidate) => candidate.deck.id === deckId)?.lists || [];
+      groupLists.forEach((list) => {
+        if (event.target.checked) {
+          state.selectedListsForDelete.add(list.id);
+        } else {
+          state.selectedListsForDelete.delete(list.id);
+        }
+      });
+      group?.querySelectorAll('.delete-list-checkbox').forEach((checkbox) => {
+        checkbox.checked = event.target.checked;
+      });
+      updateDeleteSelectedListsButton();
+    });
+  });
+
+  updateDeleteSelectedListsButton();
+}
+
+export function selectedDeleteGroups() {
+  if (!state.dataset) return [];
+  return state.dataset.decks
+    .map((deck) => ({
+      deckId: deck.id,
+      deckTitle: deck.navTitle || deck.title,
+      listIds: deck.lists
+        .filter((list) => !listIsMain(list) && state.selectedListsForDelete.has(list.id))
+        .map((list) => list.id),
+    }))
+    .filter((group) => group.listIds.length > 0);
+}
+
+export function updateDeleteSelectedListsButton() {
+  const count = state.selectedListsForDelete.size;
+  if (!elements.executeDeleteSelectedListsBtn) return;
+  elements.executeDeleteSelectedListsBtn.textContent = count > 0
+    ? `Xóa ${count} list đã chọn`
+    : 'Chọn list AI để xóa';
+  elements.executeDeleteSelectedListsBtn.disabled = count === 0 || state.exporting;
 }
 
 export function renderExportModalContent() {

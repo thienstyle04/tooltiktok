@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import {
   CaptionBlocks,
   DatasetBuildContext,
+  DeckPage,
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
   GenerateCaptionDeckRequest,
@@ -41,7 +42,8 @@ import {
   itemMappingKey,
 } from '../logic/image-resolver';
 
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck } from '../logic/deck-builder';
+import { DataAllocator } from '../logic/data-allocator';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, sanitizeDeckHeadline } from '../logic/deck-builder';
 import { fetchDriveFileAsset, getDriveImageProxyUrl } from '../sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from '../sync/sheet-drive-manifest';
 import { findWorkbookPath, syncWorkbookFromSheet } from '../sync/workbook-source';
@@ -62,8 +64,11 @@ export class GuideService {
   private readonly tiktokReferenceDir = 'C:\\Data\\data\\ẢNH TIKTOK';
   private readonly imageMappingPath = path.join(this.toolRoot, 'image-mapping.json');
   private readonly generatedListsPath = path.join(this.toolRoot, 'generated-caption-lists.json');
+  private readonly usedInventoryPath = path.join(this.toolRoot, 'used-inventory.json');
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
   private generatedListsLoaded = false;
+  private readonly usedAllocator = new DataAllocator();
+  private inventoryLoaded = false;
 
   // ─── In-memory caches ──────────────────────────────────────────────────────
   private datasetContextCache: DatasetBuildContext | null = null;
@@ -78,7 +83,7 @@ export class GuideService {
   private imageMappingCacheTime = 0;
   private readonly IMAGE_MAPPING_CACHE_TTL_MS = 30_000; // 30 giây
 
-  private lastSyncTime = 0;
+  private lastSyncTime = this.getWorkbookLastModifiedTime();
   private isSyncing = false;
   private readonly AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 phút
   // ──────────────────────────────────────────────────────────────────────────
@@ -303,7 +308,8 @@ export class GuideService {
     if (!caption.headline || !caption.body) throw new BadRequestException('Cần có headline và body trước khi tạo list mới.');
 
     const context = this.buildDatasetContext();
-    if (!context.decks.find((d) => d.id === deckId)) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
+    const currentDeck = context.decks.find((d) => d.id === deckId);
+    if (!currentDeck) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
 
     const existing = this.generatedListsByDeckId.get(deckId) ?? [];
     // Sử dụng timestamp + index để đảm bảo ID không bao giờ trùng kể cả khi xóa bớt
@@ -313,13 +319,30 @@ export class GuideService {
 
     const seed = [deckId, generatedSuffix, caption.headline, caption.body, caption.hashtags.join(' ')].join('|');
 
+    this.ensureInventoryLoaded();
+    const deckUsage = this.usedAllocator.clone();
+    const baseList = currentDeck.lists.find((list) => /-main$/i.test(list.id)) ?? currentDeck.lists[0];
+    if (baseList) this.markUsedInDeck(baseList.pages, deckUsage);
+    const lastGeneratedList = existing.length > 0 ? existing[existing.length - 1] : null;
+    if (lastGeneratedList) this.markUsedInDeck(lastGeneratedList.pages, deckUsage);
     const generatedPages = applyCaptionToPages(
-      buildPagesForDeck(deckId, context.itemsBySection, context.imageUrls, context.imageLibraryEntries, seed),
+      buildPagesForDeck(
+        deckId,
+        context.itemsBySection,
+        context.imageUrls,
+        context.imageLibraryEntries,
+        seed,
+        deckUsage.itemIds,
+        deckUsage.imageUrls,
+      ),
       caption,
     );
 
     const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, caption.headline, caption.body, generatedPages);
     generatedList.captionHashtags = caption.hashtags;
+
+    this.markUsedInDeck(generatedPages);
+    this.persistInventory();
 
     this.generatedListsByDeckId.set(deckId, [...existing, generatedList]);
     this.persistGeneratedLists();
@@ -350,9 +373,13 @@ export class GuideService {
     const imageLibraryEntries = this.loadImageLibraryEntries(imageMapping);
     const sheetDriveManifest = this.loadSheetDriveManifest(workbookPath);
     const itemsBySection = this.loadWorkbookItems(workbookPath, imageUrls, imageMapping, imageLibraryEntries, sheetDriveManifest);
-    this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries);
+    this.ensureInventoryLoaded();
+    const renderUsage = this.createUsageScope();
+    const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, renderUsage.itemIds, renderUsage.imageUrls);
+    baseDecks.forEach((deck) => this.markUsedInDeck(deck.lists.flatMap((list) => list.pages), renderUsage));
+    this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, renderUsage);
     const referenceSets = this.buildReferenceSets();
-    const decks = this.mergeGeneratedLists(buildDecks(itemsBySection, imageUrls, imageLibraryEntries));
+    const decks = this.mergeGeneratedLists(baseDecks);
     const totalItems = Object.values(itemsBySection).reduce((s, items) => s + items.length, 0);
     const mappedItemCount = Object.values(itemsBySection).reduce((s, items) => s + items.filter((i) => i.imageMapped).length, 0);
     const manualMappedItemCount = Object.values(itemsBySection).reduce((s, items) => s + items.filter((i) => i.imageSource === 'manual').length, 0);
@@ -377,23 +404,36 @@ export class GuideService {
     itemsBySection: WorkbookItemsBySection,
     imageUrls: string[],
     libraryEntries: ImageLibraryFolderEntry[],
+    renderUsage: DataAllocator,
   ): void {
     if (this.generatedListsByDeckId.size === 0) return;
     let changed = false;
 
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
       const refreshedLists = lists.map((list) => {
+        const listUsage = renderUsage.clone();
         const caption: CaptionBlocks = {
-          headline: list.title,
+          headline: sanitizeDeckHeadline(list.title),
           body: list.description,
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
         const regeneratedPages = applyCaptionToPages(
-          buildPagesForDeck(deckId, itemsBySection, imageUrls, libraryEntries, `refresh:${deckId}:${list.id}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`),
+          buildPagesForDeck(
+            deckId,
+            itemsBySection,
+            imageUrls,
+            libraryEntries,
+            `refresh:${deckId}:${list.id}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`,
+            listUsage.itemIds,
+            listUsage.imageUrls,
+          ),
           caption,
         );
-        if (JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)) changed = true;
-        return { ...list, pages: regeneratedPages };
+        const generatedUsage = this.createUsageScope();
+        this.markUsedInDeck(regeneratedPages, generatedUsage);
+        renderUsage.merge(generatedUsage);
+        if (list.title !== caption.headline || JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)) changed = true;
+        return { ...list, title: caption.headline, pages: regeneratedPages };
       });
       this.generatedListsByDeckId.set(deckId, refreshedLists);
     }
@@ -537,6 +577,32 @@ export class GuideService {
 
   // ─── Private: image library loading (with cache) ──────────────────────────
 
+  private ensureInventoryLoaded(): void {
+    if (this.inventoryLoaded) return;
+    this.inventoryLoaded = true;
+    if (!fs.existsSync(this.usedInventoryPath)) return;
+    try {
+      const raw = fs.readFileSync(this.usedInventoryPath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.usedItemIds)) parsed.usedItemIds.forEach((id: string) => this.usedAllocator.itemIds.add(id));
+      if (Array.isArray(parsed.usedImageUrls)) parsed.usedImageUrls.forEach((url: string) => this.usedAllocator.markImageUrl(url));
+    } catch {
+      // Ignore errors
+    }
+  }
+
+  private persistInventory(): void {
+    fs.writeFileSync(this.usedInventoryPath, JSON.stringify(this.usedAllocator.snapshot(), null, 2), 'utf-8');
+  }
+
+  private createUsageScope(): DataAllocator {
+    return new DataAllocator();
+  }
+
+  private markUsedInDeck(pages: DeckPage[], scope = this.usedAllocator): void {
+    scope.markPages(pages);
+  }
+
   private loadImageMapping(): ImageMappingFile {
     const now = Date.now();
     if (this.imageMappingCache && (now - this.imageMappingCacheTime) < this.IMAGE_MAPPING_CACHE_TTL_MS) {
@@ -631,6 +697,38 @@ export class GuideService {
       lich_trinh_huu_ich: 'Cung cấp thông tin rõ ràng, logic, theo trình tự thời gian hoặc chủ đề. Giọng văn hướng dẫn, tận tâm như một hướng dẫn viên bản địa. Headline ví dụ: "LỊCH TRÌNH 3N2Đ TỐI ƯU NHẤT", "CẨM NANG DU LỊCH ĐÀ LẠT TỰ TÚC", "TỔNG HỢP ĐIỂM ĐẾN HOT NHẤT".',
     };
 
+    const diversityAngles = [
+      'chon mot trai nghiem mo dau that cu the, gan voi cam giac di Da Lat trong ngay do',
+      'viet nhu mot loi nhac rieng cho ban than sap len lich di Da Lat',
+      'bat dau tu mot loi ich thuc te: de chon quan, de chon diem, de sap xep thoi gian',
+      'ke nhu mot review ngan sau khi vua di ve, co chi tiet that va khong qua quang cao',
+      'dung goc nhin tiet kiem cong suc: nguoi xem chi can luu lai va di theo',
+      'tao cam giac phat hien duoc vai diem dang thu trong list',
+      'viet gon nhu caption de dang copy dang TikTok, nhung van co chat rieng',
+      'uu tien nhac den nhom ban, cap doi hoac nguoi moi di Da Lat lan dau',
+    ];
+    const bodyShapes = [
+      '2 cau ngan: cau 1 tao ly do luu lai, cau 2 nhac 1-2 dia diem noi bat',
+      '3 menh de lien tiep, nhip nhanh, khong liet ke may moc',
+      'mot cau mo dau co cam giac, mot cau sau noi ro list nay giup gi',
+      'viet nhu loi ru ban di choi, cuoi bang loi nhac luu lai nhe',
+      'review that gon: noi diem hop voi ai, roi goi ten 1-2 dia diem',
+      'caption nhe nha: co canh, co mon hoac quan, co ly do nen luu',
+    ];
+    const variationSeed = stableHash([
+      deck.id,
+      deckList.id,
+      tone,
+      target,
+      current.headline,
+      current.body,
+      current.hashtags.join(','),
+      Date.now().toString(),
+      Math.random().toString(36).slice(2),
+    ].join('|'));
+    const diversityAngle = diversityAngles[variationSeed % diversityAngles.length];
+    const bodyShape = bodyShapes[Math.floor(variationSeed / diversityAngles.length) % bodyShapes.length];
+
     return [
       'Tạo caption TikTok cho bộ ảnh du lịch Đà Lạt sau.',
       `Tên chủ đề: ${deck.title}`,
@@ -640,6 +738,8 @@ export class GuideService {
       `Tone yêu cầu: ${tone}`,
       `Hướng dẫn giọng văn: ${toneInstructions[tone]}`,
       `Phần cần sinh: ${target}`,
+      `Goc trien khai bat buoc cho lan sinh nay: ${diversityAngle}.`,
+      `Kieu body bat buoc cho lan sinh nay: ${bodyShape}.`,
       current.headline ? `Headline hiện tại: ${current.headline}` : '',
       current.body ? `Body hiện tại: ${current.body}` : '',
       current.hashtags.length ? `Hashtags hiện tại: ${current.hashtags.join(' ')}` : '',
@@ -652,10 +752,13 @@ export class GuideService {
       '- Headline phải bám sát "Tone yêu cầu". Nếu là Gen Z, hãy dùng ngôn ngữ bắt trend. Nếu là Tinh tế, hãy dùng câu chữ giàu chất thơ.',
       '- Phải sáng tạo ra các góc nhìn mới (ví dụ: "Phá đảo Đà Lạt", "Góc nhỏ chill cực", "Đà Lạt 0đ", "Mùa này đi đâu?").',
       '- Headline: viết hoa hoặc rất nổi bật, tuyệt đối không vượt quá 35 ký tự. Phải thật thu hút ngay từ 3 giây đầu.',
+      '- Không dùng chữ "free" trong headline. Nếu cần nói về chi phí, hãy dùng cách mềm hơn như "0đ", "dễ đi", "gọn ví" hoặc bỏ hẳn khỏi headline.',
       '',
       'CÁC YÊU CẦU KHÁC:',
       '- TUYỆT ĐỐI không dùng từ "deck" trong nội dung. Thay vào đó hãy dùng: "hình", "ảnh", "bộ ảnh", "cẩm nang", "lịch trình", "list này"...',
       '- Body: Phải đa dạng cấu trúc câu, không lặp lại các motif cũ. Tối đa 250 ký tự. Phải nhắc được tên 1-2 địa điểm nổi bật trong list.',
+      '- Khong mo ta bo cuc thiet ke hoac kich thuoc layout trong caption. Tranh cac cum: "2x3", "3x3", "2x4", "luoi", "layout", "grid", "o anh", "o hinh".',
+      '- Moi lan bam sinh lai phai doi goc viet, doi nhip cau, doi dong tu mo dau; khong chi thay vai tu dong nghia.',
       '- Hashtags: đúng 5 hashtag, trong đó bắt buộc có #riviudalat #dalat #dalatreview. 2 hashtag còn lại phải liên quan chặt chẽ đến nội dung và tone.',
       '- Trả về JSON object đúng schema:',
       '{"headline":"...","body":"...","hashtags":["#...","#...","#...","#...","#..."]}',
@@ -702,8 +805,27 @@ export class GuideService {
       lich_trinh_huu_ich: ['#lichtrinhdalat', '#traveldalat'],
     };
 
-    const normalizeHeadline = (v: string) => (v || current.headline || 'ĐI ĐÀ LẠT THÌ LƯU NGAY LIST NÀY').replace(/\s+/g, ' ').trim().slice(0, 35);
-    const normalizeBody = (v: string) => (v || current.body || 'Một bộ caption gợi ý nhanh cho list đang chọn, bám đúng dữ liệu địa điểm trong tool.').replace(/\s+/g, ' ').trim().slice(0, 250);
+    const removeLayoutTerms = (value: string): string => String(value || '')
+      .replace(/\b[234]\s*(?:x|×|by)\s*[234]\b/gi, '')
+      .replace(/\b(?:grid|layout)\b/gi, '')
+      .replace(/(^|[\s([{])(?:lưới|luoi)(?=$|[\s,.;:!?)}\]])/gi, '$1')
+      .replace(/(^|[\s([{])(?:bố\s*cục|bo\s*cuc)(?=$|[\s,.;:!?)}\]])/gi, '$1')
+      .replace(/(^|[\s([{])(?:\d+\s*)?(?:ô|o)\s*(?:ảnh|anh|hình|hinh)(?=$|[\s,.;:!?)}\]])/gi, '$1')
+      .replace(/(^|[\s([{])(?:\d+\s*)?(?:khung|khuôn|khuon)\s*(?:ảnh|anh|hình|hinh)(?=$|[\s,.;:!?)}\]])/gi, '$1')
+      .replace(/\bcó\s+(đẹp|xinh|chill|ngon|hay|ổn|on)\b/gi, '$1')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+([,.!?])/g, '$1')
+      .trim();
+    const normalizeHeadline = (v: string) => {
+      const fallback = 'ĐI ĐÀ LẠT THÌ LƯU NGAY LIST NÀY';
+      const clean = removeLayoutTerms(sanitizeDeckHeadline(v || current.headline || fallback)).replace(/\s+/g, ' ').trim();
+      return (clean || fallback).slice(0, 35);
+    };
+    const normalizeBody = (v: string) => {
+      const fallback = 'Một bộ caption gợi ý nhanh cho list đang chọn, bám đúng dữ liệu địa điểm trong tool.';
+      const clean = removeLayoutTerms(v || current.body || fallback).replace(/\s+/g, ' ').trim();
+      return (clean || fallback).slice(0, 250);
+    };
     const normalizeHashtags = (values: string[]): string[] => {
       const fixed = ['#riviudalat', '#dalat', '#dalatreview'];
       const normalized = values
@@ -750,6 +872,17 @@ export class GuideService {
   }
 
   // ─── Utility ──────────────────────────────────────────────────────────────
+
+  private getWorkbookLastModifiedTime(): number {
+    const workbookPath = findWorkbookPath(this.workspaceRoot);
+    if (!workbookPath || !fs.existsSync(workbookPath)) return 0;
+
+    try {
+      return fs.statSync(workbookPath).mtimeMs;
+    } catch {
+      return 0;
+    }
+  }
 
   private cloneJson<T>(value: T): T {
     return JSON.parse(JSON.stringify(value)) as T;

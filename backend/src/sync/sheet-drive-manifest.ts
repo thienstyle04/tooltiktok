@@ -104,9 +104,8 @@ export function readSheetDriveManifest(toolRoot: string, workbookPath?: string):
     };
 
     if (workbookPath && fs.existsSync(workbookPath)) {
-      const workbookStats = fs.statSync(workbookPath);
       const workbookName = path.basename(workbookPath);
-      if (manifest.workbookName !== workbookName || manifest.workbookMtimeMs !== workbookStats.mtimeMs) {
+      if (manifest.workbookName !== workbookName) {
         return emptySheetDriveManifest();
       }
     }
@@ -134,7 +133,10 @@ export async function buildSheetDriveManifest(workbookPath: string): Promise<She
       const imageLink = preferredImageLink(row);
       if (!imageLink) continue;
 
-      const resolvedEntry = await resolveDriveLinkToEntry(imageLink, name, address);
+      const resolvedEntry = await resolveDriveLinkToEntry(imageLink, name, address).catch((error) => {
+        console.warn(`[sync] Bỏ qua ảnh Drive lỗi cho "${name}": ${error instanceof Error ? error.message : String(error)}`);
+        return null;
+      });
       if (!resolvedEntry) continue;
 
       const key = itemMappingKey(sectionKey, name, address);

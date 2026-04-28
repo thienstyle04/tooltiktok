@@ -7,108 +7,196 @@
   <link rel="preload" href="/fonts/BeVietnamPro-700.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="/fonts/BeVietnamPro-900.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="/fonts/Baloo2-800.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=20260423-v3">
+  <link rel="stylesheet" href="/styles.css?v=20260428-scroll-2">
 </head>
 <body>
-  <main class="page-shell">
-    <section class="deck-shell">
-      <div class="deck-toolbar">
-        <div>
-          <p class="eyebrow">Mẫu bộ ảnh</p>
+  <main class="app-shell">
+    <aside class="app-sidebar">
+      <div class="brand-block">
+        <p class="eyebrow">Dalat carousel</p>
+        <h1 class="brand-title">Deck Studio</h1>
+        <p class="brand-copy">Chọn mẫu, kiểm tra dữ liệu từng trang và xuất bộ ảnh TikTok từ cùng một màn hình.</p>
+      </div>
+
+      <section class="sidebar-section template-nav-section">
+        <div class="sidebar-head">
+          <span class="sidebar-label">Mẫu</span>
+          <span id="deckStats" class="sidebar-count">Đang tải</span>
+        </div>
+        <div id="deckSwitcher" class="deck-switcher"></div>
+      </section>
+
+      <section class="sidebar-section list-nav-section">
+        <div class="sidebar-head">
+          <span class="sidebar-label">List trong mẫu</span>
+          <span id="listStats" class="sidebar-count">0 list</span>
+        </div>
+        <div id="listSwitcher" class="list-switcher"></div>
+      </section>
+    </aside>
+
+    <section class="studio-shell">
+      <header class="studio-topbar deck-toolbar">
+        <div class="deck-heading">
+          <p class="eyebrow">Đang làm việc</p>
           <h2 id="deckTitle" class="section-title">Đang tải...</h2>
           <p id="deckSubtitle" class="deck-subtitle">Tool đang đọc workbook và dựng các bộ ảnh mẫu.</p>
         </div>
         <div class="toolbar-actions">
           <button id="refreshBtn" class="toolbar-button" type="button">Làm mới dữ liệu</button>
-          <button id="batchExportBtn" class="toolbar-button secondary" type="button">Chọn Deck Xuất</button>
+          <button id="exportSelectedPageBtn" class="toolbar-button" type="button">Xuất trang chọn</button>
+          <button id="exportActiveListBtn" class="toolbar-button" type="button">Xuất list đang chọn</button>
+          <button id="deleteListsBtn" class="toolbar-button danger" type="button">Xóa list AI</button>
+          <button id="batchExportBtn" class="toolbar-button primary" type="button">Xuất hàng loạt</button>
+        </div>
+      </header>
+
+      <div class="status-strip">
+        <span class="status-dot"></span>
+        <p id="statusText" class="status-text">Bấm vào một trang để chọn rồi xuất PNG.</p>
+      </div>
+      <div id="exportProgress" class="export-progress hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="export-progress-head">
+          <span id="exportProgressLabel" class="export-progress-label">Đang chuẩn bị xuất file...</span>
+          <span id="exportProgressPercent" class="export-progress-percent">0%</span>
+        </div>
+        <div class="export-progress-track">
+          <div id="exportProgressBar" class="export-progress-bar"></div>
         </div>
       </div>
 
-      <!-- Modal Chọn Deck Xuất -->
-      <div id="exportModal" class="modal-overlay hidden">
-        <div class="modal-card">
-          <div class="modal-head">
-            <h3 class="modal-title">Chọn Bộ ảnh để xuất ZIP</h3>
-            <button id="closeExportModalBtn" class="modal-close-btn">&times;</button>
-          </div>
-          <div class="modal-body">
-            <p class="modal-description">Chọn các bộ ảnh bạn muốn xuất thành file ZIP. Mỗi bộ ảnh sẽ là một folder bên trong ZIP.</p>
-            <div id="exportDeckList" class="export-deck-list">
-              <!-- Rendered by JS -->
+      <div class="workspace-grid">
+        <section class="preview-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Preview deck</p>
+              <h3 class="panel-title">Các trang đang dựng</h3>
             </div>
+            <p class="panel-note">Tổng quan theo từng list.</p>
           </div>
-          <div class="modal-foot">
-            <button id="executeBatchExportBtn" class="toolbar-button primary" type="button">Bắt đầu xuất ZIP hàng loạt</button>
-          </div>
-        </div>
+          <div id="pageGrid" class="page-grid"></div>
+        </section>
+
+        <aside class="right-panel">
+          <section class="inspector-shell">
+            <div class="panel-head compact">
+              <div>
+                <p class="panel-kicker">Dữ liệu trang</p>
+                <h3 class="panel-title">Dữ liệu & ảnh</h3>
+              </div>
+            </div>
+            <div id="pageInspector" class="page-inspector">
+              <p class="empty-inspector">Chọn một trang nội dung để xem dữ liệu và ảnh đang dùng.</p>
+            </div>
+          </section>
+
+          <section class="ai-shell">
+            <div class="ai-toolbar">
+              <div class="ai-tone-group">
+                <label class="ai-tone-label" for="captionTone">Tone caption</label>
+                <select id="captionTone" class="ai-tone-select">
+                  <option value="lich_trinh_huu_ich">Lịch trình hữu ích</option>
+                  <option value="gen_z">Gen Z</option>
+                  <option value="review_chan_that">Review chân thật</option>
+                  <option value="ban_hang_nhe">Bán hàng nhẹ</option>
+                  <option value="tinh_te">Tinh tế</option>
+                </select>
+              </div>
+              <div class="ai-actions">
+                <button id="generateCaptionBtn" class="toolbar-button secondary" type="button">Tạo caption</button>
+                <button id="createDeckFromCaptionBtn" class="toolbar-button secondary" type="button">Tạo list AI</button>
+                <button id="copyFullCaptionBtn" class="toolbar-button" type="button">Copy caption</button>
+              </div>
+            </div>
+            <div class="ai-grid">
+              <section class="ai-block">
+                <div class="ai-block-head">
+                  <div>
+                    <p class="ai-block-label">Headline</p>
+                    <p class="ai-block-note">Tối đa 35 ký tự, dùng cho cover.</p>
+                  </div>
+                  <div class="ai-block-actions">
+                    <button id="regenHeadlineBtn" class="toolbar-button" type="button">Sinh lại</button>
+                    <button id="copyHeadlineBtn" class="toolbar-button" type="button">Copy</button>
+                  </div>
+                </div>
+                <textarea id="captionHeadline" class="ai-output compact" placeholder="Headline sẽ hiện ở đây..."></textarea>
+              </section>
+
+              <section class="ai-block">
+                <div class="ai-block-head">
+                  <div>
+                    <p class="ai-block-label">Body</p>
+                    <p class="ai-block-note">Phần giải thích ngắn cho caption.</p>
+                  </div>
+                  <div class="ai-block-actions">
+                    <button id="regenBodyBtn" class="toolbar-button" type="button">Sinh lại</button>
+                    <button id="copyBodyBtn" class="toolbar-button" type="button">Copy</button>
+                  </div>
+                </div>
+                <textarea id="captionBody" class="ai-output" placeholder="Body caption sẽ hiện ở đây..."></textarea>
+              </section>
+
+              <section class="ai-block">
+                <div class="ai-block-head">
+                  <div>
+                    <p class="ai-block-label">Hashtags</p>
+                    <p class="ai-block-note">Đúng 5 hashtag cho TikTok.</p>
+                  </div>
+                  <div class="ai-block-actions">
+                    <button id="regenHashtagsBtn" class="toolbar-button" type="button">Sinh lại</button>
+                    <button id="copyHashtagsBtn" class="toolbar-button" type="button">Copy</button>
+                  </div>
+                </div>
+                <textarea id="captionHashtags" class="ai-output compact" placeholder="Hashtags sẽ hiện ở đây..."></textarea>
+              </section>
+            </div>
+          </section>
+        </aside>
       </div>
-      <div id="deckSwitcher" class="deck-switcher"></div>
-      <div id="listSwitcher" class="list-switcher"></div>
-      <section class="ai-shell">
-        <div class="ai-toolbar">
-          <div class="ai-tone-group">
-            <label class="ai-tone-label" for="captionTone">Tone caption</label>
-            <select id="captionTone" class="ai-tone-select">
-              <option value="lich_trinh_huu_ich">Lịch trình hữu ích</option>
-              <option value="gen_z">Gen Z</option>
-              <option value="review_chan_that">Review chân thật</option>
-              <option value="ban_hang_nhe">Bán hàng nhẹ</option>
-              <option value="tinh_te">Tinh tế</option>
-            </select>
-          </div>
-          <div class="ai-actions">
-            <button id="generateCaptionBtn" class="toolbar-button secondary" type="button">Tạo caption DeepSeek</button>
-            <button id="createDeckFromCaptionBtn" class="toolbar-button secondary" type="button">Tạo bộ ảnh AI từ caption</button>
-            <button id="copyFullCaptionBtn" class="toolbar-button" type="button">Copy full caption</button>
-          </div>
-        </div>
-        <div class="ai-grid">
-          <section class="ai-block">
-            <div class="ai-block-head">
-              <div>
-                <p class="ai-block-label">Headline</p>
-                <p class="ai-block-note">Dòng tiêu đề ngắn, mạnh, tối đa 35 ký tự (3 dòng trên Cover).</p>
-              </div>
-              <div class="ai-block-actions">
-                <button id="regenHeadlineBtn" class="toolbar-button" type="button">Sinh lại</button>
-                <button id="copyHeadlineBtn" class="toolbar-button" type="button">Copy</button>
-              </div>
-            </div>
-            <textarea id="captionHeadline" class="ai-output compact" placeholder="Headline sẽ hiện ở đây..."></textarea>
-          </section>
-
-          <section class="ai-block">
-            <div class="ai-block-head">
-              <div>
-                <p class="ai-block-label">Body</p>
-                <p class="ai-block-note">Phần giải nghĩa thêm cho headline, tối đa 250 ký tự.</p>
-              </div>
-              <div class="ai-block-actions">
-                <button id="regenBodyBtn" class="toolbar-button" type="button">Sinh lại</button>
-                <button id="copyBodyBtn" class="toolbar-button" type="button">Copy</button>
-              </div>
-            </div>
-            <textarea id="captionBody" class="ai-output" placeholder="Body caption sẽ hiện ở đây..."></textarea>
-          </section>
-
-          <section class="ai-block">
-            <div class="ai-block-head">
-              <div>
-                <p class="ai-block-label">Hashtags</p>
-                <p class="ai-block-note">Đúng 5 hashtag, gồm 3 hashtag cứng và 2 hashtag mở rộng.</p>
-              </div>
-              <div class="ai-block-actions">
-                <button id="regenHashtagsBtn" class="toolbar-button" type="button">Sinh lại</button>
-                <button id="copyHashtagsBtn" class="toolbar-button" type="button">Copy</button>
-              </div>
-            </div>
-            <textarea id="captionHashtags" class="ai-output compact" placeholder="Hashtags sẽ hiện ở đây..."></textarea>
-          </section>
-        </div>
-      </section>
-      <p id="statusText" class="status-text">Bấm vào một trang để chọn rồi xuất PNG.</p>
-      <div id="pageGrid" class="page-grid"></div>
     </section>
+
+    <div id="exportModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div>
+            <p class="panel-kicker">Batch export</p>
+            <h3 class="modal-title">Chọn bộ ảnh để xuất ZIP</h3>
+          </div>
+          <button id="closeExportModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-description">Chọn các list cần xuất. Mỗi list sẽ là một folder bên trong file ZIP.</p>
+          <div id="exportDeckList" class="export-deck-list">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button id="executeBatchExportBtn" class="toolbar-button primary" type="button">Bắt đầu xuất ZIP hàng loạt</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="deleteListsModal" class="modal-overlay hidden">
+      <div class="modal-card delete-modal-card">
+        <div class="modal-head">
+          <div>
+            <p class="panel-kicker">Xóa list AI</p>
+            <h3 class="modal-title">Chọn list AI cần xóa</h3>
+          </div>
+          <button id="closeDeleteListsModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-description">Có thể chọn list AI ở nhiều mẫu. List chính của các mẫu sẽ được giữ lại.</p>
+          <div id="deleteDeckList" class="export-deck-list delete-deck-list">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button id="executeDeleteSelectedListsBtn" class="toolbar-button danger" type="button">Xóa list đã chọn</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js"></script>
