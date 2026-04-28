@@ -1,0 +1,35 @@
+
+> dalat-tiktok-carousel-tool@0.1.0 start
+> node dalat_tiktok_carousel_tool_standalone.cjs
+
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +8ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_InstanceLoader] [39m[32mGuideModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RoutesResolver] [39m[32mGuideController {/}:[39m[38;5;3m +3ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/styles.css, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/js/:fileName, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/fonts/:fileName, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/health, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/guide-data, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/ai/deepseek/caption, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/decks/generate-from-caption, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/api/decks/:deckId/lists/:listId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/dalat/:fileName, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/tiktok/:folderName/:fileName, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/workspace, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/library, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_RouterExplorer] [39m[32mMapped {/assets/drive-file, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4656  - [39m04/28/2026, 11:41:56 AM [32m    LOG[39m [38;5;3m[_NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +1ms[39m
+Dalat carousel tool ready: http://127.0.0.1:3000/
+[sync] Bắt đầu tự động đồng bộ từ Google Sheet...
+[cache] dataset context MISS — built in 3257ms
+[cache] dataset context MISS — built in 3012ms
+[cache] dataset context MISS — built in 2868ms
+[sync] Tự động đồng bộ hoàn tất: C:\Data\data\F&B ĐÀ LẠT.xlsx (102235 bytes), 148 ảnh Drive.
+[sync] Bắt đầu tự động đồng bộ từ Google Sheet...
+[cache] dataset context MISS — built in 3170ms
+[sync] Tự động đồng bộ hoàn tất: C:\Data\data\F&B ĐÀ LẠT.xlsx (102964 bytes), 154 ảnh Drive.
+[sync] Bắt đầu tự động đồng bộ từ Google Sheet...
+[cache] dataset context MISS — built in 3112ms
+[sync] Tự động đồng bộ hoàn tất: C:\Data\data\F&B ĐÀ LẠT.xlsx (102964 bytes), 154 ảnh Drive.

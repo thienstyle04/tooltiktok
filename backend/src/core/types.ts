@@ -37,6 +37,7 @@ export interface GuideItem {
 
 export interface PageItem {
   label: string;
+  id?: string;
   name: string;
   metaPrimary: string;
   metaSecondary: string;
@@ -54,7 +55,7 @@ export interface CoverPage {
   title: string;
   subtitle: string;
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-4' | 'journey-4n3d';
+  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d';
 }
 
 export interface ListPage {
@@ -65,7 +66,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-4' | 'journey-4n3d';
+  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d';
 }
 
 export type DeckPage = CoverPage | ListPage;
