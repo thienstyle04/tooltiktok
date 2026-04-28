@@ -216,6 +216,32 @@ export function topDirKind(topDir: string): string {
   return 'other';
 }
 
+function decodedAssetPath(url: string): string {
+  try {
+    const parsed = new URL(url, 'http://local');
+    return decodeURIComponent(parsed.searchParams.get('path') || url).toLowerCase();
+  } catch {
+    try {
+      return decodeURIComponent(url).toLowerCase();
+    } catch {
+      return String(url || '').toLowerCase();
+    }
+  }
+}
+
+function shouldAvoidImageForItem(name: string, url: string): boolean {
+  const normalizedName = normalizeText(name);
+  const assetPath = decodedAssetPath(url);
+  if (normalizedName.includes('the_florest') && assetPath.includes('img_8544.jpg')) return true;
+  return false;
+}
+
+function preferredImageCandidates(name: string, urls: string[]): string[] {
+  const unique = Array.from(new Set(urls.filter(Boolean)));
+  const preferred = unique.filter((url) => !shouldAvoidImageForItem(name, url));
+  return preferred.length > 0 ? preferred : unique;
+}
+
 export function allowedImageKindsForItem(item: { sectionKey: SectionKey; type: string; name: string }): Set<string> {
   const allowed = new Set<string>();
   const normalizedType = normalizeText(item.type);
@@ -374,12 +400,13 @@ export function resolveMappedImage(
   });
 
   if (exactAutoMatch) {
+    const assetUrls = preferredImageCandidates(name, exactAutoMatch.assetUrls);
     return {
-      imageUrl: exactAutoMatch.assetUrls[stableHash(`${sectionKey}:${name}:${sequence}`) % exactAutoMatch.assetUrls.length],
+      imageUrl: assetUrls[stableHash(`${sectionKey}:${name}:${sequence}`) % assetUrls.length],
       imageMapped: true,
       imageMappingKey: mappingKey,
       imageSource: 'auto',
-      candidateImageUrls: exactAutoMatch.assetUrls,
+      candidateImageUrls: assetUrls,
     };
   }
 
@@ -389,12 +416,13 @@ export function resolveMappedImage(
     .sort((a, b) => b.score - a.score)[0];
 
   if (bestAutoMatch && bestAutoMatch.score >= 55) {
+    const assetUrls = preferredImageCandidates(name, bestAutoMatch.entry.assetUrls);
     return {
-      imageUrl: bestAutoMatch.entry.assetUrls[stableHash(`${sectionKey}:${name}:${sequence}`) % bestAutoMatch.entry.assetUrls.length],
+      imageUrl: assetUrls[stableHash(`${sectionKey}:${name}:${sequence}`) % assetUrls.length],
       imageMapped: true,
       imageMappingKey: mappingKey,
       imageSource: 'auto',
-      candidateImageUrls: bestAutoMatch.entry.assetUrls,
+      candidateImageUrls: assetUrls,
     };
   }
 
@@ -408,17 +436,24 @@ export function createListImageResolver(
   imageUrls: string[],
   libraryEntries: ImageLibraryFolderEntry[],
   seed = '',
-  initialUsedUrls: string[] = [],
+  initialUsedUrls: Iterable<string> = [],
+  blockedUrls: Iterable<string> = [],
 ) {
-  const usedUrls = new Set<string>(initialUsedUrls.filter(Boolean));
-  let exhaustCounter = 0;
+  const softUsedUrls = new Set<string>([...initialUsedUrls, ...blockedUrls].filter(Boolean));
+  const sharedUsedUrlSets = [initialUsedUrls, blockedUrls].filter((urls): urls is Set<string> => urls instanceof Set);
+  const localUsedUrls = new Set<string>();
 
   const pickUnused = (candidates: string[]): string => {
     if (candidates.length === 0) return '';
-    const fresh = candidates.find((e) => !usedUrls.has(e));
-    if (fresh) { usedUrls.add(fresh); return fresh; }
-    exhaustCounter += 1;
-    return candidates[exhaustCounter % candidates.length];
+    const fresh = candidates.find((e) => e && !localUsedUrls.has(e) && !softUsedUrls.has(e));
+    const previouslyUsed = candidates.find((e) => e && !localUsedUrls.has(e));
+    const picked = fresh || previouslyUsed || '';
+    if (picked) {
+      localUsedUrls.add(picked);
+      softUsedUrls.add(picked);
+      sharedUsedUrlSets.forEach((urls) => urls.add(picked));
+    }
+    return picked;
   };
 
   return (
@@ -429,14 +464,17 @@ export function createListImageResolver(
 
     if (!options?.forceFallback && item.imageSource === 'manual') {
       if (item.candidateImageUrls && item.candidateImageUrls.length > 0) {
-        const sorted = [...item.candidateImageUrls].sort(
+        const sorted = preferredImageCandidates(item.name, item.candidateImageUrls).sort(
           (a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`),
         );
         const picked = pickUnused(sorted);
         if (picked) return { ...common, imageUrl: picked, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm (từ thư mục)' };
       }
-      usedUrls.add(item.imageUrl);
-      return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm' };
+      if (item.imageUrl && !shouldAvoidImageForItem(item.name, item.imageUrl) && !localUsedUrls.has(item.imageUrl)) {
+        localUsedUrls.add(item.imageUrl);
+        softUsedUrls.add(item.imageUrl);
+        return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm' };
+      }
     }
 
     if (!options?.forceFallback && item.imageSource === 'auto') {
@@ -445,14 +483,17 @@ export function createListImageResolver(
         : libraryEntries.find((e) => e.assetUrls.includes(item.imageUrl))?.assetUrls || [];
 
       if (candidates.length > 0) {
-        const sortedUrls = [...candidates].sort(
+        const sortedUrls = preferredImageCandidates(item.name, candidates).sort(
           (a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`),
         );
         const picked = pickUnused(sortedUrls);
         if (picked) return { ...common, imageUrl: picked, imageMapped: true, imageSource: 'auto', imageNote: 'Ảnh tự map đúng theo thư viện' };
       }
-      usedUrls.add(item.imageUrl);
-      return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'auto', imageNote: 'Ảnh tự map đúng theo thư viện' };
+      if (item.imageUrl && !shouldAvoidImageForItem(item.name, item.imageUrl) && !localUsedUrls.has(item.imageUrl)) {
+        localUsedUrls.add(item.imageUrl);
+        softUsedUrls.add(item.imageUrl);
+        return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'auto', imageNote: 'Ảnh tự map đúng theo thư viện' };
+      }
     }
 
     const allowedKinds = allowedImageKindsForItem(item);
@@ -476,19 +517,21 @@ export function createListImageResolver(
       stableHash(`${seed}:${item.id}:backup:${a}`) - stableHash(`${seed}:${item.id}:backup:${b}`),
     );
 
-    const groupedLibraryUrls = [...primaryGroupedLibraryUrls, ...backupGroupedLibraryUrls];
+    const groupedLibraryUrls = preferredImageCandidates(item.name, [...primaryGroupedLibraryUrls, ...backupGroupedLibraryUrls]);
     const libraryUrl = pickUnused(groupedLibraryUrls);
     if (libraryUrl) return { imageUrl: libraryUrl, imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa cùng nhóm nội dung' };
 
     const allLibraryUrls = libraryEntries
       .flatMap((e) => e.assetUrls)
       .filter((url) => !groupedLibraryUrls.includes(url));
-    allLibraryUrls.sort((a, b) => stableHash(`${seed}:${item.id}:all:${a}`) - stableHash(`${seed}:${item.id}:all:${b}`));
-    const allLibraryUrl = pickUnused(allLibraryUrls);
+    const preferredAllLibraryUrls = preferredImageCandidates(item.name, allLibraryUrls);
+    preferredAllLibraryUrls.sort((a, b) => stableHash(`${seed}:${item.id}:all:${a}`) - stableHash(`${seed}:${item.id}:all:${b}`));
+    const allLibraryUrl = pickUnused(preferredAllLibraryUrls);
     if (allLibraryUrl) return { imageUrl: allLibraryUrl, imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa' };
 
     const fallbackCandidates = [...imageUrls];
     fallbackCandidates.sort((a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`));
-    return { imageUrl: pickUnused(fallbackCandidates), imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa, chưa map đúng địa điểm' };
+    const fallbackUrl = pickUnused(fallbackCandidates);
+    return { imageUrl: fallbackUrl, imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa, chưa map đúng địa điểm' };
   };
 }

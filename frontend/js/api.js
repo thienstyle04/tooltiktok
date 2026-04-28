@@ -1,4 +1,4 @@
-import { state, elements, setStatus, setExportBusy } from './state.js';
+import { state, elements, persistSelection, setStatus, setExportBusy } from './state.js';
 import { currentDeck, currentList, render } from './ui.js';
 
 export function currentTone() {
@@ -67,6 +67,7 @@ export async function createDeckFromCaption() {
     state.activeDeckId = payload.deckId;
     state.activeListId = payload.listId;
     state.selectedPageIndex = 0;
+    persistSelection();
     render();
     const section = elements.pageGrid.querySelector(`[data-list-section-id="${CSS.escape(state.activeListId)}"]`);
     if (section) {
@@ -84,6 +85,8 @@ export async function deleteGeneratedList(deckId, listId) {
   setExportBusy(true);
   setStatus('Đang xóa deck AI...');
   try {
+    const deckBeforeDelete = state.dataset?.decks?.find((d) => d.id === deckId);
+    const listIndex = deckBeforeDelete?.lists?.findIndex((list) => list.id === listId) ?? -1;
     const response = await fetch(`/api/decks/${encodeURIComponent(deckId)}/lists/${encodeURIComponent(listId)}`, {
       method: 'DELETE',
     });
@@ -100,17 +103,99 @@ export async function deleteGeneratedList(deckId, listId) {
       }
     }
 
-    // Chuyển về list đầu tiên nếu list đang xem bị xóa
+    // Chuyển sang list kế bên vị trí vừa xóa nếu list đang xem bị xóa.
     if (state.activeListId === listId) {
       const deck = state.dataset?.decks?.find((d) => d.id === deckId);
-      state.activeListId = deck?.lists?.[0]?.id ?? null;
+      const nextIndex = Math.max(0, Math.min(listIndex, (deck?.lists?.length || 1) - 1));
+      state.activeListId = deck?.lists?.[nextIndex]?.id ?? null;
       state.selectedPageIndex = 0;
     }
 
+    persistSelection();
     render();
     setStatus('Đã xóa deck AI thành công.');
   } catch (error) {
     setStatus(error?.message || 'Không xóa được deck AI.');
+  } finally {
+    setExportBusy(false);
+  }
+}
+
+export async function deleteGeneratedLists(deckId, listIds) {
+  return deleteGeneratedListGroups([{ deckId, listIds }]);
+}
+
+export async function deleteGeneratedListGroups(groups) {
+  const groupsToDelete = (groups || [])
+    .map((group) => ({
+      deckId: group?.deckId,
+      listIds: Array.from(new Set(group?.listIds || [])).filter(Boolean),
+    }))
+    .filter((group) => group.deckId && group.listIds.length > 0);
+  const totalToDelete = groupsToDelete.reduce((total, group) => total + group.listIds.length, 0);
+
+  if (totalToDelete === 0) {
+    setStatus('Chưa chọn list AI nào để xóa.');
+    return false;
+  }
+
+  setExportBusy(true);
+  setStatus(`Đang xóa ${totalToDelete} list AI...`);
+  try {
+    const focusIndexByDeck = new Map();
+
+    for (const group of groupsToDelete) {
+      const deckBeforeDelete = state.dataset?.decks?.find((deck) => deck.id === group.deckId);
+      const deleteIndexes = group.listIds
+        .map((id) => deckBeforeDelete?.lists?.findIndex((list) => list.id === id) ?? -1)
+        .filter((index) => index >= 0);
+      focusIndexByDeck.set(group.deckId, deleteIndexes.length > 0 ? Math.min(...deleteIndexes) : 0);
+
+      for (const listId of group.listIds) {
+        const response = await fetch(`/api/decks/${encodeURIComponent(group.deckId)}/lists/${encodeURIComponent(listId)}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok && response.status !== 204) {
+          const message = await response.text();
+          throw new Error(message || `Xóa thất bại: HTTP ${response.status}`);
+        }
+      }
+    }
+
+    if (state.dataset) {
+      for (const group of groupsToDelete) {
+        const deck = state.dataset.decks.find((d) => d.id === group.deckId);
+        if (deck) {
+          deck.lists = deck.lists.filter((list) => !group.listIds.includes(list.id));
+        }
+      }
+    }
+
+    let deck = state.dataset?.decks?.find((d) => d.id === state.activeDeckId);
+    if (!deck) {
+      deck = state.dataset?.decks?.[0] || null;
+      state.activeDeckId = deck?.id ?? null;
+    }
+
+    if (!deck?.lists?.some((list) => list.id === state.activeListId)) {
+      const focusIndex = focusIndexByDeck.get(deck?.id) ?? 0;
+      const nextIndex = Math.max(0, Math.min(focusIndex, (deck?.lists?.length || 1) - 1));
+      state.activeListId = deck?.lists?.[nextIndex]?.id ?? null;
+      state.selectedPageIndex = 0;
+    }
+
+    const list = currentList();
+    if (!list || state.selectedPageIndex >= list.pages.length) {
+      state.selectedPageIndex = 0;
+    }
+
+    persistSelection();
+    render();
+    setStatus(`Đã xóa ${totalToDelete} list AI.`);
+    return true;
+  } catch (error) {
+    setStatus(error?.message || 'Không xóa được các list AI đã chọn.');
+    return false;
   } finally {
     setExportBusy(false);
   }
@@ -135,7 +220,11 @@ export async function loadDataset(statusMessage = 'Đang tải dữ liệu workb
   if (!deck || !deck.lists.some((list) => list.id === state.activeListId)) {
     state.activeListId = deck && deck.lists.length > 0 ? deck.lists[0].id : null;
   }
-  state.selectedPageIndex = 0;
+  const list = currentList();
+  if (!list || state.selectedPageIndex >= list.pages.length) {
+    state.selectedPageIndex = 0;
+  }
+  persistSelection();
   render();
   setStatus(`Đã tải ${dataset.source.totalItems} địa điểm.`);
 }
