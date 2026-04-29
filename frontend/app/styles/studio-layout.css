@@ -1,0 +1,220 @@
+/* Studio workspace redesign */
+:root {
+  --studio-bg: #f3f1ec;
+  --studio-panel: #fffdf8;
+  --studio-panel-soft: #f8f5ee;
+  --studio-ink: #151717;
+  --studio-muted: #667066;
+  --studio-line: rgba(26, 32, 28, 0.11);
+  --studio-pine: #274d3d;
+  --studio-clay: #b85f45;
+  --studio-gold: #b78329;
+  --studio-blue: #385f85;
+  --studio-shadow: 0 18px 46px rgba(38, 45, 39, 0.11);
+}
+
+body {
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--studio-bg);
+  color: var(--studio-ink);
+}
+
+body::before {
+  display: none;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 292px minmax(0, 1fr);
+  gap: 0;
+  height: 100vh;
+  min-height: 0;
+}
+
+.app-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 22px 18px;
+  border-right: 1px solid var(--studio-line);
+  background: #fbfaf6;
+  overflow: hidden;
+}
+
+.brand-block {
+  padding: 4px 4px 18px;
+  border-bottom: 1px solid var(--studio-line);
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 1.55rem;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.brand-copy {
+  margin: 10px 0 0;
+  color: var(--studio-muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.sidebar-section {
+  min-height: 0;
+  padding-top: 18px;
+}
+
+.template-nav-section {
+  flex: 0 0 auto;
+}
+
+.list-nav-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-head,
+.panel-head,
+.studio-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.sidebar-head {
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+
+.sidebar-label,
+.panel-kicker,
+.eyebrow {
+  margin: 0;
+  color: var(--studio-clay);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sidebar-count {
+  color: var(--studio-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.studio-shell {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  padding: 18px;
+  gap: 14px;
+}
+
+.studio-topbar {
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-panel);
+  box-shadow: var(--studio-shadow);
+}
+
+.deck-heading {
+  min-width: 0;
+}
+
+.section-title {
+  margin-top: 4px;
+  font-size: clamp(1.32rem, 2vw, 2rem);
+  letter-spacing: 0;
+}
+
+.deck-subtitle {
+  max-width: 900px;
+  margin: 7px 0 0;
+  color: var(--studio-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.toolbar-actions {
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.toolbar-button {
+  border-color: var(--studio-line);
+  border-radius: 8px;
+  padding: 10px 13px;
+  background: #ffffff;
+  color: var(--studio-ink);
+  font-size: 0.84rem;
+  font-weight: 850;
+  box-shadow: none;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 120ms ease;
+}
+
+.toolbar-button:hover:not(:disabled) {
+  border-color: rgba(39, 77, 61, 0.26);
+  background: #f7faf6;
+  transform: translateY(-1px);
+}
+
+.toolbar-button.primary,
+.toolbar-button.secondary {
+  border-color: transparent;
+  background: var(--studio-pine);
+  color: #fffdf8;
+}
+
+.toolbar-button.danger {
+  border-color: rgba(184, 95, 69, 0.32);
+  background: #fff7f3;
+  color: var(--studio-clay);
+}
+
+.toolbar-button.primary:hover:not(:disabled),
+.toolbar-button.secondary:hover:not(:disabled) {
+  background: #1f4133;
+}
+
+.toolbar-button.danger:hover:not(:disabled) {
+  border-color: rgba(184, 95, 69, 0.5);
+  background: #ffefe9;
+}
+
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-panel-soft);
+}
+
+.status-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--studio-pine);
+}
+
+.status-text {
+  min-height: 0;
+  margin: 0;
+  color: var(--studio-muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+

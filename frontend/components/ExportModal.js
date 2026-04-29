@@ -1,0 +1,75 @@
+﻿import { listIsMain } from '../lib/utils';
+
+export default function ExportModal({ open, dataset, selectedIds, setSelectedIds, busy, onClose, onExport }) {
+  if (!open) return null;
+  const decksWithLists = (dataset?.decks || []).filter((deck) => deck.lists.length > 0);
+  const count = selectedIds.size;
+
+  return (
+    <div id="exportModal" className="modal-overlay" onClick={(event) => event.target.id === 'exportModal' && onClose()}>
+      <div className="modal-card">
+        <div className="modal-head">
+          <div>
+            <p className="panel-kicker">Batch export</p>
+            <h3 className="modal-title">Chọn bộ ảnh để xuất ZIP</h3>
+          </div>
+          <button id="closeExportModalBtn" className="modal-close-btn" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <p className="modal-description">Chọn các list cần xuất. Mỗi list sẽ là một folder bên trong file ZIP.</p>
+          <div id="exportDeckList" className="export-deck-list">
+            {decksWithLists.map((deck) => {
+              const allSelected = deck.lists.every((list) => selectedIds.has(list.id));
+              return (
+                <div key={deck.id} className="export-deck-group" data-deck-id={deck.id}>
+                  <div className="export-group-head">
+                    <h4 className="export-group-title">{deck.navTitle}</h4>
+                    <label className="export-select-all-label">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={(event) => setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          deck.lists.forEach((list) => event.target.checked ? next.add(list.id) : next.delete(list.id));
+                          return next;
+                        })}
+                      />
+                      <span>Chọn tất cả</span>
+                    </label>
+                  </div>
+                  <div className="export-group-lists">
+                    {deck.lists.map((list) => {
+                      const isMain = listIsMain(list);
+                      return (
+                        <label key={list.id} className="export-list-item" data-list-id={list.id}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(list.id)}
+                            onChange={(event) => setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              event.target.checked ? next.add(list.id) : next.delete(list.id);
+                              return next;
+                            })}
+                          />
+                          <div className="export-list-info">
+                            <p className="export-list-title">{list.title}</p>
+                            <p className="export-list-meta">{isMain ? 'Gốc' : 'AI'} · {list.pages.length} trang</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button id="executeBatchExportBtn" className="toolbar-button primary" type="button" disabled={count === 0 || busy} onClick={onExport}>
+            {count > 0 ? `Bắt đầu xuất ${count} list đã chọn` : 'Hãy chọn ít nhất 1 list để xuất'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

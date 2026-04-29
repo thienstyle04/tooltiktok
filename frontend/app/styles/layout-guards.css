@@ -1,0 +1,532 @@
+/* Layout guard: keep preview usable and prevent long titles/images from breaking cards. */
+.story-page {
+  contain: layout paint;
+  isolation: isolate;
+}
+
+.page-cover,
+.page-shell-bg,
+.journey-cover-photo,
+.journey-bg,
+.photomode-cover-bg,
+.grid6-cover-bg {
+  overflow: hidden;
+}
+
+.page-cover img,
+.journey-cover-photo img,
+.photomode-cover-bg img,
+.grid6-cover-bg img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+}
+
+.cover-copy {
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.story-page.has-inline-hashtags .cover-copy {
+  padding: 36px 30px;
+}
+
+.story-page.has-inline-hashtags .cover-script {
+  font-size: 2.5rem;
+}
+
+.story-page.has-inline-hashtags .cover-title {
+  max-width: 100%;
+  font-size: 1.58rem;
+  line-height: 1.02;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.story-page.has-inline-hashtags .cover-subtitle {
+  max-width: 96%;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cover-copy .page-inline-hashtags {
+  max-width: 100%;
+  max-height: 38px;
+}
+
+.page-title,
+.story-page.dense .page-title,
+.story-page.compact .page-title,
+.story-page.compact.crowded .page-title,
+.story-page.itinerary .page-title,
+.story-page.journey4 .page-title,
+.grid6-header-top,
+.grid6-cover-title,
+.journey-cover-title,
+.photomode-cover-title {
+  max-width: 100%;
+  min-width: 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-title,
+.story-page.dense .page-title,
+.story-page.compact .page-title,
+.story-page.compact.crowded .page-title,
+.story-page.itinerary .page-title,
+.story-page.journey4 .page-title,
+.grid6-header-top {
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.story-page.itinerary .page-title,
+.story-page.journey4 .page-title {
+  font-size: 1.12rem;
+  line-height: 1.05;
+}
+
+.story-page.dense .page-title,
+.story-page.compact .page-title,
+.story-page.compact.crowded .page-title {
+  font-size: 1.14rem;
+  line-height: 1.05;
+}
+
+.itinerary-name,
+.journey-time-copy strong,
+.item-name,
+.photomode-name {
+  max-width: 100%;
+  min-width: 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.story-page.itinerary .itinerary-name {
+  font-size: 0.94rem;
+}
+
+.story-page.journey4 .journey-time-copy strong {
+  font-size: 0.8rem;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
+.story-page[data-list-id^="itinerary-4n3d"] { --deck-title-font: "Baloo 2", "Be Vietnam Pro", sans-serif; }
+.story-page[data-list-id^="pov-3-day"] { --deck-title-font: "Trebuchet MS", "Be Vietnam Pro", sans-serif; }
+.story-page[data-list-id^="must-go"] { --deck-title-font: "Segoe UI", "Be Vietnam Pro", sans-serif; }
+.story-page[data-list-id^="first-time"] { --deck-title-font: Verdana, "Be Vietnam Pro", sans-serif; }
+.story-page[data-list-id^="grid-6"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
+.story-page[data-list-id^="grid-8"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
+.story-page[data-list-id^="grid-4"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
+
+.story-page .cover-title,
+.story-page .page-title,
+.story-page .journey-cover-title,
+.story-page .photomode-cover-title,
+.story-page .grid6-cover-title,
+.story-page .grid6-header-top {
+  font-family: var(--deck-title-font, "Be Vietnam Pro", Arial, sans-serif) !important;
+}
+
+.story-page.grid6 .grid6-header-top {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.26;
+  padding-top: 1px;
+}
+
+.story-page.grid6-cover .grid6-cover-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.story-page.grid4-cover .grid6-cover-title {
+  font-size: 2rem;
+}
+
+.story-page.grid8-cover .grid6-cover-title {
+  font-size: 1.86rem;
+  line-height: 1.06;
+}
+
+.story-page.grid8-cover .grid6-cover-subtitle {
+  font-size: 0.78rem;
+  max-width: 88%;
+}
+
+.story-page.grid6-cover .grid6-cover-subtitle {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+@media (max-width: 1240px) {
+  .workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+    align-content: start;
+    scrollbar-gutter: stable both-edges;
+  }
+
+  .preview-panel {
+    min-width: 0;
+    order: 0;
+    grid-row: 1;
+  }
+
+  .right-panel {
+    order: 1;
+    grid-row: 2;
+    min-height: 520px;
+    grid-template-rows: minmax(180px, auto) minmax(320px, auto);
+    overflow: visible;
+  }
+
+  .list-preview-section.active .list-preview-stage,
+  .list-preview-section.active .list-preview-grid {
+    min-height: 438px;
+  }
+
+  .list-preview-section.active .list-preview-grid {
+    flex-wrap: wrap;
+    max-height: 438px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    align-content: flex-start;
+    padding-right: 4px;
+  }
+}
+
+@media (min-width: 981px) and (max-height: 760px) {
+  .workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+    align-content: start;
+  }
+
+  .right-panel {
+    order: 1;
+    grid-row: 2;
+    margin-top: 0;
+    min-height: 500px;
+    overflow: visible;
+  }
+}
+
+/* Preview-first guard: narrow desktop screens must show the deck pages before data tools. */
+@media (max-width: 1240px) {
+  .workspace-grid {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .preview-panel {
+    order: 0;
+    flex: 0 0 auto;
+    min-height: min(620px, 100%);
+  }
+
+  .right-panel {
+    order: 1;
+    flex: 0 0 auto;
+    margin-top: 14px;
+    min-height: 520px;
+  }
+
+  .list-preview-section.active .list-preview-stage,
+  .list-preview-section.active .list-preview-grid {
+    min-height: 390px;
+  }
+
+  .list-preview-section.active .list-preview-grid {
+    flex-wrap: nowrap;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-content: normal;
+  }
+}
+
+@media (min-width: 981px) and (max-height: 760px) {
+  .preview-panel {
+    flex-basis: 100%;
+    min-height: 100%;
+  }
+
+  .page-grid .story-page {
+    zoom: 0.56;
+  }
+
+  .list-preview-section.active .list-preview-stage,
+  .list-preview-section.active .list-preview-grid {
+    min-height: 324px;
+  }
+}
+
+/* Caption-first guard: caption tools stay at the top of the workspace. */
+.workspace-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "caption caption"
+    "preview inspector";
+}
+
+.right-panel {
+  display: contents;
+}
+
+.ai-shell {
+  grid-area: caption;
+  min-height: 0;
+}
+
+.preview-panel {
+  grid-area: preview;
+}
+
+.inspector-shell {
+  grid-area: inspector;
+  min-height: 0;
+}
+
+@media (max-width: 1240px) {
+  .workspace-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ai-shell {
+    order: 0;
+    flex: 0 0 auto;
+  }
+
+  .preview-panel {
+    order: 1;
+    flex: 0 0 auto;
+    min-height: min(620px, 100%);
+  }
+
+  .inspector-shell {
+    order: 2;
+    flex: 0 0 auto;
+    min-height: 360px;
+    margin-top: 14px;
+  }
+
+  .right-panel {
+    display: contents;
+  }
+}
+
+@media (min-width: 981px) and (max-height: 760px) {
+  .preview-panel {
+    flex-basis: min(620px, 100%);
+  }
+}
+
+/* Wheel-scroll guard: let the whole studio move vertically when panels are taller than the viewport. */
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-shell {
+  height: auto;
+  min-height: 100vh;
+}
+
+.studio-shell {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
+  align-content: start;
+}
+
+.workspace-grid {
+  grid-template-rows: auto auto;
+  overflow: visible;
+  align-content: start;
+}
+
+.preview-panel,
+.inspector-shell,
+.ai-shell {
+  overflow: visible;
+}
+
+.workspace-grid .ai-grid,
+.workspace-grid .page-grid,
+.workspace-grid .page-inspector {
+  overflow: visible;
+}
+
+.list-switcher,
+.deck-switcher {
+  overscroll-behavior: auto;
+}
+
+.list-preview-section.active .list-preview-grid {
+  overscroll-behavior: auto;
+}
+
+/* List focus: after selecting a list, keep the workspace to preview + page data only. */
+.workspace-grid.list-focus-mode {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+  grid-template-rows: auto;
+  grid-template-areas: "preview inspector";
+}
+
+.workspace-grid.list-focus-mode .ai-shell {
+  display: none;
+}
+
+.workspace-grid.list-focus-mode.show-caption-tools {
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "caption caption"
+    "preview inspector";
+}
+
+.workspace-grid.list-focus-mode.show-caption-tools .ai-shell {
+  display: flex;
+}
+
+@media (max-width: 1240px) {
+  .workspace-grid.list-focus-mode {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .workspace-grid.list-focus-mode .preview-panel {
+    order: 0;
+  }
+
+  .workspace-grid.list-focus-mode .inspector-shell {
+    order: 1;
+  }
+
+  .workspace-grid.list-focus-mode.show-caption-tools .ai-shell {
+    order: 0;
+  }
+
+  .workspace-grid.list-focus-mode.show-caption-tools .preview-panel {
+    order: 1;
+  }
+
+  .workspace-grid.list-focus-mode.show-caption-tools .inspector-shell {
+    order: 2;
+  }
+}
+
+/* Shared image text guard: keep item titles/descriptions readable across all deck templates. */
+.story-page {
+  --story-image-title-size: 0.68rem;
+  --story-image-title-line-height: 1.06;
+  --story-image-title-lines: 2;
+  --story-image-meta-size: 0.5rem;
+  --story-image-meta-line-height: 1.1;
+  --story-image-meta-lines: 2;
+}
+
+.story-page.grid8,
+.story-page.grid8-page {
+  --story-image-title-size: 0.62rem;
+  --story-image-meta-size: 0.46rem;
+}
+
+.story-page :is(
+  .grid6-name,
+  .grid8-hero-copy h4,
+  .grid8-mini strong,
+  .grid8-cell strong,
+  .story-image-title,
+  .item-name,
+  .itinerary-name,
+  .journey-hero h4,
+  .journey-stop-copy strong,
+  .journey-time-copy strong,
+  .photomode-name
+) {
+  max-width: 100%;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: normal;
+  font-size: var(--story-image-title-size);
+  line-height: var(--story-image-title-line-height);
+  -webkit-line-clamp: var(--story-image-title-lines);
+  line-clamp: var(--story-image-title-lines);
+  -webkit-box-orient: vertical;
+}
+
+.story-page :is(
+  .grid6-address,
+  .grid8-meta,
+  .story-image-meta,
+  .item-meta,
+  .itinerary-detail,
+  .journey-hero p,
+  .journey-stop-copy p,
+  .journey-time-copy p,
+  .photomode-meta
+) {
+  min-width: 0;
+  font-size: var(--story-image-meta-size);
+  line-height: var(--story-image-meta-line-height);
+}
+
+.story-page :is(
+  .grid6-address-text,
+  .grid8-meta span:last-child,
+  .story-image-meta:not(.grid6-address):not(.grid8-meta),
+  .item-meta,
+  .itinerary-detail,
+  .journey-hero p,
+  .journey-stop-copy p,
+  .journey-time-copy p,
+  .photomode-meta
+) {
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-line-clamp: var(--story-image-meta-lines);
+  line-clamp: var(--story-image-meta-lines);
+  -webkit-box-orient: vertical;
+}

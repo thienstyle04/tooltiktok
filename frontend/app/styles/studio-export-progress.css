@@ -1,0 +1,67 @@
+.export-progress {
+  display: grid;
+  gap: 8px;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid rgba(39, 77, 61, 0.18);
+  border-radius: 8px;
+  background: #f6fbf5;
+}
+
+.export-progress.hidden {
+  display: none;
+}
+
+.export-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.export-progress-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--studio-ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.export-progress-percent {
+  flex: 0 0 auto;
+  color: var(--studio-pine);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.export-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(39, 77, 61, 0.12);
+}
+
+.export-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--studio-pine), #6b9b72);
+  transition: width 180ms ease;
+}
+
+.export-progress.failed {
+  border-color: rgba(184, 95, 69, 0.28);
+  background: #fff7f3;
+}
+
+.export-progress.failed .export-progress-bar {
+  background: var(--studio-clay);
+}
+
+.export-progress.failed .export-progress-percent {
+  color: var(--studio-clay);
+}
+

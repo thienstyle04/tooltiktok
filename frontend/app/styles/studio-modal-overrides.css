@@ -1,0 +1,49 @@
+.modal-overlay {
+  background: rgba(21, 23, 23, 0.42);
+  backdrop-filter: blur(8px);
+  padding: 28px;
+}
+
+.modal-card {
+  max-width: 1120px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-panel);
+  box-shadow: 0 30px 90px rgba(24, 28, 24, 0.28);
+}
+
+.modal-head,
+.modal-body,
+.modal-foot {
+  padding-inline: 24px;
+}
+
+.modal-title {
+  margin: 4px 0 0;
+  font-size: 1.28rem;
+}
+
+.modal-close-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 1.35rem;
+}
+
+.export-deck-list {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.export-deck-group,
+.export-list-item {
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.export-group-title {
+  color: var(--studio-pine);
+}
+

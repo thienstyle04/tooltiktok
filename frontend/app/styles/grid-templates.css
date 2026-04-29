@@ -1,0 +1,757 @@
+/* ─── Grid 6 Layout ────────────────────────────────────────────────────────── */
+
+.story-page.grid6 {
+  background: #f7f3ed;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.grid6-header {
+  height: 70px;
+  background: #f0f4f8;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  flex: 0 0 70px;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.grid6-header-top {
+  font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: #2d6a4f;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  margin: 0;
+  line-height: 1.26;
+}
+
+
+.grid6-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: calc(100% - 70px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 2px;
+  background: #fff;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.grid4-body {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.grid8-body {
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+
+.grid6-item {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.grid6-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.grid6-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 40%);
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid6-name {
+  color: #ffcc00;
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-weight: 900;
+  font-size: 0.68rem;
+  line-height: 1.04;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  margin-bottom: 1px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.grid6-address {
+  color: #fff;
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1.06;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.grid6-address-pin {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  color: currentColor;
+}
+
+.grid6-address-pin .photomode-pin-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.grid6-address-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grid4 .grid6-overlay {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 10px;
+  text-align: left;
+}
+
+.grid4 .grid6-name {
+  width: 100%;
+  font-size: 0.64rem;
+  line-height: 1.04;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  text-align: left;
+  margin-bottom: 2px;
+}
+
+.grid4 .grid6-address {
+  width: 100%;
+  justify-content: flex-start;
+  font-size: 0.5rem;
+  text-align: left;
+}
+
+.story-page.grid8 .grid6-header {
+  height: 62px;
+  flex-basis: 62px;
+  padding: 8px 12px 7px;
+  background: #f5efe6;
+}
+
+.story-page.grid8 .grid6-header-top {
+  font-size: 0.84rem;
+  line-height: 1.12;
+}
+
+.grid8 .grid6-overlay {
+  justify-content: flex-end;
+  align-items: flex-start;
+  text-align: left;
+  padding: 7px;
+  background: linear-gradient(to top, rgba(0,0,0,0.74) 0%, rgba(0,0,0,0.34) 42%, transparent 72%);
+}
+
+.grid8 .grid6-name {
+  width: 100%;
+  color: #fff4b8;
+  font-size: 0.62rem;
+  line-height: 1.08;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  margin-bottom: 2px;
+  text-align: left;
+}
+
+.grid8 .grid6-address {
+  width: 100%;
+  justify-content: flex-start;
+  font-size: 0.5rem;
+  line-height: 1.08;
+  text-align: left;
+}
+
+.grid8 .grid6-address-pin {
+  flex-basis: 7px;
+  width: 7px;
+  height: 7px;
+}
+
+/* Grid 8 Magazine Layout */
+.story-page.grid8-page {
+  background: #eef1e8;
+  color: #17221b;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.grid8-page-head {
+  flex: 0 0 82px;
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 13px;
+  background: #16372c;
+  color: #fffaf0;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.grid8-page-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid rgba(255,255,255,0.42);
+  border-radius: 4px;
+  color: #ffcf5d;
+  font-size: 0.54rem;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.grid8-page-title {
+  max-width: 260px;
+  margin: 7px 0 0;
+  color: #fffaf0;
+  font-size: 1.08rem;
+  font-weight: 900;
+  line-height: 1.04;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grid8-page-count {
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  background: #ffcf5d;
+  border-radius: 8px;
+  color: #17221b;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.grid8-magazine {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grid8-hero {
+  position: relative;
+  flex: 0 0 226px;
+  min-height: 226px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #1e2b21;
+}
+
+.grid8-hero img,
+.grid8-mini img,
+.grid8-cover-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.grid8-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.76), rgba(0,0,0,0.18) 54%, transparent);
+}
+
+.grid8-hero-copy {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 1;
+  color: #fff;
+}
+
+.grid8-hero-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 22px;
+  margin-bottom: 6px;
+  background: #ffcf5d;
+  border-radius: 4px;
+  color: #17221b;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.grid8-hero-copy h4 {
+  margin: 0 0 3px;
+  color: #fffaf0;
+  font-size: 1.18rem;
+  font-weight: 900;
+  line-height: 1.02;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.grid8-mini-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.grid8-mini {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 7px;
+  padding: 6px;
+  background: #fffaf0;
+  border: 1px solid rgba(22,55,44,0.12);
+  border-radius: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.grid8-mini:nth-child(7) {
+  grid-column: span 2;
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.grid8-mini img {
+  border-radius: 6px;
+}
+
+.grid8-mini-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.grid8-mini-no {
+  color: #b35b43;
+  font-size: 0.52rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.grid8-mini strong {
+  margin-top: 3px;
+  color: #17221b;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.08;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.grid8-meta {
+  min-width: 0;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: rgba(23,34,27,0.72);
+  font-size: 0.49rem;
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.grid8-hero .grid8-meta {
+  color: rgba(255,255,255,0.88);
+  font-size: 0.62rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.grid8-pin {
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+  color: currentColor;
+}
+
+.grid8-pin .photomode-pin-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.grid8-meta span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.story-page.grid8-cover-page {
+  background: #14251d;
+  overflow: hidden;
+}
+
+.grid8-cover-photo {
+  position: absolute;
+  inset: 0;
+}
+
+.grid8-cover-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(20,37,29,0.18), rgba(20,37,29,0.82)),
+    linear-gradient(115deg, rgba(20,37,29,0.92) 0%, rgba(20,37,29,0.58) 46%, rgba(20,37,29,0.08) 100%);
+}
+
+.grid8-cover-copy {
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  bottom: 34px;
+  z-index: 1;
+  color: #fffaf0;
+}
+
+.grid8-cover-kicker {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid rgba(255,255,255,0.46);
+  border-radius: 4px;
+  color: #ffcf5d;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.grid8-cover-title {
+  margin: 12px 0 0;
+  color: #fffaf0;
+  font-size: 1.72rem;
+  font-weight: 900;
+  line-height: 1.04;
+  text-transform: uppercase;
+  text-shadow: 0 3px 10px rgba(0,0,0,0.45);
+}
+
+.grid8-cover-subtitle {
+  margin: 10px 0 0;
+  color: rgba(255,250,240,0.9);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.22;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.grid8-cover-index {
+  position: absolute;
+  top: 24px;
+  right: 22px;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 28px);
+  gap: 5px;
+}
+
+.grid8-cover-index span {
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  background: rgba(255,250,240,0.9);
+  color: #16372c;
+  font-size: 0.56rem;
+  font-weight: 900;
+}
+
+/* Grid 8 Donut Layout: 8 image cells around a center title cell. */
+.story-page.grid8-page {
+  display: block;
+  padding: 10px;
+  background: #12231c;
+  color: #fffaf0;
+  overflow: hidden;
+}
+
+.grid8-matrix {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.grid8-cell,
+.grid8-center {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.grid8-cell {
+  position: relative;
+  background: #26342b;
+}
+
+.grid8-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.grid8-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, rgba(0,0,0,0.76), rgba(0,0,0,0.18) 48%, transparent 76%),
+    linear-gradient(to bottom, rgba(0,0,0,0.42), transparent 34%);
+}
+
+.grid8-cell-copy {
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 7px;
+  z-index: 1;
+  color: #fffaf0;
+}
+
+.grid8-cell strong {
+  display: -webkit-box;
+  margin: 0;
+  color: #fffaf0;
+  font-size: 0.5rem;
+  font-weight: 900;
+  line-height: 1.05;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.65);
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.grid8-cell .grid8-meta {
+  margin-top: 3px;
+  color: rgba(255,255,255,0.86);
+  font-size: 0.46rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+}
+
+.grid8-center {
+  --grid8-center-image: none;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12px;
+  background: transparent;
+  color: #fffaf0;
+  box-sizing: border-box;
+  border: 1px solid rgba(255,250,240,0.42);
+}
+
+.grid8-center::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--grid8-center-image);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.9;
+  filter: saturate(0.95);
+}
+
+.grid8-center::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(to top, rgba(0,0,0,0.76), rgba(0,0,0,0.2) 54%, transparent),
+    linear-gradient(145deg, rgba(18,35,28,0.88) 0%, rgba(18,35,28,0.52) 60%, rgba(18,35,28,0.18) 100%);
+}
+
+.grid8-center > * {
+  position: relative;
+  z-index: 1;
+}
+
+.grid8-center-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 19px;
+  padding: 0 7px;
+  border-radius: 4px;
+  background: rgba(20,37,29,0.9);
+  color: #fffaf0;
+  font-size: 0.5rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.grid8-center h3 {
+  display: -webkit-box;
+  margin: 10px 0 0;
+  color: #fffaf0;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.72);
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Grid 6 Cover */
+.story-page.grid6-cover {
+  background: #000;
+}
+
+.grid6-cover-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.8;
+}
+
+.grid6-cover-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.grid6-cover-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 40px;
+  background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.4) 100%);
+}
+
+.grid6-cover-header {
+  font-family: "Baloo 2", cursive;
+  font-size: 2rem;
+  color: #ffcc00;
+  font-weight: 800;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.grid6-cover-title {
+  font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
+  font-weight: 900;
+  font-size: 2.1rem;
+  color: #fff;
+  line-height: 1.08;
+  text-transform: uppercase;
+  margin: 0;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.8);
+  max-width: 92%;
+}
+
+.grid6-cover-subtitle {
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-size: 0.84rem;
+  color: #eee;
+  margin-top: 14px;
+  font-weight: 600;
+  max-width: 86%;
+  line-height: 1.24;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+
+/* Keep every generated deck on the readable local Vietnamese font. */
+.story-page,
+.story-page * {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+}
+
+.batch-export-root {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 397px;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.batch-export-root .list-preview-grid {
+  display: block;
+  width: 397px;
+  max-width: none;
+  overflow: visible;
+  padding: 0;
+  scroll-snap-type: none;
+}
+
+.batch-export-root .story-page {
+  flex: 0 0 auto;
+  width: 397px;
+  height: 562px;
+  margin: 0 0 18px;
+  cursor: default;
+  scroll-snap-align: none;
+  transition: none;
+}
+
+.batch-export-root .story-page:hover {
+  transform: none;
+}
+
