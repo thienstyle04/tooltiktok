@@ -1,7 +1,8 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { exportActiveList, exportBatch, exportSelectedPagePng } from '../lib/exportClient';
+import { clearCachedDataset, readCachedDataset, writeCachedDataset } from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
 import { SELECTION_STORAGE_KEY, listIsMain } from '../lib/utils';
 import CaptionTools from './CaptionTools';
@@ -12,13 +13,17 @@ import PreviewPanel from './PreviewPanel';
 import ProgressBar from './ProgressBar';
 import Sidebar from './Sidebar';
 
-export default function DeckStudio() {
-  const [dataset, setDataset] = useState(null);
-  const [activeDeckId, setActiveDeckId] = useState(null);
-  const [activeListId, setActiveListId] = useState(null);
+export default function DeckStudio({ initialDataset = null }) {
+  const initialDeck = initialDataset?.decks?.[0] || null;
+  const initialList = initialDeck?.lists?.[0] || null;
+  const [dataset, setDataset] = useState(initialDataset);
+  const [activeDeckId, setActiveDeckId] = useState(initialDeck?.id || null);
+  const [activeListId, setActiveListId] = useState(initialList?.id || null);
   const [selectedPageIndex, setSelectedPageIndex] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState('Đang tải dữ liệu workbook...');
+  const [status, setStatus] = useState(initialDataset?.source?.totalItems
+    ? `Đã tải ${initialDataset.source.totalItems} địa điểm.`
+    : 'Đang tải dữ liệu workbook...');
   const [captionToolsVisible, setCaptionToolsVisible] = useState(false);
   const [captionTone, setCaptionTone] = useState('lich_trinh_huu_ich');
   const [caption, setCaption] = useState(emptyCaption);
@@ -27,6 +32,8 @@ export default function DeckStudio() {
   const [selectedListsForExport, setSelectedListsForExport] = useState(new Set());
   const [selectedListsForDelete, setSelectedListsForDelete] = useState(new Set());
   const [progress, setProgress] = useState({ visible: false, failed: false, value: 0, label: 'Đang chuẩn bị xuất file...' });
+  const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
+  const selectionHistoryRef = useRef([]);
 
   const activeDeck = useMemo(
     () => dataset?.decks?.find((deck) => deck.id === activeDeckId) || null,
@@ -70,23 +77,24 @@ export default function DeckStudio() {
 
   const applyDataset = useCallback((nextDataset, preferredSelection = {}) => {
     const normalized = normalizeSelection(nextDataset, {
-      activeDeckId,
-      activeListId,
-      selectedPageIndex,
+      ...currentSelectionRef.current,
       ...preferredSelection,
     });
     setDataset(nextDataset);
     setActiveDeckId(normalized.activeDeckId);
     setActiveListId(normalized.activeListId);
     setSelectedPageIndex(normalized.selectedPageIndex);
-  }, [activeDeckId, activeListId, selectedPageIndex]);
+    currentSelectionRef.current = normalized;
+  }, []);
 
-  const loadDataset = useCallback(async (message = 'Đang tải dữ liệu workbook...', preferredSelection = {}, forceRefresh = false) => {
-    setStatus(message);
+  const loadDataset = useCallback(async (message = 'Đang tải dữ liệu workbook...', preferredSelection = {}, forceRefresh = false, options = {}) => {
+    if (!options.silent) setStatus(message);
     const endpoint = forceRefresh ? '/api/guide-data?refresh=1' : '/api/guide-data';
+    if (forceRefresh) clearCachedDataset();
     const response = await fetch(endpoint, { cache: 'no-store' });
     if (!response.ok) throw new Error(`Không tải được dữ liệu: HTTP ${response.status}`);
     const nextDataset = await response.json();
+    writeCachedDataset(nextDataset);
     applyDataset(nextDataset, preferredSelection);
     setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm.`);
     return nextDataset;
@@ -94,19 +102,36 @@ export default function DeckStudio() {
 
   useEffect(() => {
     const stored = readStoredSelection();
+    currentSelectionRef.current = stored;
     setActiveDeckId(stored.activeDeckId);
     setActiveListId(stored.activeListId);
     setSelectedPageIndex(stored.selectedPageIndex);
-    loadDataset('Đang tải dữ liệu workbook...', stored).catch((error) => {
-      console.error(error);
-      setStatus(error.message);
-    });
+
+    const cached = initialDataset ? null : readCachedDataset();
+    if (cached?.dataset) {
+      applyDataset(cached.dataset, stored);
+      setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm). Đang kiểm tra cập nhật nền...`);
+      loadDataset('Đang kiểm tra dữ liệu mới...', {}, false, { silent: true }).catch((error) => {
+        console.error(error);
+        setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được cập nhật mới: ${error.message}`);
+      });
+    } else if (initialDataset) {
+      writeCachedDataset(initialDataset);
+      applyDataset(initialDataset, stored);
+      setStatus(`Đã tải ${initialDataset.source?.totalItems || 0} địa điểm.`);
+    } else {
+      loadDataset('Đang tải dữ liệu workbook...', {}).catch((error) => {
+        console.error(error);
+        setStatus(error.message);
+      });
+    }
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
   }, []);
 
   useEffect(() => {
+    currentSelectionRef.current = { activeDeckId, activeListId, selectedPageIndex };
     try {
       window.localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify({ activeDeckId, activeListId, selectedPageIndex }));
     } catch {
@@ -114,28 +139,60 @@ export default function DeckStudio() {
     }
   }, [activeDeckId, activeListId, selectedPageIndex]);
 
+  const pushSelectionSnapshot = useCallback(() => {
+    if (!activeDeckId && !activeListId) return;
+    const snapshot = { activeDeckId, activeListId, selectedPageIndex };
+    const history = selectionHistoryRef.current;
+    const last = history[history.length - 1];
+    if (
+      last?.activeDeckId === snapshot.activeDeckId
+      && last?.activeListId === snapshot.activeListId
+      && last?.selectedPageIndex === snapshot.selectedPageIndex
+    ) {
+      return;
+    }
+    selectionHistoryRef.current = [...history.slice(-23), snapshot];
+  }, [activeDeckId, activeListId, selectedPageIndex]);
+
+  const restoreSelectionSnapshot = useCallback(() => {
+    const history = selectionHistoryRef.current;
+    const snapshot = history[history.length - 1];
+    if (!snapshot) {
+      setStatus('Chưa có thao tác để hoàn tác.');
+      return;
+    }
+
+    selectionHistoryRef.current = history.slice(0, -1);
+    setActiveDeckId(snapshot.activeDeckId);
+    setActiveListId(snapshot.activeListId);
+    setSelectedPageIndex(snapshot.selectedPageIndex);
+    setCaptionToolsVisible(false);
+    setStatus('Đã hoàn tác về lựa chọn trước đó.');
+  }, []);
+
   const handleDeckSelect = useCallback((deck) => {
+    pushSelectionSnapshot();
     setActiveDeckId(deck.id);
     setActiveListId(deck.lists[0]?.id || null);
     setSelectedPageIndex(0);
     setCaptionToolsVisible(false);
     setStatus(`Đang xem deck: ${deck.navTitle}.`);
-  }, []);
+  }, [pushSelectionSnapshot]);
 
   const handleListSelect = useCallback((list) => {
+    pushSelectionSnapshot();
     setActiveListId(list.id);
     setSelectedPageIndex(0);
     setCaptionToolsVisible(false);
     setStatus(`Đang xem list: ${list.navTitle || list.title}.`);
-  }, []);
+  }, [pushSelectionSnapshot]);
 
-  const handlePageClick = useCallback((event) => {
-    const pageNode = event.target.closest?.('.story-page');
-    if (!pageNode) return;
-    setActiveListId(pageNode.dataset.listId);
-    setSelectedPageIndex(Number(pageNode.dataset.pageIndex) || 0);
-    setStatus(`Đã chọn trang ${(Number(pageNode.dataset.pageIndex) || 0) + 1} để xuất PNG.`);
-  }, []);
+  const handlePageSelect = useCallback((listId, pageIndex) => {
+    pushSelectionSnapshot();
+    setActiveListId(listId);
+    setSelectedPageIndex(Number(pageIndex) || 0);
+    setStatus(`Đã chọn trang ${(Number(pageIndex) || 0) + 1} để xuất PNG.`);
+  }, [pushSelectionSnapshot]);
 
   const copyText = useCallback(async (text, message) => {
     if (!text) {
@@ -253,6 +310,7 @@ export default function DeckStudio() {
       };
       const nextDeck = nextDataset.decks.find((deck) => deck.id === deckId);
       const nextIndex = Math.max(0, Math.min(listIndex, (nextDeck?.lists?.length || 1) - 1));
+      writeCachedDataset(nextDataset);
       applyDataset(nextDataset, {
         activeDeckId: deckId,
         activeListId: activeListId === listId ? nextDeck?.lists?.[nextIndex]?.id : activeListId,
@@ -306,6 +364,7 @@ export default function DeckStudio() {
       const activeDeckAfterDelete = nextDataset.decks.find((deck) => deck.id === activeDeckId) || nextDataset.decks[0] || null;
       const focusIndex = focusIndexByDeck.get(activeDeckAfterDelete?.id) ?? 0;
       const activeListStillExists = activeDeckAfterDelete?.lists?.some((list) => list.id === activeListId);
+      writeCachedDataset(nextDataset);
       applyDataset(nextDataset, {
         activeDeckId: activeDeckAfterDelete?.id,
         activeListId: activeListStillExists ? activeListId : activeDeckAfterDelete?.lists?.[Math.max(0, Math.min(focusIndex, (activeDeckAfterDelete?.lists?.length || 1) - 1))]?.id,
@@ -326,6 +385,58 @@ export default function DeckStudio() {
     await exportBatch({ dataset, selectedListIds: selectedListsForExport }, exportCb);
     setSelectedListsForExport(new Set());
   }, [dataset, exportCb, selectedListsForExport]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      const targetTag = event.target?.tagName?.toLowerCase();
+      const isTyping = targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select' || event.target?.isContentEditable;
+      if (isTyping) return;
+
+      const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && key === 's') {
+        event.preventDefault();
+        if (!busy) {
+          exportSelectedPagePng({ deck: activeDeck, list: activeList, selectedPageIndex }, exportCb);
+        }
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && key === 'z') {
+        event.preventDefault();
+        restoreSelectionSnapshot();
+        return;
+      }
+
+      if (!activeList?.pages?.length || event.ctrlKey || event.metaKey || event.altKey) return;
+
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const nextIndex = Math.max(0, Math.min(activeList.pages.length - 1, selectedPageIndex + direction));
+        if (nextIndex !== selectedPageIndex) {
+          pushSelectionSnapshot();
+          setSelectedPageIndex(nextIndex);
+          setStatus(`Đã chọn trang ${nextIndex + 1}/${activeList.pages.length}.`);
+        }
+      }
+
+      if (event.key === 'Escape' && captionToolsVisible) {
+        setCaptionToolsVisible(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    activeDeck,
+    activeList,
+    busy,
+    captionToolsVisible,
+    exportCb,
+    pushSelectionSnapshot,
+    restoreSelectionSnapshot,
+    selectedPageIndex,
+  ]);
 
   const workspaceClasses = `workspace-grid list-focus-mode ${captionToolsVisible ? 'show-caption-tools' : ''}`;
 
@@ -390,8 +501,9 @@ export default function DeckStudio() {
             deck={activeDeck}
             list={activeList}
             selectedPageIndex={selectedPageIndex}
-            onPageClick={handlePageClick}
+            onPageSelect={handlePageSelect}
             onDeleteList={deleteGeneratedList}
+            loading={!dataset}
           />
 
           <aside className="right-panel">

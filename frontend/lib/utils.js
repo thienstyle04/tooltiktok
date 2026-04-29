@@ -1,4 +1,5 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
+export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v1';
 
 export function escapeHtml(value) {
   return String(value ?? '')

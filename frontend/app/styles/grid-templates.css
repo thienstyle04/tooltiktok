@@ -591,7 +591,8 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  padding: 12px;
+  gap: 5px;
+  padding: 10px;
   background: transparent;
   color: #fffaf0;
   box-sizing: border-box;
@@ -628,28 +629,46 @@
 .grid8-center-chip {
   display: inline-flex;
   align-items: center;
-  height: 19px;
-  padding: 0 7px;
+  max-width: 100%;
+  min-height: 17px;
+  padding: 0 6px;
   border-radius: 4px;
   background: rgba(20,37,29,0.9);
   color: #fffaf0;
-  font-size: 0.5rem;
+  font-size: 0.46rem;
   font-weight: 900;
   line-height: 1;
   text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.grid8-center h3 {
+.grid8-center-title {
   display: -webkit-box;
-  margin: 10px 0 0;
+  margin: 0;
   color: #fffaf0;
-  font-size: 0.78rem;
+  font-size: 0.66rem;
   font-weight: 900;
-  line-height: 1.05;
+  line-height: 1.06;
   text-transform: uppercase;
   text-shadow: 0 1px 4px rgba(0,0,0,0.72);
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.grid8-center-intro {
+  display: -webkit-box;
+  margin: 0;
+  color: rgba(255,250,240,0.9);
+  font-size: 0.42rem;
+  font-weight: 750;
+  line-height: 1.16;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.65);
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

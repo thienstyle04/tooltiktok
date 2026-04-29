@@ -1,20 +1,25 @@
-﻿import { renderCoverPage, renderListPage } from '../lib/pageMarkup';
 import { listIsMain } from '../lib/utils';
+import DeckCanvas from './DeckCanvas';
+import DeckSkeleton from './DeckSkeleton';
 
-function pageHtml(list, page, index, selectedPageIndex) {
-  const raw = page.type === 'cover'
-    ? renderCoverPage(page, index, list.pages.length, list.id, list.captionHashtags || [])
-    : renderListPage(page, index, list.pages.length, list.id, list.captionHashtags || []);
-  return index === selectedPageIndex
-    ? raw.replace('class="story-page', 'class="story-page is-selected')
-    : raw;
-}
+export default function PreviewPanel({ deck, list, selectedPageIndex, onPageSelect, onDeleteList, loading }) {
+  if (loading) {
+    return (
+      <section className="preview-panel">
+        <div className="panel-head">
+          <div>
+            <p className="panel-kicker">Preview deck</p>
+            <h3 className="panel-title">Các trang đang dựng</h3>
+          </div>
+          <p className="panel-note">Đang nạp dữ liệu và ảnh.</p>
+        </div>
+        <div className="page-grid">
+          <DeckSkeleton />
+        </div>
+      </section>
+    );
+  }
 
-function buildListPagesHtml(list, selectedPageIndex) {
-  return list.pages.map((page, index) => pageHtml(list, page, index, selectedPageIndex)).join('');
-}
-
-export default function PreviewPanel({ deck, list, selectedPageIndex, onPageClick, onDeleteList }) {
   if (!deck || !list) {
     return (
       <section className="preview-panel">
@@ -29,7 +34,6 @@ export default function PreviewPanel({ deck, list, selectedPageIndex, onPageClic
   const sectionDescription = list.description || (isMain
     ? 'Bản gốc đang dùng làm layout chuẩn.'
     : 'Bản AI được sinh mới từ caption và đặt bên dưới bản gốc.');
-  const pagesHtml = buildListPagesHtml(list, selectedPageIndex);
 
   return (
     <section className="preview-panel">
@@ -40,7 +44,7 @@ export default function PreviewPanel({ deck, list, selectedPageIndex, onPageClic
         </div>
         <p className="panel-note">Tổng quan theo từng list.</p>
       </div>
-      <div id="pageGrid" className="page-grid" onClick={onPageClick}>
+      <div id="pageGrid" className="page-grid">
         <section className="list-preview-section active" data-list-section-id={list.id}>
           <div className="list-preview-head">
             <div>
@@ -67,14 +71,12 @@ export default function PreviewPanel({ deck, list, selectedPageIndex, onPageClic
                     onDeleteList(deck.id, list.id);
                   }}
                 >
-                  ×
+                  x
                 </button>
               )}
             </div>
           </div>
-          <div className="list-preview-stage">
-            <div className="list-preview-grid" dangerouslySetInnerHTML={{ __html: pagesHtml }} />
-          </div>
+          <DeckCanvas list={list} selectedPageIndex={selectedPageIndex} onPageSelect={onPageSelect} />
         </section>
       </div>
     </section>

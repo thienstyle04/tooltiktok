@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "outDir": "dist",
+    "outDir": "build/dist",
     "rootDir": "src",
     "sourceMap": false
   },
@@ -11,6 +11,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "build"
   ]
 }
