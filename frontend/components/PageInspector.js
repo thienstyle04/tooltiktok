@@ -16,7 +16,7 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
   return (
     <>
       <div className="inspector-summary">
-        {coverImage ? <img className="inspector-thumb" src={coverImage} alt={page.title || list.title} /> : null}
+        {coverImage ? <img className="inspector-thumb" src={coverImage} alt={page.title || list.title} loading="lazy" decoding="async" draggable="false" /> : null}
         <div className="inspector-copy">
           <p className="inspector-eyebrow">{deck.navTitle} · {list.navTitle || list.title}</p>
           <h4>{page.title || list.title}</h4>
@@ -34,7 +34,7 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
           <ul className="inspector-list">
             {items.map((item, index) => (
               <li key={`${item.id || item.name}-${index}`} className="inspector-item rich">
-                <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} />
+                <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" />
                 <span className="inspector-item-copy">
                   <span className="inspector-item-label">{item.label || ''}</span>
                   <span className="inspector-item-name">{item.name}</span>

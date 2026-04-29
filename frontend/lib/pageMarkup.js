@@ -11,6 +11,16 @@ function imageSourceClass(item) {
   return item?.imageSource || (item?.imageMapped ? 'manual' : 'fallback');
 }
 
+function previewImageAttrs() {
+  return 'loading="lazy" decoding="async" fetchpriority="low" draggable="false"';
+}
+
+function renderPreviewImage(src, alt, className = '') {
+  if (!src) return '';
+  const classAttr = className ? ` class="${escapeHtml(className)}"` : '';
+  return `<img${classAttr} src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" ${previewImageAttrs()}>`;
+}
+
 export function pageCounter(index, total) {
   return `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
 }
@@ -42,7 +52,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = []) {
     return `
       <article class="story-page grid8-cover-page" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid8-cover-photo">
-          <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
+          ${renderPreviewImage(page.backgroundImage, page.title)}
         </div>
         <div class="grid8-cover-shade"></div>
         <div class="grid8-cover-copy">
@@ -63,7 +73,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = []) {
     return `
       <article class="story-page grid6-cover${gridVariantClass}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid6-cover-bg">
-          <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
+          ${renderPreviewImage(page.backgroundImage, page.title)}
         </div>
         <div class="grid6-cover-overlay">
            <div class="grid6-cover-header">ĐÀ LẠT</div>
@@ -78,7 +88,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = []) {
     return `
       <article class="story-page journey-cover" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="journey-cover-photo">
-          <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
+          ${renderPreviewImage(page.backgroundImage, page.title)}
         </div>
         <div class="journey-cover-panel">
           <div class="journey-cover-kicker">LỊCH TRÌNH 4N3Đ</div>
@@ -99,7 +109,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = []) {
     return `
       <article class="story-page photomode photomode-cover" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="photomode-cover-bg">
-          <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
+          ${renderPreviewImage(page.backgroundImage, page.title)}
         </div>
         <div class="photomode-cover-copy">
           <h3 class="photomode-cover-title">${escapeHtml(page.title)}</h3>
@@ -114,7 +124,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = []) {
   return `
     <article class="story-page${hashtagClass}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       <div class="page-cover">
-        <img src="${escapeHtml(page.backgroundImage)}" alt="${escapeHtml(page.title)}">
+        ${renderPreviewImage(page.backgroundImage, page.title)}
       </div>
       <div class="cover-copy">
         <div class="cover-script">Da Lat</div>
@@ -129,7 +139,7 @@ export function renderListItems(items) {
   return items.map((item) => `
     <div class="item-row">
       <div class="thumb-block ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
-        <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+        ${renderPreviewImage(item.imageUrl, item.name)}
       </div>
       <div class="item-copy">
         <div class="item-label">${escapeHtml(item.label)}</div>
@@ -210,7 +220,7 @@ function compactGridItemName(value) {
 export function renderPhotomodeItems(items) {
   return items.map((item) => `
     <section class="photomode-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
-      <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+      ${renderPreviewImage(item.imageUrl, item.name)}
       <div class="photomode-copy">
         <div class="photomode-name-row">
           <span class="photomode-pin">${renderPhotomodePin()}</span>
@@ -233,7 +243,7 @@ export function renderGrid6Items(items, { numbered = false, twoDigitNumber = fal
     const itemName = numbered ? `${itemNumber}. ${displayName}` : displayName;
     return `
     <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
-      <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+      ${renderPreviewImage(item.imageUrl, item.name)}
       <div class="grid6-overlay">
         <div class="grid6-name story-image-title">${escapeHtml(itemName)}</div>
         ${renderGridAddress(item.metaPrimary)}
@@ -257,12 +267,12 @@ function renderGrid8Meta(value) {
   `;
 }
 
-export function renderGrid8Items(items, title, chipText, backgroundImage) {
+export function renderGrid8Items(items, title, chipText, backgroundImage, introText = '') {
   if (!Array.isArray(items) || items.length === 0) {
     return '';
   }
-  const centerStyle = backgroundImage
-    ? ` style="--grid8-center-image: url(&quot;${escapeHtml(backgroundImage)}&quot;)"`
+  const centerImageHtml = backgroundImage
+    ? renderPreviewImage(backgroundImage, title || '', 'grid8-center-bg')
     : '';
 
   return `
@@ -270,7 +280,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage) {
       const displayName = compactGridItemName(item.name);
       return `
         <article class="grid8-cell ${escapeHtml(imageSourceClass(item))}">
-          <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+          ${renderPreviewImage(item.imageUrl, item.name)}
           <div class="grid8-cell-copy">
             <strong class="story-image-title">${escapeHtml(displayName)}</strong>
             ${renderGrid8Meta(item.metaPrimary)}
@@ -278,15 +288,17 @@ export function renderGrid8Items(items, title, chipText, backgroundImage) {
         </article>
       `;
     }).join('')}
-    <article class="grid8-center"${centerStyle}>
+    <article class="grid8-center">
+      ${centerImageHtml}
       <span class="grid8-center-chip">${escapeHtml(chipText || 'List')}</span>
-      <h3>${escapeHtml(title || '')}</h3>
+      <h3 class="grid8-center-title">${escapeHtml(title || '')}</h3>
+      ${introText ? `<p class="grid8-center-intro">${escapeHtml(introText)}</p>` : ''}
     </article>
     ${items.slice(4, 8).map((item) => {
         const displayName = compactGridItemName(item.name);
         return `
           <article class="grid8-cell ${escapeHtml(imageSourceClass(item))}">
-            <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+            ${renderPreviewImage(item.imageUrl, item.name)}
             <div class="grid8-cell-copy">
               <strong class="story-image-title">${escapeHtml(displayName)}</strong>
               ${renderGrid8Meta(item.metaPrimary)}
@@ -301,7 +313,7 @@ export function renderItineraryItems(items) {
   return items.map((item) => `
     <div class="item-row itinerary-row">
       <div class="thumb-block itinerary-thumb ${item.imageSource || (item.imageMapped ? 'manual' : 'fallback')}">
-        <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+        ${renderPreviewImage(item.imageUrl, item.name)}
       </div>
       <div class="item-copy itinerary-copy">
         <div class="itinerary-topline">
@@ -326,7 +338,7 @@ export function renderJourney4N3DItems(items) {
       ${items.map((item) => `
         <article class="journey-time-row ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
           <div class="journey-stop-thumb">
-            <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">
+            ${renderPreviewImage(item.imageUrl, item.name)}
           </div>
           <div class="journey-time-copy">
             <strong class="story-image-title">${escapeHtml(item.name)}</strong>
@@ -365,7 +377,7 @@ export function renderListPage(page, index, total, listId, hashtags = []) {
     return `
       <article class="story-page grid8-page" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage)}
+          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, page.subtitle)}
         </div>
       </article>
     `;
@@ -398,7 +410,7 @@ export function renderListPage(page, index, total, listId, hashtags = []) {
     const dayNumber = String(Math.max(index, 1)).padStart(2, '0');
     return `
       <article class="story-page journey4 journey-page-${dayNumber}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
-        <div class="journey-bg" style="background-image: url('${escapeHtml(page.backgroundImage)}');"></div>
+        <div class="journey-bg">${renderPreviewImage(page.backgroundImage, page.title)}</div>
         <div class="journey-day-badge">${escapeHtml(page.chipText)}</div>
         <div class="journey-card">
           <div class="journey-title-block">
@@ -426,7 +438,7 @@ export function renderListPage(page, index, total, listId, hashtags = []) {
     : renderListItems(page.items);
   return `
     <article class="story-page${variantClass}${crowdedClass}${hashtagClass}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
-      <div class="page-shell-bg" style="background-image: url('${escapeHtml(page.backgroundImage)}');"></div>
+      <div class="page-shell-bg">${renderPreviewImage(page.backgroundImage, page.title)}</div>
       <div class="page-card">
         <div class="page-chip chip-${escapeHtml(page.chipTone)}">${escapeHtml(page.chipText)}</div>
         <h3 class="page-title">${escapeHtml(page.title)}</h3>

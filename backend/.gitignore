@@ -1,9 +1,22 @@
 
-# Ignore temp files
-.temp/
-.tmp-*
-
+# Dependencies
+node_modules/
 
 # Environment files
 .env
+
+# Generated build output
+dist/
+build/dist/
+
+# Runtime/temp files
+.temp/
+.tmp-*
+*.log
+
+# Local scratch artifacts
+scratch/
+
+# Stale local cache snapshots
+dataset-context-cache.json
 

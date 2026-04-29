@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { GuideModule } from './guide/guide.module';
+import { GuideModule } from './modules/guide/guide.module';
 
 @Module({
   imports: [GuideModule],
