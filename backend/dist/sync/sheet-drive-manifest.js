@@ -128,12 +128,13 @@ async function buildSheetDriveManifest(workbookPath) {
             const imageLink = preferredImageLink(row);
             if (!imageLink)
                 continue;
-            const resolvedEntry = await (0, drive_images_1.resolveDriveLinkToEntry)(imageLink, name, address).catch((error) => {
+            const candidateImages = await (0, drive_images_1.resolveDriveLinkToEntries)(imageLink, name, address).catch((error) => {
                 console.warn(`[sync] Bỏ qua ảnh Drive lỗi cho "${name}": ${error instanceof Error ? error.message : String(error)}`);
-                return null;
+                return [];
             });
-            if (!resolvedEntry)
+            if (candidateImages.length === 0)
                 continue;
+            const resolvedEntry = candidateImages[0];
             const key = (0, image_resolver_1.itemMappingKey)(sectionKey, name, address);
             items[key] = {
                 key,
@@ -143,6 +144,7 @@ async function buildSheetDriveManifest(workbookPath) {
                 sourceLink: imageLink,
                 fileId: resolvedEntry.fileId,
                 fileName: resolvedEntry.fileName,
+                candidateImages,
             };
         }
     }

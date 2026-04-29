@@ -73,7 +73,7 @@ export class GuideService {
   // ─── In-memory caches ──────────────────────────────────────────────────────
   private datasetContextCache: DatasetBuildContext | null = null;
   private datasetContextCacheTime = 0;
-  private readonly DATASET_CACHE_TTL_MS = 0; // Tắt cache tạm thời để debug
+  private readonly DATASET_CACHE_TTL_MS = 5 * 60 * 1000; // 5 phút
 
   private imageLibraryEntriesCache: ImageLibraryFolderEntry[] | null = null;
   private imageLibraryEntriesCacheTime = 0;
@@ -130,6 +130,7 @@ export class GuideService {
       '.js': 'application/javascript; charset=utf-8',
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
+      '.jfif': 'image/jpeg',
       '.png': 'image/png',
       '.svg': 'image/svg+xml',
       '.ttf': 'font/ttf',
@@ -173,8 +174,11 @@ export class GuideService {
 
   // ─── Dataset ──────────────────────────────────────────────────────────────
 
-  getDataset(): GuideDataset {
+  getDataset(options: { refresh?: boolean } = {}): GuideDataset {
     this.triggerBackgroundSync();
+    if (options.refresh) {
+      this.invalidateDatasetCache();
+    }
     const context = this.buildDatasetContext();
     return {
       generatedAt: new Date().toISOString(),
@@ -545,12 +549,21 @@ export class GuideService {
     const price = firstValue(row, 'gia');
     const mappingKey = itemMappingKey(sectionKey, name, address);
     const sheetDriveEntry = sheetDriveManifest.items[mappingKey];
+    const sheetDriveCandidateUrls = sheetDriveEntry
+      ? (sheetDriveEntry.candidateImages && sheetDriveEntry.candidateImages.length > 0
+          ? sheetDriveEntry.candidateImages
+          : [{ fileId: sheetDriveEntry.fileId, fileName: sheetDriveEntry.fileName, viewUrl: '' }]
+        )
+          .filter((entry) => entry.fileId)
+          .map((entry) => getDriveImageProxyUrl(entry.fileId))
+      : [];
     const resolvedImage = sheetDriveEntry
       ? {
-          imageUrl: getDriveImageProxyUrl(sheetDriveEntry.fileId),
+          imageUrl: sheetDriveCandidateUrls[0] || getDriveImageProxyUrl(sheetDriveEntry.fileId),
           imageMapped: true,
           imageMappingKey: mappingKey,
           imageSource: 'manual' as const,
+          candidateImageUrls: sheetDriveCandidateUrls,
         }
       : resolveMappedImage(
           sectionKey, placeType || SECTION_CONFIG[sectionKey].title, name, address,

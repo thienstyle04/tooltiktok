@@ -41,6 +41,16 @@ const path = __importStar(require("node:path"));
 exports.DALAT_FNB_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1-ECVLtuySSlCO5AShcJle1uP9j8XCA4l/edit?gid=1236724598#gid=1236724598';
 exports.DALAT_FNB_EXPORT_URL = 'https://docs.google.com/spreadsheets/d/1-ECVLtuySSlCO5AShcJle1uP9j8XCA4l/export?format=xlsx';
 exports.PREFERRED_WORKBOOK_NAME = 'F&B ĐÀ LẠT.xlsx';
+const SHEET_FETCH_TIMEOUT_MS = 30_000;
+function createTimeoutSignal(ms) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ms);
+    timeout.unref?.();
+    return {
+        signal: controller.signal,
+        cancel: () => clearTimeout(timeout),
+    };
+}
 function listWorkbookPaths(workspaceRoot) {
     return fs
         .readdirSync(workspaceRoot)
@@ -61,12 +71,14 @@ function findWorkbookPath(workspaceRoot) {
         .sort((left, right) => right.mtimeMs - left.mtimeMs || left.filePath.localeCompare(right.filePath, 'vi'))[0]?.filePath ?? null;
 }
 async function syncWorkbookFromSheet(workspaceRoot) {
+    const timeout = createTimeoutSignal(SHEET_FETCH_TIMEOUT_MS);
     const response = await fetch(exports.DALAT_FNB_EXPORT_URL, {
         headers: {
             Referer: exports.DALAT_FNB_SHEET_URL,
             'User-Agent': 'Codex Workbook Sync',
         },
-    });
+        signal: timeout.signal,
+    }).finally(timeout.cancel);
     if (!response.ok) {
         throw new Error(`Không tải được workbook từ Google Sheet. HTTP ${response.status}`);
     }

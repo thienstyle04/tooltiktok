@@ -1,6 +1,7 @@
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 5 * 60 * 1000;
+const DRIVE_FETCH_TIMEOUT_MS = 15_000;
 
 const folderEntriesCache = new Map<string, { expiresAt: number; entries: DriveFolderEntry[] }>();
 const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFileAsset }>();
@@ -98,6 +99,16 @@ function escapeSvgText(value: string): string {
     .replaceAll('"', '&quot;');
 }
 
+function createTimeoutSignal(ms: number): { signal: AbortSignal; cancel: () => void } {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ms);
+  timeout.unref?.();
+  return {
+    signal: controller.signal,
+    cancel: () => clearTimeout(timeout),
+  };
+}
+
 function createDriveFallbackAsset(fileId: string): DriveFileAsset {
   const safeFileId = escapeSvgText(fileId);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
@@ -169,13 +180,15 @@ export function getDriveImageProxyUrl(fileId: string): string {
 }
 
 async function fetchText(url: string): Promise<string> {
+  const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
   const response = await fetch(url, {
     headers: {
       Referer: 'https://drive.google.com/',
       'User-Agent': 'Codex Drive Folder Reader',
     },
     redirect: 'follow',
-  });
+    signal: timeout.signal,
+  }).finally(timeout.cancel);
   if (!response.ok) {
     throw new Error(`Không tải được nội dung Drive. HTTP ${response.status}`);
   }
@@ -211,20 +224,24 @@ export async function listDriveFolderEntries(folderId: string): Promise<DriveFol
 }
 
 export async function resolveDriveLinkToEntry(link: string, placeName: string, address: string): Promise<DriveFolderEntry | null> {
+  return (await resolveDriveLinkToEntries(link, placeName, address))[0] ?? null;
+}
+
+export async function resolveDriveLinkToEntries(link: string, placeName: string, address: string): Promise<DriveFolderEntry[]> {
   const directFileId = extractDriveFileId(link);
   if (directFileId) {
-    return {
+    return [{
       fileId: directFileId,
       fileName: '',
       viewUrl: getDriveFileViewUrl(directFileId),
-    };
+    }];
   }
 
   const folderId = extractDriveFolderId(link);
-  if (!folderId) return null;
+  if (!folderId) return [];
 
   const entries = await listDriveFolderEntries(folderId);
-  if (entries.length === 0) return null;
+  if (entries.length === 0) return [];
 
   const imageEntries = entries.filter((entry) => looksLikeImageName(entry.fileName));
   const candidates = imageEntries.length > 0 ? imageEntries : entries;
@@ -235,7 +252,9 @@ export async function resolveDriveLinkToEntry(link: string, placeName: string, a
       index,
       score: scoreDriveEntry(entry, placeName, address),
     }))
-    .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.entry ?? null;
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .slice(0, 6)
+    .map((candidate) => candidate.entry);
 }
 
 export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsset> {
@@ -254,13 +273,15 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
   for (const url of candidateUrls) {
     let response: Response;
     try {
+      const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
       response = await fetch(url, {
         headers: {
           Referer: 'https://drive.google.com/',
           'User-Agent': 'Codex Drive Image Proxy',
         },
         redirect: 'follow',
-      });
+        signal: timeout.signal,
+      }).finally(timeout.cancel);
     } catch {
       continue;
     }
