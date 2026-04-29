@@ -5,9 +5,9 @@
   "description": "NestJS tool for generating Da Lat TikTok carousel previews from the local workbook and image sets.",
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",
-    "bundle": "tsc -p tsconfig.build.json && esbuild dist/main.js --bundle --platform=node --format=cjs --target=node24 --external:@nestjs/microservices --external:@nestjs/microservices/* --external:@nestjs/websockets --external:@nestjs/websockets/* --external:class-validator --external:class-transformer --outfile=dalat_tiktok_carousel_tool_standalone.cjs",
-    "sync:sheet": "ts-node src/sync/sync-sheet.ts",
-    "start": "node dalat_tiktok_carousel_tool_standalone.cjs",
+    "bundle": "tsc -p tsconfig.build.json && esbuild build/dist/main.js --bundle --platform=node --format=cjs --target=node24 --external:@nestjs/microservices --external:@nestjs/microservices/* --external:@nestjs/websockets --external:@nestjs/websockets/* --external:class-validator --external:class-transformer --outfile=build/dalat_tiktok_carousel_tool_standalone.cjs",
+    "sync:sheet": "ts-node src/modules/guide/sync/sync-sheet.ts",
+    "start": "node build/dalat_tiktok_carousel_tool_standalone.cjs",
     "start:dev": "ts-node src/main.ts"
   },
   "dependencies": {

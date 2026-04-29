@@ -14,14 +14,26 @@
 }
 
 .page-cover img,
+.page-shell-bg img,
 .journey-cover-photo img,
+.journey-bg img,
 .photomode-cover-bg img,
-.grid6-cover-bg img {
+.grid6-cover-bg img,
+.grid8-center-bg {
   width: 100%;
   height: 100%;
   max-width: 100%;
   max-height: 100%;
   object-fit: cover;
+  display: block;
+}
+
+.grid8-center > .grid8-center-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.9;
+  filter: saturate(0.95);
 }
 
 .cover-copy {
@@ -140,6 +152,7 @@
 .story-page .journey-cover-title,
 .story-page .photomode-cover-title,
 .story-page .grid6-cover-title,
+.story-page .grid8-center-title,
 .story-page .grid6-header-top {
   font-family: var(--deck-title-font, "Be Vietnam Pro", Arial, sans-serif) !important;
 }
@@ -529,4 +542,25 @@ body {
   -webkit-line-clamp: var(--story-image-meta-lines);
   line-clamp: var(--story-image-meta-lines);
   -webkit-box-orient: vertical;
+}
+
+/* Deck canvas guard: preview uses a wrap grid so all pages stay visible without horizontal mouse travel. */
+.list-preview-section.active .list-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(292px, 1fr));
+  gap: 16px;
+  align-items: flex-start;
+  overflow: visible;
+  padding-bottom: 22px;
+  scroll-snap-type: none;
+}
+
+@media (max-width: 1240px) {
+  .list-preview-section.active .list-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(292px, 1fr));
+    flex-wrap: initial;
+    max-height: none;
+    overflow: visible;
+  }
 }
