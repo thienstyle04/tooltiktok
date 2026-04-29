@@ -1,0 +1,131 @@
+@media (max-width: 760px) {
+  .page-shell {
+    padding: 16px 12px 42px;
+  }
+
+  .deck-shell {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .deck-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-actions {
+    width: 100%;
+  }
+
+  .ai-block-head {
+    flex-direction: column;
+  }
+
+  .list-preview-head {
+    flex-direction: column;
+  }
+
+  .list-preview-meta {
+    align-self: flex-start;
+  }
+
+  .story-page {
+    flex-basis: 340px;
+    width: 340px;
+    height: 481px;
+  }
+
+  .story-page.photomode .photomode-name {
+    font-size: 1.5rem;
+  }
+
+  .story-page.photomode .photomode-meta {
+    margin-left: 34px;
+    font-size: 0.6rem;
+  }
+
+  .story-page.photomode-cover .photomode-cover-title {
+    font-size: 2.8rem;
+  }
+
+  .story-page.photomode-cover .photomode-cover-subtitle {
+    font-size: 0.88rem;
+  }
+
+  .journey-cover-photo {
+    bottom: 0;
+  }
+
+  .journey-cover-panel {
+    left: 24px;
+    right: 24px;
+    bottom: 28px;
+    padding: 22px 20px 18px;
+  }
+
+  .journey-cover-title {
+    font-size: 2.2rem;
+  }
+
+  .journey-cover-subtitle {
+    font-size: 0.72rem;
+  }
+
+  .journey-card {
+    inset: 50px 18px 18px;
+    padding: 14px 18px 12px;
+  }
+
+  .story-page.journey4 .page-title {
+    font-size: 1.32rem;
+  }
+
+  .story-page.journey4 .page-lead {
+    font-size: 0.66rem;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .journey-stop-thumb {
+    width: 52px;
+    height: 48px;
+  }
+
+  .journey-time-row {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 11px;
+  }
+
+  .journey-timeline::before {
+    left: 46px;
+  }
+
+  .journey-time-copy strong {
+    font-size: 0.78rem;
+  }
+
+  .journey-time-copy p {
+    font-size: 0.66rem;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .page-card {
+    inset: 16px;
+    padding: 16px 16px 52px;
+  }
+
+  .page-title {
+    font-size: 1.72rem;
+  }
+
+  .item-name {
+    font-size: 1.18rem;
+  }
+}
+

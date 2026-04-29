@@ -122,7 +122,7 @@ function photomodeServiceLabel(item: GuideItem): string {
 function photomodePageItemWithResolver(
   item: GuideItem,
   label: string,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem {
   const resolvedImage = resolveImage(item);
   return {
@@ -135,6 +135,7 @@ function photomodePageItemWithResolver(
     imageMapped: resolvedImage.imageMapped,
     imageSource: resolvedImage.imageSource,
     imageNote: resolvedImage.imageNote,
+    candidateImageUrls: resolvedImage.candidateImageUrls,
     isPartner: item.isPartner,
     rawName: item.name,
   };
@@ -145,7 +146,7 @@ function photomodePageItemWithResolver(
 export function pageItemWithResolver(
   item: GuideItem,
   label: string,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem {
   const [metaPrimary, metaSecondary] = metaText(item);
   const resolvedImage = resolveImage(item);
@@ -159,6 +160,7 @@ export function pageItemWithResolver(
     imageMapped: resolvedImage.imageMapped,
     imageSource: resolvedImage.imageSource,
     imageNote: resolvedImage.imageNote,
+    candidateImageUrls: resolvedImage.candidateImageUrls,
     isPartner: item.isPartner,
     rawName: item.name,
   };
@@ -168,7 +170,7 @@ export function schedulePageItemWithResolver(
   time: string,
   prefix: string,
   item: GuideItem,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem {
   const [metaPrimary, metaSecondary] = metaText(item);
   const resolvedImage = resolveImage(item);
@@ -182,17 +184,88 @@ export function schedulePageItemWithResolver(
     imageMapped: resolvedImage.imageMapped,
     imageSource: resolvedImage.imageSource,
     imageNote: resolvedImage.imageNote,
+    candidateImageUrls: resolvedImage.candidateImageUrls,
     isPartner: item.isPartner,
     rawName: item.name,
   };
 }
 
+const HEADLINE_ACCENT_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bKHONG\s+THE\s+BO\s+QUA\b/gi, 'không thể bỏ qua'],
+  [/\bSANG\s+MO\s+SOM\b/gi, 'sáng mơ sớm'],
+  [/\bKHO\s+BAU\s+AN\s+GIAU\b/gi, 'kho báu ẩn giấu'],
+  [/\bCHOT\s+DON\b/gi, 'chốt đơn'],
+  [/\bDANH\s+THUC\b/gi, 'đánh thức'],
+  [/\bDANH\s+SACH\b/gi, 'danh sách'],
+  [/\bDIA\s+DIEM\b/gi, 'địa điểm'],
+  [/\bDIEM\b/gi, 'điểm'],
+  [/\bGOI\s+GON\b/gi, 'gói gọn'],
+  [/\bGON\s+VI\b/gi, 'gọn ví'],
+  [/\bDICH\s+VU\b/gi, 'dịch vụ'],
+  [/\bDOI\s+TAC\b/gi, 'đối tác'],
+  [/\bTHUE\s+XE\b/gi, 'thuê xe'],
+  [/\bXE\s+MAY\b/gi, 'xe máy'],
+  [/\bDAT\s+XE\b/gi, 'đặt xe'],
+  [/\bAN\s+SANG\b/gi, 'ăn sáng'],
+  [/\bDI\s+DA\s+LAT\b/gi, 'đi Đà Lạt'],
+  [/\bDA\s+LAT\b/gi, 'Đà Lạt'],
+  [/\bDALAT\b/gi, 'Đà Lạt'],
+  [/\bGOI\s+Y\b/gi, 'gợi ý'],
+  [/\bQUAN\s+CAFE\b/gi, 'quán cafe'],
+  [/\bBUC\s+ANH\b/gi, 'bức ảnh'],
+  [/\bSU\s+THAT\b/gi, 'sự thật'],
+  [/\bBAT\s+NGO\b/gi, 'bất ngờ'],
+  [/\bCHAY\s+HET\s+MINH\b/gi, 'cháy hết mình'],
+  [/\bPHA\s+DAO\b/gi, 'phá đảo'],
+  [/\bGOM\s+TRON\b/gi, 'gom trọn'],
+  [/\bLOP\s+SUONG\b/gi, 'lớp sương'],
+  [/\bCAM\s+NANG\b/gi, 'cẩm nang'],
+  [/\bCHAM\s+SAU\b/gi, 'chạm sâu'],
+  [/\bHET\s+NAC\b/gi, 'hết nấc'],
+  [/\bNHIP\s+DIEU\b/gi, 'nhịp điệu'],
+  [/\bDIU\s+DANG\b/gi, 'dịu dàng'],
+  [/\bDI\s+CHAM\b/gi, 'đi chậm'],
+  [/\bSIEU\s+CHILL\b/gi, 'siêu chill'],
+  [/\bCHAM\s+MA\s+NGAM\b/gi, 'chậm mà ngấm'],
+  [/\bMOI\s+GHIEN\b/gi, 'mới ghiền'],
+  [/\bMA\s+GHIEN\b/gi, 'mà ghiền'],
+  [/\bDEP\b/gi, 'đẹp'],
+  [/\bLUU\b/gi, 'lưu'],
+  [/\bTHI\b/gi, 'thì'],
+  [/\bNAY\b/gi, 'này'],
+];
+
+function matchHeadlineCase(source: string, replacement: string): string {
+  const letters = (source.match(/[A-Za-zÀ-ỹĐđ]/g) || []).join('');
+  if (!letters) return replacement;
+  const upper = letters.toLocaleUpperCase('vi-VN');
+  const lower = letters.toLocaleLowerCase('vi-VN');
+  if (letters === upper && letters !== lower) return replacement.toLocaleUpperCase('vi-VN');
+  if (letters === lower && letters !== upper) return replacement.toLocaleLowerCase('vi-VN');
+  return replacement;
+}
+
+function restoreVietnameseHeadlineAccents(value: string): string {
+  let result = value
+    .replace(/\b(\d+\s*N\s*\d+)(D)\b/gi, (_match, prefix: string, day: string) => `${prefix}${matchHeadlineCase(day, 'Đ')}`)
+    .replace(/\b(\d+\s*)(NGAY)\b/gi, (_match, prefix: string, word: string) => `${prefix}${matchHeadlineCase(word, 'ngày')}`)
+    .replace(/\b(NGAY)(\s+\d+)\b/gi, (_match, word: string, suffix: string) => `${matchHeadlineCase(word, 'ngày')}${suffix}`)
+    .replace(/\b(\d+\s*)(ANH)\b/gi, (_match, prefix: string, word: string) => `${prefix}${matchHeadlineCase(word, 'ảnh')}`)
+    .replace(/\b(DEM)\b/gi, (match) => matchHeadlineCase(match, 'đêm'));
+
+  for (const [pattern, replacement] of HEADLINE_ACCENT_REPLACEMENTS) {
+    result = result.replace(pattern, (match) => matchHeadlineCase(match, replacement));
+  }
+
+  return result.normalize('NFC');
+}
+
 export function buildCoverPage(title: string, subtitle: string, backgroundImage: string): CoverPage {
-  return { type: 'cover', title, subtitle, backgroundImage };
+  return { type: 'cover', title: sanitizeDeckHeadline(title), subtitle, backgroundImage };
 }
 
 export function sanitizeDeckHeadline(value: string): string {
-  return String(value || '')
+  return restoreVietnameseHeadlineAccents(String(value || ''))
     .replace(/\bFREE\b/g, 'ĐẸP')
     .replace(/\bFree\b/g, 'Đẹp')
     .replace(/\bfree\b/g, 'đẹp')
@@ -287,17 +360,44 @@ function freshForPicker(items: GuideItem[], pick: PickFn): GuideItem[] {
   return pick.isUsed ? items.filter((item) => !pick.isUsed?.(item)) : items;
 }
 
+function pickWithUsedFallback(items: GuideItem[], count: number, seed: string, pick: PickFn): GuideItem[] {
+  const pool = dedupeItems(items);
+  if (count <= 0 || pool.length === 0) return [];
+
+  const selected: GuideItem[] = [];
+  const selectedIds = new Set<string>();
+  const addItems = (nextItems: GuideItem[]): void => {
+    for (const item of nextItems) {
+      if (hasItemKey(selectedIds, item)) continue;
+      selected.push(item);
+      markItemKey(selectedIds, item);
+      if (selected.length >= count) return;
+    }
+  };
+
+  const freshPool = freshForPicker(pool, pick);
+  if (freshPool.length > 0) {
+    addItems(pick(freshPool, Math.min(count, freshPool.length), `${seed}-fresh`));
+  }
+
+  if (selected.length < count) {
+    addItems(pick(
+      pool.filter((item) => !hasItemKey(selectedIds, item)),
+      count - selected.length,
+      `${seed}-used-fallback`,
+    ));
+  }
+
+  return selected.slice(0, count);
+}
+
 export function pickMixedItemsWithPartnerQuota(items: GuideItem[], count: number, seed: string, pick: PickFn): GuideItem[] {
-  const partnerPool = items.filter((i) => i.isPartner);
-  const regularPool = items.filter((i) => !i.isPartner);
-  const freshPartnerPool = freshForPicker(partnerPool, pick);
-  const freshRegularPool = freshForPicker(regularPool, pick);
+  const partnerPool = dedupeItems(items.filter((i) => i.isPartner));
+  const regularPool = dedupeItems(items.filter((i) => !i.isPartner));
+  const targetPartnerCount = Math.min(3, count, partnerPool.length);
 
-  const targetPartnerCount = Math.min(3, freshPartnerPool.length);
-  const targetRegularCount = count - targetPartnerCount;
-
-  const selectedPartners = pick(freshPartnerPool, targetPartnerCount, `${seed}-partners`);
-  const selectedRegulars = pick(freshRegularPool.length > 0 ? freshRegularPool : regularPool, targetRegularCount, `${seed}-regular`);
+  const selectedPartners = pickWithUsedFallback(partnerPool, targetPartnerCount, `${seed}-partners`, pick);
+  const selectedRegulars = pickWithUsedFallback(regularPool, count - selectedPartners.length, `${seed}-regular`, pick);
 
   const selected = [...selectedPartners, ...selectedRegulars];
   if (selected.length < count) {
@@ -313,16 +413,12 @@ export function pickMixedItemsWithPartnerAndRegularPools(
   seed: string,
   pick: PickFn,
 ): GuideItem[] {
-  const partnerPool = partnerItems.filter((i) => i.isPartner);
-  const regularPool = regularItems.filter((i) => !i.isPartner);
-  const freshPartnerPool = freshForPicker(partnerPool, pick);
-  const freshRegularPool = freshForPicker(regularPool, pick);
+  const partnerPool = dedupeItems(partnerItems.filter((i) => i.isPartner));
+  const regularPool = dedupeItems(regularItems.filter((i) => !i.isPartner));
+  const targetPartnerCount = Math.min(3, count, partnerPool.length);
 
-  const targetPartnerCount = Math.min(3, freshPartnerPool.length);
-  const targetRegularCount = count - targetPartnerCount;
-
-  const selectedPartners = pick(freshPartnerPool, targetPartnerCount, `${seed}-partners`);
-  const selectedRegulars = pick(freshRegularPool.length > 0 ? freshRegularPool : regularPool, targetRegularCount, `${seed}-regular`);
+  const selectedPartners = pickWithUsedFallback(partnerPool, targetPartnerCount, `${seed}-partners`, pick);
+  const selectedRegulars = pickWithUsedFallback(regularPool, count - selectedPartners.length, `${seed}-regular`, pick);
 
   const selected = [...selectedPartners, ...selectedRegulars];
   if (selected.length < count) {
@@ -346,7 +442,7 @@ function pickPartnerBalancedItems(
   targetPartnerCount: number,
   seed: string,
   pick: PickFn,
-  allowUsedPartnerFallback = false,
+  allowUsedPartnerFallback = true,
 ): GuideItem[] {
   const primaryPool = dedupeItems(primaryItems);
   const primaryIds = new Set(primaryPool.map((item) => item.id));
@@ -355,10 +451,6 @@ function pickPartnerBalancedItems(
   const primaryRegularPool = primaryPool.filter((i) => !i.isPartner);
   const fallbackPartnerPool = fallbackPool.filter((i) => i.isPartner);
   const fallbackRegularPool = fallbackPool.filter((i) => !i.isPartner);
-  const freshPrimaryPartnerPool = freshForPicker(primaryPartnerPool, pick);
-  const freshPrimaryRegularPool = freshForPicker(primaryRegularPool, pick);
-  const freshFallbackPartnerPool = freshForPicker(fallbackPartnerPool, pick);
-  const freshFallbackRegularPool = freshForPicker(fallbackRegularPool, pick);
   const selected: GuideItem[] = [];
   const selectedIds = new Set<string>();
 
@@ -372,21 +464,17 @@ function pickPartnerBalancedItems(
   };
 
   const partnerCount = Math.min(Math.max(targetPartnerCount, 0), count);
-  const primaryPartnerSource = freshPrimaryPartnerPool.length > 0 || !allowUsedPartnerFallback
-    ? freshPrimaryPartnerPool
-    : primaryPartnerPool;
-  addItems(pick(primaryPartnerSource, Math.min(partnerCount, primaryPartnerSource.length), `${seed}-partners-primary`));
+  const pickPartners = (items: GuideItem[], itemCount: number, itemSeed: string): GuideItem[] =>
+    allowUsedPartnerFallback ? pickWithUsedFallback(items, itemCount, itemSeed, pick) : pick(items, itemCount, itemSeed);
+  addItems(pickPartners(primaryPartnerPool, Math.min(partnerCount, primaryPartnerPool.length), `${seed}-partners-primary`));
   if (selected.length < partnerCount) {
-    const fallbackPartnerSource = freshFallbackPartnerPool.length > 0 || !allowUsedPartnerFallback
-      ? freshFallbackPartnerPool
-      : fallbackPartnerPool;
-    addItems(pick(fallbackPartnerSource, partnerCount - selected.length, `${seed}-partners-fallback`));
+    addItems(pickPartners(fallbackPartnerPool, partnerCount - selected.length, `${seed}-partners-fallback`));
   }
 
   const regularCount = count - selected.length;
-  addItems(pick(freshPrimaryRegularPool.length > 0 ? freshPrimaryRegularPool : primaryRegularPool, regularCount, `${seed}-regular-primary`));
+  addItems(pickWithUsedFallback(primaryRegularPool, regularCount, `${seed}-regular-primary`, pick));
   if (selected.length < count) {
-    addItems(pick(freshFallbackRegularPool.length > 0 ? freshFallbackRegularPool : fallbackRegularPool, count - selected.length, `${seed}-regular-fallback`));
+    addItems(pickWithUsedFallback(fallbackRegularPool, count - selected.length, `${seed}-regular-fallback`, pick));
   }
 
   if (selected.length < count) {
@@ -398,7 +486,8 @@ function pickPartnerBalancedItems(
 
 function pickGrid4ItemsWithPartnerQuota(primaryItems: GuideItem[], fallbackItems: GuideItem[], count: number, seed: string, pick: PickFn): GuideItem[] {
   const partnerCount = primaryItems.filter((i) => i.isPartner).length;
-  const targetPartnerCount = partnerCount === 2 ? 1 : Math.min(2, partnerCount);
+  const combinedPartnerCount = dedupeItems([...primaryItems, ...fallbackItems]).filter((i) => i.isPartner).length;
+  const targetPartnerCount = partnerCount === 2 ? 1 : Math.min(2, combinedPartnerCount);
   return pickPartnerBalancedItems(primaryItems, fallbackItems, count, targetPartnerCount, seed, pick);
 }
 
@@ -452,11 +541,20 @@ function pickSingleContextualItem(preferred: GuideItem[], fallback: GuideItem[],
 function pickItineraryPageItems(
   slots: Array<{ time: string; prefix: string; preferredItems: GuideItem[]; fallbackItems: GuideItem[]; seed: string }>,
   pick: PickFn,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem[] {
   const pageItems: PageItem[] = [];
+  let partnerCount = 0;
   slots.forEach((slot) => {
-    const selected = pickSingleContextualItem(slot.preferredItems, slot.fallbackItems, slot.seed, pick)[0];
+    const pool = dedupeItems([...slot.preferredItems, ...slot.fallbackItems]);
+    const partnerPool = pool.filter((item) => item.isPartner);
+    let selected = partnerCount < 3 && partnerPool.length > 0
+      ? pickWithUsedFallback(partnerPool, 1, `${slot.seed}-partner`, pick)[0]
+      : undefined;
+    if (!selected) {
+      selected = pickSingleContextualItem(slot.preferredItems, slot.fallbackItems, slot.seed, pick)[0];
+    }
+    if (selected?.isPartner) partnerCount += 1;
     if (selected) pageItems.push(schedulePageItemWithResolver(slot.time, slot.prefix, selected, resolveImage));
   });
   return pageItems;
@@ -469,7 +567,7 @@ function pickItineraryListItems(
   seed: string,
   label: string,
   pick: PickFn,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem[] {
   const pools = [...dedupeItems(preferredItems), ...dedupeItems(fallbackItems)];
   return pickMixedItemsWithPartnerQuota(pools, count, seed, pick).map((item) =>
@@ -626,7 +724,7 @@ function pickJourneySlots(
   slotPools: GuideItem[][],
   seed: string,
   pick: PickFn,
-  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   labels: string[]
 ): PageItem[] {
   const selected: Array<{ item: GuideItem; label: string }> = [];
@@ -879,10 +977,10 @@ function buildFirstTimePages(
       pickMixedItemsWithPartnerQuota(pools.cafeItems, 4, `${seedPrefix}-first-cafe-page`, pick).map((i) => pageItemWithResolver(i, 'Cafe', imageResolver)),
       background(`${seedPrefix}-first-cafe-page`), 'dense'),
     buildListPage('Check-in', 'berry', 'Điểm chụp hình nên ghé', 'Một trang tập trung vào check-in và điểm nổi tiếng để người chuẩn bị đi có thể lưu nhanh nhiều chỗ hơn, không chỉ 1-2 điểm.',
-      pick([...pools.checkinItems, ...pools.famousItems], 4, `${seedPrefix}-first-checkin-page`).map((i) => pageItemWithResolver(i, 'Nên ghé', imageResolver)),
+      pickMixedItemsWithPartnerQuota([...pools.checkinItems, ...pools.famousItems], 4, `${seedPrefix}-first-checkin-page`, pick).map((i) => pageItemWithResolver(i, 'Nên ghé', imageResolver)),
       background(`${seedPrefix}-first-checkin-page`), 'dense'),
     buildListPage('Cuối list', 'slate', 'Dịch vụ và chỗ nghỉ cần nhớ', 'Trang chốt tổng hợp các thứ thực dụng: ở đâu, liên hệ gì, mua quà hay thuê xe ở đâu cho gọn, nên mình tăng thêm điểm để tiện chốt nhanh.',
-      pick([...pools.serviceItems, ...pools.stayItems], 4, `${seedPrefix}-first-service-page`).map((i) => pageItemWithResolver(i, 'Cần nhớ', imageResolver)),
+      pickMixedItemsWithPartnerQuota([...pools.serviceItems, ...pools.stayItems], 4, `${seedPrefix}-first-service-page`, pick).map((i) => pageItemWithResolver(i, 'Cần nhớ', imageResolver)),
       background(`${seedPrefix}-first-service-page`), 'dense'),
   ];
 }
@@ -893,19 +991,14 @@ export function pickPhotomodeItemsWithQuota(
   seed: string,
   pick: PickFn,
 ): GuideItem[] {
-  const partnerPool = items.filter((i) => i.isPartner);
-  const regularPool = items.filter((i) => !i.isPartner);
-  const freshPartnerPool = freshForPicker(partnerPool, pick);
-  const freshRegularPool = freshForPicker(regularPool, pick);
+  const partnerPool = dedupeItems(items.filter((i) => i.isPartner));
+  const regularPool = dedupeItems(items.filter((i) => !i.isPartner));
 
   // Tỉ lệ 2/3 đối tác, 1/3 không phải đối tác
-  let targetPartnerCount = Math.floor((count * 2) / 3);
-  if (freshPartnerPool.length < targetPartnerCount) {
-    targetPartnerCount = freshPartnerPool.length;
-  }
+  const targetPartnerCount = Math.min(Math.floor((count * 2) / 3), partnerPool.length);
 
-  const selectedPartners = pick(freshPartnerPool, targetPartnerCount, `${seed}-partners`);
-  const selectedRegulars = pick(freshRegularPool.length > 0 ? freshRegularPool : regularPool, count - selectedPartners.length, `${seed}-regular`);
+  const selectedPartners = pickWithUsedFallback(partnerPool, targetPartnerCount, `${seed}-partners`, pick);
+  const selectedRegulars = pickWithUsedFallback(regularPool, count - selectedPartners.length, `${seed}-regular`, pick);
 
   const combined = [...selectedPartners, ...selectedRegulars];
   if (combined.length < count) {
@@ -920,7 +1013,7 @@ function buildPhotomodeItems(
   count: number,
   seed: string,
   pick: PickFn,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   labelForItem: (item: GuideItem) => string,
 ): PageItem[] {
   const pool = dedupeItems([...preferredItems, ...fallbackItems]);
@@ -938,7 +1031,14 @@ function buildPov3DayPages(
   globalUsedImageUrls?: Set<string>,
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:pov-3-day`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(
+    imageUrls,
+    libraryEntries,
+    `${seedPrefix}:pov-3-day`,
+    mappedImageUrls,
+    globalUsedImageUrls || [],
+    { orientation: 'landscape' },
+  );
   const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const allSpots = dedupeItems([...pools.checkinItems, ...pools.famousItems]);
@@ -1114,7 +1214,7 @@ function buildGridPageItems(
   count: number,
   seed: string,
   pick: PickFn,
-  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   labelForItem: (item: GuideItem) => string,
 ): PageItem[] {
   return pickGridItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick).map((item) =>
@@ -1128,7 +1228,7 @@ function buildGrid8PageItems(
   count: number,
   seed: string,
   pick: PickFn,
-  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote'>,
+  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   labelForItem: (item: GuideItem) => string,
 ): PageItem[] {
   return pickGrid8ItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick).map((item) =>

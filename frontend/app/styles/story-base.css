@@ -1,0 +1,313 @@
+.story-page {
+  position: relative;
+  flex: 0 0 397px;
+  width: 397px;
+  height: 562px;
+  overflow: hidden;
+  border-radius: 28px;
+  background: #ddd5c7;
+  box-shadow: 0 22px 46px rgba(61, 47, 31, 0.15);
+  scroll-snap-align: start;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, outline-color 180ms ease;
+}
+
+.story-page:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 26px 52px rgba(61, 47, 31, 0.18);
+}
+
+.story-page.is-selected {
+  outline: 3px solid var(--terracotta);
+  outline-offset: -6px;
+  box-shadow: 0 28px 58px rgba(187, 91, 67, 0.24);
+}
+
+.story-page.dense .page-card {
+  padding: 14px 14px 48px;
+}
+
+.story-page.dense .page-title {
+  margin: 10px 0 4px;
+  font-size: 1.5rem;
+  line-height: 1.02;
+}
+
+.story-page.dense .page-lead {
+  margin: 0 0 6px;
+  font-size: 0.69rem;
+  line-height: 1.26;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.dense .item-stack {
+  gap: 6px;
+  margin-top: 2px;
+  padding-bottom: 12px;
+}
+
+.story-page.dense .item-row {
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.story-page.dense .thumb-block {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+}
+
+.story-page.dense .thumb-block.manual {
+  box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.22);
+}
+
+.story-page.dense .thumb-block.auto {
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.18);
+}
+
+.story-page.dense .thumb-block.fallback {
+  box-shadow: 0 0 0 2px rgba(180, 83, 9, 0.14);
+}
+
+.story-page.dense .mapping-chip {
+  display: none;
+}
+
+.story-page.dense .item-label {
+  padding: 2px 7px;
+  font-size: 0.56rem;
+}
+
+.story-page.dense .item-name {
+  margin: 3px 0 1px;
+  font-size: 0.9rem;
+  line-height: 1.02;
+}
+
+.story-page.dense .item-meta {
+  font-size: 0.58rem;
+  line-height: 1.14;
+}
+
+.story-page.dense .item-meta.secondary {
+  font-size: 0.56rem;
+}
+
+.story-page.compact .page-card {
+  padding: 14px 14px 48px;
+}
+
+.story-page.compact .page-chip {
+  display: none;
+}
+
+.story-page.compact .page-title {
+  display: block;
+  margin: 2px 0 6px;
+  font-size: 1.34rem;
+  line-height: 1.04;
+}
+
+.story-page.compact .page-lead {
+  display: none;
+}
+
+.story-page.compact .item-stack {
+  margin-top: 10px;
+  gap: 7px;
+  padding-bottom: 12px;
+}
+
+.story-page.compact .item-row {
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 9px;
+}
+
+.story-page.compact .thumb-block {
+  width: 68px;
+  height: 68px;
+  border-radius: 17px;
+}
+
+.story-page.compact .thumb-block.manual {
+  box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.22);
+}
+
+.story-page.compact .thumb-block.auto {
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.18);
+}
+
+.story-page.compact .thumb-block.fallback {
+  box-shadow: 0 0 0 2px rgba(180, 83, 9, 0.14);
+}
+
+.story-page.compact .item-label {
+  padding: 2px 7px;
+  font-size: 0.56rem;
+}
+
+.story-page.compact .item-name {
+  margin: 3px 0 1px;
+  font-size: 0.94rem;
+  line-height: 1.02;
+}
+
+.story-page.compact .item-meta {
+  font-size: 0.6rem;
+  line-height: 1.16;
+}
+
+.story-page.compact .item-meta.secondary {
+  font-size: 0.56rem;
+}
+
+.story-page.compact .mapping-chip {
+  display: none;
+}
+
+.story-page.compact.crowded .page-card {
+  padding: 12px 12px 46px;
+}
+
+.story-page.compact.crowded .page-title {
+  margin: 0 0 5px;
+  font-size: 1.12rem;
+}
+
+.story-page.compact.crowded .item-stack {
+  margin-top: 6px;
+  gap: 5px;
+  padding-bottom: 8px;
+}
+
+.story-page.compact.crowded .item-row {
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 7px;
+}
+
+.story-page.compact.crowded .thumb-block {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.story-page.compact.crowded .item-label {
+  padding: 2px 6px;
+  font-size: 0.5rem;
+}
+
+.story-page.compact.crowded .item-name {
+  margin: 2px 0 1px;
+  font-size: 0.82rem;
+  line-height: 1.02;
+}
+
+.story-page.compact.crowded .item-meta {
+  font-size: 0.53rem;
+  line-height: 1.1;
+}
+
+.story-page.compact.crowded .item-meta.secondary {
+  font-size: 0.5rem;
+}
+
+.story-page.itinerary .page-card {
+  padding: 14px 14px 48px;
+}
+
+.story-page.itinerary .page-chip {
+  display: none;
+}
+
+.story-page.itinerary .page-title {
+  margin: 2px 0 6px;
+  font-size: 1.52rem;
+  line-height: 1.02;
+}
+
+.story-page.itinerary .page-lead {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.itinerary .item-stack {
+  gap: 7px;
+  margin-top: 0;
+}
+
+.story-page.itinerary .item-row {
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.story-page.itinerary .thumb-block {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+}
+
+.story-page.itinerary .itinerary-thumb.manual {
+  box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.28);
+}
+
+.story-page.itinerary .itinerary-thumb.auto {
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.22);
+}
+
+.story-page.itinerary .itinerary-thumb.fallback {
+  box-shadow: 0 0 0 2px rgba(180, 83, 9, 0.18);
+}
+
+.story-page.itinerary .itinerary-copy {
+  min-width: 0;
+}
+
+.story-page.itinerary .itinerary-topline {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.story-page.itinerary .itinerary-time {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  font-size: 0.54rem;
+}
+
+.story-page.itinerary .itinerary-name {
+  min-width: 0;
+  margin-top: 0;
+  font-family: "Baloo 2", "Be Vietnam Pro", sans-serif;
+  font-size: 1rem;
+  line-height: 1.02;
+  font-weight: 700;
+  color: #201c18;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.itinerary .itinerary-detail {
+  margin-top: 1px;
+  font-size: 0.66rem;
+  line-height: 1.2;
+  color: #575049;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+

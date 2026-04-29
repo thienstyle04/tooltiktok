@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as XLSX from 'xlsx';
 
-import { resolveDriveLinkToEntry } from './drive-images';
+import { DriveFolderEntry, resolveDriveLinkToEntries } from './drive-images';
 import { firstValue, itemMappingKey, normalizeText } from '../logic/image-resolver';
 import { PREFERRED_WORKBOOK_NAME } from './workbook-source';
 import { SECTION_CONFIG } from '../core/constants';
@@ -18,6 +18,7 @@ export interface SheetDriveImageManifestEntry {
   sourceLink: string;
   fileId: string;
   fileName: string;
+  candidateImages?: DriveFolderEntry[];
 }
 
 export interface SheetDriveImageManifest {
@@ -133,11 +134,13 @@ export async function buildSheetDriveManifest(workbookPath: string): Promise<She
       const imageLink = preferredImageLink(row);
       if (!imageLink) continue;
 
-      const resolvedEntry = await resolveDriveLinkToEntry(imageLink, name, address).catch((error) => {
+      const candidateImages = await resolveDriveLinkToEntries(imageLink, name, address).catch((error) => {
         console.warn(`[sync] Bỏ qua ảnh Drive lỗi cho "${name}": ${error instanceof Error ? error.message : String(error)}`);
-        return null;
+        return [];
       });
-      if (!resolvedEntry) continue;
+      if (candidateImages.length === 0) continue;
+
+      const resolvedEntry = candidateImages[0];
 
       const key = itemMappingKey(sectionKey, name, address);
       items[key] = {
@@ -148,6 +151,7 @@ export async function buildSheetDriveManifest(workbookPath: string): Promise<She
         sourceLink: imageLink,
         fileId: resolvedEntry.fileId,
         fileName: resolvedEntry.fileName,
+        candidateImages,
       };
     }
   }

@@ -6,6 +6,17 @@ export const DALAT_FNB_SHEET_URL =
 export const DALAT_FNB_EXPORT_URL =
   'https://docs.google.com/spreadsheets/d/1-ECVLtuySSlCO5AShcJle1uP9j8XCA4l/export?format=xlsx';
 export const PREFERRED_WORKBOOK_NAME = 'F&B ĐÀ LẠT.xlsx';
+const SHEET_FETCH_TIMEOUT_MS = 30_000;
+
+function createTimeoutSignal(ms: number): { signal: AbortSignal; cancel: () => void } {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ms);
+  timeout.unref?.();
+  return {
+    signal: controller.signal,
+    cancel: () => clearTimeout(timeout),
+  };
+}
 
 function listWorkbookPaths(workspaceRoot: string): string[] {
   return fs
@@ -28,12 +39,14 @@ export function findWorkbookPath(workspaceRoot: string): string | null {
 }
 
 export async function syncWorkbookFromSheet(workspaceRoot: string): Promise<{ workbookPath: string; bytes: number }> {
+  const timeout = createTimeoutSignal(SHEET_FETCH_TIMEOUT_MS);
   const response = await fetch(DALAT_FNB_EXPORT_URL, {
     headers: {
       Referer: DALAT_FNB_SHEET_URL,
       'User-Agent': 'Codex Workbook Sync',
     },
-  });
+    signal: timeout.signal,
+  }).finally(timeout.cancel);
   if (!response.ok) {
     throw new Error(`Không tải được workbook từ Google Sheet. HTTP ${response.status}`);
   }

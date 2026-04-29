@@ -16,7 +16,17 @@ export class GuideController {
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')
   getIndex(): string {
-    return this.guideService.getFrontendTextFile('index.html');
+    return [
+      '<!doctype html>',
+      '<html lang="vi">',
+      '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">',
+      '<meta http-equiv="refresh" content="0; url=http://127.0.0.1:3001/">',
+      '<title>Dalat Carousel API</title></head>',
+      '<body style="font-family: system-ui, sans-serif; padding: 32px">',
+      '<h1>Frontend da chuyen sang Next.js</h1>',
+      '<p>Mo giao dien tai <a href="http://127.0.0.1:3001/">http://127.0.0.1:3001/</a>.</p>',
+      '</body></html>',
+    ].join('');
   }
 
   @Get('styles.css')
@@ -45,8 +55,9 @@ export class GuideController {
   }
 
   @Get('api/guide-data')
-  getGuideData(): GuideDataset {
-    return this.guideService.getDataset();
+  getGuideData(@Query('refresh') refresh?: string): GuideDataset {
+    const shouldRefresh = ['1', 'true', 'yes'].includes(String(refresh ?? '').trim().toLowerCase());
+    return this.guideService.getDataset({ refresh: shouldRefresh });
   }
 
   @Post('api/ai/deepseek/caption')

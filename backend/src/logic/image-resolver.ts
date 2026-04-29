@@ -242,6 +242,132 @@ function preferredImageCandidates(name: string, urls: string[]): string[] {
   return preferred.length > 0 ? preferred : unique;
 }
 
+type ImageDimensions = { width: number; height: number };
+
+type ListImageResolverOptions = {
+  orientation?: 'any' | 'landscape';
+  workspaceRoot?: string;
+  dalatImageDir?: string;
+};
+
+const imageDimensionsCache = new Map<string, ImageDimensions | null>();
+
+function readImageDimensions(filePath: string): ImageDimensions | null {
+  const cached = imageDimensionsCache.get(filePath);
+  if (cached !== undefined) return cached;
+
+  let result: ImageDimensions | null = null;
+  try {
+    const stats = fs.statSync(filePath);
+    const fd = fs.openSync(filePath, 'r');
+    const buffer = Buffer.alloc(Math.min(stats.size, 512 * 1024));
+    try {
+      fs.readSync(fd, buffer, 0, buffer.length, 0);
+    } finally {
+      fs.closeSync(fd);
+    }
+    if (buffer.length >= 24 && buffer.toString('ascii', 1, 4) === 'PNG') {
+      result = { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+    } else if (buffer.length >= 10 && buffer.toString('ascii', 0, 3) === 'GIF') {
+      result = { width: buffer.readUInt16LE(6), height: buffer.readUInt16LE(8) };
+    } else if (buffer.length >= 30 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') {
+      const chunkType = buffer.toString('ascii', 12, 16);
+      if (chunkType === 'VP8X') {
+        result = {
+          width: 1 + buffer.readUIntLE(24, 3),
+          height: 1 + buffer.readUIntLE(27, 3),
+        };
+      } else if (chunkType === 'VP8 ') {
+        result = { width: buffer.readUInt16LE(26) & 0x3fff, height: buffer.readUInt16LE(28) & 0x3fff };
+      } else if (chunkType === 'VP8L') {
+        const bits = buffer.readUInt32LE(21);
+        result = { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+      }
+    } else if (buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+      let offset = 2;
+      while (offset + 9 < buffer.length) {
+        if (buffer[offset] !== 0xff) {
+          offset += 1;
+          continue;
+        }
+        const marker = buffer[offset + 1];
+        if (marker === 0xd9 || marker === 0xda) break;
+        const length = buffer.readUInt16BE(offset + 2);
+        const isStartOfFrame = (
+          (marker >= 0xc0 && marker <= 0xc3) ||
+          (marker >= 0xc5 && marker <= 0xc7) ||
+          (marker >= 0xc9 && marker <= 0xcb) ||
+          (marker >= 0xcd && marker <= 0xcf)
+        );
+        if (isStartOfFrame && offset + 8 < buffer.length) {
+          result = { height: buffer.readUInt16BE(offset + 5), width: buffer.readUInt16BE(offset + 7) };
+          break;
+        }
+        offset += 2 + Math.max(length, 2);
+      }
+    }
+  } catch {
+    result = null;
+  }
+
+  imageDimensionsCache.set(filePath, result);
+  return result;
+}
+
+function localPathForAssetUrl(
+  url: string,
+  libraryEntries: ImageLibraryFolderEntry[],
+  options: ListImageResolverOptions,
+): string | null {
+  try {
+    const parsed = new URL(url, 'http://local');
+    if (parsed.pathname === '/assets/library') {
+      const rootKey = parsed.searchParams.get('root') || 'main';
+      const relativePath = parsed.searchParams.get('path') || '';
+      const libraryRoot = libraryEntries.find((entry) => entry.rootKey === rootKey)?.rootPath || '';
+      if (!libraryRoot || !relativePath) return null;
+      const target = path.resolve(libraryRoot, relativePath);
+      return safeRelative(libraryRoot, target) && fs.existsSync(target) && fs.statSync(target).isFile() ? target : null;
+    }
+    if (parsed.pathname === '/assets/workspace') {
+      const relativePath = parsed.searchParams.get('path') || '';
+      if (!options.workspaceRoot || !relativePath) return null;
+      const target = path.resolve(options.workspaceRoot, relativePath);
+      return safeRelative(options.workspaceRoot, target) && fs.existsSync(target) && fs.statSync(target).isFile() ? target : null;
+    }
+    if (parsed.pathname.startsWith('/assets/dalat/')) {
+      if (!options.dalatImageDir) return null;
+      const fileName = decodeURIComponent(parsed.pathname.replace('/assets/dalat/', ''));
+      const target = path.resolve(options.dalatImageDir, fileName);
+      return safeRelative(options.dalatImageDir, target) && fs.existsSync(target) && fs.statSync(target).isFile() ? target : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function isLandscapeImageUrl(
+  url: string,
+  libraryEntries: ImageLibraryFolderEntry[],
+  options: ListImageResolverOptions = {},
+): boolean {
+  const localPath = localPathForAssetUrl(url, libraryEntries, options);
+  if (!localPath) return false;
+  const dimensions = readImageDimensions(localPath);
+  return !!dimensions && dimensions.width > dimensions.height;
+}
+
+function filterImageUrlsForResolverOptions(
+  urls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  options: ListImageResolverOptions,
+): string[] {
+  const unique = Array.from(new Set(urls.filter(Boolean)));
+  if (options.orientation !== 'landscape') return unique;
+  return unique.filter((url) => isLandscapeImageUrl(url, libraryEntries, options));
+}
+
 export function allowedImageKindsForItem(item: { sectionKey: SectionKey; type: string; name: string }): Set<string> {
   const allowed = new Set<string>();
   const normalizedType = normalizeText(item.type);
@@ -438,6 +564,7 @@ export function createListImageResolver(
   seed = '',
   initialUsedUrls: Iterable<string> = [],
   blockedUrls: Iterable<string> = [],
+  resolverOptions: ListImageResolverOptions = {},
 ) {
   const softUsedUrls = new Set<string>([...initialUsedUrls, ...blockedUrls].filter(Boolean));
   const sharedUsedUrlSets = [initialUsedUrls, blockedUrls].filter((urls): urls is Set<string> => urls instanceof Set);
@@ -464,13 +591,22 @@ export function createListImageResolver(
 
     if (!options?.forceFallback && item.imageSource === 'manual') {
       if (item.candidateImageUrls && item.candidateImageUrls.length > 0) {
-        const sorted = preferredImageCandidates(item.name, item.candidateImageUrls).sort(
+        const sorted = filterImageUrlsForResolverOptions(
+          preferredImageCandidates(item.name, item.candidateImageUrls),
+          libraryEntries,
+          resolverOptions,
+        ).sort(
           (a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`),
         );
         const picked = pickUnused(sorted);
         if (picked) return { ...common, imageUrl: picked, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm (từ thư mục)' };
       }
-      if (item.imageUrl && !shouldAvoidImageForItem(item.name, item.imageUrl) && !localUsedUrls.has(item.imageUrl)) {
+      if (
+        item.imageUrl &&
+        !shouldAvoidImageForItem(item.name, item.imageUrl) &&
+        filterImageUrlsForResolverOptions([item.imageUrl], libraryEntries, resolverOptions).length > 0 &&
+        !localUsedUrls.has(item.imageUrl)
+      ) {
         localUsedUrls.add(item.imageUrl);
         softUsedUrls.add(item.imageUrl);
         return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm' };
@@ -483,13 +619,22 @@ export function createListImageResolver(
         : libraryEntries.find((e) => e.assetUrls.includes(item.imageUrl))?.assetUrls || [];
 
       if (candidates.length > 0) {
-        const sortedUrls = preferredImageCandidates(item.name, candidates).sort(
+        const sortedUrls = filterImageUrlsForResolverOptions(
+          preferredImageCandidates(item.name, candidates),
+          libraryEntries,
+          resolverOptions,
+        ).sort(
           (a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`),
         );
         const picked = pickUnused(sortedUrls);
         if (picked) return { ...common, imageUrl: picked, imageMapped: true, imageSource: 'auto', imageNote: 'Ảnh tự map đúng theo thư viện' };
       }
-      if (item.imageUrl && !shouldAvoidImageForItem(item.name, item.imageUrl) && !localUsedUrls.has(item.imageUrl)) {
+      if (
+        item.imageUrl &&
+        !shouldAvoidImageForItem(item.name, item.imageUrl) &&
+        filterImageUrlsForResolverOptions([item.imageUrl], libraryEntries, resolverOptions).length > 0 &&
+        !localUsedUrls.has(item.imageUrl)
+      ) {
         localUsedUrls.add(item.imageUrl);
         softUsedUrls.add(item.imageUrl);
         return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'auto', imageNote: 'Ảnh tự map đúng theo thư viện' };
@@ -500,7 +645,8 @@ export function createListImageResolver(
     const primaryGroupedLibraryUrls = libraryEntries
       .filter((e) => allowedKinds.size === 0 || allowedKinds.has(topDirKind(e.topDir)))
       .flatMap((e) => e.assetUrls);
-    primaryGroupedLibraryUrls.sort((a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`));
+    const primaryCandidates = filterImageUrlsForResolverOptions(primaryGroupedLibraryUrls, libraryEntries, resolverOptions);
+    primaryCandidates.sort((a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`));
 
     const expandedKinds = new Set<string>(allowedKinds);
     if (item.sectionKey === 'quan_an') {
@@ -512,24 +658,29 @@ export function createListImageResolver(
     const backupGroupedLibraryUrls = libraryEntries
       .filter((e) => expandedKinds.size === 0 || expandedKinds.has(topDirKind(e.topDir)))
       .flatMap((e) => e.assetUrls)
-      .filter((e) => !primaryGroupedLibraryUrls.includes(e));
-    backupGroupedLibraryUrls.sort((a, b) =>
+      .filter((e) => !primaryCandidates.includes(e));
+    const backupCandidates = filterImageUrlsForResolverOptions(backupGroupedLibraryUrls, libraryEntries, resolverOptions);
+    backupCandidates.sort((a, b) =>
       stableHash(`${seed}:${item.id}:backup:${a}`) - stableHash(`${seed}:${item.id}:backup:${b}`),
     );
 
-    const groupedLibraryUrls = preferredImageCandidates(item.name, [...primaryGroupedLibraryUrls, ...backupGroupedLibraryUrls]);
+    const groupedLibraryUrls = preferredImageCandidates(item.name, [...primaryCandidates, ...backupCandidates]);
     const libraryUrl = pickUnused(groupedLibraryUrls);
     if (libraryUrl) return { imageUrl: libraryUrl, imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa cùng nhóm nội dung' };
 
     const allLibraryUrls = libraryEntries
       .flatMap((e) => e.assetUrls)
       .filter((url) => !groupedLibraryUrls.includes(url));
-    const preferredAllLibraryUrls = preferredImageCandidates(item.name, allLibraryUrls);
+    const preferredAllLibraryUrls = filterImageUrlsForResolverOptions(
+      preferredImageCandidates(item.name, allLibraryUrls),
+      libraryEntries,
+      resolverOptions,
+    );
     preferredAllLibraryUrls.sort((a, b) => stableHash(`${seed}:${item.id}:all:${a}`) - stableHash(`${seed}:${item.id}:all:${b}`));
     const allLibraryUrl = pickUnused(preferredAllLibraryUrls);
     if (allLibraryUrl) return { imageUrl: allLibraryUrl, imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa' };
 
-    const fallbackCandidates = [...imageUrls];
+    const fallbackCandidates = filterImageUrlsForResolverOptions([...imageUrls], libraryEntries, resolverOptions);
     fallbackCandidates.sort((a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`));
     const fallbackUrl = pickUnused(fallbackCandidates);
     return { imageUrl: fallbackUrl, imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa, chưa map đúng địa điểm' };

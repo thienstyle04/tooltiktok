@@ -126,6 +126,7 @@ let GuideService = class GuideService {
             '.js': 'application/javascript; charset=utf-8',
             '.jpg': 'image/jpeg',
             '.jpeg': 'image/jpeg',
+            '.jfif': 'image/jpeg',
             '.png': 'image/png',
             '.svg': 'image/svg+xml',
             '.ttf': 'font/ttf',
@@ -467,12 +468,20 @@ let GuideService = class GuideService {
         const price = (0, image_resolver_1.firstValue)(row, 'gia');
         const mappingKey = (0, image_resolver_1.itemMappingKey)(sectionKey, name, address);
         const sheetDriveEntry = sheetDriveManifest.items[mappingKey];
+        const sheetDriveCandidateUrls = sheetDriveEntry
+            ? (sheetDriveEntry.candidateImages && sheetDriveEntry.candidateImages.length > 0
+                ? sheetDriveEntry.candidateImages
+                : [{ fileId: sheetDriveEntry.fileId, fileName: sheetDriveEntry.fileName, viewUrl: '' }])
+                .filter((entry) => entry.fileId)
+                .map((entry) => (0, drive_images_1.getDriveImageProxyUrl)(entry.fileId))
+            : [];
         const resolvedImage = sheetDriveEntry
             ? {
-                imageUrl: (0, drive_images_1.getDriveImageProxyUrl)(sheetDriveEntry.fileId),
+                imageUrl: sheetDriveCandidateUrls[0] || (0, drive_images_1.getDriveImageProxyUrl)(sheetDriveEntry.fileId),
                 imageMapped: true,
                 imageMappingKey: mappingKey,
                 imageSource: 'manual',
+                candidateImageUrls: sheetDriveCandidateUrls,
             }
             : (0, image_resolver_1.resolveMappedImage)(sectionKey, placeType || constants_1.SECTION_CONFIG[sectionKey].title, name, address, imageUrls, sequence, imageMapping, libraryEntries, this.workspaceRoot);
         return {
