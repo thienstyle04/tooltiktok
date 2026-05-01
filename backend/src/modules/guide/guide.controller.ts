@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post, Query, Res } from '@nestjs/common';
 import * as path from 'node:path';
+import { getAppConfig } from '../../config';
 import { GuideService } from './guide.service';
 import {
   DeepSeekCaptionRequest,
@@ -23,17 +24,27 @@ export class GuideController {
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')
   getIndex(): string {
+    const frontendUrl = this.escapeHtml(`${getAppConfig().frontendOrigin}/`);
+
     return [
       '<!doctype html>',
       '<html lang="vi">',
       '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">',
-      '<meta http-equiv="refresh" content="0; url=http://127.0.0.1:3001/">',
+      `<meta http-equiv="refresh" content="0; url=${frontendUrl}">`,
       '<title>Dalat Carousel API</title></head>',
       '<body style="font-family: system-ui, sans-serif; padding: 32px">',
       '<h1>Frontend da chuyen sang Next.js</h1>',
-      '<p>Mo giao dien tai <a href="http://127.0.0.1:3001/">http://127.0.0.1:3001/</a>.</p>',
+      `<p>Mo giao dien tai <a href="${frontendUrl}">${frontendUrl}</a>.</p>`,
       '</body></html>',
     ].join('');
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   @Get('styles.css')

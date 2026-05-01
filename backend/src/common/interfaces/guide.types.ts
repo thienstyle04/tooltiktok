@@ -55,7 +55,7 @@ export interface CoverPage {
   title: string;
   subtitle: string;
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d';
+  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8';
 }
 
 export interface ListPage {
@@ -66,7 +66,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d';
+  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8';
 }
 
 export type DeckPage = CoverPage | ListPage;
@@ -221,7 +221,19 @@ export interface DeckBuildPools {
   breakfastItems: GuideItem[];
   lunchItems: GuideItem[];
   dinnerItems: GuideItem[];
+  daytimeFoodItems: GuideItem[];
+  morningFoodItems: GuideItem[];
+  lightMealItems: GuideItem[];
+  grillHotpotItems: GuideItem[];
+  dayCafeItems: GuideItem[];
+  dayCheckinItems: GuideItem[];
+  dayTourismItems: GuideItem[];
+  dayFamousItems: GuideItem[];
+  morningScheduleItems: GuideItem[];
+  lunchScheduleItems: GuideItem[];
+  eveningScheduleItems: GuideItem[];
   freeCheckinItems: GuideItem[];
+  paidCheckinItems: GuideItem[];
   famousItems: GuideItem[];
 }
 

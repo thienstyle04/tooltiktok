@@ -147,14 +147,84 @@
 .story-page[data-list-id^="grid-8"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="grid-4"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 
+.story-page.title-font-1 {
+  --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
+  --deck-title-weight: 900;
+}
+
+.story-page.title-font-2 {
+  --deck-title-font: "Baloo 2", "Be Vietnam Pro", sans-serif;
+  --deck-title-weight: 800;
+}
+
+.story-page.title-font-3 {
+  --deck-title-font: "Trebuchet MS", "Be Vietnam Pro", sans-serif;
+  --deck-title-weight: 900;
+}
+
+.story-page.title-font-4 {
+  --deck-title-font: Georgia, "Be Vietnam Pro", serif;
+  --deck-title-weight: 800;
+}
+
+.story-page.title-font-5 {
+  --deck-title-font: "Caveat", "Be Vietnam Pro", cursive;
+  --deck-title-weight: 700;
+}
+
+.story-page.title-font-6 {
+  --deck-title-font: Verdana, "Be Vietnam Pro", sans-serif;
+  --deck-title-weight: 800;
+}
+
+.story-page.title-font-7 {
+  --deck-title-font: "Segoe UI", "Be Vietnam Pro", sans-serif;
+  --deck-title-weight: 900;
+}
+
+.story-page.title-font-8 {
+  --deck-title-font: Tahoma, "Be Vietnam Pro", sans-serif;
+  --deck-title-weight: 800;
+}
+
 .story-page .cover-title,
 .story-page .page-title,
 .story-page .journey-cover-title,
 .story-page .photomode-cover-title,
 .story-page .grid6-cover-title,
+.story-page .grid8-cover-title,
 .story-page .grid8-center-title,
 .story-page .grid6-header-top {
   font-family: var(--deck-title-font, "Be Vietnam Pro", Arial, sans-serif) !important;
+  font-weight: var(--deck-title-weight, 900) !important;
+}
+
+.story-page.title-font-5 .cover-title,
+.story-page.title-font-5 .journey-cover-title,
+.story-page.title-font-5 .photomode-cover-title,
+.story-page.title-font-5 .grid6-cover-title,
+.story-page.title-font-5 .grid8-cover-title,
+.story-page.title-font-5 .grid8-center-title,
+.story-page.title-font-5 .grid6-header-top {
+  text-transform: none !important;
+  line-height: 1.22;
+  padding-top: 0.16em;
+}
+
+.story-page .cover-title,
+.story-page.has-inline-hashtags .cover-title,
+.story-page .journey-cover-title,
+.story-page .photomode-cover-title,
+.story-page .grid6-cover-title,
+.story-page .grid8-cover-title {
+  line-height: 1.18;
+  padding-top: 0.12em;
+  padding-bottom: 0.08em;
+}
+
+.story-page .grid8-center-title {
+  padding-top: 3px;
+  padding-bottom: 2px;
 }
 
 .story-page.grid6 .grid6-header-top {
@@ -185,7 +255,7 @@
 
 .story-page.grid8-cover .grid6-cover-title {
   font-size: 1.86rem;
-  line-height: 1.06;
+  line-height: 1.16;
 }
 
 .story-page.grid8-cover .grid6-cover-subtitle {
@@ -469,17 +539,19 @@ body {
 /* Shared image text guard: keep item titles/descriptions readable across all deck templates. */
 .story-page {
   --story-image-title-size: 0.68rem;
-  --story-image-title-line-height: 1.06;
+  --story-image-title-line-height: 1.14;
   --story-image-title-lines: 2;
   --story-image-meta-size: 0.5rem;
-  --story-image-meta-line-height: 1.1;
+  --story-image-meta-line-height: 1.16;
   --story-image-meta-lines: 2;
 }
 
 .story-page.grid8,
 .story-page.grid8-page {
   --story-image-title-size: 0.62rem;
+  --story-image-title-line-height: 1.16;
   --story-image-meta-size: 0.46rem;
+  --story-image-meta-line-height: 1.16;
 }
 
 .story-page :is(
@@ -498,6 +570,7 @@ body {
   max-width: 100%;
   min-width: 0;
   display: -webkit-box;
+  padding-top: 2px;
   overflow: hidden;
   text-overflow: clip;
   white-space: normal;
@@ -536,6 +609,7 @@ body {
   .photomode-meta
 ) {
   display: -webkit-box;
+  padding-top: 1px;
   overflow: hidden;
   text-overflow: clip;
   white-space: normal;

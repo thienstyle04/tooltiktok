@@ -560,6 +560,28 @@
   bottom: 7px;
   z-index: 1;
   color: #fffaf0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.grid8-cell-time {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 15px;
+  margin-bottom: 0;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(255, 207, 93, 0.92);
+  color: #14251d;
+  font-size: 0.44rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
 }
 
 .grid8-cell strong {
@@ -568,12 +590,39 @@
   color: #fffaf0;
   font-size: 0.5rem;
   font-weight: 900;
-  line-height: 1.05;
+  line-height: 1.14;
   text-shadow: 0 1px 3px rgba(0,0,0,0.65);
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.journey-grid8-page {
+  background: #10251f;
+}
+
+.journey-grid8-page .grid8-matrix {
+  gap: 5px;
+}
+
+.journey-grid8-page .grid8-cell strong {
+  font-size: 0.5rem;
+  line-height: 1.16;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.journey-grid8-page .grid8-center-title {
+  font-size: 0.58rem;
+  line-height: 1.22;
+}
+
+.journey-grid8-page .grid8-center-intro {
+  font-size: 0.4rem;
+  line-height: 1.16;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
 }
 
 .grid8-cell .grid8-meta {
@@ -591,8 +640,8 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 5px;
-  padding: 10px;
+  gap: 4px;
+  padding: 11px 10px;
   background: transparent;
   color: #fffaf0;
   box-sizing: border-box;
@@ -647,10 +696,11 @@
 .grid8-center-title {
   display: -webkit-box;
   margin: 0;
+  padding: 3px 0 2px;
   color: #fffaf0;
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   font-weight: 900;
-  line-height: 1.06;
+  line-height: 1.22;
   text-transform: uppercase;
   text-shadow: 0 1px 4px rgba(0,0,0,0.72);
   -webkit-line-clamp: 3;
@@ -765,12 +815,20 @@
   width: 397px;
   height: 562px;
   margin: 0 0 18px;
+  border-radius: 28px;
   cursor: default;
   scroll-snap-align: none;
   transition: none;
+  box-shadow: none !important;
 }
 
 .batch-export-root .story-page:hover {
   transform: none;
+}
+
+.batch-export-root .story-page,
+.batch-export-root .story-page * {
+  animation: none !important;
+  transition: none !important;
 }
 

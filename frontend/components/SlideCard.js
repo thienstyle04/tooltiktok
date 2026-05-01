@@ -3,8 +3,8 @@ import { renderCoverPage, renderListPage } from '../lib/pageMarkup';
 
 function renderSlideHtml(list, page, index, selectedPageIndex) {
   const raw = page.type === 'cover'
-    ? renderCoverPage(page, index, list.pages.length, list.id, list.captionHashtags || [])
-    : renderListPage(page, index, list.pages.length, list.id, list.captionHashtags || []);
+    ? renderCoverPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list)
+    : renderListPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list);
 
   const html = index === selectedPageIndex
     ? raw

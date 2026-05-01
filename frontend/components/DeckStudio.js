@@ -13,6 +13,73 @@ import PreviewPanel from './PreviewPanel';
 import ProgressBar from './ProgressBar';
 import Sidebar from './Sidebar';
 
+const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
+
+function stripVietnameseMarks(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+}
+
+function normalizeCaptionNameKey(value) {
+  return stripVietnameseMarks(value).toLowerCase();
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function collectCaptionForbiddenNames(list) {
+  const names = new Map();
+  const addName = (value) => {
+    const name = String(value || '').replace(/\s+/g, ' ').trim();
+    if (name.length < 3) return;
+    names.set(normalizeCaptionNameKey(name), name);
+  };
+
+  for (const page of list?.pages || []) {
+    if (page.type !== 'list') continue;
+    for (const item of page.items || []) {
+      addName(item.rawName);
+      addName(item.name);
+      addName(String(item.name || '').split(/:\s*/).slice(1).join(': '));
+    }
+  }
+
+  return [...names.values()].sort((a, b) => b.length - a.length);
+}
+
+function getPlaceNameCandidates(name) {
+  const normalized = String(name || '').replace(/\s+/g, ' ').trim();
+  const unaccented = stripVietnameseMarks(normalized);
+  return [...new Set([normalized, unaccented].filter((value) => value.length >= 3))];
+}
+
+function hasForbiddenPlaceName(value, forbiddenPlaceNames) {
+  return forbiddenPlaceNames.some((name) => getPlaceNameCandidates(name).some((candidate) => {
+    const escaped = escapeRegExp(candidate).replace(/\s+/g, '\\s+');
+    return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(value);
+  }));
+}
+
+function bodyListsStops(value, forbiddenPlaceNames) {
+  if (hasForbiddenPlaceName(value, forbiddenPlaceNames)) return true;
+
+  const dayMarkers = value.match(/\b(?:ngày\s*(?:đầu|một|hai|ba|bốn|1|2|3|4)|sáng|trưa|chiều|tối)\b/giu) || [];
+  const stopVerbs = value.match(/\b(?:ghé|qua|đi|lượn|chạy|săn|ăn|uống|check-?in|chụp)\b/giu) || [];
+  return dayMarkers.length >= 2 && stopVerbs.length >= 2;
+}
+
+function sanitizeCaptionBody(body, list) {
+  const clean = String(body || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+
+  const forbiddenPlaceNames = collectCaptionForbiddenNames(list);
+  return bodyListsStops(clean, forbiddenPlaceNames) ? GENERIC_CAPTION_BODY : clean;
+}
+
 export default function DeckStudio({ initialDataset = null }) {
   const initialDeck = initialDataset?.decks?.[0] || null;
   const initialList = initialDeck?.lists?.[0] || null;
@@ -120,7 +187,7 @@ export default function DeckStudio({ initialDataset = null }) {
       applyDataset(initialDataset, stored);
       setStatus(`Đã tải ${initialDataset.source?.totalItems || 0} địa điểm.`);
     } else {
-      loadDataset('Đang tải dữ liệu workbook...', {}).catch((error) => {
+      loadDataset('Đang tải dữ liệu workbook...').catch((error) => {
         console.error(error);
         setStatus(error.message);
       });
@@ -231,7 +298,7 @@ export default function DeckStudio({ initialDataset = null }) {
       if (!response.ok) throw new Error(payload.message || `DeepSeek trả lỗi HTTP ${response.status}`);
       setCaption({
         headline: payload.headline || '',
-        body: payload.body || '',
+        body: sanitizeCaptionBody(payload.body, activeList),
         hashtags: Array.isArray(payload.hashtags) ? payload.hashtags.join(' ') : '',
       });
       setStatus(`Đã nhận caption DeepSeek cho list "${activeList.title}".`);
@@ -278,7 +345,7 @@ export default function DeckStudio({ initialDataset = null }) {
         activeDeckId: payload.deckId,
         activeListId: payload.listId,
         selectedPageIndex: 0,
-      });
+      }, true);
       setStatus(`Đã tạo list mới "${payload.navTitle}" ngay trong deck "${activeDeck.navTitle}".`);
     } catch (error) {
       setStatus(error?.message || 'Không tạo được list AI mới.');

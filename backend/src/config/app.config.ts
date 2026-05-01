@@ -4,13 +4,19 @@ import * as path from 'node:path';
 export interface AppConfig {
   host: string;
   port: number;
+  frontendOrigin: string;
 }
 
 export function getAppConfig(): AppConfig {
   return {
     host: process.env.HOST || '127.0.0.1',
     port: Number(process.env.PORT ?? 3000),
+    frontendOrigin: normalizeOrigin(process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:3001'),
   };
+}
+
+function normalizeOrigin(origin: string): string {
+  return origin.replace(/\/+$/, '');
 }
 
 export function resolveBackendRoot(startDir = __dirname): string {

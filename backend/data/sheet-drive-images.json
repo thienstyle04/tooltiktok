@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-29T05:02:26.826Z",
+  "generatedAt": "2026-04-29T13:22:32.345Z",
   "workbookName": "F&B ĐÀ LẠT.xlsx",
-  "workbookMtimeMs": 1777438804391.5889,
+  "workbookMtimeMs": 1777468755097.1892,
   "items": {
     "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu": {
       "key": "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu",
@@ -3744,6 +3744,1069 @@
         }
       ]
     },
+    "quan_an|bep_khoi|42_phan_chu_trinh": {
+      "key": "quan_an|bep_khoi|42_phan_chu_trinh",
+      "sectionKey": "quan_an",
+      "name": "Bếp Khói",
+      "address": "42 Phan Chu Trinh",
+      "sourceLink": "https://drive.google.com/drive/folders/1meYj95KG0tKPSyF5-JnPyfyDZ1cncoaL?usp=sharing",
+      "fileId": "17sEStc51L_xO-RSiq9weGib0kfH3p1dO",
+      "fileName": "504342796_1287368503390521_2423482253955883937_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "17sEStc51L_xO-RSiq9weGib0kfH3p1dO",
+          "fileName": "504342796_1287368503390521_2423482253955883937_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17sEStc51L_xO-RSiq9weGib0kfH3p1dO/view?usp=drive_web"
+        },
+        {
+          "fileId": "1LatG1Cq47wXS82kPRIBTLitRQSnxcc7N",
+          "fileName": "504388478_1287369366723768_1256678610053625184_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1LatG1Cq47wXS82kPRIBTLitRQSnxcc7N/view?usp=drive_web"
+        },
+        {
+          "fileId": "1q0aNB7mOd-dUzp3EFLi7ytALoj_jMEAL",
+          "fileName": "504429545_1287369426723762_7892301835432677964_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1q0aNB7mOd-dUzp3EFLi7ytALoj_jMEAL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1UL6p54bxzsHHI0Es4XmRhnwOOlV4R_Db",
+          "fileName": "585890277_1432807965513240_2086074392939906844_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1UL6p54bxzsHHI0Es4XmRhnwOOlV4R_Db/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ThnzfFXB6jghs5MiGaM3RTVJOijQusUo",
+          "fileName": "587025055_1435113561949347_8063638532840598639_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ThnzfFXB6jghs5MiGaM3RTVJOijQusUo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1oeKPHprDfPjMuYmlraqTOoPCvV3qPcOB",
+          "fileName": "587109057_1435113531949350_3731824013458750301_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1oeKPHprDfPjMuYmlraqTOoPCvV3qPcOB/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|tiem_ga_suoi_binh_yen|duong_hoa_cam_tu_cau": {
+      "key": "quan_an|tiem_ga_suoi_binh_yen|duong_hoa_cam_tu_cau",
+      "sectionKey": "quan_an",
+      "name": "Tiệm Gà Suối Bình Yên",
+      "address": "Đường Hoa Cẩm Tú Cầu",
+      "sourceLink": "https://drive.google.com/drive/folders/1fy_VQIsugiJEJ7QEiz_38bbyj_A4-7Oj?usp=sharing",
+      "fileId": "1G2VyOfq8SAxtBOz15APy5ny4VZncfWqO",
+      "fileName": "482324543_632793842833322_6996321553538182357_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1G2VyOfq8SAxtBOz15APy5ny4VZncfWqO",
+          "fileName": "482324543_632793842833322_6996321553538182357_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1G2VyOfq8SAxtBOz15APy5ny4VZncfWqO/view?usp=drive_web"
+        },
+        {
+          "fileId": "1seg-NmTfFsHbCR-90Mt3wq6o2jwPyy0L",
+          "fileName": "482327159_632795489499824_8004972513967068162_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1seg-NmTfFsHbCR-90Mt3wq6o2jwPyy0L/view?usp=drive_web"
+        },
+        {
+          "fileId": "1phL74CB0xwdq1pMh72XBTHmgG7HfBDPS",
+          "fileName": "482807382_632911182821588_3096342370636931537_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1phL74CB0xwdq1pMh72XBTHmgG7HfBDPS/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Svrz3Z7jDm0oVzsiVu1yn0q4_kD_pqqo",
+          "fileName": "482809004_632911186154921_1539957057262771124_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Svrz3Z7jDm0oVzsiVu1yn0q4_kD_pqqo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XRpelCPKdh8Agf4Ob6TXnp_E9LGnSHB2",
+          "fileName": "483386906_632795426166497_7129824880417502409_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XRpelCPKdh8Agf4Ob6TXnp_E9LGnSHB2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1K_e7_20uydwRapAe0od03BX4VN6Yz8Tf",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1K_e7_20uydwRapAe0od03BX4VN6Yz8Tf/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|com_ga_ku_boc|36_mac_dinh_chi": {
+      "key": "quan_an|com_ga_ku_boc|36_mac_dinh_chi",
+      "sectionKey": "quan_an",
+      "name": "Cơm Gà Ku Bốc",
+      "address": "36 Mạc Đĩnh Chi",
+      "sourceLink": "https://drive.google.com/drive/folders/13za4dirgp5KgpUAWJlGFmbjOE7Rs_KHP?usp=sharing",
+      "fileId": "1jMuQEXFfhIunTi3lxIZmzo4lAe5UBkiE",
+      "fileName": "492831615_1274580701336138_4124902803565173325_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1jMuQEXFfhIunTi3lxIZmzo4lAe5UBkiE",
+          "fileName": "492831615_1274580701336138_4124902803565173325_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1jMuQEXFfhIunTi3lxIZmzo4lAe5UBkiE/view?usp=drive_web"
+        },
+        {
+          "fileId": "1UsKwAK430S7fE9vaZ-Ercs2x3CLiUFe5",
+          "fileName": "493274726_1274580551336153_8906281693603272518_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1UsKwAK430S7fE9vaZ-Ercs2x3CLiUFe5/view?usp=drive_web"
+        },
+        {
+          "fileId": "1tDKqXk4Z1yxDpfgUQnjW-EmN6_9lEl3i",
+          "fileName": "659117177_1577474571046748_7227692722924499623_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1tDKqXk4Z1yxDpfgUQnjW-EmN6_9lEl3i/view?usp=drive_web"
+        },
+        {
+          "fileId": "1eznTlUz4KOsZRq3sOgsmtiDpcRzCY3-3",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1eznTlUz4KOsZRq3sOgsmtiDpcRzCY3-3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1P0ItjFPfpsAKhWrXE2KQiNPP9OnFaB2m",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1P0ItjFPfpsAKhWrXE2KQiNPP9OnFaB2m/view?usp=drive_web"
+        },
+        {
+          "fileId": "14Q5ySmIkk9pv0AUNbob3UsSxYUnpx2HW",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/14Q5ySmIkk9pv0AUNbob3UsSxYUnpx2HW/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|banh_mi_xiu_mai_47|47_hoang_dieu": {
+      "key": "quan_an|banh_mi_xiu_mai_47|47_hoang_dieu",
+      "sectionKey": "quan_an",
+      "name": "Bánh mì xíu mại 47",
+      "address": "47 Hoàng Diệu",
+      "sourceLink": "https://drive.google.com/drive/folders/1yBkc62Yw5cOSxPhd_nGYdHqsavPtdKfL?usp=sharing",
+      "fileId": "1KlCYueQIomYmVc4aBK5Blq7h7gaViJ6l",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1KlCYueQIomYmVc4aBK5Blq7h7gaViJ6l",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KlCYueQIomYmVc4aBK5Blq7h7gaViJ6l/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zsYM2A-oSlVHGtqAalWP0QzUbySJ3gbe",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zsYM2A-oSlVHGtqAalWP0QzUbySJ3gbe/view?usp=drive_web"
+        },
+        {
+          "fileId": "18_bhPnnvc-EB4-tkHyrTTNLZ9a0li_pO",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/18_bhPnnvc-EB4-tkHyrTTNLZ9a0li_pO/view?usp=drive_web"
+        },
+        {
+          "fileId": "1n-NkFxyqFxoSW-jpceqv7Gxohw7i02dJ",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1n-NkFxyqFxoSW-jpceqv7Gxohw7i02dJ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qKO601aDendnRKQcvf6FxdFxeIg7wgA6",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qKO601aDendnRKQcvf6FxdFxeIg7wgA6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1nTlf8WohIFCummVbuHMEHzAZnSM7StTL",
+          "fileName": "unnamed.png",
+          "viewUrl": "https://drive.google.com/file/d/1nTlf8WohIFCummVbuHMEHzAZnSM7StTL/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|xoai_non_hoai|125_nguyen_cong_tru": {
+      "key": "quan_an|xoai_non_hoai|125_nguyen_cong_tru",
+      "sectionKey": "quan_an",
+      "name": "Xoài non Hoài",
+      "address": "125 Nguyễn Công Trứ",
+      "sourceLink": "https://drive.google.com/drive/folders/1pu9uiQ0ZU-KbROBmg-RKUYtg_xOPVzjE?usp=sharing",
+      "fileId": "18toQbQWL1fjEBP5-0cK_xB7549BnX-gg",
+      "fileName": "472858798_924724319866323_3721982655655746219_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "18toQbQWL1fjEBP5-0cK_xB7549BnX-gg",
+          "fileName": "472858798_924724319866323_3721982655655746219_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18toQbQWL1fjEBP5-0cK_xB7549BnX-gg/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rgrzDjpL8yvtrJPKGveZMBquccb2NDbk",
+          "fileName": "481057589_668376608847272_5224696619085738631_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rgrzDjpL8yvtrJPKGveZMBquccb2NDbk/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wqN7oqRit4D5YArjKdotGI60v41B6kff",
+          "fileName": "492734681_714924774192455_8914201309384652004_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1wqN7oqRit4D5YArjKdotGI60v41B6kff/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ixZ1JNP5H8QbyU1pHfvgoNnT9Tj2cT2D",
+          "fileName": "535891764_802117432139855_7224359944558318878_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ixZ1JNP5H8QbyU1pHfvgoNnT9Tj2cT2D/view?usp=drive_web"
+        },
+        {
+          "fileId": "1hGJ-qBCkTVYepsPw2OF-FMclO8g-bb1i",
+          "fileName": "552967887_827824686235796_6796339101129487928_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1hGJ-qBCkTVYepsPw2OF-FMclO8g-bb1i/view?usp=drive_web"
+        },
+        {
+          "fileId": "12AEHUY6e7jFrqMdmM0H5uA_aG_K7FgWA",
+          "fileName": "553561987_827824506235814_8519000088805010050_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/12AEHUY6e7jFrqMdmM0H5uA_aG_K7FgWA/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|the_umee|272_phan_dinh_phung": {
+      "key": "quan_an|the_umee|272_phan_dinh_phung",
+      "sectionKey": "quan_an",
+      "name": "The Umee",
+      "address": "272 Phan Đình Phùng",
+      "sourceLink": "https://drive.google.com/drive/folders/17Y28oS1DJqmEGsDKylNhajT7kNgGZ-2a?usp=sharing",
+      "fileId": "12t4H-IeOO3UgcdGpaYUxToKA_gy2-54x",
+      "fileName": "558756449_704988839311347_7733459013273770389_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "12t4H-IeOO3UgcdGpaYUxToKA_gy2-54x",
+          "fileName": "558756449_704988839311347_7733459013273770389_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/12t4H-IeOO3UgcdGpaYUxToKA_gy2-54x/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SbUfixpl9Zp2MO1VNhqCNcvN3-utPDCa",
+          "fileName": "558902670_704988775978020_1219231559507198625_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SbUfixpl9Zp2MO1VNhqCNcvN3-utPDCa/view?usp=drive_web"
+        },
+        {
+          "fileId": "1CvnSk0EGXmoFAuX2kjgXnCm32Z36_jjA",
+          "fileName": "559333644_704988905978007_8750331934065602550_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CvnSk0EGXmoFAuX2kjgXnCm32Z36_jjA/view?usp=drive_web"
+        },
+        {
+          "fileId": "1I5DMFWb4-wvU9XjBAYuGfzG4Uh7h5VvA",
+          "fileName": "559727069_704988845978013_7856281076205830012_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1I5DMFWb4-wvU9XjBAYuGfzG4Uh7h5VvA/view?usp=drive_web"
+        },
+        {
+          "fileId": "1N3eLmYkrN-AIotq5zNWTRX2IDF73GWyo",
+          "fileName": "559779778_704988912644673_1259667226156587561_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1N3eLmYkrN-AIotq5zNWTRX2IDF73GWyo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1CrdtAxko-j7-NusV_gCl2eEHR8Cwrs-D",
+          "fileName": "559894532_704988992644665_3773959871175382582_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CrdtAxko-j7-NusV_gCl2eEHR8Cwrs-D/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|do_chien_kun_kun|9_nha_chung": {
+      "key": "quan_an|do_chien_kun_kun|9_nha_chung",
+      "sectionKey": "quan_an",
+      "name": "Đồ chiên Kun Kun",
+      "address": "9 Nhà Chung",
+      "sourceLink": "https://drive.google.com/drive/folders/1APYGxXaCq3spghCL5bsOHsGW9x4c0q3A?usp=sharing",
+      "fileId": "1JC5dxbh31QXU_Gsww29H6g_-LKiec9R1",
+      "fileName": "475012152_122251689008022572_4794850035793890749_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1JC5dxbh31QXU_Gsww29H6g_-LKiec9R1",
+          "fileName": "475012152_122251689008022572_4794850035793890749_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JC5dxbh31QXU_Gsww29H6g_-LKiec9R1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1h4FudXM76gQnKm6Kn6UGPIT4rzoCw-Z3",
+          "fileName": "475362862_122251689578022572_1572433209292118396_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1h4FudXM76gQnKm6Kn6UGPIT4rzoCw-Z3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1JE5kky7Orl0CTfAgGRTZTjeGoCRvHUYN",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JE5kky7Orl0CTfAgGRTZTjeGoCRvHUYN/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GkaM1Xr3fKKPiyFmRLvuqT2bdonj5dlJ",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GkaM1Xr3fKKPiyFmRLvuqT2bdonj5dlJ/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|kem_bo_thanh_thao|76_nguyen_van_troi": {
+      "key": "quan_an|kem_bo_thanh_thao|76_nguyen_van_troi",
+      "sectionKey": "quan_an",
+      "name": "Kem bơ Thanh Thảo",
+      "address": "76 Nguyễn Văn Trỗi",
+      "sourceLink": "https://drive.google.com/drive/folders/1KIH4_n9m-MSPvgxIUS7IDb-xZ70UPkpR?usp=sharing",
+      "fileId": "1khDSBttlp1_AbqgXYcgwy8EsPqfWt9OY",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1khDSBttlp1_AbqgXYcgwy8EsPqfWt9OY",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1khDSBttlp1_AbqgXYcgwy8EsPqfWt9OY/view?usp=drive_web"
+        },
+        {
+          "fileId": "14ZE8tM63uSDJ6N7gsV-NySaTSMmKXjCi",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/14ZE8tM63uSDJ6N7gsV-NySaTSMmKXjCi/view?usp=drive_web"
+        },
+        {
+          "fileId": "1hTD9_NeviIqmbN62AgbV2nxHgbsRvH33",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1hTD9_NeviIqmbN62AgbV2nxHgbsRvH33/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Co-D9vjJ2TqR9iNYPuQubLf9aBjwVynR",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Co-D9vjJ2TqR9iNYPuQubLf9aBjwVynR/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|lau_xien_nhung_yersin_1k|25_ton_that_tung": {
+      "key": "quan_an|lau_xien_nhung_yersin_1k|25_ton_that_tung",
+      "sectionKey": "quan_an",
+      "name": "Lẩu xiên nhúng Yersin 1K",
+      "address": "25 Tôn Thất Tùng",
+      "sourceLink": "https://drive.google.com/drive/folders/1t_4SlPmVtBLoSh_a96AD3ZkRNzHOXtfN?usp=sharing",
+      "fileId": "1gVdKkPfli0jiKqmA_i05-dK4yM3Hv0Va",
+      "fileName": "2021-03-14.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1gVdKkPfli0jiKqmA_i05-dK4yM3Hv0Va",
+          "fileName": "2021-03-14.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1gVdKkPfli0jiKqmA_i05-dK4yM3Hv0Va/view?usp=drive_web"
+        },
+        {
+          "fileId": "1thKi2cSvGmVVMJmnalf_z0gy1037mPsq",
+          "fileName": "556011779_1253693223437626_8225876697402539679_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1thKi2cSvGmVVMJmnalf_z0gy1037mPsq/view?usp=drive_web"
+        },
+        {
+          "fileId": "1bwfHWk19A9V3Kpq97R9drPinJYJARdec",
+          "fileName": "556316218_1253693290104286_191627584526427493_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bwfHWk19A9V3Kpq97R9drPinJYJARdec/view?usp=drive_web"
+        },
+        {
+          "fileId": "1g37Hu198T3wJDmZu3zB83sTFCmhKUh5l",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1g37Hu198T3wJDmZu3zB83sTFCmhKUh5l/view?usp=drive_web"
+        },
+        {
+          "fileId": "1mPpdSuaN-8tYPQzo2HCfYD6BIDanZmpt",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1mPpdSuaN-8tYPQzo2HCfYD6BIDanZmpt/view?usp=drive_web"
+        },
+        {
+          "fileId": "1n_2Sp-4NyppYClLdSlCTvyGNRaUQSKJv",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1n_2Sp-4NyppYClLdSlCTvyGNRaUQSKJv/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|banh_trang_tre_tron_hoang_tu|100_nguyen_van_troi": {
+      "key": "quan_an|banh_trang_tre_tron_hoang_tu|100_nguyen_van_troi",
+      "sectionKey": "quan_an",
+      "name": "Bánh tráng, tré trộn Hoàng Tử",
+      "address": "100 Nguyễn Văn Trỗi",
+      "sourceLink": "https://drive.google.com/drive/folders/15HZjr5npQROwnI7ZKULh6bvO3nDMVKzW?usp=sharing",
+      "fileId": "1iQk4P6PIYO466ovJ2xW5fKaRgautzvHl",
+      "fileName": "506620347_699471362832819_5589628986590766854_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1iQk4P6PIYO466ovJ2xW5fKaRgautzvHl",
+          "fileName": "506620347_699471362832819_5589628986590766854_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1iQk4P6PIYO466ovJ2xW5fKaRgautzvHl/view?usp=drive_web"
+        },
+        {
+          "fileId": "1j1h2o1yvlixjE2W1C38d1WqVKw-AI4Es",
+          "fileName": "506642530_699471369499485_3818045475376624523_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1j1h2o1yvlixjE2W1C38d1WqVKw-AI4Es/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QAzhu1ayaiJxxGwFqCSBLmez-nR4MdZC",
+          "fileName": "506646216_699471329499489_4971724878128758341_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QAzhu1ayaiJxxGwFqCSBLmez-nR4MdZC/view?usp=drive_web"
+        },
+        {
+          "fileId": "1eSbkBGDuIgUg5xMGgB2BJWFE3nQAa1hu",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1eSbkBGDuIgUg5xMGgB2BJWFE3nQAa1hu/view?usp=drive_web"
+        },
+        {
+          "fileId": "1bbXBpQdgOJBhVsQ7WrYBR5y2dBXrYoJz",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bbXBpQdgOJBhVsQ7WrYBR5y2dBXrYoJz/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|bong_lan_trung_nuong_kimi|21_nguyen_van_troi": {
+      "key": "quan_an|bong_lan_trung_nuong_kimi|21_nguyen_van_troi",
+      "sectionKey": "quan_an",
+      "name": "Bông Lan trứng nướng Kimi",
+      "address": "21 Nguyễn Văn Trỗi",
+      "sourceLink": "https://drive.google.com/drive/folders/1Rxlr4gtrcANuI0hrtbDxv59GOZYHEysu?usp=sharing",
+      "fileId": "1eVNhuklez_GLfg2I4vLGx94pRgJFZzzy",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1eVNhuklez_GLfg2I4vLGx94pRgJFZzzy",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1eVNhuklez_GLfg2I4vLGx94pRgJFZzzy/view?usp=drive_web"
+        },
+        {
+          "fileId": "1hTud0e8ovJj9Y7kEU2Bs4AkBS1nu4Whs",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1hTud0e8ovJj9Y7kEU2Bs4AkBS1nu4Whs/view?usp=drive_web"
+        },
+        {
+          "fileId": "1cQ1h4yIWkHQnqPWbiNpJnzJK2z294osS",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cQ1h4yIWkHQnqPWbiNpJnzJK2z294osS/view?usp=drive_web"
+        },
+        {
+          "fileId": "1DbLtNZrzr2MhuUnVyFJblNai3DaGw6eS",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1DbLtNZrzr2MhuUnVyFJblNai3DaGw6eS/view?usp=drive_web"
+        },
+        {
+          "fileId": "1-p7dSCz3_-Sd6_QdVncyK7VzClKd9Vd3",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-p7dSCz3_-Sd6_QdVncyK7VzClKd9Vd3/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|banh_trang_nuong_di_dinh|26_hoang_dieu": {
+      "key": "quan_an|banh_trang_nuong_di_dinh|26_hoang_dieu",
+      "sectionKey": "quan_an",
+      "name": "Bánh tráng nướng Dì Đinh",
+      "address": "26 Hoàng Diệu",
+      "sourceLink": "https://drive.google.com/drive/folders/1CuCuIM2Li2jFwDkAkAd3QOsbzJg445Mk?usp=sharing",
+      "fileId": "1rAvTxptZTeDnTbvoiCTOMuRvMhVRLyU4",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1rAvTxptZTeDnTbvoiCTOMuRvMhVRLyU4",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rAvTxptZTeDnTbvoiCTOMuRvMhVRLyU4/view?usp=drive_web"
+        },
+        {
+          "fileId": "18avSPYITzAHidHbK9HOWXCIOpWsAw8_6",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/18avSPYITzAHidHbK9HOWXCIOpWsAw8_6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1iyUgqZaHShKhQ4ffc02Ep1bEAGlx9ne3",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1iyUgqZaHShKhQ4ffc02Ep1bEAGlx9ne3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1cEvprD2V4Tk-hh3UA91wqck7JqEZmcWD",
+          "fileName": "unnamed (5).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cEvprD2V4Tk-hh3UA91wqck7JqEZmcWD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1mhv4X-wJmRCHL5Y6hDEDcsq8CTajh_m8",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1mhv4X-wJmRCHL5Y6hDEDcsq8CTajh_m8/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|chao_long_di_linh_2|1_lu_gia": {
+      "key": "quan_an|chao_long_di_linh_2|1_lu_gia",
+      "sectionKey": "quan_an",
+      "name": "Cháo Lòng Di Linh 2",
+      "address": "1 Lữ Gia",
+      "sourceLink": "https://drive.google.com/drive/folders/1dR88E3dobKFPKSGNEe5c9ztxCVDkq7Yf?usp=sharing",
+      "fileId": "1dJ637ryfgKsY66hndTWLP47HYUpkqx4-",
+      "fileName": "2025-06-26.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1dJ637ryfgKsY66hndTWLP47HYUpkqx4-",
+          "fileName": "2025-06-26.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1dJ637ryfgKsY66hndTWLP47HYUpkqx4-/view?usp=drive_web"
+        },
+        {
+          "fileId": "13Iudw3au7viRKSRWt7FMCwZzkrYYOtYp",
+          "fileName": "2025-08-08.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13Iudw3au7viRKSRWt7FMCwZzkrYYOtYp/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XVYPLKJ1zJYPzKHRecM3DPlvRVA0kGen",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XVYPLKJ1zJYPzKHRecM3DPlvRVA0kGen/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HGdXLuOhB35Yxjm3ySLp2J8dSN9Cz6al",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1HGdXLuOhB35Yxjm3ySLp2J8dSN9Cz6al/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Voc5MGhbmsDgGljp3zgwD84ZUQFE0DIf",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Voc5MGhbmsDgGljp3zgwD84ZUQFE0DIf/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|quan_sup_cua_ngoc_dong|41_ba_thang_hai": {
+      "key": "quan_an|quan_sup_cua_ngoc_dong|41_ba_thang_hai",
+      "sectionKey": "quan_an",
+      "name": "Quán súp cua Ngọc Đồng",
+      "address": "41 Ba Tháng Hai",
+      "sourceLink": "https://drive.google.com/drive/folders/15BnZ8HkSA0thcNJAovm0Jv5aSYbt3BVS?usp=sharing",
+      "fileId": "1bmssDprY7kurbcAtHlKDty9O4BfbIM8V",
+      "fileName": "118817610_166231075090489_2360776696115566693_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1bmssDprY7kurbcAtHlKDty9O4BfbIM8V",
+          "fileName": "118817610_166231075090489_2360776696115566693_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bmssDprY7kurbcAtHlKDty9O4BfbIM8V/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rcKCiyyzd_THgyayHQUVmjwopY498aO_",
+          "fileName": "475357272_1161402505573336_8569659043444051848_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rcKCiyyzd_THgyayHQUVmjwopY498aO_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zjrzhgqUt6oIjrsvZl78qvPV_3jXzo_w",
+          "fileName": "489293721_1292527852301193_7366340686915720091_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zjrzhgqUt6oIjrsvZl78qvPV_3jXzo_w/view?usp=drive_web"
+        },
+        {
+          "fileId": "1oYKxIJlYUmCqk6-xklRvnTg6jb-JcDrD",
+          "fileName": "489526187_1292527865634525_2251850675818438394_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1oYKxIJlYUmCqk6-xklRvnTg6jb-JcDrD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SJNIu1YWLy_URqluJaaFeT46iACnFk9j",
+          "fileName": "489785235_1292527555634556_4698370527994740754_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SJNIu1YWLy_URqluJaaFeT46iACnFk9j/view?usp=drive_web"
+        },
+        {
+          "fileId": "1MsnEii89Li_rUl5ItlOVs63NbIrS1zcK",
+          "fileName": "489908993_1292527662301212_5157850656533116047_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1MsnEii89Li_rUl5ItlOVs63NbIrS1zcK/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|quan_sua_dau_nanh_hoa_sua|64_tang_bat_ho": {
+      "key": "quan_an|quan_sua_dau_nanh_hoa_sua|64_tang_bat_ho",
+      "sectionKey": "quan_an",
+      "name": "Quán sữa đậu nành Hoa Sữa",
+      "address": "64 Tăng Bạt Hổ",
+      "sourceLink": "https://drive.google.com/drive/folders/1IrhicrEanlO3F76cESn79Edt7I_J9nzh?usp=sharing",
+      "fileId": "1cscc_KsWJv61TxhfVDaY9sAfovSZ56oC",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1cscc_KsWJv61TxhfVDaY9sAfovSZ56oC",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cscc_KsWJv61TxhfVDaY9sAfovSZ56oC/view?usp=drive_web"
+        },
+        {
+          "fileId": "1m_BeriaxGOA2wdsEeG7UvaXX0fGD_ySu",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1m_BeriaxGOA2wdsEeG7UvaXX0fGD_ySu/view?usp=drive_web"
+        },
+        {
+          "fileId": "1KeiinPfkcnnu8XTaIIm8liq4ZTM5bDL9",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KeiinPfkcnnu8XTaIIm8liq4ZTM5bDL9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1EnC1jiv6_8m2HTRaJdwAqDDpGagUx8RN",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1EnC1jiv6_8m2HTRaJdwAqDDpGagUx8RN/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|quan_che_ba_trieu|15_ba_trieu": {
+      "key": "quan_an|quan_che_ba_trieu|15_ba_trieu",
+      "sectionKey": "quan_an",
+      "name": "Quán Chè Bà Triệu",
+      "address": "15 Bà Triệu",
+      "sourceLink": "https://drive.google.com/drive/folders/1-NnTr92Mp1hBV4VGyvrg7z05_9l-cp0f?usp=sharing",
+      "fileId": "1x-Fr1wb_2S-QzwNaMCW1Z-05VFtncX-R",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1x-Fr1wb_2S-QzwNaMCW1Z-05VFtncX-R",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1x-Fr1wb_2S-QzwNaMCW1Z-05VFtncX-R/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XToVThg-AN_7nHN0ZbPMs6w8ouo8tBP3",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XToVThg-AN_7nHN0ZbPMs6w8ouo8tBP3/view?usp=drive_web"
+        },
+        {
+          "fileId": "19RKAH2ZwCXjIgdwO2LrD2WuVn0eMbFuX",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/19RKAH2ZwCXjIgdwO2LrD2WuVn0eMbFuX/view?usp=drive_web"
+        },
+        {
+          "fileId": "1L-OZXTxE6aRXEpD8x9RKIN_BmBhYchJW",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1L-OZXTxE6aRXEpD8x9RKIN_BmBhYchJW/view?usp=drive_web"
+        },
+        {
+          "fileId": "1T7hwFKHjddABOUy_CSN5Tmo-JJqnqu39",
+          "fileName": "unnamed (5).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1T7hwFKHjddABOUy_CSN5Tmo-JJqnqu39/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rLYETFktQ8iE-8B4ITvaL7_FpfstH1vs",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rLYETFktQ8iE-8B4ITvaL7_FpfstH1vs/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|tiem_mi_tau_cao|217_phan_dinh_phung": {
+      "key": "quan_an|tiem_mi_tau_cao|217_phan_dinh_phung",
+      "sectionKey": "quan_an",
+      "name": "Tiệm Mì Tàu Cao",
+      "address": "217 Phan Đình Phùng",
+      "sourceLink": "https://drive.google.com/drive/folders/1l8-_TDLT4dKsfoR1D6QXtzF-5fsFAcsC?usp=sharing",
+      "fileId": "1_1-nqAsj7vAarRhYDnftX2IFgZKeWTgp",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1_1-nqAsj7vAarRhYDnftX2IFgZKeWTgp",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_1-nqAsj7vAarRhYDnftX2IFgZKeWTgp/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ibcTe0zHMkznItta03W8KD0aeWB4P7K1",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ibcTe0zHMkznItta03W8KD0aeWB4P7K1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1xYbQKjKzYo55rrYZUbjFB5tDpVOdcKA1",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xYbQKjKzYo55rrYZUbjFB5tDpVOdcKA1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1fbSFZrZeRFXMzDT14z6E_UcLL1HvPavK",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1fbSFZrZeRFXMzDT14z6E_UcLL1HvPavK/view?usp=drive_web"
+        },
+        {
+          "fileId": "1PQJk9DEC48N5f0YPwDvIcBW72DKSdUv4",
+          "fileName": "unnamed (5).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1PQJk9DEC48N5f0YPwDvIcBW72DKSdUv4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Yuc2AVqcQJm4Bj8TOjZMWevOAeQtgyop",
+          "fileName": "unnamed (6).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Yuc2AVqcQJm4Bj8TOjZMWevOAeQtgyop/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|tiem_an_bep_da_lat|89_hoang_hoa_tham": {
+      "key": "quan_an|tiem_an_bep_da_lat|89_hoang_hoa_tham",
+      "sectionKey": "quan_an",
+      "name": "Tiệm Ăn Bếp Đà Lạt",
+      "address": "89 Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1LFbNGm2qTZsfLKGOlV4BmHCa8GA9zTeD?usp=sharing",
+      "fileId": "1YH6aI7SNJNeio2ZzNpy5aov-N_X8kFsU",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1YH6aI7SNJNeio2ZzNpy5aov-N_X8kFsU",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1YH6aI7SNJNeio2ZzNpy5aov-N_X8kFsU/view?usp=drive_web"
+        },
+        {
+          "fileId": "10zHrlhJkJZxAHQHPnw6Kh6yyD7hy9cpo",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/10zHrlhJkJZxAHQHPnw6Kh6yyD7hy9cpo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1md8j2Oy0CSBm5QexWT6SUaXXqt3qVBb1",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1md8j2Oy0CSBm5QexWT6SUaXXqt3qVBb1/view?usp=drive_web"
+        },
+        {
+          "fileId": "16J-F0Mzm74XtFOxat1eWKRDG6ZyUsBnq",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/16J-F0Mzm74XtFOxat1eWKRDG6ZyUsBnq/view?usp=drive_web"
+        },
+        {
+          "fileId": "1BoVKpXS3b0b2Qt9WD02zNQ3-AHEGTIjT",
+          "fileName": "unnamed (5).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1BoVKpXS3b0b2Qt9WD02zNQ3-AHEGTIjT/view?usp=drive_web"
+        },
+        {
+          "fileId": "11_mIQ1PDVU0GnZUWCDYWzDm8bWanpPXv",
+          "fileName": "unnamed (7).jpg",
+          "viewUrl": "https://drive.google.com/file/d/11_mIQ1PDVU0GnZUWCDYWzDm8bWanpPXv/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|cut_kit_bbq_beer|145_phan_boi_chau": {
+      "key": "quan_an|cut_kit_bbq_beer|145_phan_boi_chau",
+      "sectionKey": "quan_an",
+      "name": "Cút Kit BBQ & Beer",
+      "address": "145 Phan Bội Châu",
+      "sourceLink": "https://drive.google.com/drive/folders/1mj12wQt3My1IS83Cd7Haqoey0rkK13-_?usp=sharing",
+      "fileId": "1SiTXdg8EpWfMQHW5VDMhFm7ZUm3HMfqj",
+      "fileName": "2024-11-15.png",
+      "candidateImages": [
+        {
+          "fileId": "1SiTXdg8EpWfMQHW5VDMhFm7ZUm3HMfqj",
+          "fileName": "2024-11-15.png",
+          "viewUrl": "https://drive.google.com/file/d/1SiTXdg8EpWfMQHW5VDMhFm7ZUm3HMfqj/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qr0KRd8WON3-LKlGbXMZRCyiZGefClXW",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qr0KRd8WON3-LKlGbXMZRCyiZGefClXW/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ShmpvJZ-3l4sIwEwbmPWXxUe6yA_jtDx",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ShmpvJZ-3l4sIwEwbmPWXxUe6yA_jtDx/view?usp=drive_web"
+        },
+        {
+          "fileId": "1AS7XM219as12fkpU4IrSe67BapCphJ9F",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1AS7XM219as12fkpU4IrSe67BapCphJ9F/view?usp=drive_web"
+        },
+        {
+          "fileId": "1penhMFbAnhnNzyAJGuVZQcrJlAN4VIiy",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1penhMFbAnhnNzyAJGuVZQcrJlAN4VIiy/view?usp=drive_web"
+        },
+        {
+          "fileId": "1yZH6OFJ39GM3RMYr754rdV6ohnd4raww",
+          "fileName": "unnamed (5).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1yZH6OFJ39GM3RMYr754rdV6ohnd4raww/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|cham_kem_bo|27_nguyen_trai": {
+      "key": "quan_an|cham_kem_bo|27_nguyen_trai",
+      "sectionKey": "quan_an",
+      "name": "Chạm kem bơ",
+      "address": "27 Nguyễn Trãi",
+      "sourceLink": "https://drive.google.com/drive/folders/1VcBRabjqB9ojc1oq1BLeGMkhcaMnqIv7?usp=sharing",
+      "fileId": "1ZGrI6oRVu2ikAgIUbIEK71FzPp-GuOvU",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1ZGrI6oRVu2ikAgIUbIEK71FzPp-GuOvU",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ZGrI6oRVu2ikAgIUbIEK71FzPp-GuOvU/view?usp=drive_web"
+        },
+        {
+          "fileId": "17gwSNyi2pV5T1sMpe0-SD-PiZF9HOO0u",
+          "fileName": "unnamed (1).png",
+          "viewUrl": "https://drive.google.com/file/d/17gwSNyi2pV5T1sMpe0-SD-PiZF9HOO0u/view?usp=drive_web"
+        },
+        {
+          "fileId": "1uLzcseR_CZeke9szebY7d3JOFEQRgJoK",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1uLzcseR_CZeke9szebY7d3JOFEQRgJoK/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ckeQw8TsJssCeSeIU1jjMb5EffpbU-xD",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ckeQw8TsJssCeSeIU1jjMb5EffpbU-xD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rojz-6O9090ns92vnjpvyozd_lY8q3Sa",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rojz-6O9090ns92vnjpvyozd_lY8q3Sa/view?usp=drive_web"
+        },
+        {
+          "fileId": "1sFQIO6VgAoNWp0JA16UkAcdxKsHH9sS7",
+          "fileName": "unnamed.png",
+          "viewUrl": "https://drive.google.com/file/d/1sFQIO6VgAoNWp0JA16UkAcdxKsHH9sS7/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|tra_sua_an_vat_8678|244_bui_thi_xuan": {
+      "key": "quan_an|tra_sua_an_vat_8678|244_bui_thi_xuan",
+      "sectionKey": "quan_an",
+      "name": "Trà sữa & Ăn vặt 8678",
+      "address": "244 Bùi Thị Xuân",
+      "sourceLink": "https://drive.google.com/drive/folders/1cN_-5_QwoYiVXqj52rpRrJj_-QYF2bmr?usp=sharing",
+      "fileId": "1UL_Uku7mD9kR6EbENUZOjW28VHzgF1W_",
+      "fileName": "571231261_1247634140502557_417924456637962826_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1UL_Uku7mD9kR6EbENUZOjW28VHzgF1W_",
+          "fileName": "571231261_1247634140502557_417924456637962826_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1UL_Uku7mD9kR6EbENUZOjW28VHzgF1W_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zZBauSySzWBkwpIoyYl06X9rOBPsj81_",
+          "fileName": "2025-06-08.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zZBauSySzWBkwpIoyYl06X9rOBPsj81_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1g3UwJjHJDfubPr5A6PLdjPuv5slcwV7c",
+          "fileName": "475771917_1050560070209966_6132989135454948468_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1g3UwJjHJDfubPr5A6PLdjPuv5slcwV7c/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Ij0s3UyJYdQ__8sR2BVj05KDzLiiTiWh",
+          "fileName": "583923876_1268022851797019_2104056488871260357_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Ij0s3UyJYdQ__8sR2BVj05KDzLiiTiWh/view?usp=drive_web"
+        },
+        {
+          "fileId": "1vQqKYCFIK9XK53payFeyV-k9-GPrdaJi",
+          "fileName": "655460315_1359786722620631_5130998014590117455_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1vQqKYCFIK9XK53payFeyV-k9-GPrdaJi/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|oc_ganh_da_lat|khu_cho_dem_da_lat": {
+      "key": "quan_an|oc_ganh_da_lat|khu_cho_dem_da_lat",
+      "sectionKey": "quan_an",
+      "name": "Ốc Gánh Đà Lạt",
+      "address": "Khu chợ đêm Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1BhrmA7BcnGgpzy_MOVEX7s6MOTLA1ZCj?usp=sharing",
+      "fileId": "1DAw0ST2GxAfe4IvBtOb63x_3E1wk4mZ2",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1DAw0ST2GxAfe4IvBtOb63x_3E1wk4mZ2",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1DAw0ST2GxAfe4IvBtOb63x_3E1wk4mZ2/view?usp=drive_web"
+        },
+        {
+          "fileId": "11MAwdiRJePcmzRtHrvm62T2MatqIz1cu",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/11MAwdiRJePcmzRtHrvm62T2MatqIz1cu/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HX5Q-Zmk6WgROXhNhzCnc4tqOP99xEu0",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1HX5Q-Zmk6WgROXhNhzCnc4tqOP99xEu0/view?usp=drive_web"
+        },
+        {
+          "fileId": "1xsEJ7vmQJyMDoNO5F8xUSPXJsUkOfYoY",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xsEJ7vmQJyMDoNO5F8xUSPXJsUkOfYoY/view?usp=drive_web"
+        },
+        {
+          "fileId": "16N02SK9HrQZHwrYpxHX85QQoQEeZSeyG",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/16N02SK9HrQZHwrYpxHX85QQoQEeZSeyG/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|quan_hanh_sua|nga_3_viet_anh": {
+      "key": "quan_an|quan_hanh_sua|nga_3_viet_anh",
+      "sectionKey": "quan_an",
+      "name": "Quán Hạnh Sữa",
+      "address": "Ngã 3 Việt Anh",
+      "sourceLink": "https://drive.google.com/drive/folders/1vtaUaMk-RQr8jYlfjW7b7mPOlSBYoZve?usp=sharing",
+      "fileId": "1gjA4MV9nUMxR_734ruTxzD8TcAQpSmwh",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1gjA4MV9nUMxR_734ruTxzD8TcAQpSmwh",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1gjA4MV9nUMxR_734ruTxzD8TcAQpSmwh/view?usp=drive_web"
+        },
+        {
+          "fileId": "1MmIRATAklw348lLnZ5_4cvAFjXs-pMaL",
+          "fileName": "unnamed (5).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1MmIRATAklw348lLnZ5_4cvAFjXs-pMaL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1kzWg-_-ZcCTrQr3FL1Si1zxdL_ceLjF4",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1kzWg-_-ZcCTrQr3FL1Si1zxdL_ceLjF4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HBza2tL62rDorYionpPSEZbcRugWPTGP",
+          "fileName": "unnamed.png",
+          "viewUrl": "https://drive.google.com/file/d/1HBza2tL62rDorYionpPSEZbcRugWPTGP/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|bap_nuong_bo_ho|9_tran_quoc_toan": {
+      "key": "quan_an|bap_nuong_bo_ho|9_tran_quoc_toan",
+      "sectionKey": "quan_an",
+      "name": "Bắp Nướng Bờ Hồ",
+      "address": "9 Trần Quốc Toản",
+      "sourceLink": "https://drive.google.com/drive/folders/1Wo7Ewdrl3sEKv-tqrbtNOETk28g048J9?usp=sharing",
+      "fileId": "1EZo_Uzis7rPtwbjbUug9VK8YjjOaXTvt",
+      "fileName": "bap-nuong-via-he-cau-ong-dao.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1EZo_Uzis7rPtwbjbUug9VK8YjjOaXTvt",
+          "fileName": "bap-nuong-via-he-cau-ong-dao.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1EZo_Uzis7rPtwbjbUug9VK8YjjOaXTvt/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Zx9s6no2KUW-FrZ1Zky-tm0PasiAP0AI",
+          "fileName": "Khoai-lang-nuong-da-lat-mon-ngon-suoi-am-dem-dong-lanh-gia-01.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Zx9s6no2KUW-FrZ1Zky-tm0PasiAP0AI/view?usp=drive_web"
+        },
+        {
+          "fileId": "1JVSAVljeAGcXcEE3Ei4GJOm7wi9WA2o9",
+          "fileName": "592139320_1368399604980367_1946078967462167298_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JVSAVljeAGcXcEE3Ei4GJOm7wi9WA2o9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1aNaDGVSBPtAXXmKQvuWjoUgKx9sgRkNx",
+          "fileName": "top-15-mon-an-dac-san-ngon-hap-dan-nhat-o-da-lat-nhat-dinh-ban-phai-thu-202101121619319314.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1aNaDGVSBPtAXXmKQvuWjoUgKx9sgRkNx/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_-GGMtE3hlmpe30dXrgiPrTuIQBREChE",
+          "fileName": "vn-11134259-7r98o-lwb75ic40lw916@resize_ss640x400.jpeg",
+          "viewUrl": "https://drive.google.com/file/d/1_-GGMtE3hlmpe30dXrgiPrTuIQBREChE/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|sup_cua_ong_gia|83_ngo_quyen": {
+      "key": "quan_an|sup_cua_ong_gia|83_ngo_quyen",
+      "sectionKey": "quan_an",
+      "name": "Súp Cua Ông Già",
+      "address": "83 Ngô Quyền",
+      "sourceLink": "https://drive.google.com/drive/folders/1cXalrG_lyXUGmgRFTCn3E0Ff_nB4_qT3?usp=sharing",
+      "fileId": "19c1i4VtwXgFlqgaHYCkajwpdK0jcNGfo",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "19c1i4VtwXgFlqgaHYCkajwpdK0jcNGfo",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/19c1i4VtwXgFlqgaHYCkajwpdK0jcNGfo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1jrHJr0wRRHlBOhF4nUhImZbFwXaGChcn",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1jrHJr0wRRHlBOhF4nUhImZbFwXaGChcn/view?usp=drive_web"
+        },
+        {
+          "fileId": "1NjC9I_a4yp11cjyg2QvH8L4jEHcef5h0",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NjC9I_a4yp11cjyg2QvH8L4jEHcef5h0/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GAhCd8og5ANKBx-NStWW0D0ymJsLJBGY",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GAhCd8og5ANKBx-NStWW0D0ymJsLJBGY/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|kem_bo_nari|74c_nguyen_van_troi": {
+      "key": "quan_an|kem_bo_nari|74c_nguyen_van_troi",
+      "sectionKey": "quan_an",
+      "name": "Kem bơ Nari",
+      "address": "74C Nguyễn Văn Trỗi",
+      "sourceLink": "https://drive.google.com/drive/folders/1uMQHXqfWy_kbHDm9KNFpp480KEbAqL34?usp=sharing",
+      "fileId": "1vT999ts7-yWvELYGAGIG7WVjQK2IBENz",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1vT999ts7-yWvELYGAGIG7WVjQK2IBENz",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1vT999ts7-yWvELYGAGIG7WVjQK2IBENz/view?usp=drive_web"
+        },
+        {
+          "fileId": "17nGMCy5G5KG6tV45S4gqCIo1t8mAvbhU",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/17nGMCy5G5KG6tV45S4gqCIo1t8mAvbhU/view?usp=drive_web"
+        },
+        {
+          "fileId": "1m90_tDT7tgr3QdoAwD6zXZenFZAPI8Y9",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1m90_tDT7tgr3QdoAwD6zXZenFZAPI8Y9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1OI4D8rTTknzxuyrG2TCLlTxOJvC3fJRZ",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1OI4D8rTTknzxuyrG2TCLlTxOJvC3fJRZ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1DWgoiYn81YaJHjE61Fh8NVIS6T8Ux27t",
+          "fileName": "z3575509033991_49e0416e0878ab730cf5fffc4f7589dc.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1DWgoiYn81YaJHjE61Fh8NVIS6T8Ux27t/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wCQmN9uwIQ5OmF69Qa0CWdhsvHq2RsSE",
+          "fileName": "z3575509034962_7cb403786da58cabfebf340dce191e5b.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1wCQmN9uwIQ5OmF69Qa0CWdhsvHq2RsSE/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|chao_ech_singapore|151_bui_thi_xuan": {
+      "key": "quan_an|chao_ech_singapore|151_bui_thi_xuan",
+      "sectionKey": "quan_an",
+      "name": "Cháo Ếch Singapore",
+      "address": "151 Bùi Thị Xuân",
+      "sourceLink": "https://drive.google.com/drive/folders/1NnmBhmaqdC_kD87yLc0LXjXzCGPbtI0o?usp=sharing",
+      "fileId": "1ZvvE6s3_kCAjjxuosYfXRTrc3NFiZEeM",
+      "fileName": "unnamed (1).jpg",
+      "candidateImages": [
+        {
+          "fileId": "1ZvvE6s3_kCAjjxuosYfXRTrc3NFiZEeM",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ZvvE6s3_kCAjjxuosYfXRTrc3NFiZEeM/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QJa7c0RzseGT5IYELrofM5cYsdd4s9lp",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QJa7c0RzseGT5IYELrofM5cYsdd4s9lp/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_nc9pQ6P4ROH2qmDpR-q89rSLLVzE0hh",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_nc9pQ6P4ROH2qmDpR-q89rSLLVzE0hh/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_6n2MSaEwTq4MnExlwPFiy_720mjuPaP",
+          "fileName": "unnamed (4).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_6n2MSaEwTq4MnExlwPFiy_720mjuPaP/view?usp=drive_web"
+        },
+        {
+          "fileId": "1IkxOdlvdLtuqgAerEHlhKLYOsqY3DcHV",
+          "fileName": "unnamed (5).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1IkxOdlvdLtuqgAerEHlhKLYOsqY3DcHV/view?usp=drive_web"
+        },
+        {
+          "fileId": "1cxZ0FSyj9oeZdwsSYKKsAzH2vm2GZs01",
+          "fileName": "unnamed.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cxZ0FSyj9oeZdwsSYKKsAzH2vm2GZs01/view?usp=drive_web"
+        }
+      ]
+    },
+    "quan_an|xich_lo_quan|11_2_nguyen_van_cu": {
+      "key": "quan_an|xich_lo_quan|11_2_nguyen_van_cu",
+      "sectionKey": "quan_an",
+      "name": "Xích Lô Quán",
+      "address": "11/2 Nguyễn Văn Cừ",
+      "sourceLink": "https://drive.google.com/drive/folders/1-JGmTu5m7D6c7k04jEGshRgtdV66MRfO?usp=sharing",
+      "fileId": "1LmegFOyEWPF_4jZssdygBqKQtMC6Bxh4",
+      "fileName": "486552913_1193037119450908_6934674341114527272_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1LmegFOyEWPF_4jZssdygBqKQtMC6Bxh4",
+          "fileName": "486552913_1193037119450908_6934674341114527272_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1LmegFOyEWPF_4jZssdygBqKQtMC6Bxh4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1lPL2aRLz_4wQsPoCJQkkSKCgH7ilqGzb",
+          "fileName": "486749079_1195063032581650_8914555018019310136_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1lPL2aRLz_4wQsPoCJQkkSKCgH7ilqGzb/view?usp=drive_web"
+        },
+        {
+          "fileId": "1MWQOQR-oDlYUQ4vJG7Ju_S4wpAmb9st2",
+          "fileName": "486809678_1193249039429716_6318937821505803054_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1MWQOQR-oDlYUQ4vJG7Ju_S4wpAmb9st2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1pw8wnZhPgZc3OBBW91JuxcZ7IrYfUZvj",
+          "fileName": "486981631_1194527782635175_1229063665044804972_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pw8wnZhPgZc3OBBW91JuxcZ7IrYfUZvj/view?usp=drive_web"
+        },
+        {
+          "fileId": "17JYlWzssoOUEqh13XBCmJk9GNIWoM_wR",
+          "fileName": "487388551_1194436352644318_5399370603090680285_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17JYlWzssoOUEqh13XBCmJk9GNIWoM_wR/view?usp=drive_web"
+        },
+        {
+          "fileId": "16LRoL7-xcY9YNhHhHdW5Mesiyz-0W6js",
+          "fileName": "490180787_1209819591105994_1400792632678013003_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/16LRoL7-xcY9YNhHhHdW5Mesiyz-0W6js/view?usp=drive_web"
+        }
+      ]
+    },
     "quan_an|tiem_nuong_trong_rung|3_bis_dong_da": {
       "key": "quan_an|tiem_nuong_trong_rung|3_bis_dong_da",
       "sectionKey": "quan_an",
@@ -4646,10 +5709,10 @@
         }
       ]
     },
-    "cafe|mrik_ca_phe|07_ly_tu_trong": {
-      "key": "cafe|mrik_ca_phe|07_ly_tu_trong",
+    "cafe|mirk_ca_phe|07_ly_tu_trong": {
+      "key": "cafe|mirk_ca_phe|07_ly_tu_trong",
       "sectionKey": "cafe",
-      "name": "Mrik cà phê",
+      "name": "Mirk cà phê",
       "address": "07 Lý Tự Trọng",
       "sourceLink": "https://drive.google.com/drive/folders/1E5A5tMDYaiti7Bdkcgs1BIdrCTxd04yh?usp=drive_link",
       "fileId": "1jb-4qf2C8JjRub8HU30pDbBsTNE9M17a",
@@ -7763,6 +8826,47 @@
         }
       ]
     },
+    "check_in|hong_kong_ben_hong_cho_da_lat|khu_hoa_binh": {
+      "key": "check_in|hong_kong_ben_hong_cho_da_lat|khu_hoa_binh",
+      "sectionKey": "check_in",
+      "name": "Hong Kong - Bên hông chợ Đà Lạt",
+      "address": "Khu Hòa Bình",
+      "sourceLink": "https://drive.google.com/drive/folders/1l3MMswiogRurl-gIx4laT29wJwTSL4dG?usp=sharing",
+      "fileId": "1xY4j8CIRUSL7iv9Pl8YXJaSmUEdmkiTT",
+      "fileName": "khung-canh-goc-Hong-Kong-o-da-lat-min.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1xY4j8CIRUSL7iv9Pl8YXJaSmUEdmkiTT",
+          "fileName": "khung-canh-goc-Hong-Kong-o-da-lat-min.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xY4j8CIRUSL7iv9Pl8YXJaSmUEdmkiTT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ni6aajUTgSXfGWkHLMJpw6Mvk-PpAGvq",
+          "fileName": "ve-dep-goc-Hong-Kong-o-da-lat-min.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ni6aajUTgSXfGWkHLMJpw6Mvk-PpAGvq/view?usp=drive_web"
+        },
+        {
+          "fileId": "1t4fKSAkGBI5BXqTJICbuUtRMq9zrFV74",
+          "fileName": "475412874_632501655911375_7241411259962497442_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1t4fKSAkGBI5BXqTJICbuUtRMq9zrFV74/view?usp=drive_web"
+        },
+        {
+          "fileId": "1i-YMkg72YaJ9az5NhsdJMKDfJGsDnDU5",
+          "fileName": "475765736_632501712578036_1561765812671347512_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1i-YMkg72YaJ9az5NhsdJMKDfJGsDnDU5/view?usp=drive_web"
+        },
+        {
+          "fileId": "1H1ZnGVctuiXtqDajqF4_T2pIaW-cRnQQ",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1H1ZnGVctuiXtqDajqF4_T2pIaW-cRnQQ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1pdGf6Qj_zKUiQ-z2mQ4nZE0lUhSkmkEw",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pdGf6Qj_zKUiQ-z2mQ4nZE0lUhSkmkEw/view?usp=drive_web"
+        }
+      ]
+    },
     "check_in|doc_hung_vuong|duong_hung_vuong": {
       "key": "check_in|doc_hung_vuong|duong_hung_vuong",
       "sectionKey": "check_in",
@@ -8129,6 +9233,53 @@
           "fileId": "10qWt9rRwFrg-Pc_pXXiA6UMRfa34pEcy",
           "fileName": "551059156_2143896029468132_7780093033788680856_n.jpg",
           "viewUrl": "https://drive.google.com/file/d/10qWt9rRwFrg-Pc_pXXiA6UMRfa34pEcy/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|doc_tang_bat_ho|tang_bac_ho": {
+      "key": "check_in|doc_tang_bat_ho|tang_bac_ho",
+      "sectionKey": "check_in",
+      "name": "Dốc Tăng Bạt Hổ",
+      "address": "Tăng Bạc Hổ",
+      "sourceLink": "https://drive.google.com/drive/folders/1wq2Vf8dyAL8ZgOTocLY0j_6c0bYBEvZE?usp=sharing",
+      "fileId": "1pU89s1pcpHDeXNEM226HoSDzarkbvSk3",
+      "fileName": "68766184_1381201182057509_2198549473414610944_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1pU89s1pcpHDeXNEM226HoSDzarkbvSk3",
+          "fileName": "68766184_1381201182057509_2198549473414610944_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pU89s1pcpHDeXNEM226HoSDzarkbvSk3/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|duong_le_dai_hanh|p_xuan_huong": {
+      "key": "check_in|duong_le_dai_hanh|p_xuan_huong",
+      "sectionKey": "check_in",
+      "name": "Đường Lê Đại Hành",
+      "address": "P. Xuân Hương",
+      "sourceLink": "https://drive.google.com/drive/folders/1p67pBfUJCliPrgY_Ap01nnNAg0xvvAyC?usp=sharing",
+      "fileId": "1OmbgZ86WijWoJxrB0CYMkg7WLL72TeqR",
+      "fileName": "549943674_834698665908403_283279029341016073_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1OmbgZ86WijWoJxrB0CYMkg7WLL72TeqR",
+          "fileName": "549943674_834698665908403_283279029341016073_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1OmbgZ86WijWoJxrB0CYMkg7WLL72TeqR/view?usp=drive_web"
+        },
+        {
+          "fileId": "14ZDJtLZS7o6KZPYYEwo7yrj0YK-jjlNH",
+          "fileName": "552195774_834698672575069_8019198927217446053_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/14ZDJtLZS7o6KZPYYEwo7yrj0YK-jjlNH/view?usp=drive_web"
+        },
+        {
+          "fileId": "1KYAilKY-3uPRCFqJkTtbZ7cSpZBsg_S8",
+          "fileName": "images.jpeg",
+          "viewUrl": "https://drive.google.com/file/d/1KYAilKY-3uPRCFqJkTtbZ7cSpZBsg_S8/view?usp=drive_web"
+        },
+        {
+          "fileId": "1q3CdU2bSSZrSHooAzm7472bldl20Dsn-",
+          "fileName": "img_83020493.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1q3CdU2bSSZrSHooAzm7472bldl20Dsn-/view?usp=drive_web"
         }
       ]
     },

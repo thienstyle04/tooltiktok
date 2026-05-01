@@ -43,7 +43,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator } from './logic/data-allocator';
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, sanitizeDeckHeadline } from './logic/deck-builder';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
 import { fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { findWorkbookPath, syncWorkbookFromSheet } from './sync/workbook-source';
@@ -81,6 +81,7 @@ export class GuideService {
 
   private lastSyncTime = this.getWorkbookLastModifiedTime();
   private isSyncing = false;
+  private readonly AUTO_SYNC_ENABLED = ['1', 'true', 'yes'].includes(String(process.env.DALAT_AUTO_SYNC_SHEET ?? '').trim().toLowerCase());
   private readonly AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 phút
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -175,7 +176,9 @@ export class GuideService {
   // ─── Dataset ──────────────────────────────────────────────────────────────
 
   getDataset(options: { refresh?: boolean } = {}): GuideDataset {
-    this.triggerBackgroundSync();
+    if (this.AUTO_SYNC_ENABLED) {
+      void this.triggerBackgroundSync();
+    }
     if (options.refresh) {
       this.invalidateDatasetCache();
     }
@@ -273,7 +276,7 @@ export class GuideService {
     if (!content) throw new BadRequestException('DeepSeek không trả về nội dung caption.');
 
     const parsed = this.parseDeepSeekJson(content);
-    const normalizedCaption = this.normalizeCaptionPayload(parsed, current, target, tone);
+    const normalizedCaption = this.normalizeCaptionPayload(parsed, current, target, tone, this.collectCaptionForbiddenNames(deckList));
     return { deckId, listId, target, tone, headline: normalizedCaption.headline, body: normalizedCaption.body, hashtags: normalizedCaption.hashtags, raw: content };
   }
 
@@ -329,21 +332,20 @@ export class GuideService {
     if (baseList) this.markUsedInDeck(baseList.pages, deckUsage);
     const lastGeneratedList = existing.length > 0 ? existing[existing.length - 1] : null;
     if (lastGeneratedList) this.markUsedInDeck(lastGeneratedList.pages, deckUsage);
-    const generatedPages = applyCaptionToPages(
-      buildPagesForDeck(
-        deckId,
-        context.itemsBySection,
-        context.imageUrls,
-        context.imageLibraryEntries,
-        seed,
-        deckUsage.itemIds,
-        deckUsage.imageUrls,
-      ),
-      caption,
+    const basePages = buildPagesForDeck(
+      deckId,
+      context.itemsBySection,
+      context.imageUrls,
+      context.imageLibraryEntries,
+      seed,
+      deckUsage.itemIds,
+      deckUsage.imageUrls,
     );
+    const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
+    const generatedPages = applyCaptionToPages(basePages, safeCaption);
 
-    const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, caption.headline, caption.body, generatedPages);
-    generatedList.captionHashtags = caption.hashtags;
+    const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, safeCaption.headline, safeCaption.body, generatedPages);
+    generatedList.captionHashtags = safeCaption.hashtags;
 
     this.markUsedInDeck(generatedPages);
     this.persistInventory();
@@ -361,7 +363,7 @@ export class GuideService {
     this.datasetContextCacheTime = 0;
   }
 
-  private buildDatasetContext(): DatasetBuildContext {
+  private buildDatasetContext(options: { refreshGeneratedLists?: boolean } = {}): DatasetBuildContext {
     this.ensureGeneratedListsLoaded();
 
     const now = Date.now();
@@ -381,7 +383,9 @@ export class GuideService {
     const renderUsage = this.createUsageScope();
     const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, renderUsage.itemIds, renderUsage.imageUrls);
     baseDecks.forEach((deck) => this.markUsedInDeck(deck.lists.flatMap((list) => list.pages), renderUsage));
-    this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, renderUsage);
+    if (options.refreshGeneratedLists) {
+      this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, renderUsage);
+    }
     const referenceSets = this.buildReferenceSets();
     const decks = this.mergeGeneratedLists(baseDecks);
     const totalItems = Object.values(itemsBySection).reduce((s, items) => s + items.length, 0);
@@ -400,8 +404,22 @@ export class GuideService {
     return decks.map((deck) => {
       const generatedLists = this.generatedListsByDeckId.get(deck.id) ?? [];
       if (generatedLists.length === 0) return deck;
-      return { ...deck, lists: [...deck.lists, ...this.cloneJson(generatedLists)] };
+      return { ...deck, lists: [...deck.lists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list))] };
     });
+  }
+
+  private sanitizeGeneratedListForDisplay(list: GuideDeckList): GuideDeckList {
+    if (!/caption-/i.test(list.id)) return list;
+
+    const safeDescription = sanitizeCaptionBodyForPages(list.description, list.pages);
+    return {
+      ...list,
+      description: safeDescription,
+      pages: list.pages.map((page) => ({
+        ...page,
+        subtitle: safeDescription,
+      })),
+    };
   }
 
   private refreshGeneratedLists(
@@ -421,23 +439,22 @@ export class GuideService {
           body: list.description,
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
-        const regeneratedPages = applyCaptionToPages(
-          buildPagesForDeck(
-            deckId,
-            itemsBySection,
-            imageUrls,
-            libraryEntries,
-            `refresh:${deckId}:${list.id}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`,
-            listUsage.itemIds,
-            listUsage.imageUrls,
-          ),
-          caption,
+        const basePages = buildPagesForDeck(
+          deckId,
+          itemsBySection,
+          imageUrls,
+          libraryEntries,
+          `refresh:${deckId}:${list.id}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`,
+          listUsage.itemIds,
+          listUsage.imageUrls,
         );
+        const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
+        const regeneratedPages = applyCaptionToPages(basePages, safeCaption);
         const generatedUsage = this.createUsageScope();
         this.markUsedInDeck(regeneratedPages, generatedUsage);
         renderUsage.merge(generatedUsage);
-        if (list.title !== caption.headline || JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)) changed = true;
-        return { ...list, title: caption.headline, pages: regeneratedPages };
+        if (list.title !== safeCaption.headline || list.description !== safeCaption.body || JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)) changed = true;
+        return { ...list, title: safeCaption.headline, description: safeCaption.body, pages: regeneratedPages };
       });
       this.generatedListsByDeckId.set(deckId, refreshedLists);
     }
@@ -519,8 +536,8 @@ export class GuideService {
         headers.forEach((header, index) => { rowMap[header] = String(rawRow[index] ?? '').trim(); });
         sequence += 1;
         const item = this.buildItem(sectionKey, rowMap, sequence, imageUrls, imageMapping, libraryEntries, sheetDriveManifest);
-        // Lọc: Chỉ lấy những địa điểm đã khớp ảnh thực tế (imageMapped: true)
-        if (item && item.imageMapped) {
+        // Giữ cả dòng chưa map ảnh để title và địa chỉ vẫn đúng dữ liệu sheet.
+        if (item) {
           results[sectionKey].push(item);
         }
       }
@@ -723,11 +740,11 @@ export class GuideService {
       'uu tien nhac den nhom ban, cap doi hoac nguoi moi di Da Lat lan dau',
     ];
     const bodyShapes = [
-      '2 cau ngan: cau 1 tao ly do luu lai, cau 2 nhac 1-2 dia diem noi bat',
+      '2 cau ngan: cau 1 tao ly do luu lai, cau 2 noi loi ich cua list, khong goi ten hay liet ke dia diem',
       '3 menh de lien tiep, nhip nhanh, khong liet ke may moc',
       'mot cau mo dau co cam giac, mot cau sau noi ro list nay giup gi',
       'viet nhu loi ru ban di choi, cuoi bang loi nhac luu lai nhe',
-      'review that gon: noi diem hop voi ai, roi goi ten 1-2 dia diem',
+      'review that gon: noi list hop voi ai, khong goi ten dia diem cu the',
       'caption nhe nha: co canh, co mon hoac quan, co ly do nen luu',
     ];
     const variationSeed = stableHash([
@@ -771,7 +788,9 @@ export class GuideService {
       '',
       'CÁC YÊU CẦU KHÁC:',
       '- TUYỆT ĐỐI không dùng từ "deck" trong nội dung. Thay vào đó hãy dùng: "hình", "ảnh", "bộ ảnh", "cẩm nang", "lịch trình", "list này"...',
-      '- Body: Phải đa dạng cấu trúc câu, không lặp lại các motif cũ. Tối đa 250 ký tự. Phải nhắc được tên 1-2 địa điểm nổi bật trong list.',
+      '- Body: Phải đa dạng cấu trúc câu, không lặp lại các motif cũ. Tối đa 250 ký tự. Tuyệt đối không liệt kê hoặc gọi tên địa điểm/quán cụ thể trong list.',
+      '- Body không được viết kiểu lịch trình theo từng chặng/ngày như "ngày đầu ghé...", "ngày hai...", "tối lượn..."; chỉ nói lợi ích tổng quát của list.',
+      '- Dữ liệu địa điểm chỉ dùng để hiểu tinh thần list; không chép tên địa điểm/quán vào headline hoặc body caption.',
       '- Khong mo ta bo cuc thiet ke hoac kich thuoc layout trong caption. Tranh cac cum: "2x3", "3x3", "2x4", "luoi", "layout", "grid", "o anh", "o hinh".',
       '- Moi lan bam sinh lai phai doi goc viet, doi nhip cau, doi dong tu mo dau; khong chi thay vai tu dong nghia.',
       '- Hashtags: đúng 5 hashtag, trong đó bắt buộc có #riviudalat #dalat #dalatreview. 2 hashtag còn lại phải liên quan chặt chẽ đến nội dung và tone.',
@@ -794,6 +813,81 @@ export class GuideService {
     throw new BadRequestException('Không parse được JSON caption từ DeepSeek.');
   }
 
+  private collectCaptionForbiddenNames(deckList: GuideDeckList): string[] {
+    const names = new Map<string, string>();
+    const addName = (value?: string) => {
+      const name = String(value ?? '').replace(/\s+/g, ' ').trim();
+      if (name.length < 3) return;
+      names.set(this.normalizeCaptionNameKey(name), name);
+    };
+
+    for (const page of deckList.pages) {
+      if (page.type !== 'list') continue;
+      for (const item of page.items) {
+        addName(item.rawName);
+        addName(item.name);
+        addName(item.name.split(/:\s*/).slice(1).join(': '));
+      }
+    }
+
+    return [...names.values()].sort((a, b) => b.length - a.length);
+  }
+
+  private removeForbiddenPlaceNames(value: string, forbiddenPlaceNames: string[]): string {
+    let clean = value;
+    for (const name of forbiddenPlaceNames) {
+      for (const candidate of this.getPlaceNameCandidates(name)) {
+        const escaped = this.escapeRegExp(candidate).replace(/\s+/g, '\\s+');
+        const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, 'giu');
+        clean = clean.replace(pattern, '$1một điểm trong list');
+      }
+    }
+
+    return clean
+      .replace(/một điểm trong list\s+(?:hay|hoặc|và)\s+một điểm trong list/giu, 'vài điểm trong list')
+      .replace(/một điểm trong list(?:\s*,\s*một điểm trong list)+/giu, 'vài điểm trong list')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+([,.!?])/g, '$1')
+      .trim();
+  }
+
+  private hasForbiddenPlaceName(value: string, forbiddenPlaceNames: string[]): boolean {
+    return forbiddenPlaceNames.some((name) => this.getPlaceNameCandidates(name).some((candidate) => {
+      const escaped = this.escapeRegExp(candidate).replace(/\s+/g, '\\s+');
+      return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(value);
+    }));
+  }
+
+  private getPlaceNameCandidates(name: string): string[] {
+    const normalized = name.replace(/\s+/g, ' ').trim();
+    const unaccented = this.stripVietnameseMarks(normalized);
+    return [...new Set([normalized, unaccented].filter((value) => value.length >= 3))];
+  }
+
+  private normalizeCaptionNameKey(value: string): string {
+    return this.stripVietnameseMarks(value).toLowerCase();
+  }
+
+  private stripVietnameseMarks(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  }
+
+  private bodyListsStops(value: string, forbiddenPlaceNames: string[]): boolean {
+    if (this.hasForbiddenPlaceName(value, forbiddenPlaceNames)) return true;
+
+    const dayMarkers = value.match(/\b(?:ngày\s*(?:đầu|một|hai|ba|bốn|1|2|3|4)|sáng|trưa|chiều|tối)\b/giu) ?? [];
+    const stopVerbs = value.match(/\b(?:ghé|qua|đi|lượn|chạy|săn|ăn|uống|check-?in|chụp)\b/giu) ?? [];
+    return dayMarkers.length >= 2 && stopVerbs.length >= 2;
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
   private tryParseJson(value: string): Record<string, unknown> | null {
     try {
       const parsed = JSON.parse(value.trim());
@@ -807,6 +901,7 @@ export class GuideService {
     current: { headline: string; body: string; hashtags: string[] },
     target: DeepSeekCaptionResponse['target'],
     tone: DeepSeekCaptionResponse['tone'],
+    forbiddenPlaceNames: string[] = [],
   ): { headline: string; body: string; hashtags: string[] } {
     const nextHeadline = String(parsed.headline ?? parsed.hook ?? '').trim();
     const nextBody = String(parsed.body ?? parsed.caption ?? '').trim();
@@ -833,13 +928,17 @@ export class GuideService {
       .trim();
     const normalizeHeadline = (v: string) => {
       const fallback = 'ĐI ĐÀ LẠT THÌ LƯU NGAY LIST NÀY';
-      const clean = removeLayoutTerms(sanitizeDeckHeadline(v || current.headline || fallback)).replace(/\s+/g, ' ').trim();
-      return (clean || fallback).slice(0, 35);
+      const withoutLayout = removeLayoutTerms(sanitizeDeckHeadline(v || current.headline || fallback));
+      const clean = withoutLayout.replace(/\s+/g, ' ').trim();
+      return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 35);
     };
     const normalizeBody = (v: string) => {
-      const fallback = 'Một bộ caption gợi ý nhanh cho list đang chọn, bám đúng dữ liệu địa điểm trong tool.';
-      const clean = removeLayoutTerms(v || current.body || fallback).replace(/\s+/g, ' ').trim();
-      return (clean || fallback).slice(0, 250);
+      const fallback = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
+      const withoutLayout = removeLayoutTerms(v || current.body || fallback);
+      if (this.bodyListsStops(withoutLayout, forbiddenPlaceNames)) return fallback;
+      const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
+      const clean = withoutPlaces.replace(/\s+/g, ' ').trim();
+      return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 250);
     };
     const normalizeHashtags = (values: string[]): string[] => {
       const fixed = ['#riviudalat', '#dalat', '#dalatreview'];
