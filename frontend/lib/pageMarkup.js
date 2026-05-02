@@ -312,6 +312,7 @@ function compactGridItemName(value) {
   if (normalized.includes('kdl the florest') || normalized.includes('the florest')) return 'The Florest';
 
   const cleaned = original
+    .replace(/^\s*(Ăn\s+(sáng|trưa|tối)|Cafe|Cà phê|Check-?in|Điểm ghé|Bắt đầu|Chốt chuyến|Dịch vụ|Cần lưu|Cần nhớ|Nên ghé|Buổi sáng|Sáng sớm)\s*:\s*/i, '')
     .replace(/^\s*KDL\s+/i, '')
     .replace(/\s*-\s*(Hoa Trong Rung|Hoa Trong Rừng|Da Lat|Đa Lat|Đà Lạt).*$/i, '')
     .replace(/\s+/g, ' ')
@@ -326,6 +327,10 @@ function compactGridItemName(value) {
     kept.push(word);
   }
   return kept.length > 0 ? kept.join(' ') : cleaned.slice(0, 24).trim();
+}
+
+function gridDisplayName(item) {
+  return compactGridItemName(item?.rawName || item?.name);
 }
 
 export function renderPhotomodeItems(items) {
@@ -349,7 +354,7 @@ export function renderPhotomodeItems(items) {
 
 export function renderGrid6Items(items, { numbered = false, twoDigitNumber = false } = {}) {
   return items.map((item, index) => {
-    const displayName = compactGridItemName(item.name);
+    const displayName = gridDisplayName(item);
     const itemNumber = twoDigitNumber ? String(index + 1).padStart(2, '0') : String(index + 1);
     const itemName = numbered ? `${itemNumber}. ${displayName}` : displayName;
     return `
@@ -391,7 +396,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
 
   return `
     ${items.slice(0, 4).map((item) => {
-      const displayName = compactGridItemName(item.name);
+      const displayName = gridDisplayName(item);
       return `
         <article class="grid8-cell ${escapeHtml(imageSourceClass(item))}">
           ${renderPreviewImage(item.imageUrl, item.name)}
@@ -410,7 +415,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
       ${introText ? `<p class="grid8-center-intro">${escapeHtml(introText)}</p>` : ''}
     </article>
     ${items.slice(4, 8).map((item) => {
-        const displayName = compactGridItemName(item.name);
+        const displayName = gridDisplayName(item);
         return `
           <article class="grid8-cell ${escapeHtml(imageSourceClass(item))}">
             ${renderPreviewImage(item.imageUrl, item.name)}

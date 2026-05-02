@@ -1042,6 +1042,7 @@ function buildItinerary4N2DGrid8Pages(
   const eveningFoodItems = pools.eveningScheduleItems;
   const scenicItems = dedupeItems([...famousDayItems, ...tourismDayItems, ...checkinDayItems]);
   const outdoorItems = dedupeItems([...scenicItems.filter(isOutdoorSpot), ...tourismDayItems, ...famousDayItems, ...checkinDayItems]);
+  const eveningHangoutItems = dedupeItems([...cafeDayItems, ...outdoorItems, ...scenicItems]);
   const catchAllItems = dedupeItems([
     ...pools.dayCheckinItems,
     ...pools.dayTourismItems,
@@ -1103,7 +1104,7 @@ function buildItinerary4N2DGrid8Pages(
         cafeDayItems,
         dedupeItems([...outdoorItems, ...checkinDayItems]),
         eveningFoodItems,
-        eveningFoodItems,
+        eveningHangoutItems,
       ],
       `${seedPrefix}-grid8-day1`,
     ),
@@ -1120,7 +1121,7 @@ function buildItinerary4N2DGrid8Pages(
         cafeDayItems,
         tourismDayItems.length > 0 ? tourismDayItems : scenicItems,
         eveningFoodItems,
-        eveningFoodItems,
+        eveningHangoutItems,
       ],
       `${seedPrefix}-grid8-day2`,
     ),
@@ -1137,7 +1138,7 @@ function buildItinerary4N2DGrid8Pages(
         cafeDayItems,
         tourismDayItems.length > 0 ? tourismDayItems : scenicItems,
         eveningFoodItems,
-        eveningFoodItems,
+        eveningHangoutItems,
       ],
       `${seedPrefix}-grid8-day3`,
     ),
@@ -1154,7 +1155,7 @@ function buildItinerary4N2DGrid8Pages(
         cafeDayItems,
         dedupeItems([...checkinDayItems, ...outdoorItems]),
         eveningFoodItems,
-        eveningFoodItems,
+        eveningHangoutItems,
       ],
       `${seedPrefix}-grid8-day4`,
     ),
