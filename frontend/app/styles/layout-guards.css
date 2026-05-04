@@ -222,6 +222,26 @@
   padding-bottom: 0.08em;
 }
 
+.story-page .cover-title,
+.story-page.has-inline-hashtags .cover-title,
+.story-page .journey-cover-title,
+.story-page .photomode-cover-title,
+.story-page .grid6-cover-title,
+.story-page .grid8-cover-title {
+  font-family: "Baloo 2", "Be Vietnam Pro", sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.08;
+  text-wrap: balance;
+  text-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.16),
+    0 8px 22px rgba(0, 0, 0, 0.34);
+}
+
+.story-page .journey-cover-title {
+  padding-bottom: 0.12em;
+}
+
 .story-page .grid8-center-title {
   padding-top: 3px;
   padding-bottom: 2px;

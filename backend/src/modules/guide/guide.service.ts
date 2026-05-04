@@ -182,7 +182,7 @@ export class GuideService {
     if (options.refresh) {
       this.invalidateDatasetCache();
     }
-    const context = this.buildDatasetContext();
+    const context = this.buildDatasetContext({ refreshGeneratedLists: Boolean(options.refresh) });
     return {
       generatedAt: new Date().toISOString(),
       canvas: { width: 1588, height: 2248, previewWidth: 397, previewHeight: 562 },
@@ -384,7 +384,7 @@ export class GuideService {
     const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, renderUsage.itemIds, renderUsage.imageUrls);
     baseDecks.forEach((deck) => this.markUsedInDeck(deck.lists.flatMap((list) => list.pages), renderUsage));
     if (options.refreshGeneratedLists) {
-      this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, renderUsage);
+      this.refreshGeneratedListImages(itemsBySection);
     }
     const referenceSets = this.buildReferenceSets();
     const decks = this.mergeGeneratedLists(baseDecks);
@@ -456,6 +456,54 @@ export class GuideService {
         if (list.title !== safeCaption.headline || list.description !== safeCaption.body || JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)) changed = true;
         return { ...list, title: safeCaption.headline, description: safeCaption.body, pages: regeneratedPages };
       });
+      this.generatedListsByDeckId.set(deckId, refreshedLists);
+    }
+
+    if (changed) this.persistGeneratedLists();
+  }
+
+  private refreshGeneratedListImages(itemsBySection: WorkbookItemsBySection): void {
+    if (this.generatedListsByDeckId.size === 0) return;
+
+    const itemsById = new Map<string, GuideItem>();
+    Object.values(itemsBySection).forEach((items) => {
+      items.forEach((item) => itemsById.set(item.id, item));
+    });
+
+    let changed = false;
+    for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
+      const refreshedLists = lists.map((list) => ({
+        ...list,
+        pages: list.pages.map((page) => {
+          if (page.type !== 'list') return page;
+          return {
+            ...page,
+            items: page.items.map((pageItem) => {
+              const sourceItem = itemsById.get(String(pageItem.id ?? ''));
+              if (!sourceItem || sourceItem.imageSource !== 'manual') return pageItem;
+
+              const nextPageItem = {
+                ...pageItem,
+                imageUrl: sourceItem.imageUrl,
+                imageMapped: true,
+                imageSource: 'manual' as const,
+                imageNote: 'Ảnh đã map đúng địa điểm từ sheet',
+                candidateImageUrls: sourceItem.candidateImageUrls,
+              };
+
+              if (
+                pageItem.imageUrl !== nextPageItem.imageUrl ||
+                pageItem.imageSource !== nextPageItem.imageSource ||
+                pageItem.imageMapped !== nextPageItem.imageMapped ||
+                JSON.stringify(pageItem.candidateImageUrls ?? []) !== JSON.stringify(nextPageItem.candidateImageUrls ?? [])
+              ) {
+                changed = true;
+              }
+              return nextPageItem;
+            }),
+          };
+        }),
+      }));
       this.generatedListsByDeckId.set(deckId, refreshedLists);
     }
 

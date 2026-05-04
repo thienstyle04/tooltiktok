@@ -1,58 +1,60 @@
-﻿import { countDeckPages } from '../lib/utils';
-
-export default function Sidebar({ dataset, activeDeckId, activeListId, onDeckSelect, onListSelect }) {
-  const activeDeck = dataset?.decks?.find((deck) => deck.id === activeDeckId) || null;
-  const listCount = dataset?.decks?.reduce((total, deck) => total + deck.lists.length, 0) || 0;
+export default function Sidebar({
+  dataset,
+  activeView,
+  onOpenTemplates,
+  onOpenPreview,
+  onOpenCaption,
+  onOpenExport,
+  onOpenData,
+  onOpenDelete,
+}) {
+  const menuItems = [
+    { id: 'templates', label: 'Mẫu deck', icon: 'templates', onClick: onOpenTemplates || onOpenPreview },
+    { id: 'preview', label: 'Preview', icon: 'preview', onClick: onOpenPreview },
+    { id: 'caption', label: 'Caption AI', icon: 'caption', onClick: onOpenCaption },
+    { id: 'export', label: 'Xuất file', icon: 'export', onClick: onOpenExport, buttonId: 'batchExportBtn' },
+    { id: 'data', label: 'Dữ liệu trang', icon: 'data', onClick: onOpenData },
+    { id: 'delete', label: 'Xóa list', icon: 'delete', onClick: onOpenDelete, buttonId: 'deleteListsBtn' },
+  ];
 
   return (
     <aside className="app-sidebar">
-      <div className="brand-block">
-        <p className="eyebrow">Dalat carousel</p>
-        <h1 className="brand-title">Deck Studio</h1>
-        <p className="brand-copy">Chọn mẫu, kiểm tra dữ liệu từng trang và xuất bộ ảnh TikTok từ cùng một màn hình.</p>
+      <div className="window-dots" aria-hidden="true">
+        <span className="dot red" />
+        <span className="dot amber" />
+        <span className="dot green" />
       </div>
 
-      <section className="sidebar-section template-nav-section">
-        <div className="sidebar-head">
-          <span className="sidebar-label">Mẫu</span>
-          <span id="deckStats" className="sidebar-count">
-            {dataset ? `${dataset.decks.length} mẫu · ${listCount} list` : 'Đang tải'}
-          </span>
+      <div className="brand-block">
+        <span className="brand-mark" aria-hidden="true">DL</span>
+        <div>
+          <h1 className="brand-title">Dalat Studio</h1>
+          <p className="brand-version">v0.1.0</p>
         </div>
-        <div id="deckSwitcher" className="deck-switcher">
-          {(dataset?.decks || []).map((deck) => (
-            <button
-              key={deck.id}
-              className={`deck-chip ${deck.id === activeDeckId ? 'active' : ''}`}
-              type="button"
-              onClick={() => onDeckSelect(deck)}
-            >
-              <span className="deck-chip-name">{deck.navTitle}</span>
-              <span className="deck-chip-meta">{deck.lists.length} list · {countDeckPages(deck)} trang</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      </div>
 
-      <section className="sidebar-section list-nav-section">
-        <div className="sidebar-head">
-          <span className="sidebar-label">List trong mẫu</span>
-          <span id="listStats" className="sidebar-count">{activeDeck ? `${activeDeck.lists.length} list` : '0 list'}</span>
-        </div>
-        <div id="listSwitcher" className="list-switcher">
-          {activeDeck?.lists?.length ? activeDeck.lists.map((list) => (
+      <nav className="sidebar-menu" aria-label="Khu vực làm việc">
+        {menuItems.map((item) => {
+          const active = activeView === item.id;
+          return (
             <button
-              key={list.id}
-              className={`list-chip ${list.id === activeListId ? 'active' : ''}`}
+              key={item.id}
+              id={item.buttonId}
+              className={`sidebar-menu-item ${active ? 'active' : ''}`}
               type="button"
-              onClick={() => onListSelect(list)}
+              onClick={item.onClick}
             >
-              <span>{list.navTitle || list.title}</span>
-              <small>{String(list.pages.length).padStart(2, '0')} trang</small>
+              <span className={`side-icon ${item.icon}`} />
+              {item.label}
             </button>
-          )) : <div className="sidebar-empty">Chưa có list.</div>}
-        </div>
-      </section>
+          );
+        })}
+      </nav>
+
+      <div className="sidebar-footer">
+        <span className="footer-status-dot" />
+        <span>{dataset ? 'Sẵn sàng' : 'Đang nạp dữ liệu'}</span>
+      </div>
     </aside>
   );
 }

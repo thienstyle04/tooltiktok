@@ -1,17 +1,19 @@
 ﻿'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { exportActiveList, exportBatch, exportSelectedPagePng } from '../lib/exportClient';
+import { exportBatch, exportSelectedPagePng } from '../lib/exportClient';
 import { clearCachedDataset, readCachedDataset, writeCachedDataset } from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
 import { SELECTION_STORAGE_KEY, listIsMain } from '../lib/utils';
 import CaptionTools from './CaptionTools';
+import DataStatsPanel from './DataStatsPanel';
 import DeleteListsModal from './DeleteListsModal';
 import ExportModal from './ExportModal';
 import PageInspector from './PageInspector';
-import PreviewPanel from './PreviewPanel';
+import PreviewDashboardPanel from './PreviewDashboardPanel';
 import ProgressBar from './ProgressBar';
 import Sidebar from './Sidebar';
+import TemplateGalleryPanel from './TemplateGalleryPanel';
 
 const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
@@ -91,6 +93,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const [status, setStatus] = useState(initialDataset?.source?.totalItems
     ? `Đã tải ${initialDataset.source.totalItems} địa điểm.`
     : 'Đang tải dữ liệu workbook...');
+  const [activeView, setActiveView] = useState('preview');
   const [captionToolsVisible, setCaptionToolsVisible] = useState(false);
   const [captionTone, setCaptionTone] = useState('lich_trinh_huu_ich');
   const [caption, setCaption] = useState(emptyCaption);
@@ -110,6 +113,13 @@ export default function DeckStudio({ initialDataset = null }) {
     () => activeDeck?.lists?.find((list) => list.id === activeListId) || activeDeck?.lists?.[0] || null,
     [activeDeck, activeListId],
   );
+  const captionSourceList = useMemo(
+    () => (activeDeck?.lists || []).find((list) => listIsMain(list)) || activeList,
+    [activeDeck, activeList],
+  );
+  const activePage = activeList?.pages?.[selectedPageIndex] || null;
+  const activePageItems = Array.isArray(activePage?.items) ? activePage.items : [];
+  const activePartnerCount = activePageItems.filter((item) => item.isPartner).length;
 
   const showProgress = useCallback((label = 'Đang chuẩn bị xuất file...', value = 0) => {
     setProgress({ visible: true, failed: false, value, label });
@@ -233,16 +243,17 @@ export default function DeckStudio({ initialDataset = null }) {
     setActiveDeckId(snapshot.activeDeckId);
     setActiveListId(snapshot.activeListId);
     setSelectedPageIndex(snapshot.selectedPageIndex);
+    setActiveView('preview');
     setCaptionToolsVisible(false);
     setStatus('Đã hoàn tác về lựa chọn trước đó.');
   }, []);
 
   const handleDeckSelect = useCallback((deck) => {
+    const defaultList = (deck.lists || []).find((list) => listIsMain(list)) || deck.lists[0] || null;
     pushSelectionSnapshot();
     setActiveDeckId(deck.id);
-    setActiveListId(deck.lists[0]?.id || null);
+    setActiveListId(defaultList?.id || null);
     setSelectedPageIndex(0);
-    setCaptionToolsVisible(false);
     setStatus(`Đang xem deck: ${deck.navTitle}.`);
   }, [pushSelectionSnapshot]);
 
@@ -250,7 +261,6 @@ export default function DeckStudio({ initialDataset = null }) {
     pushSelectionSnapshot();
     setActiveListId(list.id);
     setSelectedPageIndex(0);
-    setCaptionToolsVisible(false);
     setStatus(`Đang xem list: ${list.navTitle || list.title}.`);
   }, [pushSelectionSnapshot]);
 
@@ -271,20 +281,20 @@ export default function DeckStudio({ initialDataset = null }) {
   }, []);
 
   const requestCaption = useCallback(async (target = 'full') => {
-    if (!activeDeck || !activeList) {
+    if (!activeDeck || !captionSourceList) {
       setStatus('Chưa có list để gửi sang DeepSeek.');
       return;
     }
 
     setBusy(true);
-    setStatus(`Đang gọi DeepSeek cho list "${activeList.title}"...`);
+    setStatus(`Đang gọi DeepSeek cho list "${captionSourceList.title}"...`);
     try {
       const response = await fetch('/api/ai/deepseek/caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           deckId: activeDeck.id,
-          listId: activeList.id,
+          listId: captionSourceList.id,
           tone: captionTone,
           target,
           current: {
@@ -298,17 +308,17 @@ export default function DeckStudio({ initialDataset = null }) {
       if (!response.ok) throw new Error(payload.message || `DeepSeek trả lỗi HTTP ${response.status}`);
       setCaption({
         headline: payload.headline || '',
-        body: sanitizeCaptionBody(payload.body, activeList),
+        body: sanitizeCaptionBody(payload.body, captionSourceList),
         hashtags: Array.isArray(payload.hashtags) ? payload.hashtags.join(' ') : '',
       });
-      setStatus(`Đã nhận caption DeepSeek cho list "${activeList.title}".`);
+      setStatus(`Đã nhận caption DeepSeek cho list "${captionSourceList.title}".`);
     } catch (error) {
       console.error(error);
       setStatus(`Gọi DeepSeek thất bại: ${error.message}`);
     } finally {
       setBusy(false);
     }
-  }, [activeDeck, activeList, caption, captionTone]);
+  }, [activeDeck, caption, captionSourceList, captionTone]);
 
   const createDeckFromCaption = useCallback(async () => {
     if (!activeDeck) {
@@ -328,7 +338,7 @@ export default function DeckStudio({ initialDataset = null }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           deckId: activeDeck.id,
-          listId: activeListId,
+          listId: captionSourceList?.id || activeListId,
           caption: {
             headline: caption.headline.trim(),
             body: caption.body.trim(),
@@ -352,7 +362,7 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally {
       setBusy(false);
     }
-  }, [activeDeck, activeListId, caption, loadDataset]);
+  }, [activeDeck, activeListId, caption, captionSourceList, loadDataset]);
 
   const deleteGeneratedList = useCallback(async (deckId, listId) => {
     const confirmed = window.confirm('Bạn có chắc chắn muốn xóa bộ ảnh AI này?');
@@ -439,6 +449,7 @@ export default function DeckStudio({ initialDataset = null }) {
       });
       setSelectedListsForDelete(new Set());
       setDeleteModalOpen(false);
+      setActiveView('preview');
       setStatus(`Đã xóa ${listCount} list AI.`);
     } catch (error) {
       setStatus(error?.message || 'Không xóa được các list AI đã chọn.');
@@ -449,6 +460,7 @@ export default function DeckStudio({ initialDataset = null }) {
 
   const handleExportBatch = useCallback(async () => {
     setExportModalOpen(false);
+    setActiveView('preview');
     await exportBatch({ dataset, selectedListIds: selectedListsForExport }, exportCb);
     setSelectedListsForExport(new Set());
   }, [dataset, exportCb, selectedListsForExport]);
@@ -488,6 +500,7 @@ export default function DeckStudio({ initialDataset = null }) {
       }
 
       if (event.key === 'Escape' && captionToolsVisible) {
+        setActiveView('preview');
         setCaptionToolsVisible(false);
       }
     };
@@ -505,55 +518,116 @@ export default function DeckStudio({ initialDataset = null }) {
     selectedPageIndex,
   ]);
 
-  const workspaceClasses = `workspace-grid list-focus-mode ${captionToolsVisible ? 'show-caption-tools' : ''}`;
+  const openPreviewView = useCallback(() => {
+    setActiveView('preview');
+    setCaptionToolsVisible(false);
+  }, []);
+
+  const openTemplatesView = useCallback(() => {
+    setActiveView('templates');
+    setCaptionToolsVisible(false);
+  }, []);
+
+  const openCaptionView = useCallback(() => {
+    if (captionSourceList && captionSourceList.id !== activeListId) {
+      setActiveListId(captionSourceList.id);
+      setSelectedPageIndex(0);
+    }
+    setActiveView('caption');
+    setCaptionToolsVisible(true);
+  }, [activeListId, captionSourceList]);
+
+  const previewDeck = useCallback((deck) => {
+    handleDeckSelect(deck);
+    setActiveView('preview');
+    setCaptionToolsVisible(false);
+  }, [handleDeckSelect]);
+
+  const captionDeck = useCallback((deck) => {
+    handleDeckSelect(deck);
+    setActiveView('caption');
+    setCaptionToolsVisible(true);
+  }, [handleDeckSelect]);
+
+  const openExportView = useCallback(() => {
+    setActiveView('export');
+    setCaptionToolsVisible(false);
+    setSelectedListsForExport(() => {
+      const next = new Set();
+      (dataset?.decks || []).forEach((deck) => {
+        (deck.lists || [])
+          .filter((list) => !listIsMain(list))
+          .forEach((list) => {
+            if (list?.id) next.add(list.id);
+          });
+      });
+      return next;
+    });
+    setExportModalOpen(true);
+  }, [dataset]);
+
+  const openDataView = useCallback(() => {
+    setActiveView('data');
+    setCaptionToolsVisible(false);
+  }, []);
+
+  const openDeleteView = useCallback(() => {
+    setActiveView('delete');
+    setCaptionToolsVisible(false);
+    setSelectedListsForDelete(() => {
+      const next = new Set();
+      if (activeList && !listIsMain(activeList)) next.add(activeList.id);
+      return next;
+    });
+    setDeleteModalOpen(true);
+  }, [activeList]);
+
+  const workspaceClasses = [
+    'workspace-grid',
+    'list-focus-mode',
+    activeView === 'templates' ? 'templates-mode' : '',
+    activeView === 'preview' || activeView === 'export' || activeView === 'delete' ? 'preview-mode' : '',
+    activeView === 'caption' ? 'caption-mode' : '',
+    activeView === 'data' ? 'data-mode' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <main className="app-shell">
       <Sidebar
         dataset={dataset}
-        activeDeckId={activeDeckId}
-        activeListId={activeListId}
-        onDeckSelect={handleDeckSelect}
-        onListSelect={handleListSelect}
+        activeView={activeView}
+        onOpenTemplates={openTemplatesView}
+        onOpenPreview={openPreviewView}
+        onOpenCaption={openCaptionView}
+        onOpenExport={openExportView}
+        onOpenData={openDataView}
+        onOpenDelete={openDeleteView}
       />
 
       <section className="studio-shell">
         <header className="studio-topbar deck-toolbar">
           <div className="deck-heading">
-            <p className="eyebrow">Đang làm việc</p>
-            <h2 id="deckTitle" className="section-title">{activeDeck?.title || 'Đang tải...'}</h2>
-            <p id="deckSubtitle" className="deck-subtitle">{activeDeck?.description || 'Tool đang đọc workbook và dựng các bộ ảnh mẫu.'}</p>
+            <div className="studio-breadcrumb">
+              <span>Deck Studio</span>
+              <span className="breadcrumb-separator">/</span>
+              <span>{activeDeck?.navTitle || 'Đang tải'}</span>
+            </div>
+            <div className="studio-title-row">
+              <span className="deck-avatar" aria-hidden="true">DS</span>
+              <div>
+                <h2 id="deckTitle" className="section-title">{activeDeck?.title || 'Đang tải...'}</h2>
+                <p id="deckSubtitle" className="deck-subtitle">{activeDeck?.description || 'Tool đang đọc workbook và dựng các bộ ảnh mẫu.'}</p>
+              </div>
+            </div>
+            <div className="studio-stat-row">
+              <span>{activeDeck?.lists?.length || 0} list</span>
+              <span>{activeList?.pages?.length || 0} trang</span>
+              <span>{activePageItems.length} dữ liệu</span>
+              <span>{activePartnerCount} đối tác</span>
+            </div>
           </div>
           <div className="toolbar-actions">
-            <button id="refreshBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message))}>Làm mới dữ liệu</button>
-            <button
-              id="showCaptionToolsBtn"
-              className="toolbar-button secondary"
-              type="button"
-              aria-pressed={captionToolsVisible}
-              onClick={() => setCaptionToolsVisible((prev) => !prev)}
-            >
-              {captionToolsVisible ? 'Ẩn sinh caption' : 'Sinh caption tự động'}
-            </button>
-            <button id="exportSelectedPageBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => exportSelectedPagePng({ deck: activeDeck, list: activeList, selectedPageIndex }, exportCb)}>Xuất trang chọn</button>
-            <button id="exportActiveListBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => exportActiveList({ deck: activeDeck, list: activeList }, exportCb)}>Xuất list đang chọn</button>
-            <button
-              id="deleteListsBtn"
-              className="toolbar-button danger"
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setSelectedListsForDelete(() => {
-                  const next = new Set();
-                  if (activeList && !listIsMain(activeList)) next.add(activeList.id);
-                  return next;
-                });
-                setDeleteModalOpen(true);
-              }}
-            >
-              Xóa list AI
-            </button>
-            <button id="batchExportBtn" className="toolbar-button primary" type="button" disabled={busy} onClick={() => setExportModalOpen(true)}>Xuất hàng loạt</button>
+            <button id="refreshBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message))}>Làm mới</button>
           </div>
         </header>
 
@@ -563,42 +637,91 @@ export default function DeckStudio({ initialDataset = null }) {
         </div>
         <ProgressBar progress={progress} />
 
-        <div className={workspaceClasses}>
-          <PreviewPanel
-            deck={activeDeck}
-            list={activeList}
-            selectedPageIndex={selectedPageIndex}
-            onPageSelect={handlePageSelect}
-            onDeleteList={deleteGeneratedList}
-            loading={!dataset}
-          />
-
-          <aside className="right-panel">
-            <section className="inspector-shell">
-              <div className="panel-head compact">
-                <div>
-                  <p className="panel-kicker">Dữ liệu trang</p>
-                  <h3 className="panel-title">Dữ liệu & ảnh</h3>
-                </div>
-              </div>
-              <div id="pageInspector" className="page-inspector">
-                <PageInspector deck={activeDeck} list={activeList} selectedPageIndex={selectedPageIndex} />
-              </div>
-            </section>
-
+        {activeView === 'templates' ? (
+          <div className={workspaceClasses}>
+            <TemplateGalleryPanel
+              dataset={dataset}
+              activeDeckId={activeDeckId}
+              activeListId={activeListId}
+              onDeckSelect={handleDeckSelect}
+              onListSelect={handleListSelect}
+              onPreviewDeck={previewDeck}
+              onCaptionDeck={captionDeck}
+            />
+          </div>
+        ) : activeView === 'data' ? (
+          <div className={workspaceClasses}>
+            <DataStatsPanel
+              dataset={dataset}
+              activeDeckId={activeDeckId}
+              onDeckSelect={handleDeckSelect}
+            />
+          </div>
+        ) : activeView === 'caption' ? (
+          <div className={workspaceClasses}>
             <CaptionTools
               visible={captionToolsVisible}
+              dataset={dataset}
+              activeDeck={activeDeck}
+              activeList={captionSourceList}
               tone={captionTone}
               setTone={setCaptionTone}
               caption={caption}
               setCaption={setCaption}
               busy={busy}
+              onDeckSelect={handleDeckSelect}
+              onListSelect={handleListSelect}
               onRequestCaption={requestCaption}
               onCreateList={createDeckFromCaption}
               onCopy={copyText}
             />
-          </aside>
-        </div>
+
+            <aside className="right-panel">
+              <section className="inspector-shell caption-context-shell">
+                <div className="panel-head compact">
+                  <div>
+                    <p className="panel-kicker">Mẫu đang chọn</p>
+                    <h3 className="panel-title">{captionSourceList?.navTitle || captionSourceList?.title || 'Chưa có list'}</h3>
+                  </div>
+                </div>
+                <div id="pageInspector" className="page-inspector">
+                  <PageInspector deck={activeDeck} list={captionSourceList} selectedPageIndex={selectedPageIndex} />
+                </div>
+              </section>
+            </aside>
+          </div>
+        ) : (
+          <div className={workspaceClasses}>
+            <PreviewDashboardPanel
+              dataset={dataset}
+              activeDeck={activeDeck}
+              activeList={activeList}
+              activeDeckId={activeDeckId}
+              activeListId={activeListId}
+              selectedPageIndex={selectedPageIndex}
+              onDeckSelect={handleDeckSelect}
+              onListSelect={handleListSelect}
+              onPageSelect={handlePageSelect}
+              onDeleteList={deleteGeneratedList}
+              loading={!dataset}
+            />
+
+            <aside className="right-panel">
+              <section className="inspector-shell">
+                <div className="panel-head compact">
+                  <div>
+                    <p className="panel-kicker">Dữ liệu trang</p>
+                    <h3 className="panel-title">Dữ liệu & ảnh</h3>
+                  </div>
+                </div>
+                <div id="pageInspector" className="page-inspector">
+                  <PageInspector deck={activeDeck} list={activeList} selectedPageIndex={selectedPageIndex} />
+                </div>
+              </section>
+
+            </aside>
+          </div>
+        )}
       </section>
 
       <ExportModal
@@ -607,7 +730,10 @@ export default function DeckStudio({ initialDataset = null }) {
         selectedIds={selectedListsForExport}
         setSelectedIds={setSelectedListsForExport}
         busy={busy}
-        onClose={() => setExportModalOpen(false)}
+        onClose={() => {
+          setExportModalOpen(false);
+          if (activeView === 'export') setActiveView('preview');
+        }}
         onExport={handleExportBatch}
       />
       <DeleteListsModal
@@ -616,7 +742,10 @@ export default function DeckStudio({ initialDataset = null }) {
         selectedIds={selectedListsForDelete}
         setSelectedIds={setSelectedListsForDelete}
         busy={busy}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          if (activeView === 'delete') setActiveView('preview');
+        }}
         onDelete={deleteSelectedLists}
       />
     </main>

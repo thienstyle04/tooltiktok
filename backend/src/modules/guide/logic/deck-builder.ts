@@ -158,9 +158,6 @@ function isLightMealItem(item: GuideItem): boolean {
 }
 
 function photomodeMetaPrimary(item: GuideItem): string {
-  if (item.sectionKey === 'dich_vu' && item.phone && item.address) {
-    return `(${item.phone}) ${item.address}`;
-  }
   return item.address || item.phone || 'Đang cập nhật';
 }
 
@@ -1452,7 +1449,7 @@ function buildPov3DayPages(
     `${seedPrefix}:pov-3-day`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'landscape' },
+    { orientation: 'portrait' },
   );
   const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -1807,9 +1804,9 @@ function buildGrid8Pages(
       'grid-8',
     ),
     buildListPage(
-      'Đi chơi',
+      'Vào phố',
       'slate',
-      '8 ĐIỂM ĐI CHƠI',
+      '8 ĐIỂM VÀO PHỐ',
       'Các điểm tham quan và khu du lịch đặt trong lưới dày hơn.',
       buildGrid8PageItems(pools.tourismItems, tourismFallbackItems, 8, `${seedPrefix}-tourism`, pick, imageResolver, (item) => item.type),
       background(`${seedPrefix}-tourism-center`),

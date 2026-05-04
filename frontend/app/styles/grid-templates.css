@@ -609,8 +609,26 @@
 .journey-grid8-page .grid8-cell strong {
   font-size: 0.5rem;
   line-height: 1.16;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.journey-grid8-page .grid8-cell-copy {
+  gap: 2px;
+}
+
+.journey-grid8-page .grid8-cell .grid8-meta {
+  display: flex;
+  align-items: center;
+  font-size: 0.38rem;
+  line-height: 1.08;
+  color: rgba(255,255,255,0.9);
+}
+
+.journey-grid8-page .grid8-pin {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
 }
 
 .journey-grid8-page .grid8-center-title {

@@ -2,8 +2,14 @@
 
 export default function ExportModal({ open, dataset, selectedIds, setSelectedIds, busy, onClose, onExport }) {
   if (!open) return null;
-  const decksWithLists = (dataset?.decks || []).filter((deck) => deck.lists.length > 0);
-  const count = selectedIds.size;
+  const decksWithLists = (dataset?.decks || [])
+    .map((deck) => ({
+      ...deck,
+      exportLists: (deck.lists || []).filter((list) => !listIsMain(list)),
+    }))
+    .filter((deck) => deck.exportLists.length > 0);
+  const exportableListIds = new Set(decksWithLists.flatMap((deck) => deck.exportLists.map((list) => list.id)));
+  const count = Array.from(selectedIds).filter((id) => exportableListIds.has(id)).length;
 
   return (
     <div id="exportModal" className="modal-overlay" onClick={(event) => event.target.id === 'exportModal' && onClose()}>
@@ -19,7 +25,7 @@ export default function ExportModal({ open, dataset, selectedIds, setSelectedIds
           <p className="modal-description">Chọn các list cần xuất. Mỗi list sẽ là một folder bên trong file ZIP.</p>
           <div id="exportDeckList" className="export-deck-list">
             {decksWithLists.map((deck) => {
-              const allSelected = deck.lists.every((list) => selectedIds.has(list.id));
+              const allSelected = deck.exportLists.every((list) => selectedIds.has(list.id));
               return (
                 <div key={deck.id} className="export-deck-group" data-deck-id={deck.id}>
                   <div className="export-group-head">
@@ -30,7 +36,7 @@ export default function ExportModal({ open, dataset, selectedIds, setSelectedIds
                         checked={allSelected}
                         onChange={(event) => setSelectedIds((prev) => {
                           const next = new Set(prev);
-                          deck.lists.forEach((list) => event.target.checked ? next.add(list.id) : next.delete(list.id));
+                          deck.exportLists.forEach((list) => event.target.checked ? next.add(list.id) : next.delete(list.id));
                           return next;
                         })}
                       />
@@ -38,30 +44,30 @@ export default function ExportModal({ open, dataset, selectedIds, setSelectedIds
                     </label>
                   </div>
                   <div className="export-group-lists">
-                    {deck.lists.map((list) => {
-                      const isMain = listIsMain(list);
-                      return (
-                        <label key={list.id} className="export-list-item" data-list-id={list.id}>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(list.id)}
-                            onChange={(event) => setSelectedIds((prev) => {
-                              const next = new Set(prev);
-                              event.target.checked ? next.add(list.id) : next.delete(list.id);
-                              return next;
-                            })}
-                          />
-                          <div className="export-list-info">
-                            <p className="export-list-title">{list.title}</p>
-                            <p className="export-list-meta">{isMain ? 'Gốc' : 'AI'} · {list.pages.length} trang</p>
-                          </div>
-                        </label>
-                      );
-                    })}
+                    {deck.exportLists.map((list) => (
+                      <label key={list.id} className="export-list-item" data-list-id={list.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(list.id)}
+                          onChange={(event) => setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            event.target.checked ? next.add(list.id) : next.delete(list.id);
+                            return next;
+                          })}
+                        />
+                        <div className="export-list-info">
+                          <p className="export-list-title">{list.title}</p>
+                          <p className="export-list-meta">AI · {list.pages.length} trang</p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
               );
             })}
+            {decksWithLists.length === 0 ? (
+              <p className="modal-description">Chưa có list AI để xuất. Hãy sinh caption/list mới trước khi xuất hàng loạt.</p>
+            ) : null}
           </div>
         </div>
         <div className="modal-foot">

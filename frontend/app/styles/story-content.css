@@ -137,6 +137,7 @@
   border-radius: 28px;
   background: rgba(247, 240, 228, 0.97);
   border: 2px solid rgba(31, 25, 20, 0.12);
+  color: #201c18;
   display: flex;
   flex-direction: column;
 }
@@ -165,6 +166,7 @@
   font-family: "Baloo 2", "Be Vietnam Pro", sans-serif;
   font-size: 2rem;
   line-height: 1.05;
+  color: #201c18;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   line-clamp: 3;

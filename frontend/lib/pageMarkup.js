@@ -151,7 +151,6 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         </div>
         <div class="grid8-cover-shade"></div>
         <div class="grid8-cover-copy">
-          <div class="grid8-cover-kicker">LỊCH TRÌNH 4N2Đ</div>
           <h1 class="grid8-cover-title">${escapeHtml(page.title)}</h1>
           <p class="grid8-cover-subtitle">${escapeHtml(coverSubtitle)}</p>
         </div>
@@ -167,7 +166,6 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         </div>
         <div class="grid8-cover-shade"></div>
         <div class="grid8-cover-copy">
-          <div class="grid8-cover-kicker">8 lựa chọn / 1 trang</div>
           <h1 class="grid8-cover-title">${escapeHtml(page.title)}</h1>
           <p class="grid8-cover-subtitle">${escapeHtml(coverSubtitle)}</p>
         </div>
@@ -275,6 +273,8 @@ function renderPhotomodePin() {
 
 function cleanGridAddress(value) {
   return String(value || '')
+    .replace(/^\s*\(?\s*(?:\+?84|0|1900|1800)(?:[\s.-]?\d){3,11}\s*\)?\s*/g, '')
+    .replace(/\s*\((?:\+?84|0|1900|1800)(?:[\s.-]?\d){3,11}\)\s*/g, ' ')
     .replace(/^\s*(đường|duong|đ\.|hẻm|hem|dốc|doc)\s+/i, '')
     .replace(/(^|\s)(đường|duong|đ\.)\s+/gi, '$1')
     .replace(/\s+/g, ' ')
@@ -381,6 +381,31 @@ function renderGrid8Meta(value) {
       <span>${escapeHtml(cleanAddress)}</span>
     </div>
   `;
+}
+
+function journeyGrid8Intro(page) {
+  const chip = String(page?.chipText || '').trim().toLowerCase();
+  const title = String(page?.title || '').trim().toLowerCase();
+  const textKey = `${chip} ${title}`;
+  if (textKey.includes('day 01') || textKey.includes('ngày 1') || textKey.includes('vao pho') || textKey.includes('vào phố')) {
+    return 'Một nhịp mở đầu dễ đi, đủ ăn uống, cafe và check-in trong ngày đầu.';
+  }
+  if (textKey.includes('day 02') || textKey.includes('ngày 2') || textKey.includes('san anh') || textKey.includes('săn ảnh')) {
+    return 'Ưu tiên các điểm có ảnh đẹp, di chuyển theo nhịp sáng đến tối.';
+  }
+  if (textKey.includes('day 03') || textKey.includes('ngày 3') || textKey.includes('di sau') || textKey.includes('đi sâu')) {
+    return 'Ngày giữa chuyến đi dành cho điểm xa hơn, trải nghiệm rõ chất Đà Lạt.';
+  }
+  if (textKey.includes('day 04') || textKey.includes('ngày 4') || textKey.includes('sang cham') || textKey.includes('sáng chậm')) {
+    return 'Một ngày cuối gọn nhịp, vẫn đủ điểm ghé và chốt bữa tối.';
+  }
+  if (textKey.includes('lưu trú') || textKey.includes('luu tru')) {
+    return 'Các lựa chọn nên xem trước để chốt nơi nghỉ phù hợp lịch trình.';
+  }
+  if (textKey.includes('dịch vụ') || textKey.includes('dich vu')) {
+    return 'Các dịch vụ hỗ trợ chuyến đi, ưu tiên mục có thông tin rõ để liên hệ nhanh.';
+  }
+  return sanitizeSubtitleForDisplay(page?.subtitle, [page]);
 }
 
 export function renderGrid8Items(items, title, chipText, backgroundImage, introText = '', options = {}) {
@@ -499,7 +524,7 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, pageSubtitle)}
+          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage)}
         </div>
       </article>
     `;
@@ -510,7 +535,7 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page', 'journey-grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, pageSubtitle, { showTime: true, showMeta: false, showCenterChip: !hideCenterChip })}
+          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, journeyGrid8Intro(page), { showTime: true, showMeta: true, showCenterChip: !hideCenterChip })}
         </div>
       </article>
     `;

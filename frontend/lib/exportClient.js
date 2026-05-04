@@ -5,7 +5,7 @@ import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { renderCoverPage, renderListPage } from './pageMarkup';
-import { sanitizeFilePart } from './utils';
+import { listIsMain, sanitizeFilePart } from './utils';
 
 const EXPORT_PIXEL_RATIO = 2;
 const BATCH_EXPORT_PIXEL_RATIO = EXPORT_PIXEL_RATIO;
@@ -14,12 +14,12 @@ const BATCH_IMAGE_EXTENSION = 'png';
 const BATCH_IMAGE_QUALITY = 1;
 const BATCH_SOURCE_IMAGE_MAX_DIMENSION = 0;
 const BATCH_SOURCE_IMAGE_QUALITY = 1;
-const BATCH_IMAGE_PREPARE_CONCURRENCY = 72;
+const BATCH_IMAGE_PREPARE_CONCURRENCY = 24;
 const IMAGE_FETCH_TIMEOUT_MS = 5000;
 const IMAGE_READY_TIMEOUT_MS = 1200;
 const PAGE_RENDER_TIMEOUT_MS = 16000;
-const BATCH_PAGE_RENDER_TIMEOUT_MS = PAGE_RENDER_TIMEOUT_MS;
-const TRANSPARENT_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+const BATCH_PAGE_RENDER_TIMEOUT_MS = 30000;
+const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 60000;
 
 let fontEmbedCSS = null;
 let batchImageCache = new Map();
@@ -279,11 +279,6 @@ function shouldInlineImageSource(src, options = {}) {
   }
 }
 
-async function waitForNodeImagesReady(nodes, timeoutMs = IMAGE_READY_TIMEOUT_MS) {
-  const images = nodes.flatMap((node) => Array.from(node.querySelectorAll('img')));
-  await mapWithConcurrency(images, 24, (img) => settleWithin(waitForImageReady(img), timeoutMs));
-}
-
 function collectImageTargets(node, options = {}) {
   const imageTargets = Array.from(node.querySelectorAll('img'))
     .map((img) => ({
@@ -314,12 +309,10 @@ async function prepareImageTarget(target, options = {}) {
 
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
-    const { blobUrl, timedOut } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+    const { blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
     if (!blobUrl) {
-      if (timedOut && originalSrc) {
-        img.dataset.originalSrc = originalSrc;
-        img.src = TRANSPARENT_PIXEL;
-        return { img, originalSrc };
+      if (shouldWaitForReady) {
+        await waitForImageReady(img);
       }
       return null;
     }
@@ -333,12 +326,10 @@ async function prepareImageTarget(target, options = {}) {
   }
 
   const { element, originalBackgroundImage, originalSrc } = target;
-  const { blobUrl, timedOut } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+  const { blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
   if (!blobUrl) {
-    if (timedOut && originalBackgroundImage) {
-      element.dataset.originalBackgroundImage = originalBackgroundImage;
-      element.style.backgroundImage = 'none';
-      return { element, originalBackgroundImage };
+    if (shouldWaitForReady) {
+      await waitForBackgroundReady(originalSrc);
     }
     return null;
   }
@@ -426,6 +417,28 @@ function renderPagesForExport(list, options = {}) {
 
   return prepareExportStoryPages(Array.from(root.querySelectorAll(`.story-page[data-list-id="${CSS.escape(list.id)}"]`)))
     .sort((a, b) => Number(a.dataset.pageIndex) - Number(b.dataset.pageIndex));
+}
+
+function findVisibleSelectedPageNode(list, selectedPageIndex) {
+  if (!list?.id || !Number.isInteger(selectedPageIndex) || typeof CSS === 'undefined') return null;
+  const selector = `.story-page[data-list-id="${CSS.escape(list.id)}"][data-page-index="${selectedPageIndex}"]`;
+  return Array.from(document.querySelectorAll(selector)).find((node) =>
+    !node.closest('.batch-export-root') && node.classList.contains('is-selected'),
+  ) || null;
+}
+
+function cloneVisiblePageForExport(sourceNode) {
+  const root = ensureBatchExportRoot();
+  const clone = sourceNode.cloneNode(true);
+  clone.classList.remove('is-selected');
+  clone.querySelectorAll('.is-selected').forEach((node) => node.classList.remove('is-selected'));
+  clone.querySelectorAll('img').forEach((img) => {
+    const currentSrc = img.currentSrc || img.src;
+    if (currentSrc) img.src = currentSrc;
+  });
+  root.innerHTML = '<div class="list-preview-grid batch-export-grid"></div>';
+  root.firstElementChild.appendChild(clone);
+  return prepareExportStoryPages([clone])[0];
 }
 
 async function waitForExportLayout() {
@@ -521,9 +534,15 @@ function renderConcurrencyLimit() {
 
 function batchRenderConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 18;
-  if (cores >= 8) return 14;
-  return 8;
+  if (cores >= 12) return 8;
+  if (cores >= 8) return 6;
+  return 4;
+}
+
+function batchCaptureConcurrencyLimit() {
+  const cores = Number(navigator.hardwareConcurrency || 4);
+  if (cores >= 8) return 2;
+  return 1;
 }
 
 function collectPartnerNames(list) {
@@ -583,6 +602,7 @@ export async function renderPageBlob(pageNode, options = {}) {
   const backgroundColor = options.backgroundColor ?? (imageFormat === 'image/jpeg' ? '#ffffff' : null);
   const preferHtml2Canvas = options.preferHtml2Canvas === true;
   const shouldEmbedFonts = options.embedFonts !== false;
+  const allowFallback = options.allowFallback !== false;
   await ensureExportFontsReady(pageNode, { decodeImages: !imagesReady, embedFonts: shouldEmbedFonts });
   const blobUrls = imagesReady ? [] : await inlineImagesAsBlobs(pageNode, { waitForReady: options.waitForImageReady });
 
@@ -646,9 +666,33 @@ export async function renderPageBlob(pageNode, options = {}) {
     } catch (error) {
       console.warn('Canvas export failed, writing a fallback page.', error);
     }
+    if (!allowFallback) {
+      throw new Error('Render PNG quá thời gian, chưa tạo được ảnh hợp lệ.');
+    }
     return createFallbackPageBlob(pageNode, pixelRatio, imageFormat, imageQuality);
   } finally {
     restoreImagesFromBlobs(blobUrls);
+  }
+}
+
+async function renderPageBlobWithRetry(pageNode, options = {}) {
+  try {
+    return await renderPageBlob(pageNode, {
+      ...options,
+      allowFallback: false,
+    });
+  } catch (error) {
+    console.warn('Page render failed, retrying with a longer timeout.', error);
+    await waitForExportLayout();
+    return renderPageBlob(pageNode, {
+      ...options,
+      allowFallback: false,
+      waitForImageReady: true,
+      renderTimeoutMs: Math.max(
+        Number(options.renderTimeoutMs || 0),
+        BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS,
+      ),
+    });
   }
 }
 
@@ -684,7 +728,10 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
-    const pageNodes = renderPagesForExport(list, { pageIndex: selectedPageIndex });
+    const visiblePageNode = findVisibleSelectedPageNode(list, selectedPageIndex);
+    const pageNodes = visiblePageNode
+      ? [cloneVisiblePageForExport(visiblePageNode)]
+      : renderPagesForExport(list, { pageIndex: selectedPageIndex });
     await waitForExportLayout();
     cb.updateProgress(18, `Đang dựng layout trang ${selectedPageIndex + 1}/${list.pages.length}...`);
     const pageNode = pageNodes.find((node) => Number(node.dataset.pageIndex) === selectedPageIndex);
@@ -694,7 +741,7 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
     let blob;
     try {
       cb.updateProgress(66, 'Đang render PNG...');
-      blob = await renderPageBlob(pageNode, { imagesReady: true });
+      blob = await renderPageBlobWithRetry(pageNode, { imagesReady: true });
     } finally {
       restoreImagesFromBlobs(preparedImages);
     }
@@ -738,7 +785,7 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
         const globalIdx = i + chunkIdx;
         cb.setStatus(`Đang render "${list.title}": ${globalIdx + 1}/${pageNodes.length}...`);
 
-        const blob = await renderPageBlob(pageNode, {
+        const blob = await renderPageBlobWithRetry(pageNode, {
           imagesReady: true,
           pixelRatio: options.pixelRatio,
           renderTimeoutMs: options.renderTimeoutMs,
@@ -823,9 +870,15 @@ export async function exportBatch(context, callbacks = {}) {
   const allLists = [];
   dataset.decks.forEach((deck) => {
     deck.lists.forEach((list) => {
-      if (listIds.includes(list.id)) allLists.push({ deck, list });
+      if (listIds.includes(list.id) && !listIsMain(list)) allLists.push({ deck, list });
     });
   });
+
+  if (allLists.length === 0) {
+    cb.setStatus('Chưa có list AI để xuất. List gốc/mẫu đã được bỏ qua.');
+    cb.completeProgress('Không có list AI được chọn để xuất.');
+    return;
+  }
 
   cb.setBusy(true);
   cb.setStatus(`Đang chuẩn bị xuất ${allLists.length} list...`);
@@ -873,11 +926,8 @@ export async function exportBatch(context, callbacks = {}) {
       if (renderedChunk.some((task) => !task.pageNode)) {
         throw new Error('Không dựng được một số trang để xuất.');
       }
-      await waitForNodeImagesReady(renderedChunk.map((task) => task.pageNode));
-
       const preparedImages = await inlineImagesForNodes(renderedChunk.map((task) => task.pageNode), {
-        waitForReady: false,
-        onlyCrossOrigin: true,
+        waitForReady: true,
         concurrency: BATCH_IMAGE_PREPARE_CONCURRENCY,
         maxImageDimension: BATCH_SOURCE_IMAGE_MAX_DIMENSION,
         sourceImageFormat: BATCH_IMAGE_FORMAT,
@@ -885,9 +935,9 @@ export async function exportBatch(context, callbacks = {}) {
       });
 
       try {
-        await Promise.all(renderedChunk.map(async (task, chunkIdx) => {
+        await mapWithConcurrency(renderedChunk, batchCaptureConcurrencyLimit(), async (task, chunkIdx) => {
           const globalIdx = i + chunkIdx;
-          const blob = await renderPageBlob(task.pageNode, {
+          const blob = await renderPageBlobWithRetry(task.pageNode, {
             imagesReady: true,
             pixelRatio: BATCH_EXPORT_PIXEL_RATIO,
             imageFormat: BATCH_IMAGE_FORMAT,
@@ -903,7 +953,7 @@ export async function exportBatch(context, callbacks = {}) {
           });
           renderedPages += 1;
           cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang render PNG chất lượng cao ${renderedPages}/${totalPages} trang...`);
-        }));
+        });
       } finally {
         restoreImagesFromBlobs(preparedImages);
         clearBatchExportRoot();

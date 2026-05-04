@@ -245,7 +245,7 @@ function preferredImageCandidates(name: string, urls: string[]): string[] {
 type ImageDimensions = { width: number; height: number };
 
 type ListImageResolverOptions = {
-  orientation?: 'any' | 'landscape';
+  orientation?: 'any' | 'landscape' | 'portrait';
   workspaceRoot?: string;
   dalatImageDir?: string;
 };
@@ -358,14 +358,36 @@ export function isLandscapeImageUrl(
   return !!dimensions && dimensions.width > dimensions.height;
 }
 
+export function isPortraitImageUrl(
+  url: string,
+  libraryEntries: ImageLibraryFolderEntry[],
+  options: ListImageResolverOptions = {},
+): boolean {
+  const localPath = localPathForAssetUrl(url, libraryEntries, options);
+  if (!localPath) return false;
+  const dimensions = readImageDimensions(localPath);
+  return !!dimensions && dimensions.height > dimensions.width;
+}
+
 function filterImageUrlsForResolverOptions(
   urls: string[],
   libraryEntries: ImageLibraryFolderEntry[],
   options: ListImageResolverOptions,
 ): string[] {
   const unique = Array.from(new Set(urls.filter(Boolean)));
-  if (options.orientation !== 'landscape') return unique;
-  return unique.filter((url) => isLandscapeImageUrl(url, libraryEntries, options));
+  if (options.orientation === 'landscape') return unique.filter((url) => isLandscapeImageUrl(url, libraryEntries, options));
+  if (options.orientation === 'portrait') return unique.filter((url) => isPortraitImageUrl(url, libraryEntries, options));
+  return unique;
+}
+
+function preferImageUrlsForResolverOptions(
+  urls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  options: ListImageResolverOptions,
+): string[] {
+  const unique = Array.from(new Set(urls.filter(Boolean)));
+  const filtered = filterImageUrlsForResolverOptions(unique, libraryEntries, options);
+  return filtered.length > 0 ? filtered : unique;
 }
 
 export function allowedImageKindsForItem(item: { sectionKey: SectionKey; type: string; name: string }): Set<string> {
@@ -375,6 +397,8 @@ export function allowedImageKindsForItem(item: { sectionKey: SectionKey; type: s
   if (item.sectionKey === 'cafe') {
     allowed.add('cafe');
   } else if (item.sectionKey === 'check_in') {
+    allowed.add('checkin');
+  } else if (item.sectionKey === 'khu_du_lich' || item.sectionKey === 'dia_diem_lich_su') {
     allowed.add('checkin');
   } else if (item.sectionKey === 'quan_an') {
     if (normalizedType.includes('sang')) {
@@ -420,7 +444,7 @@ export function scoreImageLibraryMatch(
 
   const topDir = normalizeText(entry.topDir);
   if (sectionKey === 'cafe' && topDir.includes('ca_phe')) score += 25;
-  if (sectionKey === 'check_in' && topDir.includes('check_in')) score += 25;
+  if ((sectionKey === 'check_in' || sectionKey === 'khu_du_lich' || sectionKey === 'dia_diem_lich_su') && topDir.includes('check_in')) score += 25;
   if (sectionKey === 'dich_vu' && topDir.includes('thue_xe')) score += 25;
   if (sectionKey === 'quan_an' && (topDir.includes('quan_an') || topDir.includes('dac_san'))) score += 20;
 
@@ -570,17 +594,21 @@ export function createListImageResolver(
   const sharedUsedUrlSets = [initialUsedUrls, blockedUrls].filter((urls): urls is Set<string> => urls instanceof Set);
   const localUsedUrls = new Set<string>();
 
-  const pickUnused = (candidates: string[]): string => {
-    if (candidates.length === 0) return '';
-    const fresh = candidates.find((e) => e && !localUsedUrls.has(e) && !softUsedUrls.has(e));
-    const previouslyUsed = candidates.find((e) => e && !localUsedUrls.has(e));
-    const picked = fresh || previouslyUsed || '';
+  const rememberPicked = (picked: string): string => {
     if (picked) {
       localUsedUrls.add(picked);
       softUsedUrls.add(picked);
       sharedUsedUrlSets.forEach((urls) => urls.add(picked));
     }
     return picked;
+  };
+
+  const pickUnused = (candidates: string[]): string => {
+    if (candidates.length === 0) return '';
+    const fresh = candidates.find((e) => e && !localUsedUrls.has(e) && !softUsedUrls.has(e));
+    const previouslyUsed = candidates.find((e) => e && !localUsedUrls.has(e));
+    const picked = fresh || previouslyUsed || '';
+    return rememberPicked(picked);
   };
 
   return (
@@ -590,6 +618,23 @@ export function createListImageResolver(
     const common = { candidateImageUrls: item.candidateImageUrls };
 
     if (!options?.forceFallback && item.imageSource === 'manual') {
+      const manualCandidates = preferImageUrlsForResolverOptions(
+        preferredImageCandidates(
+          item.name,
+          item.candidateImageUrls && item.candidateImageUrls.length > 0
+            ? item.candidateImageUrls
+            : (item.imageUrl ? [item.imageUrl] : []),
+        ),
+        libraryEntries,
+        resolverOptions,
+      ).sort(
+        (a, b) => stableHash(`${seed}:${item.id}:manual:${a}`) - stableHash(`${seed}:${item.id}:manual:${b}`),
+      );
+      const pickedManual = manualCandidates.find((url) => url && !shouldAvoidImageForItem(item.name, url));
+      if (pickedManual) {
+        rememberPicked(pickedManual);
+        return { ...common, imageUrl: pickedManual, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm từ sheet' };
+      }
       if (item.candidateImageUrls && item.candidateImageUrls.length > 0) {
         const sorted = filterImageUrlsForResolverOptions(
           preferredImageCandidates(item.name, item.candidateImageUrls),
@@ -668,7 +713,9 @@ export function createListImageResolver(
     const libraryUrl = pickUnused(groupedLibraryUrls);
     if (libraryUrl) return { imageUrl: libraryUrl, imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa cùng nhóm nội dung' };
 
+    const fallbackKinds = expandedKinds.size > 0 ? expandedKinds : allowedKinds;
     const allLibraryUrls = libraryEntries
+      .filter((e) => fallbackKinds.size === 0 || fallbackKinds.has(topDirKind(e.topDir)))
       .flatMap((e) => e.assetUrls)
       .filter((url) => !groupedLibraryUrls.includes(url));
     const preferredAllLibraryUrls = filterImageUrlsForResolverOptions(

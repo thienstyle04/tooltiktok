@@ -33,7 +33,7 @@ export default function PreviewPanel({ deck, list, selectedPageIndex, onPageSele
   const sectionTone = (list.navTitle || '').toLowerCase().includes('ai') ? 'ai' : 'main';
   const sectionDescription = list.description || (isMain
     ? 'Bản gốc đang dùng làm layout chuẩn.'
-    : 'Bản AI được sinh mới từ caption và đặt bên dưới bản gốc.');
+    : 'Bản AI được sinh mới từ caption.');
 
   return (
     <section className="preview-panel">
@@ -42,7 +42,7 @@ export default function PreviewPanel({ deck, list, selectedPageIndex, onPageSele
           <p className="panel-kicker">Preview deck</p>
           <h3 className="panel-title">Các trang đang dựng</h3>
         </div>
-        <p className="panel-note">Tổng quan theo từng list.</p>
+        <p className="panel-note">{String(list.pages.length).padStart(2, '0')} trang trong list này</p>
       </div>
       <div id="pageGrid" className="page-grid">
         <section className="list-preview-section active" data-list-section-id={list.id}>
