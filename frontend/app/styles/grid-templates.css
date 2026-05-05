@@ -1,7 +1,7 @@
 /* ─── Grid 6 Layout ────────────────────────────────────────────────────────── */
 
 .story-page.grid6 {
-  background: #f7f3ed;
+  background: var(--story-card-bg, #f7f3ed);
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -9,14 +9,14 @@
 
 .grid6-header {
   height: 70px;
-  background: #f0f4f8;
+  background: var(--story-card-bg, #f0f4f8);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
   padding: 12px 16px 10px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid var(--story-card-border, rgba(0,0,0,0.05));
   flex: 0 0 70px;
   box-sizing: border-box;
   overflow: visible;
@@ -26,7 +26,7 @@
   font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
   font-weight: 800;
   font-size: 0.98rem;
-  color: #2d6a4f;
+  color: var(--journey-badge-bg, #2d6a4f);
   text-transform: uppercase;
   letter-spacing: 0;
   margin: 0;
@@ -44,7 +44,7 @@
   grid-auto-rows: minmax(0, 1fr);
   align-items: stretch;
   gap: 2px;
-  background: #fff;
+  background: var(--story-card-border, #fff);
   padding: 2px;
   box-sizing: border-box;
 }
@@ -82,7 +82,7 @@
 }
 
 .grid6-name {
-  color: #ffcc00;
+  color: var(--journey-title-color, #ffcc00);
   font-family: "Be Vietnam Pro", sans-serif;
   font-weight: 900;
   font-size: 0.68rem;
@@ -155,7 +155,7 @@
   height: 62px;
   flex-basis: 62px;
   padding: 8px 12px 7px;
-  background: #f5efe6;
+  background: var(--story-card-bg, #f5efe6);
 }
 
 .story-page.grid8 .grid6-header-top {
@@ -198,8 +198,8 @@
 
 /* Grid 8 Magazine Layout */
 .story-page.grid8-page {
-  background: #eef1e8;
-  color: #17221b;
+  background: var(--story-card-bg, #eef1e8);
+  color: var(--journey-badge-bg, #17221b);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -215,8 +215,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 13px;
-  background: #16372c;
-  color: #fffaf0;
+  background: var(--journey-badge-bg, #16372c);
+  color: var(--journey-title-color, #fffaf0);
   border-radius: 8px;
   box-sizing: border-box;
 }
@@ -228,7 +228,7 @@
   padding: 0 7px;
   border: 1px solid rgba(255,255,255,0.42);
   border-radius: 4px;
-  color: #ffcf5d;
+  color: var(--journey-title-color, #ffcf5d);
   font-size: 0.54rem;
   font-weight: 800;
   line-height: 1;
@@ -238,7 +238,7 @@
 .grid8-page-title {
   max-width: 260px;
   margin: 7px 0 0;
-  color: #fffaf0;
+  color: var(--journey-title-color, #fffaf0);
   font-size: 1.08rem;
   font-weight: 900;
   line-height: 1.04;
@@ -254,9 +254,9 @@
   height: 54px;
   display: grid;
   place-items: center;
-  background: #ffcf5d;
+  background: var(--story-card-bg, #ffcf5d);
   border-radius: 8px;
-  color: #17221b;
+  color: var(--journey-badge-bg, #17221b);
   font-size: 1.2rem;
   font-weight: 900;
   line-height: 1;
@@ -276,7 +276,7 @@
   min-height: 226px;
   overflow: hidden;
   border-radius: 8px;
-  background: #1e2b21;
+  background: var(--journey-badge-bg, #1e2b21);
 }
 
 .grid8-hero img,
@@ -311,16 +311,16 @@
   width: 34px;
   height: 22px;
   margin-bottom: 6px;
-  background: #ffcf5d;
+  background: var(--journey-badge-bg, #ffcf5d);
   border-radius: 4px;
-  color: #17221b;
+  color: #fffaf0;
   font-size: 0.66rem;
   font-weight: 900;
 }
 
 .grid8-hero-copy h4 {
   margin: 0 0 3px;
-  color: #fffaf0;
+  color: var(--journey-title-color, #fffaf0);
   font-size: 1.18rem;
   font-weight: 900;
   line-height: 1.02;
@@ -347,8 +347,8 @@
   grid-template-columns: 50px minmax(0, 1fr);
   gap: 7px;
   padding: 6px;
-  background: #fffaf0;
-  border: 1px solid rgba(22,55,44,0.12);
+  background: var(--story-card-bg, #fffaf0);
+  border: 1px solid var(--story-card-border, rgba(22,55,44,0.12));
   border-radius: 8px;
   box-sizing: border-box;
   overflow: hidden;
@@ -371,7 +371,7 @@
 }
 
 .grid8-mini-no {
-  color: #b35b43;
+  color: var(--journey-badge-bg, #b35b43);
   font-size: 0.52rem;
   font-weight: 900;
   line-height: 1;
@@ -379,7 +379,7 @@
 
 .grid8-mini strong {
   margin-top: 3px;
-  color: #17221b;
+  color: var(--journey-badge-bg, #17221b);
   font-size: 0.62rem;
   font-weight: 900;
   line-height: 1.08;
@@ -428,7 +428,7 @@
 }
 
 .story-page.grid8-cover-page {
-  background: #14251d;
+  background: #efe8dc;
   overflow: hidden;
 }
 
@@ -441,8 +441,8 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, rgba(20,37,29,0.18), rgba(20,37,29,0.82)),
-    linear-gradient(115deg, rgba(20,37,29,0.92) 0%, rgba(20,37,29,0.58) 46%, rgba(20,37,29,0.08) 100%);
+    linear-gradient(to bottom, rgba(32, 26, 20, 0.08), rgba(32, 26, 20, 0.7)),
+    linear-gradient(115deg, rgba(46, 38, 30, 0.76) 0%, rgba(46, 38, 30, 0.46) 46%, rgba(46, 38, 30, 0.08) 100%);
 }
 
 .grid8-cover-copy {
@@ -459,7 +459,7 @@
   padding: 5px 8px;
   border: 1px solid rgba(255,255,255,0.46);
   border-radius: 4px;
-  color: #ffcf5d;
+  color: #ffdb88;
   font-size: 0.62rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -501,7 +501,7 @@
   place-items: center;
   border-radius: 4px;
   background: rgba(255,250,240,0.9);
-  color: #16372c;
+  color: #5d4633;
   font-size: 0.56rem;
   font-weight: 900;
 }
@@ -510,8 +510,8 @@
 .story-page.grid8-page {
   display: block;
   padding: 10px;
-  background: #12231c;
-  color: #fffaf0;
+  background: var(--story-card-bg, #f5efe6);
+  color: var(--journey-title-color, #fffaf0);
   overflow: hidden;
 }
 
@@ -534,7 +534,7 @@
 
 .grid8-cell {
   position: relative;
-  background: #26342b;
+  background: var(--journey-badge-bg, #26342b);
 }
 
 .grid8-cell img {
@@ -559,7 +559,7 @@
   right: 7px;
   bottom: 7px;
   z-index: 1;
-  color: #fffaf0;
+  color: var(--journey-title-color, #fffaf0);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -575,8 +575,8 @@
   margin-bottom: 0;
   padding: 0 5px;
   border-radius: 4px;
-  background: rgba(255, 207, 93, 0.92);
-  color: #14251d;
+  background: var(--journey-badge-bg, rgba(255, 207, 93, 0.92));
+  color: #fffaf0;
   font-size: 0.44rem;
   font-weight: 900;
   line-height: 1;
@@ -587,7 +587,7 @@
 .grid8-cell strong {
   display: -webkit-box;
   margin: 0;
-  color: #fffaf0;
+  color: var(--journey-title-color, #fffaf0);
   font-size: 0.5rem;
   font-weight: 900;
   line-height: 1.14;
@@ -599,7 +599,7 @@
 }
 
 .journey-grid8-page {
-  background: #10251f;
+  background: var(--story-card-bg, #f5efe6);
 }
 
 .journey-grid8-page .grid8-matrix {
@@ -607,14 +607,17 @@
 }
 
 .journey-grid8-page .grid8-cell strong {
-  font-size: 0.5rem;
+  min-height: 1.16rem;
+  font-size: 0.52rem;
   line-height: 1.16;
   -webkit-line-clamp: 2;
   line-clamp: 2;
 }
 
 .journey-grid8-page .grid8-cell-copy {
-  gap: 2px;
+  gap: 3px;
+  min-height: 34px;
+  justify-content: flex-end;
 }
 
 .journey-grid8-page .grid8-cell .grid8-meta {
@@ -623,6 +626,10 @@
   font-size: 0.38rem;
   line-height: 1.08;
   color: rgba(255,255,255,0.9);
+}
+
+.journey-grid8-page .grid8-cell-time {
+  display: none;
 }
 
 .journey-grid8-page .grid8-pin {
@@ -661,9 +668,9 @@
   gap: 4px;
   padding: 11px 10px;
   background: transparent;
-  color: #fffaf0;
+  color: var(--journey-title-color, #fffaf0);
   box-sizing: border-box;
-  border: 1px solid rgba(255,250,240,0.42);
+  border: 1px solid var(--journey-title-color, rgba(255,250,240,0.42));
 }
 
 .grid8-center::before {
@@ -683,9 +690,9 @@
   position: absolute;
   inset: 0;
   z-index: 0;
-  background:
+  background: var(--journey-bg-overlay,
     linear-gradient(to top, rgba(0,0,0,0.76), rgba(0,0,0,0.2) 54%, transparent),
-    linear-gradient(145deg, rgba(18,35,28,0.88) 0%, rgba(18,35,28,0.52) 60%, rgba(18,35,28,0.18) 100%);
+    linear-gradient(145deg, rgba(18,35,28,0.88) 0%, rgba(18,35,28,0.52) 60%, rgba(18,35,28,0.18) 100%));
 }
 
 .grid8-center > * {
@@ -700,8 +707,8 @@
   min-height: 17px;
   padding: 0 6px;
   border-radius: 4px;
-  background: rgba(20,37,29,0.9);
-  color: #fffaf0;
+  background: var(--journey-badge-bg, rgba(20,37,29,0.9));
+  color: var(--journey-title-color, #fffaf0);
   font-size: 0.46rem;
   font-weight: 900;
   line-height: 1;
@@ -715,7 +722,7 @@
   display: -webkit-box;
   margin: 0;
   padding: 3px 0 2px;
-  color: #fffaf0;
+  color: var(--journey-title-color, #fffaf0);
   font-size: 0.62rem;
   font-weight: 900;
   line-height: 1.22;
@@ -730,7 +737,7 @@
 .grid8-center-intro {
   display: -webkit-box;
   margin: 0;
-  color: rgba(255,250,240,0.9);
+  color: var(--journey-meta-color, rgba(255,250,240,0.9));
   font-size: 0.42rem;
   font-weight: 750;
   line-height: 1.16;
@@ -743,7 +750,7 @@
 
 /* Grid 6 Cover */
 .story-page.grid6-cover {
-  background: #000;
+  background: #efe8dc;
 }
 
 .grid6-cover-bg {
@@ -767,13 +774,15 @@
   align-items: center;
   text-align: center;
   padding: 40px;
-  background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.4) 100%);
+  background:
+    linear-gradient(180deg, rgba(39, 31, 24, 0.2), rgba(39, 31, 24, 0.6)),
+    radial-gradient(circle, transparent 20%, rgba(39, 31, 24, 0.28) 100%);
 }
 
 .grid6-cover-header {
   font-family: "Baloo 2", cursive;
   font-size: 2rem;
-  color: #ffcc00;
+  color: #ffdb88;
   font-weight: 800;
   margin-bottom: 10px;
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
@@ -783,7 +792,7 @@
   font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
   font-weight: 900;
   font-size: 2.1rem;
-  color: #fff;
+  color: #fffaf0;
   line-height: 1.08;
   text-transform: uppercase;
   margin: 0;
@@ -794,7 +803,7 @@
 .grid6-cover-subtitle {
   font-family: "Be Vietnam Pro", sans-serif;
   font-size: 0.84rem;
-  color: #eee;
+  color: rgba(255,250,240,0.9);
   margin-top: 14px;
   font-weight: 600;
   max-width: 86%;

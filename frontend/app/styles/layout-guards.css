@@ -150,41 +150,97 @@
 .story-page.title-font-1 {
   --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
   --deck-title-weight: 900;
+  --story-card-bg: rgba(247, 240, 228, 0.97);
+  --story-card-border: rgba(78, 61, 43, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 249, 241, 0.42) 0%, rgba(255, 249, 241, 0.84) 100%);
+  --journey-bg-overlay: linear-gradient(180deg, rgba(7, 11, 8, 0.64) 0%, rgba(7, 11, 8, 0.78) 48%, rgba(7, 11, 8, 0.92) 100%), radial-gradient(circle at 54% 36%, rgba(255, 241, 199, 0.1), transparent 35%);
+  --journey-badge-bg: #b52f38;
+  --journey-title-color: #fff3d8;
+  --journey-meta-color: rgba(235, 226, 205, 0.9);
 }
 
 .story-page.title-font-2 {
   --deck-title-font: "Baloo 2", "Be Vietnam Pro", sans-serif;
   --deck-title-weight: 800;
+  --story-card-bg: rgba(237, 244, 235, 0.97);
+  --story-card-border: rgba(51, 88, 70, 0.15);
+  --story-shell-overlay: linear-gradient(180deg, rgba(242, 251, 238, 0.38) 0%, rgba(237, 244, 235, 0.84) 100%);
+  --journey-bg-overlay: linear-gradient(180deg, rgba(7, 29, 23, 0.58) 0%, rgba(8, 44, 34, 0.76) 52%, rgba(7, 31, 25, 0.92) 100%), radial-gradient(circle at 18% 28%, rgba(148, 210, 189, 0.18), transparent 35%);
+  --journey-badge-bg: #2f855a;
+  --journey-title-color: #e7fff1;
+  --journey-meta-color: rgba(220, 247, 231, 0.88);
 }
 
 .story-page.title-font-3 {
   --deck-title-font: "Trebuchet MS", "Be Vietnam Pro", sans-serif;
   --deck-title-weight: 900;
+  --story-card-bg: rgba(241, 246, 250, 0.97);
+  --story-card-border: rgba(61, 90, 112, 0.15);
+  --story-shell-overlay: linear-gradient(180deg, rgba(243, 250, 255, 0.36) 0%, rgba(233, 242, 248, 0.84) 100%);
+  --journey-bg-overlay: linear-gradient(180deg, rgba(8, 20, 43, 0.58) 0%, rgba(12, 38, 74, 0.78) 52%, rgba(7, 20, 43, 0.94) 100%), radial-gradient(circle at 76% 22%, rgba(126, 190, 255, 0.2), transparent 36%);
+  --journey-badge-bg: #2b6cb0;
+  --journey-title-color: #e8f4ff;
+  --journey-meta-color: rgba(221, 237, 255, 0.88);
 }
 
 .story-page.title-font-4 {
   --deck-title-font: Georgia, "Be Vietnam Pro", serif;
   --deck-title-weight: 800;
+  --story-card-bg: rgba(250, 240, 235, 0.97);
+  --story-card-border: rgba(159, 87, 67, 0.15);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 244, 239, 0.38) 0%, rgba(249, 236, 229, 0.84) 100%);
+  --journey-bg-overlay: linear-gradient(180deg, rgba(44, 18, 12, 0.58) 0%, rgba(76, 34, 21, 0.78) 52%, rgba(42, 19, 12, 0.94) 100%), radial-gradient(circle at 80% 30%, rgba(255, 170, 118, 0.2), transparent 36%);
+  --journey-badge-bg: #c65d35;
+  --journey-title-color: #fff0df;
+  --journey-meta-color: rgba(255, 229, 208, 0.88);
 }
 
 .story-page.title-font-5 {
   --deck-title-font: "Caveat", "Be Vietnam Pro", cursive;
   --deck-title-weight: 700;
+  --story-card-bg: rgba(244, 239, 250, 0.97);
+  --story-card-border: rgba(99, 78, 130, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(250, 244, 255, 0.36) 0%, rgba(241, 235, 248, 0.84) 100%);
+  --journey-bg-overlay: linear-gradient(180deg, rgba(34, 16, 48, 0.58) 0%, rgba(56, 27, 80, 0.78) 52%, rgba(31, 16, 48, 0.94) 100%), radial-gradient(circle at 22% 24%, rgba(218, 172, 255, 0.18), transparent 36%);
+  --journey-badge-bg: #8f4fb3;
+  --journey-title-color: #f7e9ff;
+  --journey-meta-color: rgba(242, 222, 255, 0.88);
 }
 
 .story-page.title-font-6 {
   --deck-title-font: Verdana, "Be Vietnam Pro", sans-serif;
   --deck-title-weight: 800;
+  --story-card-bg: rgba(250, 246, 232, 0.97);
+  --story-card-border: rgba(147, 112, 47, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 251, 236, 0.38) 0%, rgba(248, 241, 218, 0.84) 100%);
+  --journey-bg-overlay: linear-gradient(180deg, rgba(44, 35, 10, 0.58) 0%, rgba(68, 52, 14, 0.78) 52%, rgba(42, 32, 9, 0.94) 100%), radial-gradient(circle at 76% 24%, rgba(255, 210, 93, 0.18), transparent 36%);
+  --journey-badge-bg: #b7791f;
+  --journey-title-color: #fff5cf;
+  --journey-meta-color: rgba(255, 239, 196, 0.88);
 }
 
 .story-page.title-font-7 {
   --deck-title-font: "Segoe UI", "Be Vietnam Pro", sans-serif;
   --deck-title-weight: 900;
+  --story-card-bg: rgba(237, 245, 244, 0.97);
+  --story-card-border: rgba(46, 104, 99, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(238, 252, 249, 0.36) 0%, rgba(229, 243, 241, 0.84) 100%);
+  --journey-bg-overlay: linear-gradient(180deg, rgba(5, 34, 39, 0.58) 0%, rgba(9, 61, 68, 0.78) 52%, rgba(5, 32, 36, 0.94) 100%), radial-gradient(circle at 20% 30%, rgba(94, 234, 212, 0.18), transparent 36%);
+  --journey-badge-bg: #0f766e;
+  --journey-title-color: #ddfffb;
+  --journey-meta-color: rgba(212, 250, 246, 0.88);
 }
 
 .story-page.title-font-8 {
   --deck-title-font: Tahoma, "Be Vietnam Pro", sans-serif;
   --deck-title-weight: 800;
+  --story-card-bg: rgba(246, 239, 232, 0.97);
+  --story-card-border: rgba(121, 82, 55, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 248, 239, 0.36) 0%, rgba(241, 232, 222, 0.84) 100%);
+  --journey-bg-overlay: linear-gradient(180deg, rgba(25, 31, 43, 0.58) 0%, rgba(43, 54, 72, 0.78) 52%, rgba(23, 30, 42, 0.94) 100%), radial-gradient(circle at 76% 26%, rgba(148, 163, 184, 0.18), transparent 36%);
+  --journey-badge-bg: #64748b;
+  --journey-title-color: #eef4ff;
+  --journey-meta-color: rgba(226, 233, 244, 0.88);
 }
 
 .story-page .cover-title,
@@ -728,8 +784,16 @@ body {
   --story-image-meta-line-height: 1.1;
 }
 
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded {
+  --story-image-title-size: 0.64rem;
+  --story-image-title-line-height: 1.06;
+  --story-image-meta-size: 0.44rem;
+  --story-image-meta-line-height: 1.08;
+  --story-image-meta-lines: 1;
+}
+
 .story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .page-card {
-  padding: 8px 10px 14px;
+  padding: 7px 10px 12px;
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .page-title {
@@ -749,28 +813,28 @@ body {
 .story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .item-stack {
   flex: 1 1 auto;
   display: grid;
-  grid-template-rows: repeat(8, minmax(56px, 1fr));
-  gap: 4px;
+  grid-template-rows: repeat(7, minmax(52px, 1fr));
+  gap: 3px;
   min-height: 0;
-  margin-top: 3px;
+  margin-top: 2px;
   padding-bottom: 0;
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .item-row {
-  grid-template-columns: 56px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 7px;
   min-height: 0;
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .thumb-block {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .itinerary-time {
   padding: 1px 6px;
-  font-size: 0.48rem;
+  font-size: 0.44rem;
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].itinerary .itinerary-name {

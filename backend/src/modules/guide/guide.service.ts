@@ -43,7 +43,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator } from './logic/data-allocator';
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, ITINERARY_3N2D_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
 import { fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { findWorkbookPath, syncWorkbookFromSheet } from './sync/workbook-source';
@@ -327,11 +327,7 @@ export class GuideService {
     const seed = [deckId, generatedSuffix, caption.headline, caption.body, caption.hashtags.join(' ')].join('|');
 
     this.ensureInventoryLoaded();
-    const deckUsage = this.usedAllocator.clone();
-    const baseList = currentDeck.lists.find((list) => /-main$/i.test(list.id)) ?? currentDeck.lists[0];
-    if (baseList) this.markUsedInDeck(baseList.pages, deckUsage);
-    const lastGeneratedList = existing.length > 0 ? existing[existing.length - 1] : null;
-    if (lastGeneratedList) this.markUsedInDeck(lastGeneratedList.pages, deckUsage);
+    const deckUsage = this.createUsageScope();
     const basePages = buildPagesForDeck(
       deckId,
       context.itemsBySection,
@@ -411,6 +407,12 @@ export class GuideService {
 
   private templateVersionForDeck(deckId: string): number | undefined {
     if (deckId === 'itinerary-3n2d') return ITINERARY_3N2D_TEMPLATE_VERSION;
+    if (deckId === 'itinerary-4n3d') return ITINERARY_4N3D_TEMPLATE_VERSION;
+    if (deckId === 'itinerary-4n2d-grid8') return ITINERARY_4N2D_GRID8_TEMPLATE_VERSION;
+    if (deckId === 'pov-3-day') return POV_3_DAY_TEMPLATE_VERSION;
+    if (deckId === 'grid-4') return GRID_4_TEMPLATE_VERSION;
+    if (deckId === 'grid-6') return GRID_6_TEMPLATE_VERSION;
+    if (deckId === 'grid-8') return GRID_8_TEMPLATE_VERSION;
     return undefined;
   }
 
@@ -449,7 +451,7 @@ export class GuideService {
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
       const templateVersion = this.templateVersionForDeck(deckId);
       const refreshedLists = lists.map((list) => {
-        const listUsage = renderUsage.clone();
+        const listUsage = this.createUsageScope();
         const caption: CaptionBlocks = {
           headline: sanitizeDeckHeadline(list.title),
           body: list.description,
@@ -466,9 +468,6 @@ export class GuideService {
         );
         const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
         const regeneratedPages = applyCaptionToPages(basePages, safeCaption);
-        const generatedUsage = this.createUsageScope();
-        this.markUsedInDeck(regeneratedPages, generatedUsage);
-        renderUsage.merge(generatedUsage);
         if (
           list.title !== safeCaption.headline ||
           list.description !== safeCaption.body ||
@@ -634,6 +633,7 @@ export class GuideService {
     const partner = firstValue(row, 'doi_tac', 'doi_tac_cong_ty');
     const phone = firstValue(row, 'sdt');
     const price = firstValue(row, 'gia');
+    const imageHint = firstValue(row, 'anh', 'hinh_anh', 'hinh', 'ten_anh', 'thu_muc_anh', 'folder_anh');
     const mappingKey = itemMappingKey(sectionKey, name, address);
     const sheetDriveEntry = sheetDriveManifest.items[mappingKey];
     const sheetDriveCandidateUrls = sheetDriveEntry
@@ -644,6 +644,22 @@ export class GuideService {
           .filter((entry) => entry.fileId)
           .map((entry) => getDriveImageProxyUrl(entry.fileId))
       : [];
+    const resolvedByName = () => resolveMappedImage(
+      sectionKey, placeType || SECTION_CONFIG[sectionKey].title, name, address,
+      imageUrls, sequence, imageMapping, libraryEntries, this.workspaceRoot,
+    );
+    const resolvedByHint = () => resolveMappedImage(
+      sectionKey, placeType || SECTION_CONFIG[sectionKey].title, imageHint, address,
+      imageUrls, sequence, imageMapping, libraryEntries, this.workspaceRoot,
+    );
+    const fallbackResolvedImage = (): ReturnType<typeof resolveMappedImage> => {
+      const direct = resolvedByName();
+      if (!imageHint || normalizeText(imageHint) === normalizeText(name)) return direct;
+      const hinted = resolvedByHint();
+      return hinted.imageMapped || hinted.imageSource !== 'fallback'
+        ? { ...hinted, imageMappingKey: mappingKey }
+        : direct;
+    };
     const resolvedImage = sheetDriveEntry
       ? {
           imageUrl: sheetDriveCandidateUrls[0] || getDriveImageProxyUrl(sheetDriveEntry.fileId),
@@ -652,10 +668,7 @@ export class GuideService {
           imageSource: 'manual' as const,
           candidateImageUrls: sheetDriveCandidateUrls,
         }
-      : resolveMappedImage(
-          sectionKey, placeType || SECTION_CONFIG[sectionKey].title, name, address,
-          imageUrls, sequence, imageMapping, libraryEntries, this.workspaceRoot,
-        );
+      : fallbackResolvedImage();
 
     return {
       id: `${sectionKey}-${sequence}`,
