@@ -4,6 +4,7 @@ export type SectionKey =
   | 'homestay'
   | 'check_in'
   | 'dich_vu'
+  | 'choi_dem'
   | 'dia_diem_lich_su'
   | 'khu_du_lich';
 
@@ -77,6 +78,7 @@ export interface GuideDeckList {
   title: string;
   description: string;
   captionHashtags?: string[];
+  templateVersion?: number;
   pages: DeckPage[];
 }
 
@@ -216,6 +218,8 @@ export interface DeckBuildPools {
   stayItems: GuideItem[];
   checkinItems: GuideItem[];
   serviceItems: GuideItem[];
+  nightlifeItems: GuideItem[];
+  nightlifeImageItems: GuideItem[];
   historyItems: GuideItem[];
   tourismItems: GuideItem[];
   breakfastItems: GuideItem[];

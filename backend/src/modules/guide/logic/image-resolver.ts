@@ -420,6 +420,10 @@ export function allowedImageKindsForItem(item: { sectionKey: SectionKey; type: s
       normalizedName.includes('dac_san') ||
       normalizedName.includes('qua')
     ) allowed.add('specialty');
+  } else if (item.sectionKey === 'choi_dem') {
+    allowed.add('cafe');
+    allowed.add('food_dinner');
+    allowed.add('checkin');
   }
   return allowed;
 }
@@ -446,6 +450,7 @@ export function scoreImageLibraryMatch(
   if (sectionKey === 'cafe' && topDir.includes('ca_phe')) score += 25;
   if ((sectionKey === 'check_in' || sectionKey === 'khu_du_lich' || sectionKey === 'dia_diem_lich_su') && topDir.includes('check_in')) score += 25;
   if (sectionKey === 'dich_vu' && topDir.includes('thue_xe')) score += 25;
+  if (sectionKey === 'choi_dem' && (topDir.includes('ca_phe') || topDir.includes('quan_an_toi') || topDir.includes('check_in'))) score += 15;
   if (sectionKey === 'quan_an' && (topDir.includes('quan_an') || topDir.includes('dac_san'))) score += 20;
 
   return score;

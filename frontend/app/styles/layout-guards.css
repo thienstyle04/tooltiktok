@@ -658,3 +658,197 @@ body {
     overflow: visible;
   }
 }
+
+/* 3N2D keeps one typography system, while each saved list gets a subtle card tint. */
+.story-page[data-list-id^="itinerary-3n2d"] {
+  --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
+  --deck-title-weight: 800;
+  --story-card-bg: rgba(247, 240, 228, 0.97);
+  --story-card-border: rgba(78, 61, 43, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 249, 241, 0.42) 0%, rgba(255, 249, 241, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].title-font-1 {
+  --story-card-bg: rgba(247, 240, 228, 0.97);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 249, 241, 0.42) 0%, rgba(255, 249, 241, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].title-font-2 {
+  --story-card-bg: rgba(237, 244, 235, 0.97);
+  --story-card-border: rgba(51, 88, 70, 0.15);
+  --story-shell-overlay: linear-gradient(180deg, rgba(242, 251, 238, 0.38) 0%, rgba(237, 244, 235, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].title-font-3 {
+  --story-card-bg: rgba(241, 246, 250, 0.97);
+  --story-card-border: rgba(61, 90, 112, 0.15);
+  --story-shell-overlay: linear-gradient(180deg, rgba(243, 250, 255, 0.36) 0%, rgba(233, 242, 248, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].title-font-4 {
+  --story-card-bg: rgba(250, 240, 235, 0.97);
+  --story-card-border: rgba(159, 87, 67, 0.15);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 244, 239, 0.38) 0%, rgba(249, 236, 229, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].title-font-5 {
+  --story-card-bg: rgba(244, 239, 250, 0.97);
+  --story-card-border: rgba(99, 78, 130, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(250, 244, 255, 0.36) 0%, rgba(241, 235, 248, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].title-font-6 {
+  --story-card-bg: rgba(250, 246, 232, 0.97);
+  --story-card-border: rgba(147, 112, 47, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 251, 236, 0.38) 0%, rgba(248, 241, 218, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].title-font-7 {
+  --story-card-bg: rgba(237, 245, 244, 0.97);
+  --story-card-border: rgba(46, 104, 99, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(238, 252, 249, 0.36) 0%, rgba(229, 243, 241, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].title-font-8 {
+  --story-card-bg: rgba(246, 239, 232, 0.97);
+  --story-card-border: rgba(121, 82, 55, 0.14);
+  --story-shell-overlay: linear-gradient(180deg, rgba(255, 248, 239, 0.36) 0%, rgba(241, 232, 222, 0.84) 100%);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"] :is(.story-image-title, .item-name, .itinerary-name, .photomode-name) {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary {
+  --story-image-title-size: 0.68rem;
+  --story-image-title-line-height: 1.08;
+  --story-image-meta-size: 0.48rem;
+  --story-image-meta-line-height: 1.1;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .page-card {
+  padding: 8px 10px 14px;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .page-title {
+  margin: 0 0 2px;
+  font-size: 0.82rem;
+  line-height: 1.02;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .page-lead {
+  margin: 0 0 3px;
+  font-size: 0.44rem;
+  line-height: 1.08;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .item-stack {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-rows: repeat(8, minmax(56px, 1fr));
+  gap: 4px;
+  min-height: 0;
+  margin-top: 3px;
+  padding-bottom: 0;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .item-row {
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .thumb-block {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .itinerary-time {
+  padding: 1px 6px;
+  font-size: 0.48rem;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary .itinerary-name {
+  font-size: var(--story-image-title-size);
+  line-height: var(--story-image-title-line-height);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary .itinerary-detail {
+  font-size: var(--story-image-meta-size);
+  line-height: var(--story-image-meta-line-height);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded .itinerary-detail {
+  margin-top: 0;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact {
+  --story-image-title-size: 0.66rem;
+  --story-image-title-line-height: 1.14;
+  --story-image-meta-size: 0.49rem;
+  --story-image-meta-line-height: 1.12;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact.crowded {
+  --story-image-title-size: 0.64rem;
+  --story-image-title-line-height: 1.08;
+  --story-image-meta-size: 0.44rem;
+  --story-image-meta-line-height: 1.1;
+  --story-image-meta-lines: 1;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact.crowded .page-card {
+  padding: 10px 11px 16px;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact.crowded .page-title {
+  margin: 0 0 3px;
+  font-size: 1rem;
+  line-height: 1.04;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact.crowded .item-stack {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-rows: repeat(8, minmax(48px, 1fr));
+  margin-top: 5px;
+  gap: 4px;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact.crowded .item-row {
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 7px;
+  min-height: 0;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact.crowded .thumb-block {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact.crowded .item-label {
+  padding: 1px 5px;
+  font-size: 0.36rem;
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact .item-name {
+  font-size: var(--story-image-title-size);
+  line-height: var(--story-image-title-line-height);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact .item-meta {
+  font-size: var(--story-image-meta-size);
+  line-height: var(--story-image-meta-line-height);
+}
+
+.story-page[data-list-id^="itinerary-3n2d"].compact.crowded .item-meta {
+  margin-top: 1px;
+}

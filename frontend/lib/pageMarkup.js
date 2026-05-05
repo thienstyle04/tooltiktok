@@ -251,7 +251,7 @@ export function renderListItems(items) {
         ${renderPreviewImage(item.imageUrl, item.name)}
       </div>
       <div class="item-copy">
-        <div class="item-label">${escapeHtml(item.label)}</div>
+        ${item.label ? `<div class="item-label">${escapeHtml(item.label)}</div>` : ''}
         <div class="item-name story-image-title">${escapeHtml(item.name)}</div>
         <p class="item-meta story-image-meta">${escapeHtml(item.metaPrimary)}</p>
         ${item.metaSecondary ? `<p class="item-meta story-image-meta secondary">${escapeHtml(item.metaSecondary)}</p>` : ''}
@@ -343,8 +343,7 @@ export function renderPhotomodeItems(items) {
           <h4 class="photomode-name story-image-title">${escapeHtml(item.name)}</h4>
         </div>
         <p class="photomode-meta story-image-meta">
-          <span class="photomode-label">${escapeHtml(item.label)}</span>
-          <span class="photomode-divider"> - </span>
+          ${item.label ? `<span class="photomode-label">${escapeHtml(item.label)}</span><span class="photomode-divider"> - </span>` : ''}
           <span class="photomode-address">${escapeHtml(item.metaPrimary)}</span>
         </p>
       </div>

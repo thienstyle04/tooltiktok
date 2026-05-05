@@ -43,7 +43,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator } from './logic/data-allocator';
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, ITINERARY_3N2D_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
 import { fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { findWorkbookPath, syncWorkbookFromSheet } from './sync/workbook-source';
@@ -346,6 +346,7 @@ export class GuideService {
 
     const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, safeCaption.headline, safeCaption.body, generatedPages);
     generatedList.captionHashtags = safeCaption.hashtags;
+    generatedList.templateVersion = this.templateVersionForDeck(deckId);
 
     this.markUsedInDeck(generatedPages);
     this.persistInventory();
@@ -383,8 +384,8 @@ export class GuideService {
     const renderUsage = this.createUsageScope();
     const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, renderUsage.itemIds, renderUsage.imageUrls);
     baseDecks.forEach((deck) => this.markUsedInDeck(deck.lists.flatMap((list) => list.pages), renderUsage));
-    if (options.refreshGeneratedLists) {
-      this.refreshGeneratedListImages(itemsBySection);
+    if (options.refreshGeneratedLists || this.hasGeneratedListsNeedingTemplateRefresh()) {
+      this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, renderUsage);
     }
     const referenceSets = this.buildReferenceSets();
     const decks = this.mergeGeneratedLists(baseDecks);
@@ -406,6 +407,20 @@ export class GuideService {
       if (generatedLists.length === 0) return deck;
       return { ...deck, lists: [...deck.lists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list))] };
     });
+  }
+
+  private templateVersionForDeck(deckId: string): number | undefined {
+    if (deckId === 'itinerary-3n2d') return ITINERARY_3N2D_TEMPLATE_VERSION;
+    return undefined;
+  }
+
+  private hasGeneratedListsNeedingTemplateRefresh(): boolean {
+    for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
+      const templateVersion = this.templateVersionForDeck(deckId);
+      if (!templateVersion) continue;
+      if (lists.some((list) => list.templateVersion !== templateVersion)) return true;
+    }
+    return false;
   }
 
   private sanitizeGeneratedListForDisplay(list: GuideDeckList): GuideDeckList {
@@ -432,6 +447,7 @@ export class GuideService {
     let changed = false;
 
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
+      const templateVersion = this.templateVersionForDeck(deckId);
       const refreshedLists = lists.map((list) => {
         const listUsage = renderUsage.clone();
         const caption: CaptionBlocks = {
@@ -453,8 +469,13 @@ export class GuideService {
         const generatedUsage = this.createUsageScope();
         this.markUsedInDeck(regeneratedPages, generatedUsage);
         renderUsage.merge(generatedUsage);
-        if (list.title !== safeCaption.headline || list.description !== safeCaption.body || JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)) changed = true;
-        return { ...list, title: safeCaption.headline, description: safeCaption.body, pages: regeneratedPages };
+        if (
+          list.title !== safeCaption.headline ||
+          list.description !== safeCaption.body ||
+          list.templateVersion !== templateVersion ||
+          JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)
+        ) changed = true;
+        return { ...list, title: safeCaption.headline, description: safeCaption.body, templateVersion, pages: regeneratedPages };
       });
       this.generatedListsByDeckId.set(deckId, refreshedLists);
     }
