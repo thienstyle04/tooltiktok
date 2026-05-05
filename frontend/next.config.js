@@ -4,6 +4,9 @@ const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://127.0.0.
 const nextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
   distDir: process.env.NEXT_DIST_DIR || '.next',
+  experimental: {
+    mcpServer: false,
+  },
   async rewrites() {
     return [
       {

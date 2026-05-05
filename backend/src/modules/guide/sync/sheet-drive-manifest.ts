@@ -70,6 +70,8 @@ function preferredImageLink(row: Record<string, string>): string {
     'link_hinh_anh',
     'hinh_anh__hyperlink',
     'hinh_anh',
+    'anh__hyperlink',
+    'anh',
     'image_link__hyperlink',
     'image_link',
   );

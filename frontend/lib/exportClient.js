@@ -20,6 +20,11 @@ const IMAGE_READY_TIMEOUT_MS = 1200;
 const PAGE_RENDER_TIMEOUT_MS = 16000;
 const BATCH_PAGE_RENDER_TIMEOUT_MS = 30000;
 const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 60000;
+const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
+  cacheBust: false,
+  // Drive proxy images are differentiated by ?id=..., so every template export must keep query params.
+  includeQueryParams: true,
+});
 
 let fontEmbedCSS = null;
 let batchImageCache = new Map();
@@ -581,7 +586,13 @@ function createListFolder(zip, list, zipInstance, deckId) {
 
 async function addListMetadataFiles(folder, list) {
   const hashtags = Array.isArray(list.captionHashtags) ? list.captionHashtags.join(' ') : '';
-  folder.file('caption.txt', `${list.description || list.title}\n\n${hashtags}`.trim());
+  const title = String(list.title || list.navTitle || '').trim();
+  const body = String(list.description || list.title || '').trim();
+  folder.file('caption.txt', [
+    `Tiêu đề trang: ${title}`,
+    `Nội dung: ${body}`,
+    `Hashtags: ${hashtags}`,
+  ].join('\n\n').trim());
   folder.file('partners.xlsx', await createHorizontalXlsx(collectPartnerNames(list)));
 }
 
@@ -626,7 +637,7 @@ export async function renderPageBlob(pageNode, options = {}) {
       try {
         const blob = await rejectAfter(htmlToImage.toBlob(pageNode, {
           pixelRatio,
-          cacheBust: false,
+          ...HTML_TO_IMAGE_RENDER_OPTIONS,
           backgroundColor,
           skipAutoScale: true,
           skipFonts: !shouldEmbedFonts,
@@ -641,7 +652,7 @@ export async function renderPageBlob(pageNode, options = {}) {
       try {
         const canvas = await rejectAfter(htmlToImage.toCanvas(pageNode, {
           pixelRatio,
-          cacheBust: false,
+          ...HTML_TO_IMAGE_RENDER_OPTIONS,
           backgroundColor,
           skipAutoScale: true,
           skipFonts: !shouldEmbedFonts,

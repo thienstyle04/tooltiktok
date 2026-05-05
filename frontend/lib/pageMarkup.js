@@ -18,18 +18,24 @@ function previewImageAttrs() {
 const TITLE_FONT_VARIANT_COUNT = 8;
 const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
-function titleFontClass(listId) {
-  const raw = String(listId || '');
-  const captionNumber = raw.match(/caption-(\d+)/i);
-  if (captionNumber) {
-    return `title-font-${((Number(captionNumber[1]) - 1) % TITLE_FONT_VARIANT_COUNT) + 1}`;
-  }
-
+function titleFontVariantFromId(raw) {
   let hash = 0;
   for (let index = 0; index < raw.length; index += 1) {
     hash = (hash * 31 + raw.charCodeAt(index)) >>> 0;
   }
-  return `title-font-${(hash % TITLE_FONT_VARIANT_COUNT) + 1}`;
+  return (hash % TITLE_FONT_VARIANT_COUNT) + 1;
+}
+
+function titleFontClass(listId) {
+  const raw = String(listId || '');
+  const captionNumber = raw.match(/^(.*?)-caption-(\d+)/i);
+  if (captionNumber) {
+    const baseVariant = titleFontVariantFromId(`${captionNumber[1]}-main`);
+    const generatedOffset = Number(captionNumber[2]) || 1;
+    return `title-font-${((baseVariant - 1 + generatedOffset) % TITLE_FONT_VARIANT_COUNT) + 1}`;
+  }
+
+  return `title-font-${titleFontVariantFromId(raw)}`;
 }
 
 function storyPageClass(listId, ...classNames) {
@@ -510,8 +516,17 @@ function journey4N3DTitle(chipText, title) {
 export function renderListPage(page, index, total, listId, hashtags = [], list = null) {
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
   if (page.layoutVariant === 'photomode') {
+    const photomodeTitleHtml = /^pov-3-day/i.test(String(listId || '')) && page.title
+      ? `
+        <div class="photomode-page-heading">
+          <span>${escapeHtml(page.chipText || '')}</span>
+          <h3>${escapeHtml(page.title)}</h3>
+        </div>
+      `
+      : '';
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'photomode'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        ${photomodeTitleHtml}
         <div class="photomode-stack">
           ${renderPhotomodeItems(page.items)}
         </div>
@@ -530,11 +545,11 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
   }
 
   if (isJourneyGrid8Layout(page)) {
-    const hideCenterChip = page.chipText === 'Lưu trú' || page.chipText === 'Dịch vụ';
+    const hideCenterChip = page.chipText === 'Lưu trú' || page.chipText === 'Homestay' || page.chipText === 'Dịch vụ';
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page', 'journey-grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, journeyGrid8Intro(page), { showTime: true, showMeta: true, showCenterChip: !hideCenterChip })}
+          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: !hideCenterChip })}
         </div>
       </article>
     `;

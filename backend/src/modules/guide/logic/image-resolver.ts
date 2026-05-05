@@ -212,8 +212,57 @@ export function topDirKind(topDir: string): string {
   if (normalized.includes('quan_an_toi')) return 'food_dinner';
   if (normalized.includes('dac_san')) return 'specialty';
   if (normalized.includes('thue_xe')) return 'rental';
+  if (
+    normalized.includes('nha_xe') ||
+    normalized.includes('xe_khach') ||
+    normalized.includes('limousine') ||
+    normalized.includes('phuong_trang') ||
+    normalized.includes('futa')
+  ) return 'bus';
+  if (normalized.includes('spa') || normalized.includes('goi_dau') || normalized.includes('massage')) return 'spa';
+  if (
+    normalized.includes('thue_do') ||
+    normalized.includes('trang_phuc') ||
+    normalized.includes('ao_dai') ||
+    normalized.includes('hanbok')
+  ) return 'outfit';
+  if (
+    normalized.includes('choi_dem') ||
+    normalized.includes('bar') ||
+    normalized.includes('lounge') ||
+    normalized.includes('pub') ||
+    normalized.includes('club')
+  ) return 'nightlife';
   if (normalized.includes('check_in')) return 'checkin';
   return 'other';
+}
+
+function serviceImageKindFromText(value: string): string | null {
+  const normalized = normalizeText(value);
+  if (
+    normalized.includes('nha_xe') ||
+    normalized.includes('xe_khach') ||
+    normalized.includes('limousine') ||
+    normalized.includes('phuong_trang') ||
+    normalized.includes('futa')
+  ) return 'bus';
+  if (normalized.includes('spa') || normalized.includes('goi_dau') || normalized.includes('massage')) return 'spa';
+  if (
+    normalized.includes('thue_do') ||
+    normalized.includes('trang_phuc') ||
+    normalized.includes('ao_dai') ||
+    normalized.includes('hanbok')
+  ) return 'outfit';
+  if (normalized.includes('thue_xe') || normalized.includes('xe_may') || normalized.includes('dat_xe')) return 'rental';
+  if (normalized.includes('dac_san') || normalized.includes('qua')) return 'specialty';
+  if (
+    normalized.includes('choi_dem') ||
+    normalized.includes('bar') ||
+    normalized.includes('lounge') ||
+    normalized.includes('pub') ||
+    normalized.includes('club')
+  ) return 'nightlife';
+  return null;
 }
 
 function decodedAssetPath(url: string): string {
@@ -414,6 +463,8 @@ export function allowedImageKindsForItem(item: { sectionKey: SectionKey; type: s
       allowed.add('specialty');
     }
   } else if (item.sectionKey === 'dich_vu') {
+    const serviceKind = serviceImageKindFromText(`${normalizedType} ${normalizedName}`);
+    if (serviceKind) allowed.add(serviceKind);
     if (normalizedType.includes('thue_xe') || normalizedName.includes('thue_xe')) allowed.add('rental');
     if (
       normalizedType.includes('dac_san') ||
@@ -421,6 +472,7 @@ export function allowedImageKindsForItem(item: { sectionKey: SectionKey; type: s
       normalizedName.includes('qua')
     ) allowed.add('specialty');
   } else if (item.sectionKey === 'choi_dem') {
+    allowed.add('nightlife');
     allowed.add('cafe');
     allowed.add('food_dinner');
     allowed.add('checkin');
@@ -447,11 +499,15 @@ export function scoreImageLibraryMatch(
   for (const token of addressTokens) if (token.length >= 3 && entryTokens.has(token)) score += 6;
 
   const topDir = normalizeText(entry.topDir);
+  const kind = topDirKind(entry.topDir);
   if (sectionKey === 'cafe' && topDir.includes('ca_phe')) score += 25;
   if ((sectionKey === 'check_in' || sectionKey === 'khu_du_lich' || sectionKey === 'dia_diem_lich_su') && topDir.includes('check_in')) score += 25;
-  if (sectionKey === 'dich_vu' && topDir.includes('thue_xe')) score += 25;
-  if (sectionKey === 'choi_dem' && (topDir.includes('ca_phe') || topDir.includes('quan_an_toi') || topDir.includes('check_in'))) score += 15;
+  if (sectionKey === 'dich_vu' && ['rental', 'specialty', 'bus', 'spa', 'outfit', 'nightlife'].includes(kind)) score += 25;
+  if (sectionKey === 'choi_dem' && (['nightlife', 'cafe', 'food_dinner', 'checkin'].includes(kind))) score += 15;
   if (sectionKey === 'quan_an' && (topDir.includes('quan_an') || topDir.includes('dac_san'))) score += 20;
+
+  const serviceKind = serviceImageKindFromText(`${normalizedName} ${normalizedAddress}`);
+  if (sectionKey === 'dich_vu' && serviceKind && serviceKind === kind) score += 20;
 
   return score;
 }
@@ -635,9 +691,8 @@ export function createListImageResolver(
       ).sort(
         (a, b) => stableHash(`${seed}:${item.id}:manual:${a}`) - stableHash(`${seed}:${item.id}:manual:${b}`),
       );
-      const pickedManual = manualCandidates.find((url) => url && !shouldAvoidImageForItem(item.name, url));
+      const pickedManual = pickUnused(manualCandidates.filter((url) => url && !shouldAvoidImageForItem(item.name, url)));
       if (pickedManual) {
-        rememberPicked(pickedManual);
         return { ...common, imageUrl: pickedManual, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm từ sheet' };
       }
       if (item.candidateImageUrls && item.candidateImageUrls.length > 0) {
@@ -657,8 +712,7 @@ export function createListImageResolver(
         filterImageUrlsForResolverOptions([item.imageUrl], libraryEntries, resolverOptions).length > 0 &&
         !localUsedUrls.has(item.imageUrl)
       ) {
-        localUsedUrls.add(item.imageUrl);
-        softUsedUrls.add(item.imageUrl);
+        rememberPicked(item.imageUrl);
         return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm' };
       }
     }
@@ -685,8 +739,7 @@ export function createListImageResolver(
         filterImageUrlsForResolverOptions([item.imageUrl], libraryEntries, resolverOptions).length > 0 &&
         !localUsedUrls.has(item.imageUrl)
       ) {
-        localUsedUrls.add(item.imageUrl);
-        softUsedUrls.add(item.imageUrl);
+        rememberPicked(item.imageUrl);
         return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'auto', imageNote: 'Ảnh tự map đúng theo thư viện' };
       }
     }

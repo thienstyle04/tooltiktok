@@ -2,6 +2,10 @@
   background: #120f0c;
 }
 
+.story-page.photomode:not(.photomode-cover) {
+  background: var(--story-card-bg, #f6efe6);
+}
+
 .photomode-stack,
 .photomode-cover-bg,
 .photomode-cover-copy,
@@ -22,6 +26,43 @@
   flex-direction: column;
 }
 
+.photomode-page-heading {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  max-width: 46%;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 250, 240, 0.42);
+  border-radius: 8px;
+  background: rgba(18, 16, 13, 0.58);
+  color: #fffaf0;
+  text-align: right;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.photomode-page-heading span {
+  display: block;
+  font-size: 0.48rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--journey-title-color, #ffe08a);
+}
+
+.photomode-page-heading h3 {
+  display: -webkit-box;
+  margin: 3px 0 0;
+  color: #fffaf0;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.06;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .photomode-item {
   position: relative;
   flex: 1 1 0;
@@ -29,7 +70,7 @@
 }
 
 .photomode-item + .photomode-item {
-  border-top: 2px solid rgba(255, 248, 237, 0.08);
+  border-top: 2px solid var(--story-card-border, rgba(78, 61, 43, 0.14));
 }
 
 .photomode-item img,
@@ -81,7 +122,7 @@
   line-height: 1;
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: #fff7c7;
+  color: var(--journey-title-color, #fff7c7);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -93,7 +134,7 @@
   margin: 4px 0 0 17px;
   font-size: 0.66rem;
   line-height: 1.15;
-  color: rgba(255, 253, 247, 0.96);
+  color: var(--journey-meta-color, rgba(255, 253, 247, 0.96));
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -102,12 +143,12 @@
 }
 
 .photomode-label {
-  color: #ffd54a;
+  color: var(--journey-title-color, #ffd54a);
   font-weight: 700;
 }
 
 .photomode-address {
-  color: rgba(255, 253, 247, 0.96);
+  color: var(--journey-meta-color, rgba(255, 253, 247, 0.96));
 }
 
 .story-page.photomode .mapping-chip {
