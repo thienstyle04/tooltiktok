@@ -1,55 +1,54 @@
 @echo off
-chcp 65001 >nul
 title Setup Dalat TikTok Carousel Tool
 
 echo ==============================================================
-echo BẮT ĐẦU CÀI ĐẶT MÔI TRƯỜNG CHO DALAT TIKTOK CAROUSEL TOOL
+echo BAT DAU CAI DAT MOI TRUONG CHO DALAT TIKTOK CAROUSEL TOOL
 echo ==============================================================
 echo.
 
-echo [1/3] Đang cài đặt thư viện cho hệ thống chính (root)...
+echo [1/4] Dang cai dat thu vien cho he thong chinh (root)...
 call npm install
 if %ERRORLEVEL% neq 0 (
-    echo [LỖI] Cài đặt thư viện root thất bại! Vui lòng kiểm tra lại Node.js và npm.
+    echo [LOI] Cai dat thu vien root that bai! Vui long kiem tra lai Node.js va npm.
     pause
     exit /b %ERRORLEVEL%
 )
 echo.
 
-echo [2/3] Đang cài đặt thư viện cho Backend...
+echo [2/4] Dang cai dat thu vien cho Backend...
 cd backend
 call npm install
 if %ERRORLEVEL% neq 0 (
-    echo [LỖI] Cài đặt thư viện backend thất bại!
+    echo [LOI] Cai dat thu vien backend that bai!
     pause
     exit /b %ERRORLEVEL%
 )
 cd ..
 echo.
 
-echo [3/3] Đang cài đặt thư viện cho Frontend...
+echo [3/4] Dang cai dat thu vien cho Frontend...
 cd frontend
 call npm install
 if %ERRORLEVEL% neq 0 (
-    echo [LỖI] Cài đặt thư viện frontend thất bại!
+    echo [LOI] Cai dat thu vien frontend that bai!
     pause
     exit /b %ERRORLEVEL%
 )
 cd ..
 echo.
 
-echo [4/4] Kiểm tra biến môi trường...
+echo [4/4] Kiem tra bien moi truong...
 if not exist "backend\.env" (
-    echo ^> Chưa có file backend\.env, đang copy từ mẫu...
+    echo ^> Chua co file backend\.env, dang copy tu mau...
     copy "backend\.env.example" "backend\.env" >nul
-    echo ^> Đã tạo file backend\.env. NHỚ CẬP NHẬT LẠI KEY DEEPSEEK TRONG FILE ĐÓ!
+    echo ^> Da tao file backend\.env. NHO CAP NHAT LAI KEY DEEPSEEK TRONG FILE DO!
 ) else (
-    echo ^> File backend\.env đã tồn tại.
+    echo ^> File backend\.env da ton tai.
 )
 echo.
 
 echo ==============================================================
-echo CÀI ĐẶT THÀNH CÔNG!
-echo Bạn đã có thể chạy tool bằng cách mở file "start.bat"
+echo CAI DAT THANH CONG!
+echo Ban da co the chay tool bang cach mo file "start.bat"
 echo ==============================================================
 pause
