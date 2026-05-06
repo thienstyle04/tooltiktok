@@ -424,8 +424,12 @@ function filterImageUrlsForResolverOptions(
   options: ListImageResolverOptions,
 ): string[] {
   const unique = Array.from(new Set(urls.filter(Boolean)));
-  if (options.orientation === 'landscape') return unique.filter((url) => isLandscapeImageUrl(url, libraryEntries, options));
-  if (options.orientation === 'portrait') return unique.filter((url) => isPortraitImageUrl(url, libraryEntries, options));
+  if (options.orientation === 'landscape') {
+    return unique.filter((url) => /^https?:\/\//i.test(url) || isLandscapeImageUrl(url, libraryEntries, options));
+  }
+  if (options.orientation === 'portrait') {
+    return unique.filter((url) => /^https?:\/\//i.test(url) || isPortraitImageUrl(url, libraryEntries, options));
+  }
   return unique;
 }
 
@@ -447,7 +451,7 @@ export function allowedImageKindsForItem(item: { sectionKey: SectionKey; type: s
     allowed.add('cafe');
   } else if (item.sectionKey === 'check_in') {
     allowed.add('checkin');
-  } else if (item.sectionKey === 'khu_du_lich' || item.sectionKey === 'dia_diem_lich_su') {
+  } else if (item.sectionKey === 'khu_du_lich' || item.sectionKey === 'dia_diem_lich_su' || item.sectionKey === 'hoat_dong') {
     allowed.add('checkin');
   } else if (item.sectionKey === 'quan_an') {
     if (normalizedType.includes('sang')) {
@@ -501,7 +505,7 @@ export function scoreImageLibraryMatch(
   const topDir = normalizeText(entry.topDir);
   const kind = topDirKind(entry.topDir);
   if (sectionKey === 'cafe' && topDir.includes('ca_phe')) score += 25;
-  if ((sectionKey === 'check_in' || sectionKey === 'khu_du_lich' || sectionKey === 'dia_diem_lich_su') && topDir.includes('check_in')) score += 25;
+  if ((sectionKey === 'check_in' || sectionKey === 'khu_du_lich' || sectionKey === 'dia_diem_lich_su' || sectionKey === 'hoat_dong') && topDir.includes('check_in')) score += 25;
   if (sectionKey === 'dich_vu' && ['rental', 'specialty', 'bus', 'spa', 'outfit', 'nightlife'].includes(kind)) score += 25;
   if (sectionKey === 'choi_dem' && (['nightlife', 'cafe', 'food_dinner', 'checkin'].includes(kind))) score += 15;
   if (sectionKey === 'quan_an' && (topDir.includes('quan_an') || topDir.includes('dac_san'))) score += 20;

@@ -18,13 +18,13 @@ import { allowedImageKindsForItem, createListImageResolver, stableHash, topDirKi
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
 const DEFAULT_PARTNER_TARGET_PER_PAGE = 3;
-export const ITINERARY_3N2D_TEMPLATE_VERSION = 8;
-export const ITINERARY_4N3D_TEMPLATE_VERSION = 4;
-export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 6;
-export const POV_3_DAY_TEMPLATE_VERSION = 3;
-export const GRID_4_TEMPLATE_VERSION = 7;
-export const GRID_6_TEMPLATE_VERSION = 7;
-export const GRID_8_TEMPLATE_VERSION = 3;
+export const ITINERARY_3N2D_TEMPLATE_VERSION = 10;
+export const ITINERARY_4N3D_TEMPLATE_VERSION = 6;
+export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 8;
+export const POV_3_DAY_TEMPLATE_VERSION = 5;
+export const GRID_4_TEMPLATE_VERSION = 9;
+export const GRID_6_TEMPLATE_VERSION = 9;
+export const GRID_8_TEMPLATE_VERSION = 8;
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -61,6 +61,16 @@ function hasUsableImage(item: GuideItem): boolean {
   return hasDisplayText(item.imageUrl) || Boolean(item.candidateImageUrls?.some((url) => hasDisplayText(url)));
 }
 
+function hasMappedImage(item: GuideItem): boolean {
+  return item.imageSource === 'manual' || item.imageSource === 'auto' || Boolean(item.imageMapped);
+}
+
+function preferMappedImageItems(items: GuideItem[]): GuideItem[] {
+  const deduped = dedupeItems(items);
+  const mappedItems = deduped.filter(hasMappedImage);
+  return mappedItems.length > 0 ? mappedItems : deduped;
+}
+
 function listOrdinalFromSeed(seed: string): number {
   const captionMatch = seed.match(/caption-(\d+)/i) || seed.match(/\|(\d{2})-/);
   return captionMatch ? Number(captionMatch[1]) + 1 : 1;
@@ -72,11 +82,11 @@ function useActivityVariant(seed: string): boolean {
 
 function finalActivityPagePool(pools: DeckBuildPools, seed: string): { chip: string; title: string; items: GuideItem[]; isActivity: boolean } {
   if (useActivityVariant(seed)) {
-    const items = dedupeItems([...pools.historyItems, ...pools.dayFamousItems.filter((item) => item.sectionKey !== 'khu_du_lich')]);
+    const items = preferMappedImageItems(pools.activityItems);
     return {
       chip: 'Hoạt động',
       title: 'HOẠT ĐỘNG ĐÀ LẠT',
-      items: items.length > 0 ? items : pools.famousItems,
+      items: items.length > 0 ? items : pools.historyItems,
       isActivity: true,
     };
   }
@@ -996,6 +1006,7 @@ export function createDeckBuildPools(itemsBySection: WorkbookItemsBySection): De
   const serviceItems = itemsBySection.dich_vu;
   const nightlifeItems = itemsBySection.choi_dem;
   const nightlifeImageItems = dedupeItems([...foodItems, ...cafeItems, ...serviceItems, ...nightlifeItems].filter(isImageBackedNightlifeItem));
+  const activityItems = itemsBySection.hoat_dong;
   const historyItems = itemsBySection.dia_diem_lich_su;
   const tourismItems = itemsBySection.khu_du_lich;
   const famousItems = dedupeItems([...historyItems, ...tourismItems]);
@@ -1035,7 +1046,7 @@ export function createDeckBuildPools(itemsBySection: WorkbookItemsBySection): De
     ...foodItems,
   ]);
   return {
-    foodItems, cafeItems, stayItems, checkinItems, serviceItems, nightlifeItems, nightlifeImageItems, historyItems, tourismItems,
+    foodItems, cafeItems, stayItems, checkinItems, serviceItems, nightlifeItems, nightlifeImageItems, activityItems, historyItems, tourismItems,
     breakfastItems,
     lunchItems,
     dinnerItems,
@@ -1059,7 +1070,7 @@ export function createDeckBuildPools(itemsBySection: WorkbookItemsBySection): De
 export function collectMappedImageUrls(pools: DeckBuildPools): string[] {
   return [
     ...pools.foodItems, ...pools.cafeItems, ...pools.stayItems,
-    ...pools.checkinItems, ...pools.serviceItems, ...pools.nightlifeItems, ...pools.historyItems, ...pools.tourismItems,
+    ...pools.checkinItems, ...pools.serviceItems, ...pools.nightlifeItems, ...pools.activityItems, ...pools.historyItems, ...pools.tourismItems,
   ]
     .filter((i) => i.imageSource === 'manual' || i.imageSource === 'auto')
     .map((i) => i.imageUrl)

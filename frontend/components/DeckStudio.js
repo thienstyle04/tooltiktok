@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { exportBatch, exportSelectedPagePng } from '../lib/exportClient';
+import { apiFetch } from '../lib/apiClient';
 import { clearCachedDataset, readCachedDataset, writeCachedDataset } from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
 import { SELECTION_STORAGE_KEY, listIsMain } from '../lib/utils';
@@ -168,7 +169,7 @@ export default function DeckStudio({ initialDataset = null }) {
     if (!options.silent) setStatus(message);
     const endpoint = forceRefresh ? '/api/guide-data?refresh=1' : '/api/guide-data';
     if (forceRefresh) clearCachedDataset();
-    const response = await fetch(endpoint, { cache: 'no-store' });
+    const response = await apiFetch(endpoint, { cache: 'no-store' });
     if (!response.ok) throw new Error(`Không tải được dữ liệu: HTTP ${response.status}`);
     const nextDataset = await response.json();
     writeCachedDataset(nextDataset);
@@ -289,7 +290,7 @@ export default function DeckStudio({ initialDataset = null }) {
     setBusy(true);
     setStatus(`Đang gọi DeepSeek cho list "${captionSourceList.title}"...`);
     try {
-      const response = await fetch('/api/ai/deepseek/caption', {
+      const response = await apiFetch('/api/ai/deepseek/caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -333,7 +334,7 @@ export default function DeckStudio({ initialDataset = null }) {
     setBusy(true);
     setStatus(`Đang tạo list AI mới trong deck "${activeDeck.navTitle}"...`);
     try {
-      const response = await fetch('/api/decks/generate-from-caption', {
+      const response = await apiFetch('/api/decks/generate-from-caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -373,7 +374,7 @@ export default function DeckStudio({ initialDataset = null }) {
     try {
       const deckBeforeDelete = dataset?.decks?.find((deck) => deck.id === deckId);
       const listIndex = deckBeforeDelete?.lists?.findIndex((list) => list.id === listId) ?? -1;
-      const response = await fetch(`/api/decks/${encodeURIComponent(deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
+      const response = await apiFetch(`/api/decks/${encodeURIComponent(deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
       if (!response.ok && response.status !== 204) {
         const message = await response.text();
         throw new Error(message || `Xóa thất bại: HTTP ${response.status}`);
@@ -424,7 +425,7 @@ export default function DeckStudio({ initialDataset = null }) {
           .filter((index) => index >= 0);
         focusIndexByDeck.set(group.deckId, deleteIndexes.length > 0 ? Math.min(...deleteIndexes) : 0);
         for (const listId of group.listIds) {
-          const response = await fetch(`/api/decks/${encodeURIComponent(group.deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
+          const response = await apiFetch(`/api/decks/${encodeURIComponent(group.deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
           if (!response.ok && response.status !== 204) {
             const message = await response.text();
             throw new Error(message || `Xóa thất bại: HTTP ${response.status}`);

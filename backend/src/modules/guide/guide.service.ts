@@ -328,6 +328,7 @@ export class GuideService {
 
     this.ensureInventoryLoaded();
     const deckUsage = this.createUsageScope();
+    currentDeck.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
     const basePages = buildPagesForDeck(
       deckId,
       context.itemsBySection,
@@ -381,7 +382,7 @@ export class GuideService {
     const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, renderUsage.itemIds, renderUsage.imageUrls);
     baseDecks.forEach((deck) => this.markUsedInDeck(deck.lists.flatMap((list) => list.pages), renderUsage));
     if (options.refreshGeneratedLists || this.hasGeneratedListsNeedingTemplateRefresh()) {
-      this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, renderUsage);
+      this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, renderUsage, baseDecks);
     }
     const referenceSets = this.buildReferenceSets();
     const decks = this.mergeGeneratedLists(baseDecks);
@@ -432,11 +433,140 @@ export class GuideService {
     return {
       ...list,
       description: safeDescription,
-      pages: list.pages.map((page) => ({
-        ...page,
-        subtitle: safeDescription,
-      })),
+      pages: list.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, list, safeDescription)),
     };
+  }
+
+  private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
+    if (page.type === 'cover') {
+      return {
+        ...page,
+        title: sanitizeDeckHeadline(list.title || page.title),
+        subtitle: safeDescription,
+      };
+    }
+
+    const pageSubtitle = sanitizeCaptionBodyForPages(page.subtitle, [page]);
+    return {
+      ...page,
+      subtitle: page.layoutVariant === 'grid-8' || this.samePlainText(pageSubtitle, safeDescription)
+        ? this.contextualGeneratedPageSubtitle(page, list)
+        : pageSubtitle,
+    };
+  }
+
+  private samePlainText(left: string, right: string): boolean {
+    return normalizeText(left) === normalizeText(right);
+  }
+
+  private contextualGeneratedPageSubtitle(page: DeckPage, list: GuideDeckList): string {
+    if (page.type !== 'list') return '';
+
+    const kind = this.generatedPageKind(page);
+    const variants = this.generatedSubtitleVariants(kind);
+    return variants[this.generatedListVariantIndex(list, variants.length, kind)] || variants[0] || '';
+  }
+
+  private generatedPageKind(page: DeckPage): string {
+    if (page.type !== 'list') return 'generic';
+
+    const key = normalizeText(`${page.chipText} ${page.title}`);
+    if (key.includes('quan_an') || key.includes('mon_ngon')) return 'food';
+    if (key.includes('cafe') || key.includes('ca_phe')) return 'cafe';
+    if (key.includes('check_in')) return 'checkin';
+    if (key.includes('choi_dem')) return 'nightlife';
+    if (key.includes('dich_vu') || key.includes('luu_y')) return 'service';
+    if (key.includes('homestay') || key.includes('luu_tru')) return 'stay';
+    if (key.includes('hoat_dong')) return 'activity';
+    if (key.includes('khu_du_lich')) return 'tourism';
+    return 'generic';
+  }
+
+  private generatedListVariantIndex(list: GuideDeckList, variantCount: number, salt: string): number {
+    if (variantCount <= 1) return 0;
+
+    const captionMatch = list.id.match(/caption-(\d+)/i);
+    if (captionMatch) return Math.max(0, Number(captionMatch[1]) - 1) % variantCount;
+
+    return stableHash(`${list.id}|${list.title}|${salt}`) % variantCount;
+  }
+
+  private generatedSubtitleVariants(kind: string): string[] {
+    const variants: Record<string, string[]> = {
+      food: [
+        'Nhóm quán ăn được gom riêng để người xem chọn bữa nhanh, dễ scan trước khi đi.',
+        'Một trang chỉ dành cho đồ ăn, ưu tiên chỗ dễ gọi món và tiện ghé theo lịch.',
+        'Ghim sẵn các quán ăn để lúc đói chỉ cần mở list, chọn nhanh, khỏi lướt lại.',
+        'Các điểm ăn uống được lọc riêng để dễ đổi bữa mà không làm rối lịch di chuyển.',
+        'Trang này gom các quán đáng thử, hợp để chốt bữa chính hoặc bữa phụ trong ngày.',
+        'Một cụm địa chỉ ăn uống gọn mắt, dành cho lúc cần quyết nhanh trong chuyến đi.',
+      ],
+      cafe: [
+        'Các quán cafe nên lưu riêng để chọn điểm ngồi chill, nghỉ chân hoặc chụp ảnh.',
+        'Trang cafe này ưu tiên chỗ có không khí dễ chịu, hợp để dừng lại giữa lịch đi.',
+        'Ghim trước vài quán cafe để có điểm nghỉ, lên ảnh đẹp và không phải tìm phút cuối.',
+        'Một cụm cafe để đổi nhịp chuyến đi: ngồi lâu được, chụp ổn, di chuyển vừa phải.',
+        'Các điểm cafe được gom riêng cho lúc muốn chậm lại mà vẫn có ảnh đẹp mang về.',
+        'Trang này dành cho mood cafe: chọn nhanh một chỗ ngồi, rồi để Đà Lạt tự dịu lại.',
+      ],
+      checkin: [
+        'Một trang scan nhanh các điểm check-in, ưu tiên tên ngắn và hình ảnh rõ.',
+        'Các góc lên hình được tách riêng để dễ chọn điểm chụp theo cung đường trong ngày.',
+        'Ghim sẵn các điểm check-in để lúc trời đẹp chỉ cần mở list và đi thẳng.',
+        'Trang này gom các điểm nhìn phát hiểu ngay, hợp cho lịch cần ảnh đẹp mà không vòng vèo.',
+        'Một cụm điểm chụp dễ scan, giúp bạn chọn nhanh nơi đáng ghé nhất trong buổi đó.',
+        'Các địa điểm lên ảnh ổn được xếp riêng để chuyến đi có vài khung hình chắc tay.',
+      ],
+      nightlife: [
+        'Các điểm đi buổi tối, ăn đêm và nghe nhạc được tách riêng để dễ lưu sau 20h.',
+        'Trang này dành cho buổi tối: chọn chỗ ăn, nghe nhạc hoặc đổi không khí sau lịch ngày.',
+        'Ghim riêng các điểm chơi đêm để tối đến không phải lục lại cả list dài.',
+        'Một cụm lựa chọn sau hoàng hôn, hợp để kéo dài lịch mà vẫn dễ quyết.',
+        'Các điểm buổi tối được gom riêng để lịch đêm có nhịp, có món, có chỗ ngồi.',
+        'Trang này giúp chốt nhanh phần sau 20h: ăn nhẹ, đi nghe nhạc hoặc ghé một nơi có vibe.',
+      ],
+      service: [
+        'Các dịch vụ hỗ trợ chuyến đi được gom riêng để người xem dễ liên hệ nhanh.',
+        'Trang dịch vụ này để lưu những thứ cần chốt trước: xe, đồ, quà hoặc hỗ trợ tại chỗ.',
+        'Ghim riêng nhóm dịch vụ để lúc cần liên hệ không phải trộn với quán ăn và điểm chơi.',
+        'Một trang thực dụng cho chuyến đi: các mục cần chuẩn bị, đặt trước hoặc lưu số.',
+        'Các dịch vụ quan trọng được tách riêng để lịch đi trơn hơn và ít phải xử lý gấp.',
+        'Trang này gom những thứ hậu cần nên có sẵn trước khi bắt đầu chạy lịch.',
+      ],
+      stay: [
+        'Các chỗ nghỉ nên xem riêng để dễ chốt phòng, không trộn với dịch vụ khác.',
+        'Trang lưu trú này giúp so nhanh vài lựa chọn trước khi quyết chỗ ở cho chuyến đi.',
+        'Ghim riêng homestay để lúc chốt phòng có ngay nhóm lựa chọn sạch và dễ xem.',
+        'Một cụm chỗ nghỉ để cân vị trí, vibe và lịch di chuyển trước khi đặt.',
+        'Các lựa chọn lưu trú được tách riêng để không lẫn với điểm chơi trong ngày.',
+        'Trang này dành cho bước chốt nơi ở: xem nhanh, so nhanh, rồi quay lại lịch đi.',
+      ],
+      activity: [
+        'Các hoạt động và điểm ghé được gom riêng để đổi nhịp cho lịch đi.',
+        'Trang hoạt động này thêm lựa chọn trải nghiệm, hợp khi muốn chuyến đi bớt chỉ check-in.',
+        'Ghim các hoạt động riêng để dễ chen vào lịch khi còn dư thời gian hoặc muốn đổi mood.',
+        'Một cụm trải nghiệm để ngày đi có thêm việc đáng làm, không chỉ ăn uống và chụp ảnh.',
+        'Các hoạt động được tách riêng để bạn chọn nhịp vui hơn cho từng buổi.',
+        'Trang này dành cho những lúc muốn làm gì đó khác hơn: ghé, thử, chơi, rồi đi tiếp.',
+      ],
+      tourism: [
+        'Các khu du lịch được tách riêng khỏi trang check-in để người xem cân lịch dễ hơn.',
+        'Trang khu du lịch này hợp để chọn điểm đi dài hơi, cần cân thời gian hơn điểm ghé nhanh.',
+        'Ghim riêng các khu du lịch để dễ quyết nơi nào đáng dành hẳn một buổi.',
+        'Một cụm điểm lớn hơn, phù hợp khi muốn có lịch rõ thay vì chỉ ghé chụp nhanh.',
+        'Các khu du lịch được gom riêng để bạn xem trước độ xa, độ rộng và thời gian cần dành.',
+        'Trang này giúp chọn các điểm đi chính trong ngày, trước khi thêm cafe hay ăn uống.',
+      ],
+      generic: [
+        'Trang này gom riêng các mục cùng nhóm để scan nhanh và lưu trước khi đi.',
+        'Một trang phụ được tách riêng để list dễ đọc hơn và không phải quyết từ một đống hỗn hợp.',
+        'Các mục cùng nhóm được đặt chung để người xem chọn nhanh theo đúng nhu cầu lúc đó.',
+        'Trang này giúp list gọn hơn: mở ra là hiểu nhóm nào, dùng lúc nào, lưu vì sao.',
+        'Một cụm lựa chọn riêng để chuyến đi dễ xoay nhịp mà không bị loãng thông tin.',
+        'Các gợi ý được gom thành một trang rõ ý, hợp để scan nhanh trước khi chốt lịch.',
+      ],
+    };
+    return variants[kind] || variants.generic;
   }
 
   private refreshGeneratedLists(
@@ -444,14 +574,17 @@ export class GuideService {
     imageUrls: string[],
     libraryEntries: ImageLibraryFolderEntry[],
     renderUsage: DataAllocator,
+    baseDecks: GuideDeck[] = [],
   ): void {
     if (this.generatedListsByDeckId.size === 0) return;
     let changed = false;
 
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
       const templateVersion = this.templateVersionForDeck(deckId);
+      const deckUsage = this.createUsageScope();
+      const baseDeck = baseDecks.find((deck) => deck.id === deckId);
+      baseDeck?.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
       const refreshedLists = lists.map((list) => {
-        const listUsage = this.createUsageScope();
         const caption: CaptionBlocks = {
           headline: sanitizeDeckHeadline(list.title),
           body: list.description,
@@ -463,11 +596,13 @@ export class GuideService {
           imageUrls,
           libraryEntries,
           `refresh:${deckId}:${list.id}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`,
-          listUsage.itemIds,
-          listUsage.imageUrls,
+          deckUsage.itemIds,
+          deckUsage.imageUrls,
         );
         const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
         const regeneratedPages = applyCaptionToPages(basePages, safeCaption);
+        this.markUsedInDeck(regeneratedPages, deckUsage);
+        this.markUsedInDeck(regeneratedPages, renderUsage);
         if (
           list.title !== safeCaption.headline ||
           list.description !== safeCaption.body ||
@@ -622,7 +757,7 @@ export class GuideService {
     libraryEntries: ImageLibraryFolderEntry[],
     sheetDriveManifest: SheetDriveImageManifest,
   ): GuideItem | null {
-    const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'ten');
+    const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
     if (!name) return null;
 
     const placeType = firstValue(row, 'mo_hinh', 'loai_dich_vu', 'phong_cach');
@@ -633,7 +768,7 @@ export class GuideService {
     const partner = firstValue(row, 'doi_tac', 'doi_tac_cong_ty');
     const phone = firstValue(row, 'sdt');
     const price = firstValue(row, 'gia');
-    const imageHint = firstValue(row, 'anh', 'hinh_anh', 'hinh', 'ten_anh', 'thu_muc_anh', 'folder_anh');
+    const imageHint = firstValue(row, 'anh', 'hinh_anh', 'hinh', 'ten_anh', 'thu_muc_anh', 'folder_anh', 'link_anh', 'url', 'link');
     const mappingKey = itemMappingKey(sectionKey, name, address);
     const sheetDriveEntry = sheetDriveManifest.items[mappingKey];
     const sheetDriveCandidateUrls = sheetDriveEntry
@@ -660,6 +795,9 @@ export class GuideService {
         ? { ...hinted, imageMappingKey: mappingKey }
         : direct;
     };
+    
+    const directImageUrls = imageHint ? imageHint.split(/[\n,;]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s)) : [];
+
     const resolvedImage = sheetDriveEntry
       ? {
           imageUrl: sheetDriveCandidateUrls[0] || getDriveImageProxyUrl(sheetDriveEntry.fileId),
@@ -668,7 +806,15 @@ export class GuideService {
           imageSource: 'manual' as const,
           candidateImageUrls: sheetDriveCandidateUrls,
         }
-      : fallbackResolvedImage();
+      : (directImageUrls.length > 0
+          ? {
+              imageUrl: directImageUrls[0],
+              imageMapped: true,
+              imageMappingKey: mappingKey,
+              imageSource: 'manual' as const,
+              candidateImageUrls: directImageUrls,
+            }
+          : fallbackResolvedImage());
 
     return {
       id: `${sectionKey}-${sequence}`,

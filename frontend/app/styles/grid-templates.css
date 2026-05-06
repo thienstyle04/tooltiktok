@@ -96,6 +96,26 @@
   overflow: hidden;
 }
 
+.grid6-service-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 15px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--journey-badge-bg, #16372c);
+  font-size: 0.43rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+}
+
 .grid6-address {
   color: #fff;
   font-size: 0.5rem;
@@ -582,6 +602,26 @@
   line-height: 1;
   letter-spacing: 0;
   box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+}
+
+.grid8-cell-service {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 14px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--journey-badge-bg, #16372c);
+  font-size: 0.39rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.24);
 }
 
 .grid8-cell strong {

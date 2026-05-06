@@ -1,4 +1,5 @@
-const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://127.0.0.1:3000';
+const rawBackendOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://127.0.0.1:3000';
+const backendOrigin = rawBackendOrigin.replace(/\/+$/, '');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
