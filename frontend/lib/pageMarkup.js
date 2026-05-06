@@ -60,6 +60,161 @@ function isJourneyGrid8Layout(page) {
   return page.layoutVariant === 'journey-4n2d-grid8';
 }
 
+function isServiceListPage(page) {
+  const key = `${page?.chipText || ''} ${page?.title || ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .toLowerCase();
+  return key.includes('dich vu');
+}
+
+function isGeneratedCaptionList(list) {
+  return /caption-/i.test(String(list?.id || ''));
+}
+
+function gridContextKey(value) {
+  return normalizeGridText(value)
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function sameGridText(left, right) {
+  return gridContextKey(left) === gridContextKey(right);
+}
+
+function gridPageKind(page) {
+  const key = gridContextKey(`${page?.chipText || ''} ${page?.title || ''}`);
+  if (key.includes('quan_an') || key.includes('mon_ngon')) return 'food';
+  if (key.includes('cafe') || key.includes('ca_phe')) return 'cafe';
+  if (key.includes('check_in')) return 'checkin';
+  if (key.includes('choi_dem')) return 'nightlife';
+  if (key.includes('dich_vu') || key.includes('luu_y')) return 'service';
+  if (key.includes('homestay') || key.includes('luu_tru')) return 'stay';
+  if (key.includes('hoat_dong')) return 'activity';
+  if (key.includes('khu_du_lich')) return 'tourism';
+  return 'generic';
+}
+
+function listVariantIndex(list, variantCount, salt = '') {
+  if (variantCount <= 1) return 0;
+  const rawId = String(list?.id || '');
+  const captionMatch = rawId.match(/caption-(\d+)/i);
+  if (captionMatch) return Math.max(0, Number(captionMatch[1]) - 1) % variantCount;
+
+  const raw = `${rawId}|${list?.title || ''}|${salt}`;
+  let hash = 0;
+  for (let index = 0; index < raw.length; index += 1) {
+    hash = (hash * 31 + raw.charCodeAt(index)) >>> 0;
+  }
+  return hash % variantCount;
+}
+
+function pickListVariant(list, variants, salt) {
+  return variants[listVariantIndex(list, variants.length, salt)] || variants[0] || '';
+}
+
+const GRID8_INTRO_VARIANTS = {
+  food: [
+    'Nhóm quán ăn được gom riêng để người xem chọn bữa nhanh, dễ scan trước khi đi.',
+    'Một trang chỉ dành cho đồ ăn, ưu tiên chỗ dễ gọi món và tiện ghé theo lịch.',
+    'Ghim sẵn các quán ăn để lúc đói chỉ cần mở list, chọn nhanh, khỏi lướt lại.',
+    'Các điểm ăn uống được lọc riêng để dễ đổi bữa mà không làm rối lịch di chuyển.',
+    'Trang này gom các quán đáng thử, hợp để chốt bữa chính hoặc bữa phụ trong ngày.',
+    'Một cụm địa chỉ ăn uống gọn mắt, dành cho lúc cần quyết nhanh trong chuyến đi.',
+  ],
+  cafe: [
+    'Các quán cafe nên lưu riêng để chọn điểm ngồi chill, nghỉ chân hoặc chụp ảnh.',
+    'Trang cafe này ưu tiên chỗ có không khí dễ chịu, hợp để dừng lại giữa lịch đi.',
+    'Ghim trước vài quán cafe để có điểm nghỉ, lên ảnh đẹp và không phải tìm phút cuối.',
+    'Một cụm cafe để đổi nhịp chuyến đi: ngồi lâu được, chụp ổn, di chuyển vừa phải.',
+    'Các điểm cafe được gom riêng cho lúc muốn chậm lại mà vẫn có ảnh đẹp mang về.',
+    'Trang này dành cho mood cafe: chọn nhanh một chỗ ngồi, rồi để Đà Lạt tự dịu lại.',
+  ],
+  checkin: [
+    'Một trang scan nhanh các điểm check-in, ưu tiên tên ngắn và hình ảnh rõ.',
+    'Các góc lên hình được tách riêng để dễ chọn điểm chụp theo cung đường trong ngày.',
+    'Ghim sẵn các điểm check-in để lúc trời đẹp chỉ cần mở list và đi thẳng.',
+    'Trang này gom các điểm nhìn phát hiểu ngay, hợp cho lịch cần ảnh đẹp mà không vòng vèo.',
+    'Một cụm điểm chụp dễ scan, giúp bạn chọn nhanh nơi đáng ghé nhất trong buổi đó.',
+    'Các địa điểm lên ảnh ổn được xếp riêng để chuyến đi có vài khung hình chắc tay.',
+  ],
+  nightlife: [
+    'Các điểm đi buổi tối, ăn đêm và nghe nhạc được tách riêng để dễ lưu sau 20h.',
+    'Trang này dành cho buổi tối: chọn chỗ ăn, nghe nhạc hoặc đổi không khí sau lịch ngày.',
+    'Ghim riêng các điểm chơi đêm để tối đến không phải lục lại cả list dài.',
+    'Một cụm lựa chọn sau hoàng hôn, hợp để kéo dài lịch mà vẫn dễ quyết.',
+    'Các điểm buổi tối được gom riêng để lịch đêm có nhịp, có món, có chỗ ngồi.',
+    'Trang này giúp chốt nhanh phần sau 20h: ăn nhẹ, đi nghe nhạc hoặc ghé một nơi có vibe.',
+  ],
+  service: [
+    'Các dịch vụ hỗ trợ chuyến đi được gom riêng để người xem dễ liên hệ nhanh.',
+    'Trang dịch vụ này để lưu những thứ cần chốt trước: xe, đồ, quà hoặc hỗ trợ tại chỗ.',
+    'Ghim riêng nhóm dịch vụ để lúc cần liên hệ không phải trộn với quán ăn và điểm chơi.',
+    'Một trang thực dụng cho chuyến đi: các mục cần chuẩn bị, đặt trước hoặc lưu số.',
+    'Các dịch vụ quan trọng được tách riêng để lịch đi trơn hơn và ít phải xử lý gấp.',
+    'Trang này gom những thứ hậu cần nên có sẵn trước khi bắt đầu chạy lịch.',
+  ],
+  stay: [
+    'Các chỗ nghỉ nên xem riêng để dễ chốt phòng, không trộn với dịch vụ khác.',
+    'Trang lưu trú này giúp so nhanh vài lựa chọn trước khi quyết chỗ ở cho chuyến đi.',
+    'Ghim riêng homestay để lúc chốt phòng có ngay nhóm lựa chọn sạch và dễ xem.',
+    'Một cụm chỗ nghỉ để cân vị trí, vibe và lịch di chuyển trước khi đặt.',
+    'Các lựa chọn lưu trú được tách riêng để không lẫn với điểm chơi trong ngày.',
+    'Trang này dành cho bước chốt nơi ở: xem nhanh, so nhanh, rồi quay lại lịch đi.',
+  ],
+  activity: [
+    'Các hoạt động và điểm ghé được gom riêng để đổi nhịp cho lịch đi.',
+    'Trang hoạt động này thêm lựa chọn trải nghiệm, hợp khi muốn chuyến đi bớt chỉ check-in.',
+    'Ghim các hoạt động riêng để dễ chen vào lịch khi còn dư thời gian hoặc muốn đổi mood.',
+    'Một cụm trải nghiệm để ngày đi có thêm việc đáng làm, không chỉ ăn uống và chụp ảnh.',
+    'Các hoạt động được tách riêng để bạn chọn nhịp vui hơn cho từng buổi.',
+    'Trang này dành cho những lúc muốn làm gì đó khác hơn: ghé, thử, chơi, rồi đi tiếp.',
+  ],
+  tourism: [
+    'Các khu du lịch được tách riêng khỏi trang check-in để người xem cân lịch dễ hơn.',
+    'Trang khu du lịch này hợp để chọn điểm đi dài hơi, cần cân thời gian hơn điểm ghé nhanh.',
+    'Ghim riêng các khu du lịch để dễ quyết nơi nào đáng dành hẳn một buổi.',
+    'Một cụm điểm lớn hơn, phù hợp khi muốn có lịch rõ thay vì chỉ ghé chụp nhanh.',
+    'Các khu du lịch được gom riêng để bạn xem trước độ xa, độ rộng và thời gian cần dành.',
+    'Trang này giúp chọn các điểm đi chính trong ngày, trước khi thêm cafe hay ăn uống.',
+  ],
+  generic: [
+    'Trang này gom riêng các mục cùng nhóm để scan nhanh và lưu trước khi đi.',
+    'Một trang phụ được tách riêng để list dễ đọc hơn và không phải quyết từ một đống hỗn hợp.',
+    'Các mục cùng nhóm được đặt chung để người xem chọn nhanh theo đúng nhu cầu lúc đó.',
+    'Trang này giúp list gọn hơn: mở ra là hiểu nhóm nào, dùng lúc nào, lưu vì sao.',
+    'Một cụm lựa chọn riêng để chuyến đi dễ xoay nhịp mà không bị loãng thông tin.',
+    'Các gợi ý được gom thành một trang rõ ý, hợp để scan nhanh trước khi chốt lịch.',
+  ],
+};
+
+function contextualGrid8Title(page) {
+  const kind = gridPageKind(page);
+  if (kind === 'food') return '8 QUÁN ĂN ĐÀ LẠT';
+  if (kind === 'cafe') return '8 QUÁN CAFE';
+  if (kind === 'checkin') return '8 ĐIỂM CHECK-IN';
+  if (kind === 'nightlife') return '8 ĐIỂM CHƠI ĐÊM';
+  if (kind === 'service') return '8 LƯU Ý CẦN NHỚ';
+  if (kind === 'stay') return '8 HOMESTAY ĐÀ LẠT';
+  if (kind === 'activity') return '8 HOẠT ĐỘNG ĐÀ LẠT';
+  if (kind === 'tourism') return '8 KHU DU LỊCH ĐÀ LẠT';
+  return page?.title || page?.chipText || '';
+}
+
+function contextualGrid8Intro(page, list) {
+  const kind = gridPageKind(page);
+  const variants = GRID8_INTRO_VARIANTS[kind] || GRID8_INTRO_VARIANTS.generic;
+  return pickListVariant(list, variants, kind);
+}
+
+function grid8IntroForPage(page, pageSubtitle, list) {
+  if (!isGeneratedCaptionList(list)) return pageSubtitle;
+  if (!pageSubtitle || sameGridText(pageSubtitle, list?.description)) return contextualGrid8Intro(page, list);
+  if (page.layoutVariant === 'grid-8') return contextualGrid8Intro(page, list);
+  return pageSubtitle;
+}
+
 export function renderInlineHashtags(hashtags) {
   if (!Array.isArray(hashtags) || hashtags.length === 0) {
     return '';
@@ -357,7 +512,7 @@ export function renderPhotomodeItems(items) {
   `).join('');
 }
 
-export function renderGrid6Items(items, { numbered = false, twoDigitNumber = false } = {}) {
+export function renderGrid6Items(items, { numbered = false, twoDigitNumber = false, showLabel = false } = {}) {
   return items.map((item, index) => {
     const displayName = gridDisplayName(item);
     const itemNumber = twoDigitNumber ? String(index + 1).padStart(2, '0') : String(index + 1);
@@ -366,6 +521,7 @@ export function renderGrid6Items(items, { numbered = false, twoDigitNumber = fal
     <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
       ${renderPreviewImage(item.imageUrl, item.name)}
       <div class="grid6-overlay">
+        ${showLabel && item.label ? `<div class="grid6-service-label">${escapeHtml(item.label)}</div>` : ''}
         <div class="grid6-name story-image-title">${escapeHtml(itemName)}</div>
         ${renderGridAddress(item.metaPrimary)}
       </div>
@@ -420,6 +576,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
   const showTime = Boolean(options.showTime);
   const showMeta = options.showMeta !== false;
   const showCenterChip = options.showCenterChip !== false;
+  const showLabel = Boolean(options.showLabel);
   const centerImageHtml = backgroundImage
     ? renderPreviewImage(backgroundImage, title || '', 'grid8-center-bg')
     : '';
@@ -432,6 +589,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
           ${renderPreviewImage(item.imageUrl, item.name)}
           <div class="grid8-cell-copy">
             ${showTime && item.label ? `<span class="grid8-cell-time">${escapeHtml(item.label)}</span>` : ''}
+            ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
             <strong class="story-image-title">${escapeHtml(displayName)}</strong>
             ${showMeta ? renderGrid8Meta(item.metaPrimary) : ''}
           </div>
@@ -451,6 +609,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
             ${renderPreviewImage(item.imageUrl, item.name)}
             <div class="grid8-cell-copy">
               ${showTime && item.label ? `<span class="grid8-cell-time">${escapeHtml(item.label)}</span>` : ''}
+              ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
               <strong class="story-image-title">${escapeHtml(displayName)}</strong>
               ${showMeta ? renderGrid8Meta(item.metaPrimary) : ''}
             </div>
@@ -535,10 +694,12 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
   }
 
   if (page.layoutVariant === 'grid-8') {
+    const grid8Title = isGeneratedCaptionList(list) ? contextualGrid8Title(page) : page.title;
+    const grid8Intro = grid8IntroForPage(page, pageSubtitle, list);
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage)}
+          ${renderGrid8Items(page.items, grid8Title, page.chipText, page.backgroundImage, grid8Intro, { showLabel: isServiceListPage(page) })}
         </div>
       </article>
     `;
@@ -566,13 +727,14 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
       : page.layoutVariant === 'grid-8'
         ? ' grid8-body'
         : '';
+    const showServiceLabel = isServiceListPage(page);
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid6', gridVariantClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid6-header">
            <div class="grid6-header-top">${escapeHtml(page.title)}</div>
         </div>
         <div class="grid6-body${gridBodyClass}">
-          ${renderGrid6Items(page.items)}
+          ${renderGrid6Items(page.items, { showLabel: showServiceLabel })}
         </div>
       </article>
     `;

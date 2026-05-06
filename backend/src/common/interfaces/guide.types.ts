@@ -5,6 +5,7 @@ export type SectionKey =
   | 'check_in'
   | 'dich_vu'
   | 'choi_dem'
+  | 'hoat_dong'
   | 'dia_diem_lich_su'
   | 'khu_du_lich';
 
@@ -220,6 +221,7 @@ export interface DeckBuildPools {
   serviceItems: GuideItem[];
   nightlifeItems: GuideItem[];
   nightlifeImageItems: GuideItem[];
+  activityItems: GuideItem[];
   historyItems: GuideItem[];
   tourismItems: GuideItem[];
   breakfastItems: GuideItem[];

@@ -129,7 +129,7 @@ export async function buildSheetDriveManifest(workbookPath: string): Promise<She
 
     const sheet = workbook.Sheets[sheetName];
     for (const row of workbookRowsWithLinks(sheet)) {
-      const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'ten');
+      const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
       if (!name) continue;
 
       const address = firstValue(row, 'dia_chi');

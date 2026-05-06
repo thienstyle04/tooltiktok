@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-05T04:39:34.137Z",
+  "generatedAt": "2026-05-06T08:31:15.601Z",
   "workbookName": "F&B ĐÀ LẠT.xlsx",
-  "workbookMtimeMs": 1777953254575.723,
+  "workbookMtimeMs": 1778055986743.6714,
   "items": {
     "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu": {
       "key": "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu",
@@ -1366,7 +1366,7 @@
     "quan_an|tiem_nuong_lau_rung_mo|duong_hoa_cam_tu_cau": {
       "key": "quan_an|tiem_nuong_lau_rung_mo|duong_hoa_cam_tu_cau",
       "sectionKey": "quan_an",
-      "name": "Tiệm nướng lẩu rừng mơ",
+      "name": "Tiệm nướng lẩu Rừng Mơ",
       "address": "Đường Hoa Cẩm Tú Cầu",
       "sourceLink": "https://drive.google.com/drive/folders/1C1dwt8kr8JhlKSCFbhm3lnhfQxaLAN6j?usp=sharing",
       "fileId": "1_BhwaXbyrll9xtXx39bZbRk3SHNPSzK0",
@@ -8213,41 +8213,41 @@
     "homestay|cloudy_hillside_boutique|81_hoang_hoa_tham": {
       "key": "homestay|cloudy_hillside_boutique|81_hoang_hoa_tham",
       "sectionKey": "homestay",
-      "name": "Cloudy Hillside boutique",
+      "name": "Cloudy Hillside Boutique",
       "address": "81 Hoàng Hoa Thám",
-      "sourceLink": "https://drive.google.com/drive/folders/19gBdm4pcqjpaaMvtUljU5sLLlK2kWLty?usp=drive_link",
-      "fileId": "1jgABpU6cienUMjxX9w-rdpowPTVxU8d0",
-      "fileName": "Cloudy Hillside boutique.jpg",
+      "sourceLink": "https://drive.google.com/drive/folders/1q13SlcO0S6teE6BQxcAtVaVIQbRiKv2V?usp=drive_link",
+      "fileId": "17b1g_MhTrvmoJZhP5I88Ar5dbMoGZ5fv",
+      "fileName": "Cloudy Hillside Boutique.jpg",
       "candidateImages": [
         {
-          "fileId": "1jgABpU6cienUMjxX9w-rdpowPTVxU8d0",
-          "fileName": "Cloudy Hillside boutique.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1jgABpU6cienUMjxX9w-rdpowPTVxU8d0/view?usp=drive_web"
+          "fileId": "17b1g_MhTrvmoJZhP5I88Ar5dbMoGZ5fv",
+          "fileName": "Cloudy Hillside Boutique.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17b1g_MhTrvmoJZhP5I88Ar5dbMoGZ5fv/view?usp=drive_web"
         },
         {
-          "fileId": "130rYEGyqhZ77i93LIBg6AC8MhdLY3Rja",
-          "fileName": "469013677_122121611738569417_6998768526542107679_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/130rYEGyqhZ77i93LIBg6AC8MhdLY3Rja/view?usp=drive_web"
+          "fileId": "1TLHZFuHozFhRYmIk3JGUwlpx_dt7L8iZ",
+          "fileName": "481912537_122140225736569417_4620739470734019187_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1TLHZFuHozFhRYmIk3JGUwlpx_dt7L8iZ/view?usp=drive_web"
         },
         {
-          "fileId": "1q9D0vHavyV0I8ykd5pglTGAOM50w754q",
-          "fileName": "469042787_122121569408569417_8883260313307310304_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1q9D0vHavyV0I8ykd5pglTGAOM50w754q/view?usp=drive_web"
+          "fileId": "1Oq4YqDemF55xH0BA6m3VhUPcvpWVr7Av",
+          "fileName": "483486442_122140225724569417_8954317689650057258_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Oq4YqDemF55xH0BA6m3VhUPcvpWVr7Av/view?usp=drive_web"
         },
         {
-          "fileId": "1J9FSchI8px4Qf9zuNDkbxprfH-pepzMd",
-          "fileName": "469271556_122121569402569417_4785175586254265920_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1J9FSchI8px4Qf9zuNDkbxprfH-pepzMd/view?usp=drive_web"
+          "fileId": "1ynHtddVsdFnUzvIUlquYo-3RmJDSyxDI",
+          "fileName": "500393649_122158398962569417_4987821400444403630_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ynHtddVsdFnUzvIUlquYo-3RmJDSyxDI/view?usp=drive_web"
         },
         {
-          "fileId": "1auA9d9KrVaf6hC-4VWBQ45qVeYIobZ8w",
-          "fileName": "469895346_122122421510569417_743093966617577624_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1auA9d9KrVaf6hC-4VWBQ45qVeYIobZ8w/view?usp=drive_web"
+          "fileId": "1-fMvlg15qmLorFhsttcluRE0Ddw5isLS",
+          "fileName": "518366561_122167548464569417_460269106603998351_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-fMvlg15qmLorFhsttcluRE0Ddw5isLS/view?usp=drive_web"
         },
         {
-          "fileId": "12gNoDVsQzFChhlmCwN_C867oy_1fP5Gp",
-          "fileName": "491003083_122149235240569417_3877828945079638912_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/12gNoDVsQzFChhlmCwN_C867oy_1fP5Gp/view?usp=drive_web"
+          "fileId": "1vtuT0vD51-qlbXDF8Q-KSs_O-COcQYgE",
+          "fileName": "518587962_122167912826569417_4090654741474902105_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1vtuT0vD51-qlbXDF8Q-KSs_O-COcQYgE/view?usp=drive_web"
         }
       ]
     },
@@ -9156,7 +9156,7 @@
     "homestay|gaun_hill_villa|36_45_hoang_hoa_tham": {
       "key": "homestay|gaun_hill_villa|36_45_hoang_hoa_tham",
       "sectionKey": "homestay",
-      "name": "Gaun hill villa",
+      "name": "GaUn Hill Villa",
       "address": "36/45 Hoàng Hoa Thám",
       "sourceLink": "https://drive.google.com/drive/folders/177KuAW1mxW2Djzy8sMZ6W8ctiDipWEh1?usp=drive_link",
       "fileId": "1MH7-KnDeEBDRVV0a-DH5ZPtW8yLY7XAT",
@@ -9888,6 +9888,1477 @@
           "fileId": "1PkD7it_ZcNpmPyJEUep0I4Diy6Cu_mtg",
           "fileName": "492775514_1307852637497873_7318623308956264673_n.jpg",
           "viewUrl": "https://drive.google.com/file/d/1PkD7it_ZcNpmPyJEUep0I4Diy6Cu_mtg/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|nature_hotel|8a_nam_ky_khoi_nghia": {
+      "key": "homestay|nature_hotel|8a_nam_ky_khoi_nghia",
+      "sectionKey": "homestay",
+      "name": "Nature hotel",
+      "address": "8A Nam Kỳ Khởi Nghĩa",
+      "sourceLink": "https://drive.google.com/drive/folders/1k3qQDsLuPjAKWDmWDQphjpiqk-Wkcyqd?usp=drive_link",
+      "fileId": "15wM5q9gHIaeVRz1jDUet5_ZYDekrIT28",
+      "fileName": "Nature hotel.jpg",
+      "candidateImages": [
+        {
+          "fileId": "15wM5q9gHIaeVRz1jDUet5_ZYDekrIT28",
+          "fileName": "Nature hotel.jpg",
+          "viewUrl": "https://drive.google.com/file/d/15wM5q9gHIaeVRz1jDUet5_ZYDekrIT28/view?usp=drive_web"
+        },
+        {
+          "fileId": "17NNxe5Vm_D6I9HZua9Rayyk6hLLCGWno",
+          "fileName": "489040820_122147263022468746_6629894342819994303_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17NNxe5Vm_D6I9HZua9Rayyk6hLLCGWno/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rOp3P40cWm7ZM8MmOHWQEDHplJ5_6kWs",
+          "fileName": "515438238_122163593072468746_6760900781786587054_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rOp3P40cWm7ZM8MmOHWQEDHplJ5_6kWs/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zqoGIOrRAlNeKPC0WmyKrGzCGxh9WrSR",
+          "fileName": "515439077_122162942096468746_4219465796690461301_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zqoGIOrRAlNeKPC0WmyKrGzCGxh9WrSR/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SNU7a2DhE5bGxkQQxAifiC2K8a2N1FAU",
+          "fileName": "528827241_122163593030468746_5775475478369388949_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SNU7a2DhE5bGxkQQxAifiC2K8a2N1FAU/view?usp=drive_web"
+        },
+        {
+          "fileId": "16ElkQcYl5ARZLGAkwnpTvtR8lzcEKksL",
+          "fileName": "550372580_122169043688468746_7334740013650812575_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/16ElkQcYl5ARZLGAkwnpTvtR8lzcEKksL/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|misty_valley_da_lat|49_dang_thai_than": {
+      "key": "homestay|misty_valley_da_lat|49_dang_thai_than",
+      "sectionKey": "homestay",
+      "name": "Misty Valley Đà Lạt",
+      "address": "49 Đặng Thái Thân",
+      "sourceLink": "https://drive.google.com/drive/folders/1b8mOIhe6kHOJQlcbYAge8ERcNO1zR2GJ?usp=drive_link",
+      "fileId": "1-zDKvrNowMUNSG97Db_Cpx3GXH5b4X0X",
+      "fileName": "Misty Valley Đà Lạt.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1-zDKvrNowMUNSG97Db_Cpx3GXH5b4X0X",
+          "fileName": "Misty Valley Đà Lạt.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-zDKvrNowMUNSG97Db_Cpx3GXH5b4X0X/view?usp=drive_web"
+        },
+        {
+          "fileId": "14WGu4ORV3Wf1wmq-3WzQ92ITeY1A45lp",
+          "fileName": "481265205_984790793745926_2782755424220367309_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/14WGu4ORV3Wf1wmq-3WzQ92ITeY1A45lp/view?usp=drive_web"
+        },
+        {
+          "fileId": "1arfA-P48ma-j1xzHKjbA18J1Sr1BsYmX",
+          "fileName": "481996721_987162836842055_5835242266499488579_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1arfA-P48ma-j1xzHKjbA18J1Sr1BsYmX/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zPNu-JNnBM-qfkZBU5KYr0-uPkm_brKG",
+          "fileName": "482205739_987162720175400_6317489485355625117_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zPNu-JNnBM-qfkZBU5KYr0-uPkm_brKG/view?usp=drive_web"
+        },
+        {
+          "fileId": "1oPWIcOWhaNF-gZhTETMXrzc9Kq_gfpDQ",
+          "fileName": "482240131_985297543695251_6228601178504090465_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1oPWIcOWhaNF-gZhTETMXrzc9Kq_gfpDQ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GiiQInj07uANZm5P0u4nNjDhXfPURI55",
+          "fileName": "494152913_1028494919375513_1380545860168080077_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GiiQInj07uANZm5P0u4nNjDhXfPURI55/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|du_sam_house|91_phan_boi_chau": {
+      "key": "homestay|du_sam_house|91_phan_boi_chau",
+      "sectionKey": "homestay",
+      "name": "Du Sam House",
+      "address": "91 Phan Bội Châu",
+      "sourceLink": "https://drive.google.com/drive/folders/18SNfqAmnJSocM79KTtvVYMWuD2WRyURQ?usp=drive_link",
+      "fileId": "1KT6YoRVnVkqpAaFHKtCF-ItrN5uQAo_A",
+      "fileName": "Du Sam House.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1KT6YoRVnVkqpAaFHKtCF-ItrN5uQAo_A",
+          "fileName": "Du Sam House.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KT6YoRVnVkqpAaFHKtCF-ItrN5uQAo_A/view?usp=drive_web"
+        },
+        {
+          "fileId": "1tHeECMayl1CG4-tX9Zmw7BlsKFO5E4VB",
+          "fileName": "478901307_1023305759826858_8118332604010510440_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1tHeECMayl1CG4-tX9Zmw7BlsKFO5E4VB/view?usp=drive_web"
+        },
+        {
+          "fileId": "116080cRJOHqqtFk5fXtl82efuBC8Frx2",
+          "fileName": "480162225_1023304713160296_4456867064651883073_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/116080cRJOHqqtFk5fXtl82efuBC8Frx2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1DLVwDu9myBLeZ_dmYoe-A_ktBI5JF-aW",
+          "fileName": "480988806_1032267378930696_4168352703801716464_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1DLVwDu9myBLeZ_dmYoe-A_ktBI5JF-aW/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QwX7fNVYIJ3P4fN9jp2eiiA5an_hD4Fj",
+          "fileName": "481220082_1032267268930707_42091283156663642_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QwX7fNVYIJ3P4fN9jp2eiiA5an_hD4Fj/view?usp=drive_web"
+        },
+        {
+          "fileId": "1nkCp0eLpdMlyW_QDraknlSe33GL6FMOc",
+          "fileName": "481254915_1032267058930728_5083607076460780200_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1nkCp0eLpdMlyW_QDraknlSe33GL6FMOc/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|golden_sun_hotel_dalat|01_ba_huyen_thanh_quan": {
+      "key": "homestay|golden_sun_hotel_dalat|01_ba_huyen_thanh_quan",
+      "sectionKey": "homestay",
+      "name": "Golden Sun Hotel - Dalat",
+      "address": "01 Bà Huyện Thanh Quan",
+      "sourceLink": "https://drive.google.com/drive/folders/1r0hXvJl6WJ9eHCW_zs0w42t_1LqmrDlU?usp=drive_link",
+      "fileId": "1YBjajaVkqnJ7whHSdSBjvUD2ay4VKUzL",
+      "fileName": "Golden Sun Hotel - Dalat.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1YBjajaVkqnJ7whHSdSBjvUD2ay4VKUzL",
+          "fileName": "Golden Sun Hotel - Dalat.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1YBjajaVkqnJ7whHSdSBjvUD2ay4VKUzL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1JAIHHTWLKidTXHs6AxyIXSPGohZzmp_K",
+          "fileName": "623368386_122118053829134044_6116799496774279587_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JAIHHTWLKidTXHs6AxyIXSPGohZzmp_K/view?usp=drive_web"
+        },
+        {
+          "fileId": "1khqAEep3Pwb0_cFOj0TwKYfwiza2GOjF",
+          "fileName": "654472688_122125378305134044_5273291600168224235_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1khqAEep3Pwb0_cFOj0TwKYfwiza2GOjF/view?usp=drive_web"
+        },
+        {
+          "fileId": "1oCOasZthSkDXheI0_FA5EfqiYlGh_712",
+          "fileName": "658910969_122126936619134044_4030458499150598286_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1oCOasZthSkDXheI0_FA5EfqiYlGh_712/view?usp=drive_web"
+        },
+        {
+          "fileId": "1NPmIJ4ipvJbVc9PltPusevFnfY_ssIRl",
+          "fileName": "658915213_122126936607134044_2006933281811788044_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NPmIJ4ipvJbVc9PltPusevFnfY_ssIRl/view?usp=drive_web"
+        },
+        {
+          "fileId": "1JUK7A7Q_pkL0Dy0fTCqrg_38ryUknPXC",
+          "fileName": "659163750_122127102291134044_3821273458602057103_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JUK7A7Q_pkL0Dy0fTCqrg_38ryUknPXC/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|amory_dalat_hotel|21_ho_xuan_huong": {
+      "key": "homestay|amory_dalat_hotel|21_ho_xuan_huong",
+      "sectionKey": "homestay",
+      "name": "Amory Dalat Hotel",
+      "address": "21 Hồ Xuân Hương",
+      "sourceLink": "https://drive.google.com/drive/folders/1un_aZUMcrJc_3XNb3r2n8EQsLUKyomKn?usp=drive_link",
+      "fileId": "1-VZ6gAumWcCEZQ8My63sQ2aIUgqSZ54v",
+      "fileName": "Amory Dalat Hotel.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1-VZ6gAumWcCEZQ8My63sQ2aIUgqSZ54v",
+          "fileName": "Amory Dalat Hotel.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-VZ6gAumWcCEZQ8My63sQ2aIUgqSZ54v/view?usp=drive_web"
+        },
+        {
+          "fileId": "1yEOEPXXMU2O0TAnfGvw_AWR5ZLLt9yat",
+          "fileName": "608645327_735380026284215_4611908584865413511_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1yEOEPXXMU2O0TAnfGvw_AWR5ZLLt9yat/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Sx9zgHcWgeNT1MutORXgKlVcB531U9D7",
+          "fileName": "618673964_751101921378692_7394887451142462131_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Sx9zgHcWgeNT1MutORXgKlVcB531U9D7/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_0Az-KofOnNTbyq-4upZqhv6G6Lm-Q3t",
+          "fileName": "628363974_762441316911419_7872428231888872859_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_0Az-KofOnNTbyq-4upZqhv6G6Lm-Q3t/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GkS5M31CsyejB4SUE9BReIIdNg90OPRQ",
+          "fileName": "651236499_787922964363254_8537884430696976712_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GkS5M31CsyejB4SUE9BReIIdNg90OPRQ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1E31RmJ-0_avHiIoH-kHxn-faD5gYJWWj",
+          "fileName": "651409041_787922984363252_6050096235258230570_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1E31RmJ-0_avHiIoH-kHxn-faD5gYJWWj/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|tp_hotel|6b_tran_quang_dieu": {
+      "key": "homestay|tp_hotel|6b_tran_quang_dieu",
+      "sectionKey": "homestay",
+      "name": "TP Hotel",
+      "address": "6B Trần Quang Diệu",
+      "sourceLink": "https://drive.google.com/drive/folders/1xMR3E4n19iuYQrWmZkSdvCSNQtxddTVU?usp=drive_link",
+      "fileId": "11QtP1Ka47sQtMxhBc0zLySkhXgTv19VV",
+      "fileName": "TP Hotel.jpg",
+      "candidateImages": [
+        {
+          "fileId": "11QtP1Ka47sQtMxhBc0zLySkhXgTv19VV",
+          "fileName": "TP Hotel.jpg",
+          "viewUrl": "https://drive.google.com/file/d/11QtP1Ka47sQtMxhBc0zLySkhXgTv19VV/view?usp=drive_web"
+        },
+        {
+          "fileId": "1hAKNHMt1txt1XNBEh3WgzTGeO6NR1tbN",
+          "fileName": "thumbnail (5).jfif",
+          "viewUrl": "https://drive.google.com/file/d/1hAKNHMt1txt1XNBEh3WgzTGeO6NR1tbN/view?usp=drive_web"
+        },
+        {
+          "fileId": "1a1sPDbyrwmyvAgTVYwZfKvY_uN-Reec_",
+          "fileName": "unnamed (40).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1a1sPDbyrwmyvAgTVYwZfKvY_uN-Reec_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QioFFN9Rt27bBhNmiuYHmHCgsq50aBbk",
+          "fileName": "unnamed (41).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QioFFN9Rt27bBhNmiuYHmHCgsq50aBbk/view?usp=drive_web"
+        },
+        {
+          "fileId": "1I8XRCb6PeSX2vZ11PRUvbX8HsQ5OBGTi",
+          "fileName": "unnamed (42).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1I8XRCb6PeSX2vZ11PRUvbX8HsQ5OBGTi/view?usp=drive_web"
+        },
+        {
+          "fileId": "1LzmmPlleOhdWBJYfKPeEB2U9CUM82brC",
+          "fileName": "unnamed (43).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1LzmmPlleOhdWBJYfKPeEB2U9CUM82brC/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|nang_s_villa_coffee|hoang_hoa_tham": {
+      "key": "homestay|nang_s_villa_coffee|hoang_hoa_tham",
+      "sectionKey": "homestay",
+      "name": "Nắng's Villa & Coffee",
+      "address": "Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1dLZ5yFNOSlmxKQGrD_vrcn0nP8m_6E14?usp=drive_link",
+      "fileId": "12I8Ru7yksO3zJHRBP_b1NuhYghu1QNYy",
+      "fileName": "Nắng's Villa & Coffee.jpg",
+      "candidateImages": [
+        {
+          "fileId": "12I8Ru7yksO3zJHRBP_b1NuhYghu1QNYy",
+          "fileName": "Nắng's Villa & Coffee.jpg",
+          "viewUrl": "https://drive.google.com/file/d/12I8Ru7yksO3zJHRBP_b1NuhYghu1QNYy/view?usp=drive_web"
+        },
+        {
+          "fileId": "1nivBVeYC2OXlow4x80gczHmyguOTurhx",
+          "fileName": "556458202_122238333068088383_8258346484827177626_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1nivBVeYC2OXlow4x80gczHmyguOTurhx/view?usp=drive_web"
+        },
+        {
+          "fileId": "17AR5C8-27F2OrYwbSz6wkwXyVV1zw5Tu",
+          "fileName": "556659529_122238328622088383_7662458169680329233_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17AR5C8-27F2OrYwbSz6wkwXyVV1zw5Tu/view?usp=drive_web"
+        },
+        {
+          "fileId": "1NZIGrjFgHr0tmE6LnvoEu4wJS5f8rA7v",
+          "fileName": "556925321_122238328544088383_9084203557603408643_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NZIGrjFgHr0tmE6LnvoEu4wJS5f8rA7v/view?usp=drive_web"
+        },
+        {
+          "fileId": "1sBCMqLPOJK2ABRNuTFTrhrZfAWfx15aQ",
+          "fileName": "557008401_122238328526088383_8235240257073226973_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1sBCMqLPOJK2ABRNuTFTrhrZfAWfx15aQ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1-cqYe4hgkRngQ3KGekKjgj97S1NlNSbt",
+          "fileName": "557499529_122238332468088383_8950056213762424883_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-cqYe4hgkRngQ3KGekKjgj97S1NlNSbt/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|sol_dalat_house|1d_hoang_hoa_tham": {
+      "key": "homestay|sol_dalat_house|1d_hoang_hoa_tham",
+      "sectionKey": "homestay",
+      "name": "Sol Dalat House",
+      "address": "1D Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1b7FEYWx3yOfBLNCFiZnZiXwADTDT7PMa?usp=drive_link",
+      "fileId": "1Yiy5VkjjvQDJ-TOAIUM3FEaKr4H_iGwu",
+      "fileName": "vSol Dalat House.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1Yiy5VkjjvQDJ-TOAIUM3FEaKr4H_iGwu",
+          "fileName": "vSol Dalat House.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Yiy5VkjjvQDJ-TOAIUM3FEaKr4H_iGwu/view?usp=drive_web"
+        },
+        {
+          "fileId": "1h5A_ucaBB6xfsuYRJeTZF4fo5QnxauvY",
+          "fileName": "617586343_4079384848945671_4922495328648813392_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1h5A_ucaBB6xfsuYRJeTZF4fo5QnxauvY/view?usp=drive_web"
+        },
+        {
+          "fileId": "1CfReNUO8Lq-vuBTTIUQlUVXuDhee6otc",
+          "fileName": "618268503_122097881667234937_204502435127799718_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CfReNUO8Lq-vuBTTIUQlUVXuDhee6otc/view?usp=drive_web"
+        },
+        {
+          "fileId": "1441myY8EeP62EASCFuWbppuSP0_HHITL",
+          "fileName": "628403410_122107378851234937_8321013355404284739_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1441myY8EeP62EASCFuWbppuSP0_HHITL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1TLFeToxc4K3ThZjFM2A-CZLwMs6yo5nx",
+          "fileName": "629339705_122107378245234937_4000186136356562954_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1TLFeToxc4K3ThZjFM2A-CZLwMs6yo5nx/view?usp=drive_web"
+        },
+        {
+          "fileId": "1u0q8NHvJQhkCY1yXFn6_cqGN5diWrpg8",
+          "fileName": "687955652_122125740267234937_4655385909928424744_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1u0q8NHvJQhkCY1yXFn6_cqGN5diWrpg8/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|the_aratana|bl_03_khu_quy_hoach_thai_lam": {
+      "key": "homestay|the_aratana|bl_03_khu_quy_hoach_thai_lam",
+      "sectionKey": "homestay",
+      "name": "The Aratana",
+      "address": "BL 03, Khu quy hoạch Thái Lâm",
+      "sourceLink": "https://drive.google.com/drive/folders/1G9XD2i7qdNlkaRhmYWx9ISazhZGu0Zi1?usp=drive_link",
+      "fileId": "1orvZVGqGr6-aepVf_Gx840e_I4KpWnEc",
+      "fileName": "The Aratana Villa.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1orvZVGqGr6-aepVf_Gx840e_I4KpWnEc",
+          "fileName": "The Aratana Villa.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1orvZVGqGr6-aepVf_Gx840e_I4KpWnEc/view?usp=drive_web"
+        },
+        {
+          "fileId": "1th-iWEsPVViGA-mlp4Y2XN261F2e5W1V",
+          "fileName": "557079580_1324100759415693_5628875070685694542_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1th-iWEsPVViGA-mlp4Y2XN261F2e5W1V/view?usp=drive_web"
+        },
+        {
+          "fileId": "1DXp9ZGKMGtWgNWbopIZ7QE1nMpz6fSrJ",
+          "fileName": "571557155_1345412163951219_1426759725472368289_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1DXp9ZGKMGtWgNWbopIZ7QE1nMpz6fSrJ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SIBsY_EigaDVmvyQ36qV4pdjT42_KnTx",
+          "fileName": "571740289_1345412180617884_6211463626381839702_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SIBsY_EigaDVmvyQ36qV4pdjT42_KnTx/view?usp=drive_web"
+        },
+        {
+          "fileId": "14OwgPS3XjQO04xGPfv6HgFuTGwxcIjwA",
+          "fileName": "574047105_1345412107284558_8946136106428639439_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/14OwgPS3XjQO04xGPfv6HgFuTGwxcIjwA/view?usp=drive_web"
+        },
+        {
+          "fileId": "17u4GFj9-oReGAQWINIc_Sre8AQuzQE-h",
+          "fileName": "598555257_1376051220887313_24257525117326655_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17u4GFj9-oReGAQWINIc_Sre8AQuzQE-h/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|the_luxe_hotel_da_lat|17_duong_3_4": {
+      "key": "homestay|the_luxe_hotel_da_lat|17_duong_3_4",
+      "sectionKey": "homestay",
+      "name": "The Luxe Hotel Đà Lạt",
+      "address": "17 đường 3/4",
+      "sourceLink": "https://drive.google.com/drive/folders/1gZnVJ2T74bmjYdIZM4g4DfxINmSrTtS_?usp=drive_link",
+      "fileId": "1g_vhnCxnhLat7ZLvpydbx6TNvuuDrbXH",
+      "fileName": "The Luxe Hotel Đà Lạt.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1g_vhnCxnhLat7ZLvpydbx6TNvuuDrbXH",
+          "fileName": "The Luxe Hotel Đà Lạt.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1g_vhnCxnhLat7ZLvpydbx6TNvuuDrbXH/view?usp=drive_web"
+        },
+        {
+          "fileId": "13dvqawMA90ffPh7YsSR1TX7aVtDeMO2t",
+          "fileName": "470217298_122106358964674893_2603368494056231295_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13dvqawMA90ffPh7YsSR1TX7aVtDeMO2t/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_rzBgij4SXHPHPC563FlHadJaJjifQ6N",
+          "fileName": "471082685_122107149764674893_387568793595381617_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_rzBgij4SXHPHPC563FlHadJaJjifQ6N/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SCOCE5rlwXz2a42XxiZ3kryr5qGFlXqc",
+          "fileName": "471716038_122109376622674893_6294144516410267947_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SCOCE5rlwXz2a42XxiZ3kryr5qGFlXqc/view?usp=drive_web"
+        },
+        {
+          "fileId": "1nSFlni1C6z3xr8LLsTLLHfQgMabJ7bAk",
+          "fileName": "472201845_122110204304674893_6009898038348677378_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1nSFlni1C6z3xr8LLsTLLHfQgMabJ7bAk/view?usp=drive_web"
+        },
+        {
+          "fileId": "1RXa-NWy5LXZIlB5UgQjfB9XEj_9pUCqV",
+          "fileName": "472708532_122111480984674893_249151128226007421_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1RXa-NWy5LXZIlB5UgQjfB9XEj_9pUCqV/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|s_chill_home|duong_van_thanh": {
+      "key": "homestay|s_chill_home|duong_van_thanh",
+      "sectionKey": "homestay",
+      "name": "S-Chill Home",
+      "address": "Đường Vạn Thành",
+      "sourceLink": "https://drive.google.com/drive/folders/1-FQDrexRBiNkDGwGoyeI84e81q2R1J4B?usp=drive_link",
+      "fileId": "1hBYIwlWPOlBI-24_CZ9CiOFYbWeFo8E6",
+      "fileName": "S-Chill Home.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1hBYIwlWPOlBI-24_CZ9CiOFYbWeFo8E6",
+          "fileName": "S-Chill Home.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1hBYIwlWPOlBI-24_CZ9CiOFYbWeFo8E6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1u_4H3odJa0o_Ntl5fje7LfwmlWrfVWIL",
+          "fileName": "482021281_1219141003104631_4109644973922383131_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1u_4H3odJa0o_Ntl5fje7LfwmlWrfVWIL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zeWf3m2YR87Jh2Nr8-uHRl2RDcII4kHC",
+          "fileName": "498650833_122132883566407972_1133511145460700920_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zeWf3m2YR87Jh2Nr8-uHRl2RDcII4kHC/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Nr0Jia8AWC35VrK4Rka_fpnKDB9yAWG_",
+          "fileName": "498678735_122132885378407972_2657369375742238618_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Nr0Jia8AWC35VrK4Rka_fpnKDB9yAWG_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wJ-rxPzjhU2QHdKufLjemCNMiv42ZdZQ",
+          "fileName": "498678738_122132880188407972_7048165471925059674_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1wJ-rxPzjhU2QHdKufLjemCNMiv42ZdZQ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QNcXAow_9jUUnguhTecFfIa3u4cS-rGi",
+          "fileName": "498682389_122132879366407972_595835703527900439_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QNcXAow_9jUUnguhTecFfIa3u4cS-rGi/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|homey_villa|47_2_suong_nguyet_anh": {
+      "key": "homestay|homey_villa|47_2_suong_nguyet_anh",
+      "sectionKey": "homestay",
+      "name": "Homey Villa",
+      "address": "47/2 Sương Nguyệt Ánh",
+      "sourceLink": "https://drive.google.com/drive/folders/1jId4RFoAEBaVAtT2_5ZV26qWWEsXA8Ln?usp=drive_link",
+      "fileId": "1sH7SNQIbSDOEnLWMJGb6j9j24YCjg7h2",
+      "fileName": "Homey Villa.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1sH7SNQIbSDOEnLWMJGb6j9j24YCjg7h2",
+          "fileName": "Homey Villa.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1sH7SNQIbSDOEnLWMJGb6j9j24YCjg7h2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HuSc8yT6bjR7cckXK6pod-Bd7vaJac9I",
+          "fileName": "301442595_111397861690581_8377501906207775945_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1HuSc8yT6bjR7cckXK6pod-Bd7vaJac9I/view?usp=drive_web"
+        },
+        {
+          "fileId": "1o0ys-nbE0Km7Li5WqYHcotSkCtyaEzX9",
+          "fileName": "469327058_575467925283570_2464850976418461742_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1o0ys-nbE0Km7Li5WqYHcotSkCtyaEzX9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1eAhQZowKWrMUkmXSBsfnaMO9dKnzkSCG",
+          "fileName": "unnamed (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1eAhQZowKWrMUkmXSBsfnaMO9dKnzkSCG/view?usp=drive_web"
+        },
+        {
+          "fileId": "1h0lFJnpBqrnOQGi240xe2ZKJsLLEYdF3",
+          "fileName": "unnamed (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1h0lFJnpBqrnOQGi240xe2ZKJsLLEYdF3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1adp-xDBEW3nWIMSMS9NbAsESW9Jq5yK-",
+          "fileName": "unnamed (3).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1adp-xDBEW3nWIMSMS9NbAsESW9Jq5yK-/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|merperle_dalat_hotel|01_d_hung_vuong": {
+      "key": "homestay|merperle_dalat_hotel|01_d_hung_vuong",
+      "sectionKey": "homestay",
+      "name": "MerPerle Dalat Hotel",
+      "address": "01 Đ. Hùng Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1QwW8MzDS3GRf01Lg6PnD3Oz5Nm6njtJ9?usp=drive_link",
+      "fileId": "1kCm-WuhT5Eq_m0yLa4ruhb1eWBTMOkPh",
+      "fileName": "MerPerle Dalat Hotel.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1kCm-WuhT5Eq_m0yLa4ruhb1eWBTMOkPh",
+          "fileName": "MerPerle Dalat Hotel.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1kCm-WuhT5Eq_m0yLa4ruhb1eWBTMOkPh/view?usp=drive_web"
+        },
+        {
+          "fileId": "1tlhIp3g8gbGYHWe-HmIBnU1pgS_B6I7z",
+          "fileName": "481447355_657112830207907_737472409220205848_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1tlhIp3g8gbGYHWe-HmIBnU1pgS_B6I7z/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_UC6zcq3K_uuM3-vdlMioNYAnnW7rz8q",
+          "fileName": "481971354_657112600207930_4176231085635121922_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_UC6zcq3K_uuM3-vdlMioNYAnnW7rz8q/view?usp=drive_web"
+        },
+        {
+          "fileId": "18SGmb3hjDiPv7VTcBufZYsOoqGGX1Wg4",
+          "fileName": "482004152_654952837090573_2279923109883091827_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18SGmb3hjDiPv7VTcBufZYsOoqGGX1Wg4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_Uz-LboPnP77jw4BmYWfCZ67ZqeX_TfJ",
+          "fileName": "482016855_658701063382417_573582226585250859_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_Uz-LboPnP77jw4BmYWfCZ67ZqeX_TfJ/view?usp=drive_web"
+        },
+        {
+          "fileId": "15SBr1pFrfnu56nI9uiKtgcFhbyHTVh5L",
+          "fileName": "482261332_659566536629203_3188779560349241912_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/15SBr1pFrfnu56nI9uiKtgcFhbyHTVh5L/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|am_am_homestay|70_8_doan_thi_diem": {
+      "key": "homestay|am_am_homestay|70_8_doan_thi_diem",
+      "sectionKey": "homestay",
+      "name": "Âm Ấm Homestay",
+      "address": "70/8 Đoàn Thị Điểm",
+      "sourceLink": "https://drive.google.com/drive/folders/1lmOnH-mrC07Bpm2F_BXKppBL-Q16KRJF?usp=drive_link",
+      "fileId": "1sTMu8UH57X-TeoAAm5RhacEv5AJZIuKW",
+      "fileName": "Âm Ấm Homestay.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1sTMu8UH57X-TeoAAm5RhacEv5AJZIuKW",
+          "fileName": "Âm Ấm Homestay.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1sTMu8UH57X-TeoAAm5RhacEv5AJZIuKW/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GT71PZhn-8TdJehEWcJA15pGXeOCDhnu",
+          "fileName": "100973911_116574706737233_5354337579606999040_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GT71PZhn-8TdJehEWcJA15pGXeOCDhnu/view?usp=drive_web"
+        },
+        {
+          "fileId": "1bGQ27SA4y-PgPN3SAbp0BAylyhPKXf4h",
+          "fileName": "101611097_116574506737253_2284098014995808256_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bGQ27SA4y-PgPN3SAbp0BAylyhPKXf4h/view?usp=drive_web"
+        },
+        {
+          "fileId": "1OwZWu3nWH34GtpA02lwFx3gJalVschuD",
+          "fileName": "492693748_1256644053129326_730301110569302134_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1OwZWu3nWH34GtpA02lwFx3gJalVschuD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1TAP8gTrvpuADNaVe7Tllwd1JxKHegFPq",
+          "fileName": "493943463_1256644059795992_5622509593063196470_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1TAP8gTrvpuADNaVe7Tllwd1JxKHegFPq/view?usp=drive_web"
+        },
+        {
+          "fileId": "1yWjjeHNS7Gb1hI5KOLrlIWQgJo5cKuh3",
+          "fileName": "unnamed (5).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1yWjjeHNS7Gb1hI5KOLrlIWQgJo5cKuh3/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|archy_stayin|89_nam_ho": {
+      "key": "homestay|archy_stayin|89_nam_ho",
+      "sectionKey": "homestay",
+      "name": "Archy Stayin",
+      "address": "89 Nam Hồ",
+      "sourceLink": "https://drive.google.com/drive/folders/1tbqq5iaLZtpVJ0EsvLIIzhObF6ylvdED?usp=drive_link",
+      "fileId": "1CCSQ_p6Kx6TvJ8508HD0xst9DnrvPZf2",
+      "fileName": "Archy Stayin.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1CCSQ_p6Kx6TvJ8508HD0xst9DnrvPZf2",
+          "fileName": "Archy Stayin.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CCSQ_p6Kx6TvJ8508HD0xst9DnrvPZf2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ePv54D5AUDlJ7-CyaDSM7fLub3qXlF-d",
+          "fileName": "490416935_632215203154286_7036813904850934408_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ePv54D5AUDlJ7-CyaDSM7fLub3qXlF-d/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zWzXZPdHvscwR4YtkR_lBN0_P4HpOswL",
+          "fileName": "493211036_632215263154280_7739184292828403042_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zWzXZPdHvscwR4YtkR_lBN0_P4HpOswL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rYLQIMnr08ppRzKTTiBrceylCpD1gZAR",
+          "fileName": "493946651_630991683276638_4118643182414457648_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rYLQIMnr08ppRzKTTiBrceylCpD1gZAR/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rrqlRJRAbP5ok3pd3QI80JOrN62B_F56",
+          "fileName": "494335892_630991679943305_3318402448562546372_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rrqlRJRAbP5ok3pd3QI80JOrN62B_F56/view?usp=drive_web"
+        },
+        {
+          "fileId": "12vybQSKtqe_1kmC7aIn7CYlcPe2K2o23",
+          "fileName": "494519337_630991709943302_8384740155418135892_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/12vybQSKtqe_1kmC7aIn7CYlcPe2K2o23/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|oi_homestay|82_6_nguyen_chi_thanh": {
+      "key": "homestay|oi_homestay|82_6_nguyen_chi_thanh",
+      "sectionKey": "homestay",
+      "name": "Ơi Homestay",
+      "address": "82/6 Nguyễn Chí Thanh",
+      "sourceLink": "https://drive.google.com/drive/folders/1umfOdW1GDiNMurAt-dE4m2t1A4QiPvJf?usp=drive_link",
+      "fileId": "1eJzPBQr-lmpCi2RmvoWUqdBBeydMzRki",
+      "fileName": "Ơi Homestay.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1eJzPBQr-lmpCi2RmvoWUqdBBeydMzRki",
+          "fileName": "Ơi Homestay.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1eJzPBQr-lmpCi2RmvoWUqdBBeydMzRki/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_wzYwa0d4VlcN8k0q3osrAvGuig2vxct",
+          "fileName": "117783765_200923208050594_5823695211788257003_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_wzYwa0d4VlcN8k0q3osrAvGuig2vxct/view?usp=drive_web"
+        },
+        {
+          "fileId": "1DWgvzPo9gCuTfLNPpQVqe43OPQMOaTiI",
+          "fileName": "352530717_646472630336415_413634190848402295_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1DWgvzPo9gCuTfLNPpQVqe43OPQMOaTiI/view?usp=drive_web"
+        },
+        {
+          "fileId": "15ItOH2yEsn3gODFiG7NwBo9PZ-Mms-Rm",
+          "fileName": "474444838_1160194442123461_5824402611268979679_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/15ItOH2yEsn3gODFiG7NwBo9PZ-Mms-Rm/view?usp=drive_web"
+        },
+        {
+          "fileId": "1tyQWRabS1TKwcNeI_jTSZydHmW_h9M5t",
+          "fileName": "480779348_1181412706668301_3354769365813310691_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1tyQWRabS1TKwcNeI_jTSZydHmW_h9M5t/view?usp=drive_web"
+        },
+        {
+          "fileId": "1iDtZfJoNfh7HqESlp7A1zQCNhCwSw70i",
+          "fileName": "481088371_1181413076668264_5363868772288605858_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1iDtZfJoNfh7HqESlp7A1zQCNhCwSw70i/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|cozy_garden_boutique_hotel|94_d_lu_gia": {
+      "key": "homestay|cozy_garden_boutique_hotel|94_d_lu_gia",
+      "sectionKey": "homestay",
+      "name": "Cozy Garden Boutique Hotel",
+      "address": "94 Đ. Lữ Gia",
+      "sourceLink": "https://drive.google.com/drive/folders/1QUbhi5C551Umge2eK0ol6FeNN8BtXop3?usp=drive_link",
+      "fileId": "1j_nOluheQk1pvePq-S_D8oBgiyogx5wf",
+      "fileName": "Cozy Garden Boutique Hotel.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1j_nOluheQk1pvePq-S_D8oBgiyogx5wf",
+          "fileName": "Cozy Garden Boutique Hotel.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1j_nOluheQk1pvePq-S_D8oBgiyogx5wf/view?usp=drive_web"
+        },
+        {
+          "fileId": "1n0g7bNkaNfM4-_0Krl3uHhse7_1L6Ov5",
+          "fileName": "547276045_122140906004650623_3346459972785093583_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1n0g7bNkaNfM4-_0Krl3uHhse7_1L6Ov5/view?usp=drive_web"
+        },
+        {
+          "fileId": "1KOijiPxiTKdg4dxUGf3SvTWMqcGnBkK1",
+          "fileName": "549794567_122141104130650623_4514196551000492291_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KOijiPxiTKdg4dxUGf3SvTWMqcGnBkK1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1uE1lH2RHcvZCMTFi7hWlWP_mI9UQ2m_b",
+          "fileName": "590798585_122146489028650623_7243363437012334542_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1uE1lH2RHcvZCMTFi7hWlWP_mI9UQ2m_b/view?usp=drive_web"
+        },
+        {
+          "fileId": "1pxcCOKQ4K6DbhcACT39XYb0CiSwp6lIN",
+          "fileName": "591194626_122146488968650623_2260398900616569092_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pxcCOKQ4K6DbhcACT39XYb0CiSwp6lIN/view?usp=drive_web"
+        },
+        {
+          "fileId": "1u7EzyGwMfkM6na2H4vBTns_rsRbNxMOm",
+          "fileName": "595924925_122147451998650623_7426006705020380829_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1u7EzyGwMfkM6na2H4vBTns_rsRbNxMOm/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|laye_homestay|15_d_tran_anh_tong": {
+      "key": "homestay|laye_homestay|15_d_tran_anh_tong",
+      "sectionKey": "homestay",
+      "name": "Láye Homestay",
+      "address": "15 Đ. Trần Anh Tông",
+      "sourceLink": "https://drive.google.com/drive/folders/1u6NKSPAsaIkcARx_F55lh4cK0OaxobGo?usp=drive_link",
+      "fileId": "1fDpWE279SqhpC-AU7RYYZjPsTsehfE06",
+      "fileName": "Láye Homestay.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1fDpWE279SqhpC-AU7RYYZjPsTsehfE06",
+          "fileName": "Láye Homestay.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1fDpWE279SqhpC-AU7RYYZjPsTsehfE06/view?usp=drive_web"
+        },
+        {
+          "fileId": "15mxZLygf-JpGNq6EgwS7ApLNiSfJ53zv",
+          "fileName": "thumbnail.jfif",
+          "viewUrl": "https://drive.google.com/file/d/15mxZLygf-JpGNq6EgwS7ApLNiSfJ53zv/view?usp=drive_web"
+        },
+        {
+          "fileId": "1RCby8FkeCQRPrWQY_JVDIInlWsPHWe0n",
+          "fileName": "unnamed (10).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1RCby8FkeCQRPrWQY_JVDIInlWsPHWe0n/view?usp=drive_web"
+        },
+        {
+          "fileId": "14Co7kU1zqHZx5zH004dUcb8WJWCLR8gw",
+          "fileName": "unnamed (11).jpg",
+          "viewUrl": "https://drive.google.com/file/d/14Co7kU1zqHZx5zH004dUcb8WJWCLR8gw/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GWbDxC97QVLTXhAhiU-f4wk8d3YjE0wK",
+          "fileName": "unnamed (12).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GWbDxC97QVLTXhAhiU-f4wk8d3YjE0wK/view?usp=drive_web"
+        },
+        {
+          "fileId": "1y6-OqzDHmNRCwaMfmfIdrdZSnQ-jBr7Q",
+          "fileName": "unnamed (9).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1y6-OqzDHmNRCwaMfmfIdrdZSnQ-jBr7Q/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|savio_villa|36_9b_hoang_hoa_tham": {
+      "key": "homestay|savio_villa|36_9b_hoang_hoa_tham",
+      "sectionKey": "homestay",
+      "name": "Savio Villa",
+      "address": "36/9b Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1lbR-MGUKP6RxvniCou61dusShSJBx9Yz?usp=drive_link",
+      "fileId": "12nYQ9Y8v8clAXej_8b95OZ7jyWkLbKzH",
+      "fileName": "Savio Villa.jpg",
+      "candidateImages": [
+        {
+          "fileId": "12nYQ9Y8v8clAXej_8b95OZ7jyWkLbKzH",
+          "fileName": "Savio Villa.jpg",
+          "viewUrl": "https://drive.google.com/file/d/12nYQ9Y8v8clAXej_8b95OZ7jyWkLbKzH/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Newm9KpzXbjSoJaqPlERNh6hmi05V5VY",
+          "fileName": "468311070_412562955262166_3388587952786850700_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Newm9KpzXbjSoJaqPlERNh6hmi05V5VY/view?usp=drive_web"
+        },
+        {
+          "fileId": "18jKkdf2W26D-X6xufZBJiDNCvD5qitty",
+          "fileName": "468366964_412562948595500_5805318729593906492_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18jKkdf2W26D-X6xufZBJiDNCvD5qitty/view?usp=drive_web"
+        },
+        {
+          "fileId": "1yN1MJqTeXLxImxXDDTrvCXMTh5GKoOUl",
+          "fileName": "468420676_412562441928884_4943822614526792244_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1yN1MJqTeXLxImxXDDTrvCXMTh5GKoOUl/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rNvDL9GDt8TGlOu_Yms6meL_27pX5DRx",
+          "fileName": "468505721_412562861928842_2743530233136292913_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rNvDL9GDt8TGlOu_Yms6meL_27pX5DRx/view?usp=drive_web"
+        },
+        {
+          "fileId": "1RzylWpQSWrQMxBQv8l67t18RRJMaOyvy",
+          "fileName": "469258855_419350017916793_1763976677267185635_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1RzylWpQSWrQMxBQv8l67t18RRJMaOyvy/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|nha_man_homestay|c2_dang_thai_than": {
+      "key": "homestay|nha_man_homestay|c2_dang_thai_than",
+      "sectionKey": "homestay",
+      "name": "Nhà Mận Homestay",
+      "address": "C2 Đặng Thái Thân",
+      "sourceLink": "https://drive.google.com/drive/folders/1C_1I52LRE49rsJZNzY1gW9zQKFt5ijIr?usp=drive_link",
+      "fileId": "1GaxTVT_69sB55A2dQm4d2T72K7C6Kfl2",
+      "fileName": "Nhà Mận Homestay.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1GaxTVT_69sB55A2dQm4d2T72K7C6Kfl2",
+          "fileName": "Nhà Mận Homestay.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GaxTVT_69sB55A2dQm4d2T72K7C6Kfl2/view?usp=drive_web"
+        },
+        {
+          "fileId": "16SUKC9sHPwoVBYwuYLQ4Db3jmryD2kEu",
+          "fileName": "480382934_122117790914746481_3026153549324557270_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/16SUKC9sHPwoVBYwuYLQ4Db3jmryD2kEu/view?usp=drive_web"
+        },
+        {
+          "fileId": "1TkzEFoyxLUxxbApQ4gbRSYXnjHTjLrFA",
+          "fileName": "484011065_122117798132746481_6791086021672811193_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1TkzEFoyxLUxxbApQ4gbRSYXnjHTjLrFA/view?usp=drive_web"
+        },
+        {
+          "fileId": "14iCLzZuzcyzb70e28EctzUVGQ-kX7j6T",
+          "fileName": "499553212_122134830692746481_8083897993913787726_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/14iCLzZuzcyzb70e28EctzUVGQ-kX7j6T/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_KmeaXkRnaj5M1gS6d_BsXw_VrAgy281",
+          "fileName": "566217878_122164860830746481_706902110305697298_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_KmeaXkRnaj5M1gS6d_BsXw_VrAgy281/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_WkHnTaMs-J7daPekzOkWm8rIiCdbqou",
+          "fileName": "567171455_122164861214746481_8492972392692945556_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_WkHnTaMs-J7daPekzOkWm8rIiCdbqou/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|dear_me_house|91a_trieu_viet_vuong": {
+      "key": "homestay|dear_me_house|91a_trieu_viet_vuong",
+      "sectionKey": "homestay",
+      "name": "Dear Me House",
+      "address": "91a Triệu Việt Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/1Q-ffxo-ekgxMQM79mMxir1vgImvN76z2?usp=drive_link",
+      "fileId": "1k3rIw8PePZm_H737ezMGCMPwlecEyVwG",
+      "fileName": "Dear Me House.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1k3rIw8PePZm_H737ezMGCMPwlecEyVwG",
+          "fileName": "Dear Me House.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1k3rIw8PePZm_H737ezMGCMPwlecEyVwG/view?usp=drive_web"
+        },
+        {
+          "fileId": "15Hbkuz2KOc9m-vONznWGnquO9LPzmMgc",
+          "fileName": "468022352_18065113609686537_2711286047548839095_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/15Hbkuz2KOc9m-vONznWGnquO9LPzmMgc/view?usp=drive_web"
+        },
+        {
+          "fileId": "1PJ5QfGSRk5Xigsu85SqmsenpQjAXE2r2",
+          "fileName": "469329020_18066200506686537_2420518129233838125_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1PJ5QfGSRk5Xigsu85SqmsenpQjAXE2r2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1avC-2VqMgjt_w5bLPWWfH3d-G_QZf-Ce",
+          "fileName": "469369433_18066199675686537_3752671987961865568_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1avC-2VqMgjt_w5bLPWWfH3d-G_QZf-Ce/view?usp=drive_web"
+        },
+        {
+          "fileId": "1OOXHQRsGtGA9RuOa0bzrvF6_5FUtUFfE",
+          "fileName": "469467725_18066199957686537_3767213027970727264_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1OOXHQRsGtGA9RuOa0bzrvF6_5FUtUFfE/view?usp=drive_web"
+        },
+        {
+          "fileId": "1OvgxnIvsTntpy2c9Ue9Eb6qjfr09wCPU",
+          "fileName": "471430798_18068335054686537_7646477811608746440_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1OvgxnIvsTntpy2c9Ue9Eb6qjfr09wCPU/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|icon_the_homestay|26_7_4_d_lu_gia": {
+      "key": "homestay|icon_the_homestay|26_7_4_d_lu_gia",
+      "sectionKey": "homestay",
+      "name": "Icon The Homestay",
+      "address": "26/7/4 Đ. Lữ Gia",
+      "sourceLink": "https://drive.google.com/drive/folders/12NLWTjBoX0A0-RPB6lJwn2B-LpfF8fE_?usp=drive_link",
+      "fileId": "1O070-PC4qv7dbsgXgGwlzXjKb5WPgRen",
+      "fileName": "Icon The Homestay.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1O070-PC4qv7dbsgXgGwlzXjKb5WPgRen",
+          "fileName": "Icon The Homestay.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1O070-PC4qv7dbsgXgGwlzXjKb5WPgRen/view?usp=drive_web"
+        },
+        {
+          "fileId": "1LgrcGKjbIS1khaqNgI5IgKLqU5ZJVVsa",
+          "fileName": "622712355_906591225759939_9070962354187367410_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1LgrcGKjbIS1khaqNgI5IgKLqU5ZJVVsa/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Kp7CVPrNSCmE0lFZb-HIB8aL1ysFEImj",
+          "fileName": "636725860_921844230901305_1164482333629884923_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Kp7CVPrNSCmE0lFZb-HIB8aL1ysFEImj/view?usp=drive_web"
+        },
+        {
+          "fileId": "1vRLxswUtxszbRjf73f6gFKGbpQhVvY7E",
+          "fileName": "640903889_925045830581145_3468859185007279927_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1vRLxswUtxszbRjf73f6gFKGbpQhVvY7E/view?usp=drive_web"
+        },
+        {
+          "fileId": "10iH6pva8DBMWLb7SZMtDSQJczXBg6To5",
+          "fileName": "646698963_933202379765490_3428637794753916918_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/10iH6pva8DBMWLb7SZMtDSQJczXBg6To5/view?usp=drive_web"
+        },
+        {
+          "fileId": "165yGBTsiYR1Xia1166RKcqv_nWiulY4t",
+          "fileName": "649092749_937425432676518_7498576778811501285_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/165yGBTsiYR1Xia1166RKcqv_nWiulY4t/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|de_chiu_homestay|hem_10_nguyen_huu_canh": {
+      "key": "homestay|de_chiu_homestay|hem_10_nguyen_huu_canh",
+      "sectionKey": "homestay",
+      "name": "Dễ Chịu Homestay",
+      "address": "Hẻm 10 Nguyễn Hữu Cảnh",
+      "sourceLink": "https://drive.google.com/drive/folders/1oIdiiYNa-oltIZNQziJBuaCcQQ51nDOb?usp=drive_link",
+      "fileId": "1iE4_2dp5WdOGP_Dd5qZdPM8soMxphySX",
+      "fileName": "Dễ Chịu Homestay.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1iE4_2dp5WdOGP_Dd5qZdPM8soMxphySX",
+          "fileName": "Dễ Chịu Homestay.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1iE4_2dp5WdOGP_Dd5qZdPM8soMxphySX/view?usp=drive_web"
+        },
+        {
+          "fileId": "1FIu5Y2RIJak3a4lzdbdwNy02GaILluCg",
+          "fileName": "503750716_17952490679961347_3845962521818847921_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1FIu5Y2RIJak3a4lzdbdwNy02GaILluCg/view?usp=drive_web"
+        },
+        {
+          "fileId": "1jxogopBnqXwfWUnm3QQJ4AcTh9Tqc71f",
+          "fileName": "504443509_17952731708961347_2353610046455110196_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1jxogopBnqXwfWUnm3QQJ4AcTh9Tqc71f/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_Sy5aINqiZeyGiubJQYYuSG-HRZ0njFe",
+          "fileName": "530670508_17960197022961347_1162928863817104478_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_Sy5aINqiZeyGiubJQYYuSG-HRZ0njFe/view?usp=drive_web"
+        },
+        {
+          "fileId": "1AbVdxfUrIfiJ3TzzSwYd9QZm2h4SRQYQ",
+          "fileName": "587808948_17974690868961347_5932815910280121144_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1AbVdxfUrIfiJ3TzzSwYd9QZm2h4SRQYQ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1K4sC6Z9FITn-b1RxPHH2N22jK6xN9cYr",
+          "fileName": "588162591_17974690856961347_3126228637035340688_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1K4sC6Z9FITn-b1RxPHH2N22jK6xN9cYr/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|1000m2|70_5_pasteur": {
+      "key": "homestay|1000m2|70_5_pasteur",
+      "sectionKey": "homestay",
+      "name": "1000m2",
+      "address": "70/5 Pasteur",
+      "sourceLink": "https://drive.google.com/drive/folders/1QDkgdhrUkLexdvxTDhK7QGlhS-lNXzuH?usp=drive_link",
+      "fileId": "1vjjh7HnzzxOqd21WiWhfZAc_PLn35VSJ",
+      "fileName": "1000m.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1vjjh7HnzzxOqd21WiWhfZAc_PLn35VSJ",
+          "fileName": "1000m.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1vjjh7HnzzxOqd21WiWhfZAc_PLn35VSJ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1pXx3jrZk93SgvX4YpPpr18iRd7ek6nqL",
+          "fileName": "unnamed (13).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pXx3jrZk93SgvX4YpPpr18iRd7ek6nqL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1eE4Y9joQWi7PUb6m-g7txt0kPI_v1411",
+          "fileName": "unnamed (14).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1eE4Y9joQWi7PUb6m-g7txt0kPI_v1411/view?usp=drive_web"
+        },
+        {
+          "fileId": "15nK0_RhF7N0VbzI39G5XDgqg8zZ2Vc7_",
+          "fileName": "unnamed (15).jpg",
+          "viewUrl": "https://drive.google.com/file/d/15nK0_RhF7N0VbzI39G5XDgqg8zZ2Vc7_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1v0uP6WkI769GJvZf78W9X-Cdi_46Tx5D",
+          "fileName": "unnamed (16).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1v0uP6WkI769GJvZf78W9X-Cdi_46Tx5D/view?usp=drive_web"
+        },
+        {
+          "fileId": "1CLst4Ed9HPxPT2Xbq9pEXW0qxB2K4MU-",
+          "fileName": "unnamed (17).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CLst4Ed9HPxPT2Xbq9pEXW0qxB2K4MU-/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|doc_view_home|89b_17_d_dao_duy_tu": {
+      "key": "homestay|doc_view_home|89b_17_d_dao_duy_tu",
+      "sectionKey": "homestay",
+      "name": "Dốc View/ Home",
+      "address": "89B/17, Đ. Đào Duy Từ",
+      "sourceLink": "https://drive.google.com/drive/folders/1vd9ZDXGvA36qcQrX0oFoLMJLu92VbumJ?usp=drive_link",
+      "fileId": "1NASQf4a1wUzTkq__6xvW0jeui1CoYR0K",
+      "fileName": "Dốc View Home.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1NASQf4a1wUzTkq__6xvW0jeui1CoYR0K",
+          "fileName": "Dốc View Home.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NASQf4a1wUzTkq__6xvW0jeui1CoYR0K/view?usp=drive_web"
+        },
+        {
+          "fileId": "1An7fkEJ-BrOxey2Rgp9im_a-lOzhXNkH",
+          "fileName": "619989769_122315135240165059_618878488704529707_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1An7fkEJ-BrOxey2Rgp9im_a-lOzhXNkH/view?usp=drive_web"
+        },
+        {
+          "fileId": "1TpP1B-mjPkfXr1LBKABd5aJMSaJA1btb",
+          "fileName": "624201724_122315662406165059_3359565302062725305_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1TpP1B-mjPkfXr1LBKABd5aJMSaJA1btb/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ntTYmovOo6GefYgEq-WWGXzti9IVUe3q",
+          "fileName": "630940177_122317090130165059_4021611342437801588_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ntTYmovOo6GefYgEq-WWGXzti9IVUe3q/view?usp=drive_web"
+        },
+        {
+          "fileId": "1lKWSAKeM-mEikniYvBaesK2f9_sQ2sp0",
+          "fileName": "642833976_122320280576165059_7152494179898011659_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1lKWSAKeM-mEikniYvBaesK2f9_sQ2sp0/view?usp=drive_web"
+        },
+        {
+          "fileId": "1srJqkXE8cX26uDXZ-CdD02AEd9S_qTkV",
+          "fileName": "642949250_122320278572165059_3658238678482477757_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1srJqkXE8cX26uDXZ-CdD02AEd9S_qTkV/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|perfect_homestay_da_lat|nguyen_trung_truc": {
+      "key": "homestay|perfect_homestay_da_lat|nguyen_trung_truc",
+      "sectionKey": "homestay",
+      "name": "Perfect Homestay Đà Lạt",
+      "address": "Nguyễn Trung Trực",
+      "sourceLink": "https://drive.google.com/drive/folders/1R1wHwq8pHbyVzdawxHeTzhdN57eBLBF5?usp=drive_link",
+      "fileId": "1rKGO7xeF2WiSiw17ReGnGOFT1asifRxq",
+      "fileName": "Perfect Homestay Đà Lạt.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1rKGO7xeF2WiSiw17ReGnGOFT1asifRxq",
+          "fileName": "Perfect Homestay Đà Lạt.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rKGO7xeF2WiSiw17ReGnGOFT1asifRxq/view?usp=drive_web"
+        },
+        {
+          "fileId": "1AAJtLA4zZRfaFnL5UzLWr-JUX8KaRj2F",
+          "fileName": "508076929_122211198368102599_2419545015200222102_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1AAJtLA4zZRfaFnL5UzLWr-JUX8KaRj2F/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XDhzmymdo1eFdelriJoVZ4H7pQqwOKmt",
+          "fileName": "508076932_122211200654102599_4809280598327628389_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XDhzmymdo1eFdelriJoVZ4H7pQqwOKmt/view?usp=drive_web"
+        },
+        {
+          "fileId": "12QtgmWJBDOKsyQTeF2R61RGfaVuqfmHk",
+          "fileName": "508133785_122211191126102599_8944458906952343402_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/12QtgmWJBDOKsyQTeF2R61RGfaVuqfmHk/view?usp=drive_web"
+        },
+        {
+          "fileId": "17P-EZiVjvmDPM8VwrkcYOcjEfffyH_Ed",
+          "fileName": "508386319_122211207950102599_1457871572440049976_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17P-EZiVjvmDPM8VwrkcYOcjEfffyH_Ed/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SKj6Ig_8JuviJEu-cTgpZstyqcCYFKaJ",
+          "fileName": "508417374_122211196322102599_7633732920989933746_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SKj6Ig_8JuviJEu-cTgpZstyqcCYFKaJ/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|hls_dalat|35_duong_dang_thai_than": {
+      "key": "homestay|hls_dalat|35_duong_dang_thai_than",
+      "sectionKey": "homestay",
+      "name": "HLS Dalat",
+      "address": "35 Đường Đặng Thái Thân",
+      "sourceLink": "https://drive.google.com/drive/folders/1QAcVlEW6lHTaSams-Qb7hCXoyrkWMxDW?usp=drive_link",
+      "fileId": "1068CoWKFGLuXoGkaik-oK62vc3zsQ7vc",
+      "fileName": "HLS Dalat.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1068CoWKFGLuXoGkaik-oK62vc3zsQ7vc",
+          "fileName": "HLS Dalat.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1068CoWKFGLuXoGkaik-oK62vc3zsQ7vc/view?usp=drive_web"
+        },
+        {
+          "fileId": "19RbsXNa7zh0zeP9FKMRf1DP4bHBHf1Yd",
+          "fileName": "unnamed (18).jpg",
+          "viewUrl": "https://drive.google.com/file/d/19RbsXNa7zh0zeP9FKMRf1DP4bHBHf1Yd/view?usp=drive_web"
+        },
+        {
+          "fileId": "1LVERTdYW9Sv_sTJAf-WDvXy7gWjsu7G4",
+          "fileName": "unnamed (19).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1LVERTdYW9Sv_sTJAf-WDvXy7gWjsu7G4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XsEOhSY8aoSIf_rzZRuCHNuM13N9iYTS",
+          "fileName": "unnamed (20).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XsEOhSY8aoSIf_rzZRuCHNuM13N9iYTS/view?usp=drive_web"
+        },
+        {
+          "fileId": "1uC2Zc_U3Nhpmb4ENJ-V2FH8cwXTjQ1-m",
+          "fileName": "unnamed (21).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1uC2Zc_U3Nhpmb4ENJ-V2FH8cwXTjQ1-m/view?usp=drive_web"
+        },
+        {
+          "fileId": "1NsCyLydiA1OLX6tj5Z-HbxwZxXWvB2Sy",
+          "fileName": "unnamed (22).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NsCyLydiA1OLX6tj5Z-HbxwZxXWvB2Sy/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|golf_valley|94_duong_bui_thi_xuan": {
+      "key": "homestay|golf_valley|94_duong_bui_thi_xuan",
+      "sectionKey": "homestay",
+      "name": "Golf Valley",
+      "address": "94 Đường Bùi Thị Xuân",
+      "sourceLink": "https://drive.google.com/drive/folders/1WjInQpjsBB02d9exlGEVNKYy2nVsmPed?usp=drive_link",
+      "fileId": "1A9SdDFbnV-LglSMDbu86mB98Cw8l9NSk",
+      "fileName": "Golf Valley.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1A9SdDFbnV-LglSMDbu86mB98Cw8l9NSk",
+          "fileName": "Golf Valley.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1A9SdDFbnV-LglSMDbu86mB98Cw8l9NSk/view?usp=drive_web"
+        },
+        {
+          "fileId": "1bHFCJFG6s-IFaNt27q8PnXOleupcA6Zs",
+          "fileName": "553571595_122094746043051572_807465436942101824_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bHFCJFG6s-IFaNt27q8PnXOleupcA6Zs/view?usp=drive_web"
+        },
+        {
+          "fileId": "1BSzbBwqa3OcivTNZfAOaThORS0wgU9Nk",
+          "fileName": "554441986_122094752709051572_1495484829432981546_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1BSzbBwqa3OcivTNZfAOaThORS0wgU9Nk/view?usp=drive_web"
+        },
+        {
+          "fileId": "12KGn16aN_y1R2Mt_3SZRdUBx24T903zH",
+          "fileName": "555456517_25164505853156509_6331866337871725031_n.webp",
+          "viewUrl": "https://drive.google.com/file/d/12KGn16aN_y1R2Mt_3SZRdUBx24T903zH/view?usp=drive_web"
+        },
+        {
+          "fileId": "1whFiO3Hy0nimfX7Iti1n7luQdOtlvCN7",
+          "fileName": "555469980_122094752811051572_7389365663751351276_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1whFiO3Hy0nimfX7Iti1n7luQdOtlvCN7/view?usp=drive_web"
+        },
+        {
+          "fileId": "1cGcG9XLGif_-315tkHELUOlHhmhRXZp7",
+          "fileName": "555540123_122094752877051572_755292021489238111_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cGcG9XLGif_-315tkHELUOlHhmhRXZp7/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|ty_ty_hotel|06b_nam_ky_khoi_nghia": {
+      "key": "homestay|ty_ty_hotel|06b_nam_ky_khoi_nghia",
+      "sectionKey": "homestay",
+      "name": "Ty Ty Hotel",
+      "address": "06B Nam Kỳ Khởi Nghĩa",
+      "sourceLink": "https://drive.google.com/drive/folders/1By_pWduLmnOzabxro2j1ds9tVQgHxqc8?usp=drive_link",
+      "fileId": "1isedYbt1FozlC68yMz2fVbiyFQMO3p1f",
+      "fileName": "Ty Ty Hotel.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1isedYbt1FozlC68yMz2fVbiyFQMO3p1f",
+          "fileName": "Ty Ty Hotel.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1isedYbt1FozlC68yMz2fVbiyFQMO3p1f/view?usp=drive_web"
+        },
+        {
+          "fileId": "1AYOTis6MTDfd5SXKpVfms7rX1_MTBiNP",
+          "fileName": "459125759_10226170338794140_3683037996037690326_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1AYOTis6MTDfd5SXKpVfms7rX1_MTBiNP/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SHoOxd7jkxG2THFeQh-I6orb6rac8lJ1",
+          "fileName": "473617025_122136791894513313_6153889859866678616_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SHoOxd7jkxG2THFeQh-I6orb6rac8lJ1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Bb7lBOJ4l5n30r_p2VNLnee6RjK1joml",
+          "fileName": "510985260_10229197302186333_4706060322445654603_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Bb7lBOJ4l5n30r_p2VNLnee6RjK1joml/view?usp=drive_web"
+        },
+        {
+          "fileId": "1WMqASxYiXZmTmzp6q14nondZKMcNl6Gx",
+          "fileName": "638052435_122212415546513313_1603819810539776595_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1WMqASxYiXZmTmzp6q14nondZKMcNl6Gx/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|homestay_aurora_da_lat|50_suong_nguyet_anh": {
+      "key": "homestay|homestay_aurora_da_lat|50_suong_nguyet_anh",
+      "sectionKey": "homestay",
+      "name": "Homestay Aurora Đà Lạt",
+      "address": "50 Sương Nguyệt Ánh",
+      "sourceLink": "https://drive.google.com/drive/folders/1Ya5iokQKsczhEVbseCNGRpVxC6-_q7i7?usp=drive_link",
+      "fileId": "1xed88WEaTtuIAYF-xGvZhjeshxdgB1mJ",
+      "fileName": "Homestay Aurora Đà Lạt.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1xed88WEaTtuIAYF-xGvZhjeshxdgB1mJ",
+          "fileName": "Homestay Aurora Đà Lạt.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xed88WEaTtuIAYF-xGvZhjeshxdgB1mJ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rUWkp1Ed8p_TjH58YhWz8vT186W5a6WI",
+          "fileName": "472214858_122110086428656212_4389992167291525089_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rUWkp1Ed8p_TjH58YhWz8vT186W5a6WI/view?usp=drive_web"
+        },
+        {
+          "fileId": "11AQH05wFQBhvTRCq9x60LFkyqL_Kyjgx",
+          "fileName": "515610735_122132084492656212_7016861369255786536_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/11AQH05wFQBhvTRCq9x60LFkyqL_Kyjgx/view?usp=drive_web"
+        },
+        {
+          "fileId": "1A1rS_Tn6WCHgjrakuAakk_W-Dx8aNszJ",
+          "fileName": "531186150_122135207522656212_2115129706466874508_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1A1rS_Tn6WCHgjrakuAakk_W-Dx8aNszJ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HH05roMW72Lhq9UTChwgF07WTYBVvH2_",
+          "fileName": "531500054_122135208194656212_5254594732491757658_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1HH05roMW72Lhq9UTChwgF07WTYBVvH2_/view?usp=drive_web"
+        },
+        {
+          "fileId": "10zwLHVJAx7WWyx288yvGU1uIpNZftdgL",
+          "fileName": "532962294_122135208572656212_2814679868696808062_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/10zwLHVJAx7WWyx288yvGU1uIpNZftdgL/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|ttr_vincent_hotel|26_tran_le": {
+      "key": "homestay|ttr_vincent_hotel|26_tran_le",
+      "sectionKey": "homestay",
+      "name": "TTR Vincent Hotel",
+      "address": "26 Trần Lê",
+      "sourceLink": "https://drive.google.com/drive/folders/1VzPeZqAwtdhl1X45z2bXk2dGAoS_EvIr?hl=vi",
+      "fileId": "1g68mCnk_mum7DyabV5UYH1t1wBBZV5x9",
+      "fileName": "371548066_265851253063094_4280705842368278172_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1g68mCnk_mum7DyabV5UYH1t1wBBZV5x9",
+          "fileName": "371548066_265851253063094_4280705842368278172_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1g68mCnk_mum7DyabV5UYH1t1wBBZV5x9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1pDk09_ClTokshbOvnYhDmnNTu8BSn0XZ",
+          "fileName": "481058705_649506791364203_5085677163878651165_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pDk09_ClTokshbOvnYhDmnNTu8BSn0XZ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zxMCyyyUB-A5ZTQAD234vPi25YVmCopO",
+          "fileName": "481060235_649506324697583_6487526637399928537_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zxMCyyyUB-A5ZTQAD234vPi25YVmCopO/view?usp=drive_web"
+        },
+        {
+          "fileId": "1bekdbqrKAGIS8Y1pdvadwa7lbDAtq7PA",
+          "fileName": "481081248_649506761364206_5342153583662074395_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bekdbqrKAGIS8Y1pdvadwa7lbDAtq7PA/view?usp=drive_web"
+        },
+        {
+          "fileId": "1-Aqo3t-r1Expm7ALYvsUqEs9yQHBqENb",
+          "fileName": "481916493_649506708030878_1391396308282680701_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-Aqo3t-r1Expm7ALYvsUqEs9yQHBqENb/view?usp=drive_web"
+        },
+        {
+          "fileId": "1sG_sHCNpW-2ThYQP1sb2arZFwnqSOFyF",
+          "fileName": "482054723_649506794697536_3262274935457251024_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1sG_sHCNpW-2ThYQP1sb2arZFwnqSOFyF/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|dreamy_hotel_dalat|khu_quy_hoach_hoang_van_thu": {
+      "key": "homestay|dreamy_hotel_dalat|khu_quy_hoach_hoang_van_thu",
+      "sectionKey": "homestay",
+      "name": "Dreamy Hotel Dalat",
+      "address": "Khu Quy Hoạch Hoàng Văn Thụ",
+      "sourceLink": "https://drive.google.com/drive/folders/1ZxcSPlodu3mOJ3Vut2wVp05FadpbiNT1?hl=vi",
+      "fileId": "1ASjkVMQ6UPMq36R9loojiFCfIK35axc0",
+      "fileName": "486284337_632353949631865_7903624776126664139_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1ASjkVMQ6UPMq36R9loojiFCfIK35axc0",
+          "fileName": "486284337_632353949631865_7903624776126664139_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ASjkVMQ6UPMq36R9loojiFCfIK35axc0/view?usp=drive_web"
+        },
+        {
+          "fileId": "1bplCcmPvQnoxHGhEf-VhT2sNnxZ4Su2i",
+          "fileName": "486410010_632353989631861_3785130896411251242_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bplCcmPvQnoxHGhEf-VhT2sNnxZ4Su2i/view?usp=drive_web"
+        },
+        {
+          "fileId": "1kYoUTWqcd4CUTqXH9clhyHKR0DZcYPj4",
+          "fileName": "486531171_632353902965203_5207067843120306266_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1kYoUTWqcd4CUTqXH9clhyHKR0DZcYPj4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1xygeQ7VCw6ao1RdkJRHZb6zd16IeLPSv",
+          "fileName": "489911009_632353956298531_1144628184748566694_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xygeQ7VCw6ao1RdkJRHZb6zd16IeLPSv/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Wl-BbkcvgbBU4Q7SNDe9wg8oxHgYshf_",
+          "fileName": "490250853_632353999631860_1780521856085608309_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Wl-BbkcvgbBU4Q7SNDe9wg8oxHgYshf_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1hsnHSGzlqk3mUVn4Bz1ANZngMRj596ar",
+          "fileName": "490328424_632354039631856_7845243562143629106_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1hsnHSGzlqk3mUVn4Bz1ANZngMRj596ar/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|queen_t_t_hotel|239b_phan_dinh_phung": {
+      "key": "homestay|queen_t_t_hotel|239b_phan_dinh_phung",
+      "sectionKey": "homestay",
+      "name": "Queen T&T Hotel",
+      "address": "239b Phan Đình Phùng",
+      "sourceLink": "https://drive.google.com/drive/folders/12Djfr2XHhBF8kJHvR9yhevDfVK8fm2aD?hl=vi",
+      "fileId": "1QQyXi5ad7UCnU7RmUdtZ_mM-4_HhOWhG",
+      "fileName": "484157082_1084588510351932_161757524990960826_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1QQyXi5ad7UCnU7RmUdtZ_mM-4_HhOWhG",
+          "fileName": "484157082_1084588510351932_161757524990960826_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QQyXi5ad7UCnU7RmUdtZ_mM-4_HhOWhG/view?usp=drive_web"
+        },
+        {
+          "fileId": "1cJmHXZSrgDlYm9WcY5zpIu3M1AGJyqPw",
+          "fileName": "485108259_1089782189832564_2595437371913042248_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cJmHXZSrgDlYm9WcY5zpIu3M1AGJyqPw/view?usp=drive_web"
+        },
+        {
+          "fileId": "1yOcvN-Gzp8j3HIBqyn5OetHXM24tYCzH",
+          "fileName": "488443627_1097643119046471_3004871246703743378_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1yOcvN-Gzp8j3HIBqyn5OetHXM24tYCzH/view?usp=drive_web"
+        },
+        {
+          "fileId": "11sJMJroMxhXv8LpChF3or6B8BkrR_esM",
+          "fileName": "488535935_1102890348521748_3743645983439689164_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/11sJMJroMxhXv8LpChF3or6B8BkrR_esM/view?usp=drive_web"
+        },
+        {
+          "fileId": "1KE9_V--WsvjUrJn5Fr_TNforHjQHQCAe",
+          "fileName": "488548241_1102890371855079_5999028188733428695_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KE9_V--WsvjUrJn5Fr_TNforHjQHQCAe/view?usp=drive_web"
+        },
+        {
+          "fileId": "1WAoZlSGuHRxkkWlBLynJ9X6pLtY4qoNw",
+          "fileName": "488598553_1102057585271691_6900527615589200907_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1WAoZlSGuHRxkkWlBLynJ9X6pLtY4qoNw/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|nature_boutique_hotel|h16_h17_nguyen_thi_nghia": {
+      "key": "homestay|nature_boutique_hotel|h16_h17_nguyen_thi_nghia",
+      "sectionKey": "homestay",
+      "name": "Nature Boutique Hotel",
+      "address": "H16 H17 Nguyễn Thị Nghĩa",
+      "sourceLink": "https://drive.google.com/drive/folders/1LsVkuqpgXRlISoryery5CCt0ivP52Pnp?hl=vi",
+      "fileId": "1rA-h0FQWa6RzE3KxqksnMsIEk_zmIjB_",
+      "fileName": "492548723_1231259082334427_1171671982227313837_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1rA-h0FQWa6RzE3KxqksnMsIEk_zmIjB_",
+          "fileName": "492548723_1231259082334427_1171671982227313837_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rA-h0FQWa6RzE3KxqksnMsIEk_zmIjB_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ryOcR6j3PWiL7L482VvVpLD4ktIH0Nz-",
+          "fileName": "492552317_1231259242334411_5876957430339924432_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ryOcR6j3PWiL7L482VvVpLD4ktIH0Nz-/view?usp=drive_web"
+        },
+        {
+          "fileId": "1skisslLpbT_dxd7knH0NM6TuzVqnWg5-",
+          "fileName": "492786529_1231293765664292_6998137313268109180_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1skisslLpbT_dxd7knH0NM6TuzVqnWg5-/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GrGGrXpLRUchVY4IcmQVj1ZfxkSq3Nme",
+          "fileName": "493455968_1231293848997617_7451949290815624141_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GrGGrXpLRUchVY4IcmQVj1ZfxkSq3Nme/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SHgjVqQOsuGx0OJ8iOf6VP9RjuQPYgXG",
+          "fileName": "493724521_1231232252337110_7908172102107228619_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SHgjVqQOsuGx0OJ8iOf6VP9RjuQPYgXG/view?usp=drive_web"
+        },
+        {
+          "fileId": "1f2ebVjB3BWpn_HXZxoDTf5006eAaalQd",
+          "fileName": "493855419_1231293968997605_8509578668542743416_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1f2ebVjB3BWpn_HXZxoDTf5006eAaalQd/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|homestay_thuy_duong|hem_17_hung_vuong": {
+      "key": "homestay|homestay_thuy_duong|hem_17_hung_vuong",
+      "sectionKey": "homestay",
+      "name": "Homestay Thùy Dương",
+      "address": "Hẻm 17 Hùng Vương",
+      "sourceLink": "https://drive.google.com/drive/folders/19g3lwhQOhX1qFDeUeozJYayr2GftYOi2?hl=vi",
+      "fileId": "1qbw0xDNQw1FkWe4qfcuiDHFfUyRPH7wb",
+      "fileName": "487303208_1079831657494310_7435480730229510147_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1qbw0xDNQw1FkWe4qfcuiDHFfUyRPH7wb",
+          "fileName": "487303208_1079831657494310_7435480730229510147_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qbw0xDNQw1FkWe4qfcuiDHFfUyRPH7wb/view?usp=drive_web"
+        },
+        {
+          "fileId": "1yf70WON1Yj-baU4fpwDTclOXLpVHzr1Y",
+          "fileName": "487785452_1079831937494282_6892522598747241764_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1yf70WON1Yj-baU4fpwDTclOXLpVHzr1Y/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qRY30q2ZTR28qaB-xWpsZ3FEOpPbx16A",
+          "fileName": "487785455_1079831557494320_3820470158875715682_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qRY30q2ZTR28qaB-xWpsZ3FEOpPbx16A/view?usp=drive_web"
+        },
+        {
+          "fileId": "103INxjoaLgUKIBqz5B_pcuMJpm5HNK9o",
+          "fileName": "488052844_1079831757494300_3695256449747339496_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/103INxjoaLgUKIBqz5B_pcuMJpm5HNK9o/view?usp=drive_web"
+        },
+        {
+          "fileId": "1FdsVoYrTh7dl1T0o8NDjYAN8Q2xE4QLF",
+          "fileName": "488176688_1079831857494290_2605345524125291994_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1FdsVoYrTh7dl1T0o8NDjYAN8Q2xE4QLF/view?usp=drive_web"
+        },
+        {
+          "fileId": "1w0gXaBcYhKcY_3y03gWmsOQ6yJaU96UQ",
+          "fileName": "488206031_1079831860827623_5884501808938557719_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1w0gXaBcYhKcY_3y03gWmsOQ6yJaU96UQ/view?usp=drive_web"
+        }
+      ]
+    },
+    "homestay|tulip_2_hotel|14_nguyen_chi_thanh": {
+      "key": "homestay|tulip_2_hotel|14_nguyen_chi_thanh",
+      "sectionKey": "homestay",
+      "name": "Tulip 2 Hotel",
+      "address": "14  Nguyễn Chí Thanh",
+      "sourceLink": "https://drive.google.com/drive/folders/1FIzzny4ErG4H-K8EuS3Na_CBzF5Lnnd0?hl=vi",
+      "fileId": "1KLbgJ5J_w6pD7x5WKLRMLXMEw89o8SAE",
+      "fileName": "489946665_1455963945385513_8513443349547038284_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1KLbgJ5J_w6pD7x5WKLRMLXMEw89o8SAE",
+          "fileName": "489946665_1455963945385513_8513443349547038284_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KLbgJ5J_w6pD7x5WKLRMLXMEw89o8SAE/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Bz72YPyuwFV0gDk4j0tlowGFbqW1-vgi",
+          "fileName": "490027553_1455938265388081_3073652138003164462_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Bz72YPyuwFV0gDk4j0tlowGFbqW1-vgi/view?usp=drive_web"
+        },
+        {
+          "fileId": "1CA-PQ4_PB7VdZ_JsEmnnZQ3vQrWF9inE",
+          "fileName": "490166039_1455939108721330_8538004786433317815_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CA-PQ4_PB7VdZ_JsEmnnZQ3vQrWF9inE/view?usp=drive_web"
+        },
+        {
+          "fileId": "1hn1FQwaJkcdq5WU2NTkljHJD3EOlrpIm",
+          "fileName": "534803614_122199384212098491_2512937535794963799_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1hn1FQwaJkcdq5WU2NTkljHJD3EOlrpIm/view?usp=drive_web"
+        },
+        {
+          "fileId": "1cHscLvOpdksnHnEvpPZGbqZqJ0hkQHtt",
+          "fileName": "535189156_122199384062098491_1439159145546484748_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cHscLvOpdksnHnEvpPZGbqZqJ0hkQHtt/view?usp=drive_web"
+        },
+        {
+          "fileId": "16cg9pPTKOx7mtdrXU96BzUh8B39oNMmj",
+          "fileName": "535194039_122199379448098491_2765341834321790436_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/16cg9pPTKOx7mtdrXU96BzUh8B39oNMmj/view?usp=drive_web"
         }
       ]
     },
@@ -17036,10 +18507,10 @@
         }
       ]
     },
-    "choi_dem|ngam_kinh_do_anh_sang_tai_xom_leo|huynh_tan_phat": {
-      "key": "choi_dem|ngam_kinh_do_anh_sang_tai_xom_leo|huynh_tan_phat",
+    "choi_dem|ngam_nha_long_tai_xom_leo|huynh_tan_phat": {
+      "key": "choi_dem|ngam_nha_long_tai_xom_leo|huynh_tan_phat",
       "sectionKey": "choi_dem",
-      "name": "Ngắm \"kinh đô ánh sáng\" tại Xóm Lèo",
+      "name": "Ngắm nhà lồng tại Xóm Lèo",
       "address": "Huỳnh Tấn Phát",
       "sourceLink": "https://drive.google.com/drive/folders/1qGBE6vxaXvXGO3ygDeBrqs9jyJp0Wccr?usp=sharing",
       "fileId": "1naIhNtIcfGeqBfAQ-QjRE8P81Fr4QP2B",
@@ -17077,10 +18548,10 @@
         }
       ]
     },
-    "choi_dem|ghe_cac_quan_cafe_view_thung_lung_tai_trai_mat|trai_mat": {
-      "key": "choi_dem|ghe_cac_quan_cafe_view_thung_lung_tai_trai_mat|trai_mat",
+    "choi_dem|cafe_view_thung_lung_tai_trai_mat|trai_mat": {
+      "key": "choi_dem|cafe_view_thung_lung_tai_trai_mat|trai_mat",
       "sectionKey": "choi_dem",
-      "name": "Ghé các quán cafe view thung lũng tại Trại Mát",
+      "name": "Cafe view thung lũng tại Trại Mát",
       "address": "Trại Mát",
       "sourceLink": "https://drive.google.com/drive/folders/1x1-wbwagYbfN8VmGLnMLUFUmroylXsOZ?usp=sharing",
       "fileId": "1BiWF9wHu_JCH5WhcVVXzGpS4vkDQucOk",
@@ -17118,10 +18589,10 @@
         }
       ]
     },
-    "choi_dem|giao_luu_van_hoa_cong_chieng_tay_nguyen|langbiang": {
-      "key": "choi_dem|giao_luu_van_hoa_cong_chieng_tay_nguyen|langbiang",
+    "choi_dem|cong_chieng_tay_nguyen|langbiang": {
+      "key": "choi_dem|cong_chieng_tay_nguyen|langbiang",
       "sectionKey": "choi_dem",
-      "name": "Giao lưu văn hóa Cồng chiêng Tây Nguyên",
+      "name": "Cồng chiêng Tây Nguyên",
       "address": "Langbiang",
       "sourceLink": "https://drive.google.com/drive/folders/1Ez_xIuEGmrc3YFFNwvl18AwBQKt4nZIP?usp=sharing",
       "fileId": "1zPbGwd_290OIvMM2L1pXrR0eQgKRUPGI",
@@ -17238,6 +18709,826 @@
           "fileId": "1l8L5OX-hjv87QFwpefTpchoGhj6g_JIJ",
           "fileName": "IMG_1722.JPG",
           "viewUrl": "https://drive.google.com/file/d/1l8L5OX-hjv87QFwpefTpchoGhj6g_JIJ/view?usp=drive_web"
+        }
+      ]
+    },
+    "choi_dem|dem_nhac_binh_minh_oi|hoang_hoa_tham": {
+      "key": "choi_dem|dem_nhac_binh_minh_oi|hoang_hoa_tham",
+      "sectionKey": "choi_dem",
+      "name": "Đêm Nhạc Bình Minh Ơi",
+      "address": "Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1cfq6yx3ETmIkfRgfJhO0gFmAGekQVnfY?usp=drive_link",
+      "fileId": "1l75R0oz6Dx4RgEyxMd7I61nIoFAH3dWN",
+      "fileName": "đêm nhạc bình minh ơi.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1l75R0oz6Dx4RgEyxMd7I61nIoFAH3dWN",
+          "fileName": "đêm nhạc bình minh ơi.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1l75R0oz6Dx4RgEyxMd7I61nIoFAH3dWN/view?usp=drive_web"
+        },
+        {
+          "fileId": "1il_eogJ0LxJE8z89DIhwG-PK57CUDn_d",
+          "fileName": "khong-gian-dem-nhac-acoustic-tai-tiem-cafe-binh-minh-oi (1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1il_eogJ0LxJE8z89DIhwG-PK57CUDn_d/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qT26Qs1lwWrI9dvImUFXE-bhica7_uLN",
+          "fileName": "khong-gian-dem-nhac-acoustic-tai-tiem-cafe-binh-minh-oi (2).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qT26Qs1lwWrI9dvImUFXE-bhica7_uLN/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Sky5Dh99T_T6qx5oqqrcJw-GyXn9UXGM",
+          "fileName": "khong-gian-dem-nhac-acoustic-tai-tiem-cafe-binh-minh-oi.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Sky5Dh99T_T6qx5oqqrcJw-GyXn9UXGM/view?usp=drive_web"
+        },
+        {
+          "fileId": "1awxi7vJXbCEilqpplULjBXpB-pShYzsZ",
+          "fileName": "khong-gian-trong-nha-cua-quan-cafe-binh-minh-oi.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1awxi7vJXbCEilqpplULjBXpB-pShYzsZ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1BEJV8UqET9mR7GuTG5bhtjI4sV4NebCo",
+          "fileName": "khung-canh-doi-nui-va-san-may-tai-quan-cafe-binh-minh-oi-da-lat.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1BEJV8UqET9mR7GuTG5bhtjI4sV4NebCo/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|len_rung_hai_nam_vao_dau_mua_mua|": {
+      "key": "hoat_dong|len_rung_hai_nam_vao_dau_mua_mua|",
+      "sectionKey": "hoat_dong",
+      "name": "Lên rừng hái nấm vào đầu mùa mưa",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/15zLExlw8LE7NNXkLJa5Oqng49RqJgSPz",
+      "fileId": "1X1XxHK9m1mtodcwOQT1Z1kUWoreoxGa-",
+      "fileName": "487827536_9511573132291645_2574822253310169515_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1X1XxHK9m1mtodcwOQT1Z1kUWoreoxGa-",
+          "fileName": "487827536_9511573132291645_2574822253310169515_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1X1XxHK9m1mtodcwOQT1Z1kUWoreoxGa-/view?usp=drive_web"
+        },
+        {
+          "fileId": "10P3XFMMcBnqSFtxl_5Awo8KSJB44YDyz",
+          "fileName": "487926750_9511573038958321_2691666523320513105_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/10P3XFMMcBnqSFtxl_5Awo8KSJB44YDyz/view?usp=drive_web"
+        },
+        {
+          "fileId": "1x1C1UZo_fMS7-gPpgBHr-eNtas7gHMY5",
+          "fileName": "487942912_9511572718958353_2895155469119398012_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1x1C1UZo_fMS7-gPpgBHr-eNtas7gHMY5/view?usp=drive_web"
+        },
+        {
+          "fileId": "13C9zBYk22UaRnaQWJBbA8VqGs0H_qqlN",
+          "fileName": "487944889_9511573035624988_1469267654130028122_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13C9zBYk22UaRnaQWJBbA8VqGs0H_qqlN/view?usp=drive_web"
+        },
+        {
+          "fileId": "1vQW8pIj2xFIx7LtqfG50y-tsCdwpnX4X",
+          "fileName": "488047425_9511572945624997_404282322771019553_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1vQW8pIj2xFIx7LtqfG50y-tsCdwpnX4X/view?usp=drive_web"
+        },
+        {
+          "fileId": "19TbwHskqef80Rec18gixcqeldbMizDP8",
+          "fileName": "488206671_9511573065624985_3996744819415318968_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/19TbwHskqef80Rec18gixcqeldbMizDP8/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|trekking_thac_7_tang_cuc_da|": {
+      "key": "hoat_dong|trekking_thac_7_tang_cuc_da|",
+      "sectionKey": "hoat_dong",
+      "name": "Trekking thác 7 tầng cực đã",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1eW0yaDRD_aBQdtzKH00vulndbXcmcV0Z",
+      "fileId": "1U5LyIPubNUZi5aymgWNJkHZCp_aHxqRF",
+      "fileName": "475990079_1639525346662520_2169337064254118156_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1U5LyIPubNUZi5aymgWNJkHZCp_aHxqRF",
+          "fileName": "475990079_1639525346662520_2169337064254118156_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1U5LyIPubNUZi5aymgWNJkHZCp_aHxqRF/view?usp=drive_web"
+        },
+        {
+          "fileId": "1xTSGV13NVcPMunIerEZedB2WyTbDiOCP",
+          "fileName": "476029822_1639525329995855_1605716463562496844_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xTSGV13NVcPMunIerEZedB2WyTbDiOCP/view?usp=drive_web"
+        },
+        {
+          "fileId": "13u9wLva6iAQnODQZygxmutPP0Ol4i2_5",
+          "fileName": "476041583_1639525253329196_2573400369056396796_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13u9wLva6iAQnODQZygxmutPP0Ol4i2_5/view?usp=drive_web"
+        },
+        {
+          "fileId": "1PGTyLtKwHcSEJpuN4h7mfvcOyFKA2AmN",
+          "fileName": "476159138_1639525306662524_4724264700138434881_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1PGTyLtKwHcSEJpuN4h7mfvcOyFKA2AmN/view?usp=drive_web"
+        },
+        {
+          "fileId": "1dYUxK04RB7PC5djyee4xlga2pQTydM1f",
+          "fileName": "476307021_1639525266662528_8788236751759788302_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1dYUxK04RB7PC5djyee4xlga2pQTydM1f/view?usp=drive_web"
+        },
+        {
+          "fileId": "14EY4kfI_B8QTU4XDiJbgLL8GfPEKJTr3",
+          "fileName": "476333514_1639525279995860_8091621692584445643_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/14EY4kfI_B8QTU4XDiJbgLL8GfPEKJTr3/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|cheo_sup_ho_tuyen_lam|": {
+      "key": "hoat_dong|cheo_sup_ho_tuyen_lam|",
+      "sectionKey": "hoat_dong",
+      "name": "Chèo sup Hồ Tuyền Lâm",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/14b_1w1UWMnN_dAjYI1NUSHDvO4Y-mKPb",
+      "fileId": "1vDnor6yPtibZs6PI0nMTwGTD-xo7CIUG",
+      "fileName": "184825031_4692393547443326_3145651611072559762_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1vDnor6yPtibZs6PI0nMTwGTD-xo7CIUG",
+          "fileName": "184825031_4692393547443326_3145651611072559762_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1vDnor6yPtibZs6PI0nMTwGTD-xo7CIUG/view?usp=drive_web"
+        },
+        {
+          "fileId": "1odcgR0LYLmXIep06K4-VALA2PYkd55oA",
+          "fileName": "184846033_4692393660776648_1304930413243048796_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1odcgR0LYLmXIep06K4-VALA2PYkd55oA/view?usp=drive_web"
+        },
+        {
+          "fileId": "1JUGR2XDWmocvUOhv5gNuN7vCNmUT2_N9",
+          "fileName": "185031907_4692392857443395_466536325054786137_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JUGR2XDWmocvUOhv5gNuN7vCNmUT2_N9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rweXVddoCFjHbQnVAJndsVr84HAMnRoA",
+          "fileName": "185163701_4692392960776718_8322577350017165575_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rweXVddoCFjHbQnVAJndsVr84HAMnRoA/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qbroZnlhvJPLq4JD8TJN5m4tvNhYE_ru",
+          "fileName": "185217507_4692393127443368_3100562215904558329_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qbroZnlhvJPLq4JD8TJN5m4tvNhYE_ru/view?usp=drive_web"
+        },
+        {
+          "fileId": "1FGyvEQA1xtFgbNbYte7_4SUi158FMnTB",
+          "fileName": "185236217_4692393370776677_5917579455437616548_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1FGyvEQA1xtFgbNbYte7_4SUi158FMnTB/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|dap_vit_ho_xuan_huong|": {
+      "key": "hoat_dong|dap_vit_ho_xuan_huong|",
+      "sectionKey": "hoat_dong",
+      "name": "Đạp vịt Hồ Xuân Hương",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1_C2l4_W_jxoAY9jjYCVG9rXzw_fPIqmA",
+      "fileId": "10tsXpsj9DGtXvZuCZbJcu9NwXC-u3QUj",
+      "fileName": "475790723_1029896048987204_1532526058294635158_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "10tsXpsj9DGtXvZuCZbJcu9NwXC-u3QUj",
+          "fileName": "475790723_1029896048987204_1532526058294635158_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/10tsXpsj9DGtXvZuCZbJcu9NwXC-u3QUj/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rnuIanmPBECDR3nQHSf835Gd1ZEAGTbw",
+          "fileName": "481272664_9139582139495228_2427335276287797652_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rnuIanmPBECDR3nQHSf835Gd1ZEAGTbw/view?usp=drive_web"
+        },
+        {
+          "fileId": "1fb2gNB0a6A6dp0v4-qD8O6tWY03CkSvF",
+          "fileName": "530232340_2107527893104946_6393282994033789230_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1fb2gNB0a6A6dp0v4-qD8O6tWY03CkSvF/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XT5WEeKCUnfASQRlwsCZOivHI6o3TZwo",
+          "fileName": "530263024_2107527899771612_3000089707341743491_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XT5WEeKCUnfASQRlwsCZOivHI6o3TZwo/view?usp=drive_web"
+        },
+        {
+          "fileId": "15TBLF97f-bMpbzD1uBrhx2jyF5Xmr-2w",
+          "fileName": "530890693_2107527939771608_803096607515890896_n-1.jpg",
+          "viewUrl": "https://drive.google.com/file/d/15TBLF97f-bMpbzD1uBrhx2jyF5Xmr-2w/view?usp=drive_web"
+        },
+        {
+          "fileId": "1BGAuFs1W5opmhxLunyuzpQFlaMKYgYyr",
+          "fileName": "530890693_2107527939771608_803096607515890896_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1BGAuFs1W5opmhxLunyuzpQFlaMKYgYyr/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|ngam_hoang_hon_xom_leo|": {
+      "key": "hoat_dong|ngam_hoang_hon_xom_leo|",
+      "sectionKey": "hoat_dong",
+      "name": "Ngắm hoàng hôn Xóm Lèo",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1s7S5pxaJuXvLZs-x4YndGmTJYn4nGstr",
+      "fileId": "1H3YYETsRC0etsYYwywq3ZKKx2dCPmfGw",
+      "fileName": "476758826_642593431622660_268335248154393986_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1H3YYETsRC0etsYYwywq3ZKKx2dCPmfGw",
+          "fileName": "476758826_642593431622660_268335248154393986_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1H3YYETsRC0etsYYwywq3ZKKx2dCPmfGw/view?usp=drive_web"
+        },
+        {
+          "fileId": "17ClT3gmNySaXZkUHzJyVeb1Dc-DHtq2y",
+          "fileName": "476806374_642593434955993_5120238034816618863_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17ClT3gmNySaXZkUHzJyVeb1Dc-DHtq2y/view?usp=drive_web"
+        },
+        {
+          "fileId": "1UOQFjJbhmdKOP7xGeJWXIJ5p4yVM7CnH",
+          "fileName": "476833016_642593541622649_6996828893079326345_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1UOQFjJbhmdKOP7xGeJWXIJ5p4yVM7CnH/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wlQEqU4o2-puti0x1S9g2x7MogP2q2St",
+          "fileName": "480166026_1478875119699278_7224798190202138937_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1wlQEqU4o2-puti0x1S9g2x7MogP2q2St/view?usp=drive_web"
+        },
+        {
+          "fileId": "1PrP2dPF4lVI7PviD48xKE3lvuzgozIsf",
+          "fileName": "480230822_1478875129699277_6062253936904430959_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1PrP2dPF4lVI7PviD48xKE3lvuzgozIsf/view?usp=drive_web"
+        },
+        {
+          "fileId": "1NusGFzYwdh8tRfv56Ldol6HeIh9RCahh",
+          "fileName": "480507967_1070243315115952_8662401811203500125_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NusGFzYwdh8tRfv56Ldol6HeIh9RCahh/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|camping_va_san_may_cau_dat|": {
+      "key": "hoat_dong|camping_va_san_may_cau_dat|",
+      "sectionKey": "hoat_dong",
+      "name": "Camping và săn mây Cầu Đất",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/180h9oti_GF14SHLbCp-qHpMPv4grr0Dd",
+      "fileId": "1tS9qxuc5Ss2_2BAniGqpu_oFVNaGuhZo",
+      "fileName": "483924004_2958958234273955_1962095950285193954_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1tS9qxuc5Ss2_2BAniGqpu_oFVNaGuhZo",
+          "fileName": "483924004_2958958234273955_1962095950285193954_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1tS9qxuc5Ss2_2BAniGqpu_oFVNaGuhZo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qa8Du7oHqQ47ONegKqyH9Ubwv5vUPpoI",
+          "fileName": "483926516_2958959737607138_8701542677794710593_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qa8Du7oHqQ47ONegKqyH9Ubwv5vUPpoI/view?usp=drive_web"
+        },
+        {
+          "fileId": "1G_3qdrlIwu1ENLgnfk-TFNcFuQwZ8QKY",
+          "fileName": "483943731_2958959664273812_5981725158546229342_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1G_3qdrlIwu1ENLgnfk-TFNcFuQwZ8QKY/view?usp=drive_web"
+        },
+        {
+          "fileId": "1jhSiTl3xTr6DgSrRU5LpuRJTrsbZzVsw",
+          "fileName": "483945598_2958959634273815_860940566769513961_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1jhSiTl3xTr6DgSrRU5LpuRJTrsbZzVsw/view?usp=drive_web"
+        },
+        {
+          "fileId": "1BGsQvC0-_Uai7V9hQbVetZodoPArAixD",
+          "fileName": "483965302_2958959707607141_6391240270080786509_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1BGsQvC0-_Uai7V9hQbVetZodoPArAixD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ANPnrQjfbG6r9OSKTiYbazrQIY7xOG4k",
+          "fileName": "484024314_2958958257607286_302799895768845073_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ANPnrQjfbG6r9OSKTiYbazrQIY7xOG4k/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|trekking_dinh_lang_biang_hung_vi|": {
+      "key": "hoat_dong|trekking_dinh_lang_biang_hung_vi|",
+      "sectionKey": "hoat_dong",
+      "name": "Trekking đỉnh Lang Biang hùng vĩ",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1vzmAMd5zl6kkLOqTqELgsWeEpM8EZFJG",
+      "fileId": "1qL8naEPDSZpCm1JosDr6bNPWnj9fYqVT",
+      "fileName": "186468661_316763036699550_226990616991481147_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1qL8naEPDSZpCm1JosDr6bNPWnj9fYqVT",
+          "fileName": "186468661_316763036699550_226990616991481147_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qL8naEPDSZpCm1JosDr6bNPWnj9fYqVT/view?usp=drive_web"
+        },
+        {
+          "fileId": "18756eDAVqm3CZ5ohQrNSURAdzHW0rQ39",
+          "fileName": "186491737_316762970032890_4840895412775090907_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18756eDAVqm3CZ5ohQrNSURAdzHW0rQ39/view?usp=drive_web"
+        },
+        {
+          "fileId": "1P1HBusFHJXR7pzzxlWIKFXCPqrWCsqhm",
+          "fileName": "186515301_316763070032880_5280380546232517011_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1P1HBusFHJXR7pzzxlWIKFXCPqrWCsqhm/view?usp=drive_web"
+        },
+        {
+          "fileId": "1D6x7uNajKEsuEc_5uxX_FcBV0vB10_b2",
+          "fileName": "186530604_316763133366207_5832465196964654607_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1D6x7uNajKEsuEc_5uxX_FcBV0vB10_b2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1FdaFKejQ0DQwy-H0WIlT6Gq81e2KSTc1",
+          "fileName": "187133461_316763000032887_3532721633714489803_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1FdaFKejQ0DQwy-H0WIlT6Gq81e2KSTc1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Nw0Fcb69RA3XJPXpNWO_zvdYzRH1iZaf",
+          "fileName": "187273420_316763080032879_2304063986389247195_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Nw0Fcb69RA3XJPXpNWO_zvdYzRH1iZaf/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|cheo_sup_va_san_suong_san_anh_dep_suoi_tia|": {
+      "key": "hoat_dong|cheo_sup_va_san_suong_san_anh_dep_suoi_tia|",
+      "sectionKey": "hoat_dong",
+      "name": "Chèo sup và săn sương, săn ảnh đẹp Suối Tía",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1sd17DNhgOLsFfbgMfmKxvTpbNaVlxBn2",
+      "fileId": "16eyA-9wdWWzscK81lFI0cgVVn_OqMgkC",
+      "fileName": "678807704_1444434291034786_8096555832435054918_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "16eyA-9wdWWzscK81lFI0cgVVn_OqMgkC",
+          "fileName": "678807704_1444434291034786_8096555832435054918_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/16eyA-9wdWWzscK81lFI0cgVVn_OqMgkC/view?usp=drive_web"
+        },
+        {
+          "fileId": "1H_9pNVjShI9oK0a4i_9h21HrrRG8XaCs",
+          "fileName": "678807727_1444434844368064_1808530621626250892_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1H_9pNVjShI9oK0a4i_9h21HrrRG8XaCs/view?usp=drive_web"
+        },
+        {
+          "fileId": "1gG2j9xAIbVqQnfODyB7IP8kvATnj4dO6",
+          "fileName": "678912141_1444434777701404_1903839138942209520_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1gG2j9xAIbVqQnfODyB7IP8kvATnj4dO6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QgvJi-6GR8-kTW4Bt6ZmbBNRilpcBjJT",
+          "fileName": "678938217_1444434304368118_8908524043151405656_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QgvJi-6GR8-kTW4Bt6ZmbBNRilpcBjJT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1lggva1MQ9JRAUlbB87mRvThT30nfgLJL",
+          "fileName": "679146656_1444435004368048_8528194095838173421_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1lggva1MQ9JRAUlbB87mRvThT30nfgLJL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1gWdwQ0xD_zK_WT9XIYdITM08UBEvIfBa",
+          "fileName": "679447344_1444434411034774_5708715167602446770_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1gWdwQ0xD_zK_WT9XIYdITM08UBEvIfBa/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|di_dao_quanh_ho_xuan_huong|": {
+      "key": "hoat_dong|di_dao_quanh_ho_xuan_huong|",
+      "sectionKey": "hoat_dong",
+      "name": "Đi dạo quanh Hồ Xuân Hương",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1xNboBc5Qv7nuVdJ4TY4z-eqYJckv6m6S",
+      "fileId": "1gL_jJ6P4di2kZIwykN7phPnkrpFiMJHH",
+      "fileName": "487204129_3431818246955334_7061915975194174656_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1gL_jJ6P4di2kZIwykN7phPnkrpFiMJHH",
+          "fileName": "487204129_3431818246955334_7061915975194174656_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1gL_jJ6P4di2kZIwykN7phPnkrpFiMJHH/view?usp=drive_web"
+        },
+        {
+          "fileId": "1NCDjCiDgOukjxthjqNPJNX3Tqc_iDM1L",
+          "fileName": "487240960_3431817916955367_8771791044802635209_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NCDjCiDgOukjxthjqNPJNX3Tqc_iDM1L/view?usp=drive_web"
+        },
+        {
+          "fileId": "1UWLO3e4ZdHG3-U64keAWgAeJIbdVcyeL",
+          "fileName": "487297269_3431817913622034_4829257057510455850_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1UWLO3e4ZdHG3-U64keAWgAeJIbdVcyeL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1b-6t4KjvTPWYk0y8SCe6FdwBu5JaECs8",
+          "fileName": "487377928_3431818303621995_7079566947498345629_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1b-6t4KjvTPWYk0y8SCe6FdwBu5JaECs8/view?usp=drive_web"
+        },
+        {
+          "fileId": "1TE-0dmkpKaX3oQ9nUVpH3bUIP-u1HMK6",
+          "fileName": "487388630_3431818260288666_207681393339103118_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1TE-0dmkpKaX3oQ9nUVpH3bUIP-u1HMK6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1G59O4fBYyD8ELbGlSq1HcYRWeyq2V5dx",
+          "fileName": "487476785_3431817993622026_5555538781307819032_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1G59O4fBYyD8ELbGlSq1HcYRWeyq2V5dx/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|tham_nha_tho_con_ga_truong_cao_dang_su_pham|": {
+      "key": "hoat_dong|tham_nha_tho_con_ga_truong_cao_dang_su_pham|",
+      "sectionKey": "hoat_dong",
+      "name": "Thăm Nhà thờ Con Gà & Trường Cao đẳng Sư phạm",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1M7X8hPbk5vYMdudnMp8dJgvMl5-D90kb",
+      "fileId": "1YNdE2RdNH1EcVS85UJfX4EKw5Gcyc0so",
+      "fileName": "181921528_1966166193562563_5968646087558329023_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1YNdE2RdNH1EcVS85UJfX4EKw5Gcyc0so",
+          "fileName": "181921528_1966166193562563_5968646087558329023_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1YNdE2RdNH1EcVS85UJfX4EKw5Gcyc0so/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Qz5ZoQONjSO21OZLkMwYG1XNFubltRRZ",
+          "fileName": "474385945_1069004648573358_4918625848831710372_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Qz5ZoQONjSO21OZLkMwYG1XNFubltRRZ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1xy2bYOxG6z4AWwE0Etq2USIDy84Fv0_m",
+          "fileName": "474476196_595600359886483_6814385295885665281_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xy2bYOxG6z4AWwE0Etq2USIDy84Fv0_m/view?usp=drive_web"
+        },
+        {
+          "fileId": "15uQOf_W1g0r8Dvd4mB5Fp4V_iXRcd6QD",
+          "fileName": "475521485_1029049389071870_7906793178747764795_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/15uQOf_W1g0r8Dvd4mB5Fp4V_iXRcd6QD/view?usp=drive_web"
+        },
+        {
+          "fileId": "12G1sEj0LS4UswtvjBCN8IK1RlMoabf5n",
+          "fileName": "475744517_1029049379071871_7746855775734172487_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/12G1sEj0LS4UswtvjBCN8IK1RlMoabf5n/view?usp=drive_web"
+        },
+        {
+          "fileId": "1dgrpA9EVRDSOQqS87faSAqJ981ZFqve3",
+          "fileName": "475744599_1029049825738493_8322943431166225173_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1dgrpA9EVRDSOQqS87faSAqJ981ZFqve3/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|cam_trai_qua_dem_tren_doi_da_phu_ngo_quyen_thien_phuc_duc|": {
+      "key": "hoat_dong|cam_trai_qua_dem_tren_doi_da_phu_ngo_quyen_thien_phuc_duc|",
+      "sectionKey": "hoat_dong",
+      "name": "Cắm trại qua đêm trên đồi: Đa Phú, Ngô Quyền, Thiên Phúc Đức",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1ayE-8iijdYcPMT7WNSdhW9VO02GE05Z7",
+      "fileId": "1iyas_ITMdIpIPTL7A4GLu3iO1-1mZUn8",
+      "fileName": "119177618_3264165346952618_1306531456838054152_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1iyas_ITMdIpIPTL7A4GLu3iO1-1mZUn8",
+          "fileName": "119177618_3264165346952618_1306531456838054152_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1iyas_ITMdIpIPTL7A4GLu3iO1-1mZUn8/view?usp=drive_web"
+        },
+        {
+          "fileId": "1nuNohV8xWPNi1IzCzXn5uPLtyWlBrFPc",
+          "fileName": "119210666_3264165630285923_7077681014682660527_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1nuNohV8xWPNi1IzCzXn5uPLtyWlBrFPc/view?usp=drive_web"
+        },
+        {
+          "fileId": "1PbJpKvZXczlnxRjVZUCfLUDFWGNOO0Gh",
+          "fileName": "119387936_3264163940286092_5092943156254771940_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1PbJpKvZXczlnxRjVZUCfLUDFWGNOO0Gh/view?usp=drive_web"
+        },
+        {
+          "fileId": "1OkE-Wvnp4685vN5Tb6qiFXOivoGtJt8N",
+          "fileName": "119441442_3264165510285935_5105777186210505782_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1OkE-Wvnp4685vN5Tb6qiFXOivoGtJt8N/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ghiQ8ZVjAU1uC4JKNrD-_3Nfos-1bRkN",
+          "fileName": "119487977_3264163053619514_1234388659531286474_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ghiQ8ZVjAU1uC4JKNrD-_3Nfos-1bRkN/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ong-Euto8_B8Gbn2yLiMkIY4CAyFj78x",
+          "fileName": "119546163_3264166086952544_8301749191434043412_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ong-Euto8_B8Gbn2yLiMkIY4CAyFj78x/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|lai_xe_qua_deo_prenn_deo_mimosa_hoac_deo_ta_nung|": {
+      "key": "hoat_dong|lai_xe_qua_deo_prenn_deo_mimosa_hoac_deo_ta_nung|",
+      "sectionKey": "hoat_dong",
+      "name": "Lái xe qua đèo Prenn, đèo Mimosa hoặc đèo Tà Nung",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1LQqoJcvlcUYJVTyX5z2K3ohMI8OlGSFd",
+      "fileId": "1U01GqU4A8YC6vHzpeO75L-b-gE-VhfGT",
+      "fileName": "478291099_585110711020663_2789297432723147651_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1U01GqU4A8YC6vHzpeO75L-b-gE-VhfGT",
+          "fileName": "478291099_585110711020663_2789297432723147651_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1U01GqU4A8YC6vHzpeO75L-b-gE-VhfGT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1KbKTHf5vfQLwHGZloIb4FK_LHbJGCJxc",
+          "fileName": "479299432_585110717687329_3603569753232934768_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KbKTHf5vfQLwHGZloIb4FK_LHbJGCJxc/view?usp=drive_web"
+        },
+        {
+          "fileId": "1IBFSHDN_LKVMwg4fT2zesX96eh7O7Ld9",
+          "fileName": "479545756_585110347687366_624163302136200459_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1IBFSHDN_LKVMwg4fT2zesX96eh7O7Ld9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1c0ZHgxZdM7cGrgNY6UfMUZc5pOItuPz6",
+          "fileName": "480047659_585110357687365_7896285637129728369_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1c0ZHgxZdM7cGrgNY6UfMUZc5pOItuPz6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Tymdhb7vD4erfnt0F-aQ_TdDUvIfEx7z",
+          "fileName": "480807341_1975030226354714_8208169227762596028_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Tymdhb7vD4erfnt0F-aQ_TdDUvIfEx7z/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wTJ-_i1KvGjfEpHbjaQprabxcTqNbMYr",
+          "fileName": "481445185_1975030249688045_8860527073649770466_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1wTJ-_i1KvGjfEpHbjaQprabxcTqNbMYr/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|choi_zipline_vuot_thac_datanla|": {
+      "key": "hoat_dong|choi_zipline_vuot_thac_datanla|",
+      "sectionKey": "hoat_dong",
+      "name": "Chơi zipline vượt Thác Datanla",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1ipPSl61RIpDJf3US9KZpqctAf7nVPb1j",
+      "fileId": "1YknMiuovrHPnHH6daDOOkn08XW5HYUxg",
+      "fileName": "124265095_3370782356368054_5328239842910424793_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1YknMiuovrHPnHH6daDOOkn08XW5HYUxg",
+          "fileName": "124265095_3370782356368054_5328239842910424793_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1YknMiuovrHPnHH6daDOOkn08XW5HYUxg/view?usp=drive_web"
+        },
+        {
+          "fileId": "148-I9B3nwSC2ajLFH5S0B_8PVz890hAJ",
+          "fileName": "124378829_3370782286368061_4416781960492934415_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/148-I9B3nwSC2ajLFH5S0B_8PVz890hAJ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1POU5731uiXfeBlBGF_a8BSxC1Alz4f0h",
+          "fileName": "125128590_3370782436368046_5212129167172275019_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1POU5731uiXfeBlBGF_a8BSxC1Alz4f0h/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HDMmtc8-_CHYXwVXrTnLbcvr6dc8qh2E",
+          "fileName": "125189699_3370782389701384_8954449659201791590_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1HDMmtc8-_CHYXwVXrTnLbcvr6dc8qh2E/view?usp=drive_web"
+        },
+        {
+          "fileId": "1fhH9RLKm9OITDXWT0KdOqyFiECH-gwW3",
+          "fileName": "474746687_640997588386764_8135757812698181617_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1fhH9RLKm9OITDXWT0KdOqyFiECH-gwW3/view?usp=drive_web"
+        },
+        {
+          "fileId": "10eIONp5WjIFowHnBF6pyTzhdmfnxn9tk",
+          "fileName": "474788560_640997725053417_4344615239382707075_n-1.jpg",
+          "viewUrl": "https://drive.google.com/file/d/10eIONp5WjIFowHnBF6pyTzhdmfnxn9tk/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|kham_pha_thac_hang_cop_hoac_thac_pongour|": {
+      "key": "hoat_dong|kham_pha_thac_hang_cop_hoac_thac_pongour|",
+      "sectionKey": "hoat_dong",
+      "name": "Khám phá Thác Hang Cọp hoặc Thác Pongour",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1CtvWD2XDMdmX-7F7KQRA9d97CARu8HRY",
+      "fileId": "1SHkmBXAYmH4MP6aelWvsFTnjXbdE5D26",
+      "fileName": "174248365_2891788864436357_8017257150868476200_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1SHkmBXAYmH4MP6aelWvsFTnjXbdE5D26",
+          "fileName": "174248365_2891788864436357_8017257150868476200_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SHkmBXAYmH4MP6aelWvsFTnjXbdE5D26/view?usp=drive_web"
+        },
+        {
+          "fileId": "1dW_jyjbJ5ABaXHy8wY2MXQhnijG_ajIk",
+          "fileName": "174558636_2891788734436370_773025082916717918_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1dW_jyjbJ5ABaXHy8wY2MXQhnijG_ajIk/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QjJbQzgdq25VJU9H7XQtFFO0fzb71JRT",
+          "fileName": "175383481_2891788544436389_7197099371917993373_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QjJbQzgdq25VJU9H7XQtFFO0fzb71JRT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1P-iUWvhIhsyKiR7JrFEc6t7zrqkMZS4w",
+          "fileName": "175435161_2891788651103045_3418038707224079013_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1P-iUWvhIhsyKiR7JrFEc6t7zrqkMZS4w/view?usp=drive_web"
+        },
+        {
+          "fileId": "1TGxnq1sESkxFZ9c2gVsCL3jfh6okzw3Q",
+          "fileName": "175524413_2891788834436360_2254640366639073738_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1TGxnq1sESkxFZ9c2gVsCL3jfh6okzw3Q/view?usp=drive_web"
+        },
+        {
+          "fileId": "16E8GI-r1lhMhMllYHsNebHnMakJNv24R",
+          "fileName": "176200445_2891788307769746_4388073582822313390_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/16E8GI-r1lhMhMllYHsNebHnMakJNv24R/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|tham_cac_nong_trai_canh_tac_theo_huong_tu_nhien_nhu_da_lat_milk_farm|": {
+      "key": "hoat_dong|tham_cac_nong_trai_canh_tac_theo_huong_tu_nhien_nhu_da_lat_milk_farm|",
+      "sectionKey": "hoat_dong",
+      "name": "Thăm các nông trại canh tác theo hướng tự nhiên như Đà Lạt Milk Farm",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1fXcu0Lgzud-mbvhyvZA0W0baP4kkwna4",
+      "fileId": "1KS109RbHBFtPXVi97In2H0WgcAvC2u7n",
+      "fileName": "469232141_1159143732443083_6303195046094053035_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1KS109RbHBFtPXVi97In2H0WgcAvC2u7n",
+          "fileName": "469232141_1159143732443083_6303195046094053035_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KS109RbHBFtPXVi97In2H0WgcAvC2u7n/view?usp=drive_web"
+        },
+        {
+          "fileId": "1KqSFW0A_6p550fobOz1vYrpSx-0sslB5",
+          "fileName": "469286991_1159143705776419_4916865374149723182_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KqSFW0A_6p550fobOz1vYrpSx-0sslB5/view?usp=drive_web"
+        },
+        {
+          "fileId": "1F1VUEi2QwccbjGOtdWRho0PMyueV9Wr0",
+          "fileName": "656389894_3585371618281573_8832159400636857341_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1F1VUEi2QwccbjGOtdWRho0PMyueV9Wr0/view?usp=drive_web"
+        },
+        {
+          "fileId": "1VPF-U-_Rs_vwkiVpc9EzD2i6_0bW576t",
+          "fileName": "70938956_1488873651263666_1461597986671820800_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1VPF-U-_Rs_vwkiVpc9EzD2i6_0bW576t/view?usp=drive_web"
+        },
+        {
+          "fileId": "1G9M9V5SOsUJKpBi4_5beq8V0uyBD0Enk",
+          "fileName": "71087631_1488873621263669_7984542480429219840_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1G9M9V5SOsUJKpBi4_5beq8V0uyBD0Enk/view?usp=drive_web"
+        },
+        {
+          "fileId": "1SKxNy2mqAh7diYGzYryrfraWfgS9GOHF",
+          "fileName": "71343010_1488873857930312_2330238324670726144_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1SKxNy2mqAh7diYGzYryrfraWfgS9GOHF/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|hai_dau_va_thuong_thuc_truc_tiep_tai_vuon_dau|": {
+      "key": "hoat_dong|hai_dau_va_thuong_thuc_truc_tiep_tai_vuon_dau|",
+      "sectionKey": "hoat_dong",
+      "name": "Hái dâu và thưởng thức trực tiếp tại vườn dâu",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1WPZlCHexqesTd9lkRnfJg1_TRlpVdZhH",
+      "fileId": "13Fw7U1DH2EacdCWAu5obMilBpUQUC-MD",
+      "fileName": "165795186_188688743056313_7017539990087090586_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "13Fw7U1DH2EacdCWAu5obMilBpUQUC-MD",
+          "fileName": "165795186_188688743056313_7017539990087090586_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13Fw7U1DH2EacdCWAu5obMilBpUQUC-MD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1gnOkrn5xSrnVD_WWKHZDHpDh2TnOacyp",
+          "fileName": "166182071_188688796389641_1363935234002572289_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1gnOkrn5xSrnVD_WWKHZDHpDh2TnOacyp/view?usp=drive_web"
+        },
+        {
+          "fileId": "1aRpS-jbc1buAbg801XY143n1zsJo80kI",
+          "fileName": "166185447_188688766389644_3978878385333683127_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1aRpS-jbc1buAbg801XY143n1zsJo80kI/view?usp=drive_web"
+        },
+        {
+          "fileId": "19WaMqcM534H-N002-NUzypdnDZwjl6_a",
+          "fileName": "166725323_188688863056301_5344632226130146158_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/19WaMqcM534H-N002-NUzypdnDZwjl6_a/view?usp=drive_web"
+        },
+        {
+          "fileId": "1D8u7WyH2xGPyK6gTkZzVt2G7rwtL-XRg",
+          "fileName": "167992506_188688823056305_8573305111002450323_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1D8u7WyH2xGPyK6gTkZzVt2G7rwtL-XRg/view?usp=drive_web"
+        },
+        {
+          "fileId": "1D5fBj-3ckDnLYu726YH-lRCOAT96xCmx",
+          "fileName": "168029503_188688759722978_4433463641921106027_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1D5fBj-3ckDnLYu726YH-lRCOAT96xCmx/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|tim_ve_cac_con_suoi_nho_tai_khu_vuc_suoi_vang|": {
+      "key": "hoat_dong|tim_ve_cac_con_suoi_nho_tai_khu_vuc_suoi_vang|",
+      "sectionKey": "hoat_dong",
+      "name": "Tìm về các con suối nhỏ tại khu vực Suối Vàng",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/13xPvD-LdeIf86MW7J-XZni-FIHAr1-Cg",
+      "fileId": "1s9uuv-yNdvhm1OK00J2Elrohq-Uq6tlc",
+      "fileName": "489802315_9556165111165780_2164099597043960072_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1s9uuv-yNdvhm1OK00J2Elrohq-Uq6tlc",
+          "fileName": "489802315_9556165111165780_2164099597043960072_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1s9uuv-yNdvhm1OK00J2Elrohq-Uq6tlc/view?usp=drive_web"
+        },
+        {
+          "fileId": "1sSkTg3MnNbKXQYYhhc6AJqx5AFT_qhnA",
+          "fileName": "489895495_9556164727832485_3754347399435844556_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1sSkTg3MnNbKXQYYhhc6AJqx5AFT_qhnA/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wrc4AdkucvX0byjBxyxnxqtkAdG_gmJS",
+          "fileName": "489899538_9556165001165791_2656092270601924506_n-1.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1wrc4AdkucvX0byjBxyxnxqtkAdG_gmJS/view?usp=drive_web"
+        },
+        {
+          "fileId": "1-7jSpHqEn9W4B2qAL0rz-vFBum1eL3xp",
+          "fileName": "489899538_9556165001165791_2656092270601924506_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-7jSpHqEn9W4B2qAL0rz-vFBum1eL3xp/view?usp=drive_web"
+        },
+        {
+          "fileId": "18I_HOYfyKQwM5fWWqHC9xrzyZcIZH5KT",
+          "fileName": "489912603_9556164994499125_1167812937798477789_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18I_HOYfyKQwM5fWWqHC9xrzyZcIZH5KT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1YSVjCD0xESzsbBxbQpxQK5UvfeGR-xdY",
+          "fileName": "489912739_9556165067832451_868261357225579699_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1YSVjCD0xESzsbBxbQpxQK5UvfeGR-xdY/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|di_dao_va_thuong_thuc_am_thuc_cho_dem_da_lat|": {
+      "key": "hoat_dong|di_dao_va_thuong_thuc_am_thuc_cho_dem_da_lat|",
+      "sectionKey": "hoat_dong",
+      "name": "Đi dạo và thưởng thức ẩm thực chợ Đêm Đà Lạt",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1gom6UvmygyNi-VXder_CTgUmDRvrtksH",
+      "fileId": "1w7Kg3vHvSquLYJwv0X5CpsN-zwgHpi3H",
+      "fileName": "144048795_1896594657186384_1286782248925510868_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1w7Kg3vHvSquLYJwv0X5CpsN-zwgHpi3H",
+          "fileName": "144048795_1896594657186384_1286782248925510868_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1w7Kg3vHvSquLYJwv0X5CpsN-zwgHpi3H/view?usp=drive_web"
+        },
+        {
+          "fileId": "1pbF0hJ8GlnXQ1d2__cX-UE3tmlkpZDDL",
+          "fileName": "470130413_122244729974022572_3093760689124247346_n-1.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pbF0hJ8GlnXQ1d2__cX-UE3tmlkpZDDL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1J4GOGG46PRA7B1Pe6j27OC9f2iTtmpG6",
+          "fileName": "470130413_122244729974022572_3093760689124247346_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1J4GOGG46PRA7B1Pe6j27OC9f2iTtmpG6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1bvAD9vdtL3zsntMl3vYq1lo_lf5RiMbQ",
+          "fileName": "470161397_122244731264022572_4287964572629032772_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bvAD9vdtL3zsntMl3vYq1lo_lf5RiMbQ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1hnYS1yfGmAbVdXsdo95VBAwJp6TJbxO4",
+          "fileName": "470161545_122244729440022572_193403796410409897_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1hnYS1yfGmAbVdXsdo95VBAwJp6TJbxO4/view?usp=drive_web"
+        },
+        {
+          "fileId": "15tr-adiKwTd9DRdNx4ZA7wKCm3Ktjz2B",
+          "fileName": "470171668_122244729494022572_7169080602962431593_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/15tr-adiKwTd9DRdNx4ZA7wKCm3Ktjz2B/view?usp=drive_web"
+        }
+      ]
+    },
+    "hoat_dong|trai_nghiem_vuot_rung_thong_den_cay_thong_co_don|": {
+      "key": "hoat_dong|trai_nghiem_vuot_rung_thong_den_cay_thong_co_don|",
+      "sectionKey": "hoat_dong",
+      "name": "Trải nghiệm vượt rừng thông đến cây Thông Cô Đơn",
+      "address": "",
+      "sourceLink": "https://drive.google.com/drive/folders/1V8xXuB3kiodwmYbiU4Jd0Ao-U2pmFPiF",
+      "fileId": "1Cv7bToV8Ral1lyupc5TXZYPsFVfkc8Qm",
+      "fileName": "544914796_2131084794082589_1854100363022775804_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1Cv7bToV8Ral1lyupc5TXZYPsFVfkc8Qm",
+          "fileName": "544914796_2131084794082589_1854100363022775804_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Cv7bToV8Ral1lyupc5TXZYPsFVfkc8Qm/view?usp=drive_web"
+        },
+        {
+          "fileId": "1FD2RxnvboJMFKx_sw6q01mfc4cDg5wHy",
+          "fileName": "544982690_2131084330749302_7484675781620506396_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1FD2RxnvboJMFKx_sw6q01mfc4cDg5wHy/view?usp=drive_web"
+        },
+        {
+          "fileId": "13k7mmRZDcvOn0bEPv7J_KOh72w0yTaBr",
+          "fileName": "544994823_2131084884082580_879255922111872506_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13k7mmRZDcvOn0bEPv7J_KOh72w0yTaBr/view?usp=drive_web"
+        },
+        {
+          "fileId": "17khPjE8OBrsC8WBWybU4epUbdQn0nYLL",
+          "fileName": "545017561_2131085567415845_4606984031984454724_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17khPjE8OBrsC8WBWybU4epUbdQn0nYLL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zsJnBCh_LgiOCmSv2Fgwk9MoBezJHoeP",
+          "fileName": "545068765_2131085110749224_980503062555144937_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zsJnBCh_LgiOCmSv2Fgwk9MoBezJHoeP/view?usp=drive_web"
+        },
+        {
+          "fileId": "1d8u7uTsulSDDsiCMiI_RVmMAa4OmZYRe",
+          "fileName": "545141149_2131084590749276_4992572554128224126_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1d8u7uTsulSDDsiCMiI_RVmMAa4OmZYRe/view?usp=drive_web"
         }
       ]
     }

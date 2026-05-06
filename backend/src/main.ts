@@ -5,7 +5,20 @@ import { getAppConfig } from './config';
 
 export async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  const { host, port } = getAppConfig();
+  const { host, port, frontendOrigin } = getAppConfig();
+  const allowedCorsOrigins = getAllowedCorsOrigins(frontendOrigin);
+
+  app.enableCors({
+    origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+      if (!origin || allowedCorsOrigins.has(origin) || isLocalDevOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
   
   app.use((request: any, response: any, next: () => void) => {
     const requestPath = String(request.path || request.url || '');
@@ -27,4 +40,27 @@ if (require.main === module) {
     console.error('Failed to start Nest application.', error);
     process.exitCode = 1;
   });
+}
+
+function getAllowedCorsOrigins(frontendOrigin: string): Set<string> {
+  const origins = new Set([frontendOrigin]);
+
+  try {
+    const url = new URL(frontendOrigin);
+    origins.add(`http://127.0.0.1:${url.port}`);
+    origins.add(`http://localhost:${url.port}`);
+  } catch {
+    // Keep the configured origin only.
+  }
+
+  return origins;
+}
+
+function isLocalDevOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+  } catch {
+    return false;
+  }
 }
