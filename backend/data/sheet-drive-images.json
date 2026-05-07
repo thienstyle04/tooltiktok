@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-06T17:51:23.174Z",
+  "generatedAt": "2026-05-07T06:39:13.660Z",
   "workbookName": "Google Sheet",
-  "workbookMtimeMs": 1778089600540,
+  "workbookMtimeMs": 1778135613109,
   "items": {
     "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu": {
       "key": "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu",
@@ -10093,47 +10093,6 @@
           "fileId": "1E31RmJ-0_avHiIoH-kHxn-faD5gYJWWj",
           "fileName": "651409041_787922984363252_6050096235258230570_n.jpg",
           "viewUrl": "https://drive.google.com/file/d/1E31RmJ-0_avHiIoH-kHxn-faD5gYJWWj/view?usp=drive_web"
-        }
-      ]
-    },
-    "homestay|tp_hotel|6b_tran_quang_dieu": {
-      "key": "homestay|tp_hotel|6b_tran_quang_dieu",
-      "sectionKey": "homestay",
-      "name": "TP Hotel",
-      "address": "6B Trần Quang Diệu",
-      "sourceLink": "https://drive.google.com/drive/folders/1xMR3E4n19iuYQrWmZkSdvCSNQtxddTVU?usp=drive_link",
-      "fileId": "11QtP1Ka47sQtMxhBc0zLySkhXgTv19VV",
-      "fileName": "TP Hotel.jpg",
-      "candidateImages": [
-        {
-          "fileId": "11QtP1Ka47sQtMxhBc0zLySkhXgTv19VV",
-          "fileName": "TP Hotel.jpg",
-          "viewUrl": "https://drive.google.com/file/d/11QtP1Ka47sQtMxhBc0zLySkhXgTv19VV/view?usp=drive_web"
-        },
-        {
-          "fileId": "1hAKNHMt1txt1XNBEh3WgzTGeO6NR1tbN",
-          "fileName": "thumbnail (5).jfif",
-          "viewUrl": "https://drive.google.com/file/d/1hAKNHMt1txt1XNBEh3WgzTGeO6NR1tbN/view?usp=drive_web"
-        },
-        {
-          "fileId": "1a1sPDbyrwmyvAgTVYwZfKvY_uN-Reec_",
-          "fileName": "unnamed (40).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1a1sPDbyrwmyvAgTVYwZfKvY_uN-Reec_/view?usp=drive_web"
-        },
-        {
-          "fileId": "1QioFFN9Rt27bBhNmiuYHmHCgsq50aBbk",
-          "fileName": "unnamed (41).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1QioFFN9Rt27bBhNmiuYHmHCgsq50aBbk/view?usp=drive_web"
-        },
-        {
-          "fileId": "1I8XRCb6PeSX2vZ11PRUvbX8HsQ5OBGTi",
-          "fileName": "unnamed (42).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1I8XRCb6PeSX2vZ11PRUvbX8HsQ5OBGTi/view?usp=drive_web"
-        },
-        {
-          "fileId": "1LzmmPlleOhdWBJYfKPeEB2U9CUM82brC",
-          "fileName": "unnamed (43).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1LzmmPlleOhdWBJYfKPeEB2U9CUM82brC/view?usp=drive_web"
         }
       ]
     },
