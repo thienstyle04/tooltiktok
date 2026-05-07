@@ -428,7 +428,7 @@ function findVisibleSelectedPageNode(list, selectedPageIndex) {
   if (!list?.id || !Number.isInteger(selectedPageIndex) || typeof CSS === 'undefined') return null;
   const selector = `.story-page[data-list-id="${CSS.escape(list.id)}"][data-page-index="${selectedPageIndex}"]`;
   return Array.from(document.querySelectorAll(selector)).find((node) =>
-    !node.closest('.batch-export-root') && node.classList.contains('is-selected'),
+    !node.closest('.batch-export-root') && Boolean(node.closest('.slide-card-frame.is-selected')),
   ) || null;
 }
 

@@ -1,6 +1,6 @@
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
-const DRIVE_FILE_CACHE_TTL_MS = 30 * 60 * 1000;
-const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 5 * 60 * 1000;
+const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FETCH_TIMEOUT_MS = 15_000;
 
 const folderEntriesCache = new Map<string, { expiresAt: number; entries: DriveFolderEntry[] }>();

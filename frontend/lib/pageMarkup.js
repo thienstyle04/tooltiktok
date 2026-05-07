@@ -48,6 +48,31 @@ function renderPreviewImage(src, alt, className = '') {
   return `<img${classAttr} src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" ${previewImageAttrs()}>`;
 }
 
+function isPortableImageUrl(src) {
+  const value = String(src || '').trim();
+  return /^https?:\/\//i.test(value) || value.startsWith('/assets/drive-file');
+}
+
+function collectPortableListImages(list) {
+  const urls = [];
+  for (const page of list?.pages || []) {
+    if (isPortableImageUrl(page?.backgroundImage)) urls.push(page.backgroundImage);
+    for (const item of page?.items || []) {
+      if (isPortableImageUrl(item.imageUrl)) urls.push(item.imageUrl);
+      for (const candidate of item.candidateImageUrls || []) {
+        if (isPortableImageUrl(candidate)) urls.push(candidate);
+      }
+    }
+  }
+  return [...new Set(urls)];
+}
+
+function coverBackgroundImage(page, list) {
+  if (isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
+  const fallback = collectPortableListImages(list)[0];
+  return fallback || page.backgroundImage || '';
+}
+
 export function pageCounter(index, total) {
   return `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
 }
@@ -304,11 +329,12 @@ function sanitizeSubtitleForDisplay(value, pages) {
 
 export function renderCoverPage(page, index, total, listId, hashtags = [], list = null) {
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
+  const backgroundImage = coverBackgroundImage(page, list);
   if (isJourneyGrid8Layout(page)) {
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-cover-page', 'journey-grid8-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid8-cover-photo">
-          ${renderPreviewImage(page.backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, page.title)}
         </div>
         <div class="grid8-cover-shade"></div>
         <div class="grid8-cover-copy">
@@ -323,7 +349,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-cover-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid8-cover-photo">
-          ${renderPreviewImage(page.backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, page.title)}
         </div>
         <div class="grid8-cover-shade"></div>
         <div class="grid8-cover-copy">
@@ -343,7 +369,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid6-cover', gridVariantClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid6-cover-bg">
-          ${renderPreviewImage(page.backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, page.title)}
         </div>
         <div class="grid6-cover-overlay">
            <div class="grid6-cover-header">ĐÀ LẠT</div>
@@ -358,7 +384,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'journey-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="journey-cover-photo">
-          ${renderPreviewImage(page.backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, page.title)}
         </div>
         <div class="journey-cover-panel">
           <div class="journey-cover-kicker">LỊCH TRÌNH 4N3Đ</div>
@@ -379,7 +405,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'photomode', 'photomode-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="photomode-cover-bg">
-          ${renderPreviewImage(page.backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, page.title)}
         </div>
         <div class="photomode-cover-copy">
           <h3 class="photomode-cover-title">${escapeHtml(page.title)}</h3>
@@ -394,7 +420,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
   return `
     <article class="${escapeHtml(storyPageClass(listId, hashtagClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       <div class="page-cover">
-        ${renderPreviewImage(page.backgroundImage, page.title)}
+        ${renderPreviewImage(backgroundImage, page.title)}
       </div>
       <div class="cover-copy">
         <div class="cover-script">Da Lat</div>

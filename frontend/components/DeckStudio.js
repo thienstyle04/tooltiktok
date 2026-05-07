@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { exportBatch, exportSelectedPagePng } from '../lib/exportClient';
 import { apiFetch } from '../lib/apiClient';
-import { clearCachedDataset, readCachedDataset, writeCachedDataset } from '../lib/datasetCache';
+import {
+  clearCachedDataset,
+  markDatasetBackgroundChecked,
+  readCachedDataset,
+  shouldCheckDatasetInBackground,
+  writeCachedDataset,
+} from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
 import { SELECTION_STORAGE_KEY, listIsMain } from '../lib/utils';
 import CaptionTools from './CaptionTools';
@@ -169,7 +175,7 @@ export default function DeckStudio({ initialDataset = null }) {
     if (!options.silent) setStatus(message);
     const endpoint = forceRefresh ? '/api/guide-data?refresh=1' : '/api/guide-data';
     if (forceRefresh) clearCachedDataset();
-    const response = await apiFetch(endpoint, { cache: 'no-store' });
+    const response = await apiFetch(endpoint, forceRefresh ? { cache: 'no-store' } : {});
     if (!response.ok) throw new Error(`Không tải được dữ liệu: HTTP ${response.status}`);
     const nextDataset = await response.json();
     writeCachedDataset(nextDataset);
@@ -188,11 +194,14 @@ export default function DeckStudio({ initialDataset = null }) {
     const cached = initialDataset ? null : readCachedDataset();
     if (cached?.dataset) {
       applyDataset(cached.dataset, stored);
-      setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm). Đang kiểm tra cập nhật nền...`);
-      loadDataset('Đang kiểm tra dữ liệu mới...', {}, false, { silent: true }).catch((error) => {
-        console.error(error);
-        setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được cập nhật mới: ${error.message}`);
-      });
+      setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm).`);
+      if (shouldCheckDatasetInBackground()) {
+        markDatasetBackgroundChecked();
+        loadDataset('Đang kiểm tra dữ liệu mới...', {}, false, { silent: true }).catch((error) => {
+          console.error(error);
+          setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được cập nhật mới: ${error.message}`);
+        });
+      }
     } else if (initialDataset) {
       writeCachedDataset(initialDataset);
       applyDataset(initialDataset, stored);

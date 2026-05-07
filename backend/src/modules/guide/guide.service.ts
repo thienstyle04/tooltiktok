@@ -440,11 +440,33 @@ export class GuideService {
     if (!/caption-/i.test(list.id)) return list;
 
     const safeDescription = sanitizeCaptionBodyForPages(list.description, list.pages);
+    const pages = list.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, list, safeDescription));
+    const portableCoverImage = this.firstPortableImageForPages(pages);
     return {
       ...list,
       description: safeDescription,
-      pages: list.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, list, safeDescription)),
+      pages: pages.map((page) => page.type === 'cover' && !this.isPortableImageUrl(page.backgroundImage) && portableCoverImage
+        ? { ...page, backgroundImage: portableCoverImage }
+        : page),
     };
+  }
+
+  private isPortableImageUrl(value?: string): boolean {
+    const url = String(value ?? '').trim();
+    return /^https?:\/\//i.test(url) || url.startsWith('/assets/drive-file');
+  }
+
+  private firstPortableImageForPages(pages: DeckPage[]): string {
+    for (const page of pages) {
+      if (this.isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
+      if (page.type !== 'list') continue;
+      for (const item of page.items) {
+        if (this.isPortableImageUrl(item.imageUrl)) return item.imageUrl;
+        const candidate = item.candidateImageUrls?.find((url) => this.isPortableImageUrl(url));
+        if (candidate) return candidate;
+      }
+    }
+    return '';
   }
 
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {

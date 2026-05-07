@@ -155,6 +155,22 @@ export function backgroundFor(imageUrls: string[], seed: string, usedImageUrls?:
   return picked;
 }
 
+function isPortableImageUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url) || url.startsWith('/assets/drive-file');
+}
+
+function portableBackgroundFor(
+  mappedImageUrls: string[],
+  imageUrls: string[],
+  seed: string,
+  usedImageUrls?: Set<string>,
+): string {
+  const portableMapped = mappedImageUrls.filter(isPortableImageUrl);
+  const preferred = portableMapped.length > 0 ? portableMapped : [];
+  const primary = backgroundFor(preferred, seed, usedImageUrls);
+  return primary || backgroundFor(imageUrls, seed, usedImageUrls);
+}
+
 function normalizeText(value: string): string {
   return value
     .normalize('NFD')
@@ -1360,7 +1376,7 @@ function buildItineraryPages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const displayItemCount = 8;
   const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.daytimeFoodItems;
@@ -1558,7 +1574,7 @@ function buildItinerary4N2DGrid8Pages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const cafeDayItems = pools.dayCafeItems;
   const checkinDayItems = balancedCheckinPool(pools.dayCheckinItems, 16, `${seedPrefix}-4n2d-checkin-pool`);
@@ -1708,7 +1724,7 @@ function buildItinerary4N3DPages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.daytimeFoodItems;
   const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
@@ -1869,7 +1885,7 @@ function buildMustGoPages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastOrLunchItems = dedupeItems([...pools.morningFoodItems, ...pools.lightMealItems]);
   const freeCheckinItems = balancedCheckinPool(
@@ -1907,7 +1923,7 @@ function buildFirstTimePages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastOrLunchItems = dedupeItems([...pools.morningFoodItems, ...pools.lightMealItems]);
   const firstCheckinItems = balancedCheckinPool(
@@ -1988,7 +2004,7 @@ function buildPov3DayPages(
     globalUsedImageUrls || [],
     { orientation: 'portrait' },
   );
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
@@ -2202,7 +2218,7 @@ function buildGrid6Pages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
   const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
@@ -2292,7 +2308,7 @@ function buildGrid8Pages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
   const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
@@ -2385,7 +2401,7 @@ function buildGrid4Pages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => backgroundFor(imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
   const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
