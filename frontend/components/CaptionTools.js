@@ -5,6 +5,7 @@ export default function CaptionTools({
   dataset,
   activeDeck,
   activeList,
+  selectedListId,
   tone,
   setTone,
   caption,
@@ -12,6 +13,7 @@ export default function CaptionTools({
   busy,
   onDeckSelect,
   onListSelect,
+  onGeneratedListSelect,
   onRequestCaption,
   onCreateList,
   onCopy,
@@ -19,6 +21,7 @@ export default function CaptionTools({
   const decks = dataset?.decks || [];
   const allLists = activeDeck?.lists || [];
   const mainLists = allLists.filter((list) => listIsMain(list));
+  const generatedLists = allLists.filter((list) => !listIsMain(list));
   const lists = mainLists.length ? mainLists : allLists.slice(0, 1);
   const selectedCaptionList = lists.find((list) => list.id === activeList?.id) || lists[0] || null;
 
@@ -133,6 +136,38 @@ export default function CaptionTools({
             </div>
           </div>
           <textarea id="captionHashtags" className="ai-output compact" placeholder="Hashtags sẽ hiện ở đây..." value={caption.hashtags} onChange={(event) => setCaption((prev) => ({ ...prev, hashtags: event.target.value }))} />
+        </section>
+
+        <section className="ai-block generated-list-panel">
+          <div className="ai-block-head generated-list-head">
+            <div>
+              <p className="ai-block-label">List AI đã tạo</p>
+              <p className="ai-block-note">{generatedLists.length} list mới trong mẫu {activeDeck?.navTitle || activeDeck?.title || 'đang chọn'}.</p>
+            </div>
+            <span className="generated-list-count">{String(generatedLists.length).padStart(2, '0')}</span>
+          </div>
+
+          {generatedLists.length > 0 ? (
+            <div className="generated-list-grid">
+              {generatedLists.map((list, index) => (
+                <button
+                  key={list.id}
+                  type="button"
+                  className={`generated-list-card ${selectedListId === list.id ? 'active' : ''}`}
+                  onClick={() => onGeneratedListSelect?.(list)}
+                >
+                  <span className="generated-list-index">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="generated-list-copy">
+                    <strong>{list.navTitle || list.title}</strong>
+                    <small>{list.pages?.length || 0} trang · {list.title}</small>
+                  </span>
+                  <span className="generated-list-action">Xem</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="generated-list-empty">Chưa có list AI mới cho mẫu này.</p>
+          )}
         </section>
       </div>
     </section>

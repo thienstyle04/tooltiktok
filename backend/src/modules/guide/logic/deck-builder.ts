@@ -18,13 +18,13 @@ import { allowedImageKindsForItem, createListImageResolver, stableHash, topDirKi
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
 const DEFAULT_PARTNER_TARGET_PER_PAGE = 3;
-export const ITINERARY_3N2D_TEMPLATE_VERSION = 13;
-export const ITINERARY_4N3D_TEMPLATE_VERSION = 9;
-export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 11;
-export const POV_3_DAY_TEMPLATE_VERSION = 8;
-export const GRID_4_TEMPLATE_VERSION = 12;
-export const GRID_6_TEMPLATE_VERSION = 12;
-export const GRID_8_TEMPLATE_VERSION = 11;
+export const ITINERARY_3N2D_TEMPLATE_VERSION = 14;
+export const ITINERARY_4N3D_TEMPLATE_VERSION = 10;
+export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 12;
+export const POV_3_DAY_TEMPLATE_VERSION = 9;
+export const GRID_4_TEMPLATE_VERSION = 13;
+export const GRID_6_TEMPLATE_VERSION = 13;
+export const GRID_8_TEMPLATE_VERSION = 12;
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -145,6 +145,11 @@ export function metaText(item: GuideItem): [string, string] {
   if (item.price) secondaryParts.push(`Giá: ${item.price}`);
   else if (item.phone) secondaryParts.push(`Liên hệ: ${item.phone}`);
   return [primary, secondaryParts.join(' · ')];
+}
+
+function serviceMetaText(item: GuideItem): [string, string] {
+  const primary = item.address || 'Đang cập nhật địa chỉ';
+  return [primary, `SĐT: ${item.phone || 'Đang cập nhật'}`];
 }
 
 export function backgroundFor(imageUrls: string[], seed: string, usedImageUrls?: Set<string>): string {
@@ -362,6 +367,8 @@ function withoutGrillOrHotpot(items: GuideItem[]): GuideItem[] {
 
 function isMorningFoodItem(item: GuideItem): boolean {
   if (isGrillOrHotpotItem(item)) return false;
+  const firstHour = firstHourFromOpenHours(item.openHours);
+  if (firstHour !== null && firstHour >= 10) return false;
   const normalized = normalizeText(`${item.name} ${item.type} ${item.highlight}`);
   return [
     'an_sang',
@@ -667,12 +674,15 @@ function photomodePageItemWithResolver(
   resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem {
   const resolvedImage = resolveImage(item);
+  const [, metaSecondary] = serviceMetaText(item);
   return {
     label,
     id: item.id,
+    sourceKey: itemUsageKey(item),
+    sourceSectionKey: item.sectionKey,
     name: item.name,
     metaPrimary: photomodeMetaPrimary(item),
-    metaSecondary: '',
+    metaSecondary: item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu' ? metaSecondary : '',
     imageUrl: resolvedImage.imageUrl,
     imageMapped: resolvedImage.imageMapped,
     imageSource: resolvedImage.imageSource,
@@ -690,11 +700,15 @@ export function pageItemWithResolver(
   label: string,
   resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem {
-  const [metaPrimary, metaSecondary] = metaText(item);
+  const [metaPrimary, metaSecondary] = item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu'
+    ? serviceMetaText(item)
+    : metaText(item);
   const resolvedImage = resolveImage(item);
   return {
     label,
     id: item.id,
+    sourceKey: itemUsageKey(item),
+    sourceSectionKey: item.sectionKey,
     name: item.name,
     metaPrimary,
     metaSecondary,
@@ -714,11 +728,15 @@ export function schedulePageItemWithResolver(
   item: GuideItem,
   resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem {
-  const [metaPrimary, metaSecondary] = metaText(item);
+  const [metaPrimary, metaSecondary] = item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu'
+    ? serviceMetaText(item)
+    : metaText(item);
   const resolvedImage = resolveImage(item);
   return {
     label: time,
     id: item.id,
+    sourceKey: itemUsageKey(item),
+    sourceSectionKey: item.sectionKey,
     name: `${prefix} ${item.name}`,
     metaPrimary,
     metaSecondary,
@@ -1224,7 +1242,7 @@ export function createDeckBuildPools(itemsBySection: WorkbookItemsBySection): De
   const dayCheckinItems = dedupeItems(withoutGrillOrHotpot(checkinItems));
   const dayTourismItems = dedupeItems(withoutGrillOrHotpot(tourismItems));
   const dayFamousItems = dedupeItems(withoutGrillOrHotpot(famousItems));
-  const breakfastItems = morningFoodItems.length > 0 ? morningFoodItems : daytimeFoodItems.filter((i) => normalizeItemType(i, 'sang'));
+  const breakfastItems = morningFoodItems;
   const lunchItems = lightMealItems.length > 0 ? lightMealItems : daytimeFoodItems.filter((i) => normalizeItemType(i, 'trua'));
   const dinnerItems = dedupeItems([...grillHotpotItems, ...foodItems.filter((i) => normalizeItemType(i, 'toi')), ...foodItems]);
   const morningScheduleItems = dedupeItems([
@@ -1392,7 +1410,7 @@ function buildItineraryPages(
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const displayItemCount = 8;
-  const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.daytimeFoodItems;
+  const breakfastItems = pools.morningFoodItems;
   const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
@@ -1598,7 +1616,7 @@ function buildItinerary4N2DGrid8Pages(
   const morningFoodItems = pools.morningFoodItems;
   const lightMealItems = pools.lightMealItems;
   const eveningFoodItems = pools.eveningScheduleItems;
-  const breakfastItems = morningFoodItems.length > 0 ? morningFoodItems : pools.daytimeFoodItems;
+  const breakfastItems = morningFoodItems;
   const lunchItems = lightMealItems.length > 0 ? lightMealItems : pools.lunchScheduleItems;
   const checkinItems = checkinDayItems.length > 0 ? checkinDayItems : balancedCheckinPool(pools.checkinItems, 16, `${seedPrefix}-4n2d-checkin-fallback`);
   const activitySlot = itineraryActivitySlotPool(pools, seedPrefix);
@@ -1743,7 +1761,7 @@ function buildItinerary4N3DPages(
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
-  const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.daytimeFoodItems;
+  const breakfastItems = pools.morningFoodItems;
   const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
@@ -1906,7 +1924,6 @@ function buildMustGoPages(
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
-  const breakfastOrLunchItems = dedupeItems([...pools.morningFoodItems, ...pools.lightMealItems]);
   const freeCheckinItems = balancedCheckinPool(
     pools.freeCheckinItems.length > 0 ? pools.freeCheckinItems : pools.checkinItems,
     4,
@@ -1924,7 +1941,7 @@ function buildMustGoPages(
       pickMixedItemsWithPartnerQuota(pools.cafeItems, 4, `${seedPrefix}-must-cafe-page`, pick).map((i) => pageItemWithResolver(i, 'Cafe đẹp', imageResolver)),
       background(`${seedPrefix}-must-cafe-page`), 'dense'),
     buildListPage('Ăn uống', 'berry', 'Ăn sáng rồi đi đâu', 'Một trang xen giữa ăn sáng và điểm đến để bộ carousel bớt lặp toàn check-in, đồng thời có đủ dữ liệu để dùng được ngay.',
-      pickMixedItemsWithPartnerQuota(pools.morningFoodItems.length > 0 ? pools.morningFoodItems : breakfastOrLunchItems, 4, `${seedPrefix}-must-food-page`, pick).map((i) => pageItemWithResolver(i, 'Ăn sáng', imageResolver)),
+      pickMixedItemsWithPartnerQuota(pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.lightMealItems, 4, `${seedPrefix}-must-food-page`, pick).map((i) => pageItemWithResolver(i, 'Ăn sáng', imageResolver)),
       background(`${seedPrefix}-must-food-page`), 'dense'),
     buildListPage('Lưu trú', 'slate', 'Homestay và dịch vụ nên nhớ', 'Trang cuối dùng để chốt các điểm thực dụng như ở đâu, thuê gì, mua quà ở đâu trước khi kết thúc bộ nội dung, nên mình tăng thêm lựa chọn.',
       pickPracticalServiceItemsWithNightlife(pools, pools.stayItems, 4, `${seedPrefix}-must-stay-page`, pick).map((i) => pageItemWithResolver(i, photomodeServiceLabel(i), imageResolver)),
@@ -1946,7 +1963,6 @@ function buildFirstTimePages(
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
-  const breakfastOrLunchItems = dedupeItems([...pools.morningFoodItems, ...pools.lightMealItems]);
   const firstCheckinItems = balancedCheckinPool(
     dedupeItems([...pools.dayCheckinItems, ...pools.dayFamousItems]),
     4,
@@ -1958,7 +1974,7 @@ function buildFirstTimePages(
       pickMixedItemsWithPartnerQuota(pools.morningScheduleItems, 4, `${seedPrefix}-first-morning-page`, pick).map((i) => pageItemWithResolver(i, 'Sáng sớm', imageResolver)),
       background(`${seedPrefix}-first-morning-page`), 'dense'),
     buildListPage('Ăn sáng', 'gold', 'Quán ăn sáng dễ chốt', 'Ưu tiên những chỗ có địa chỉ rõ, dữ liệu đủ sạch để dùng cho bộ ảnh dành cho người mới lên kế hoạch, nên bổ sung thêm số lượng.',
-      pickMixedItemsWithPartnerQuota(pools.morningFoodItems.length > 0 ? pools.morningFoodItems : breakfastOrLunchItems, 4, `${seedPrefix}-first-breakfast-page`, pick).map((i) => pageItemWithResolver(i, 'Buổi sáng', imageResolver)),
+      pickMixedItemsWithPartnerQuota(pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.lightMealItems, 4, `${seedPrefix}-first-breakfast-page`, pick).map((i) => pageItemWithResolver(i, 'Buổi sáng', imageResolver)),
       background(`${seedPrefix}-first-breakfast-page`), 'dense'),
     buildListPage('Cafe', 'pine', 'Cafe để ngồi và chụp', 'Trang này đóng vai trò cầu nối giữa lịch trình và visual, nên tăng số quán để người mới dễ chọn concept phù hợp.',
       pickMixedItemsWithPartnerQuota(pools.dayCafeItems, 4, `${seedPrefix}-first-cafe-page`, pick).map((i) => pageItemWithResolver(i, 'Cafe', imageResolver)),

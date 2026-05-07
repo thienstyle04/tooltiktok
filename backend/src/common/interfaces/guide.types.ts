@@ -40,6 +40,8 @@ export interface GuideItem {
 export interface PageItem {
   label: string;
   id?: string;
+  sourceKey?: string;
+  sourceSectionKey?: SectionKey;
   name: string;
   metaPrimary: string;
   metaSecondary: string;

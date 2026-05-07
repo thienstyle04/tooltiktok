@@ -20,6 +20,7 @@ import {
   GuideItem,
   ImageLibraryFolderEntry,
   ImageMappingFile,
+  PageItem,
   ReferenceSet,
   SectionKey,
   WorkbookItemsBySection,
@@ -42,8 +43,8 @@ import {
   itemMappingKey,
 } from './logic/image-resolver';
 
-import { DataAllocator } from './logic/data-allocator';
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
+import { DataAllocator, itemUsageKey } from './logic/data-allocator';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
 import { fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
@@ -389,6 +390,7 @@ export class GuideService {
     const sheetDriveManifest = this.loadSheetDriveManifest(workbookSource.workbookName);
     const coverImageUrls = this.loadCoverImageUrls(sheetDriveManifest);
     const itemsBySection = this.loadWorkbookItems(workbookSource.workbook, imageUrls, imageMapping, imageLibraryEntries, sheetDriveManifest);
+    this.refreshGeneratedListImages(itemsBySection);
     this.ensureInventoryLoaded();
     const renderUsage = this.createUsageScope();
     const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, coverImageUrls, renderUsage.itemIds, renderUsage.imageUrls);
@@ -659,13 +661,83 @@ export class GuideService {
     if (changed) this.persistGeneratedLists();
   }
 
+  private normalizeDisplayName(value: string): string {
+    const clean = String(value ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
+    if (normalizeText(clean).startsWith('quoa_dac_san')) {
+      return clean.replace(/^[^-]+/, 'Quà');
+    }
+    return clean;
+  }
+
+  private pageItemSectionKey(pageItem: PageItem): SectionKey | '' {
+    if (pageItem.sourceSectionKey && SECTION_CONFIG[pageItem.sourceSectionKey]) {
+      return pageItem.sourceSectionKey;
+    }
+    const id = String(pageItem.id ?? '');
+    const matchedKey = Object.keys(SECTION_CONFIG).find((key) => id.startsWith(`${key}-`));
+    return (matchedKey as SectionKey | undefined) ?? '';
+  }
+
+  private pageItemSourceName(pageItem: PageItem): string {
+    const rawName = String(pageItem.rawName ?? '').trim();
+    if (rawName) return rawName;
+    const name = String(pageItem.name ?? '').replace(/^[^:]{1,30}:\s*/, '').trim();
+    return name || String(pageItem.name ?? '').trim();
+  }
+
+  private refreshedPageItemName(pageItem: PageItem, sourceName: string): string {
+    const normalizedSourceName = this.normalizeDisplayName(sourceName);
+    const currentName = String(pageItem.name ?? '').trim();
+    const rawName = String(pageItem.rawName ?? '').trim();
+    if (rawName && currentName.includes(rawName)) {
+      return currentName.replace(rawName, normalizedSourceName);
+    }
+    const prefixMatch = currentName.match(/^([^:]{1,30}:\s*)/);
+    return prefixMatch ? `${prefixMatch[1]}${normalizedSourceName}` : normalizedSourceName;
+  }
+
+  private pageItemMetaFromSource(item: GuideItem): [string, string] {
+    if (item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu') {
+      const primary = item.address || 'Đang cập nhật địa chỉ';
+      return [primary, `SĐT: ${item.phone || 'Đang cập nhật'}`];
+    }
+    return metaText(item);
+  }
+
   private refreshGeneratedListImages(itemsBySection: WorkbookItemsBySection): void {
     if (this.generatedListsByDeckId.size === 0) return;
 
-    const itemsById = new Map<string, GuideItem>();
+    const itemsByKey = new Map<string, GuideItem>();
+    const addItemKey = (key: string | undefined, item: GuideItem): void => {
+      const cleanKey = String(key ?? '').trim();
+      if (cleanKey && !itemsByKey.has(cleanKey)) itemsByKey.set(cleanKey, item);
+    };
     Object.values(itemsBySection).forEach((items) => {
-      items.forEach((item) => itemsById.set(item.id, item));
+      items.forEach((item) => {
+        addItemKey(item.id, item);
+        addItemKey(itemUsageKey(item), item);
+        addItemKey(item.imageMappingKey, item);
+        addItemKey(itemMappingKey(item.sectionKey, item.name, item.address), item);
+      });
     });
+
+    const findSourceItem = (pageItem: PageItem): GuideItem | undefined => {
+      const sourceKey = String(pageItem.sourceKey ?? '').trim();
+      if (sourceKey && itemsByKey.has(sourceKey)) return itemsByKey.get(sourceKey);
+
+      const sectionKey = this.pageItemSectionKey(pageItem);
+      const sourceName = this.pageItemSourceName(pageItem);
+      const address = String(pageItem.metaPrimary ?? '').trim();
+      if (sectionKey && sourceName) {
+        const mappingKey = itemMappingKey(sectionKey, sourceName, address);
+        const normalizedMappingKey = itemMappingKey(sectionKey, this.normalizeDisplayName(sourceName), address);
+        if (itemsByKey.has(mappingKey)) return itemsByKey.get(mappingKey);
+        if (itemsByKey.has(normalizedMappingKey)) return itemsByKey.get(normalizedMappingKey);
+      }
+
+      const legacyId = String(pageItem.id ?? '').trim();
+      return legacyId ? itemsByKey.get(legacyId) : undefined;
+    };
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
@@ -676,26 +748,36 @@ export class GuideService {
           return {
             ...page,
             items: page.items.map((pageItem) => {
-              const sourceItem = itemsById.get(String(pageItem.id ?? ''));
-              if (!sourceItem || sourceItem.imageSource !== 'manual') return pageItem;
+              const sourceItem = findSourceItem(pageItem);
+              if (!sourceItem) return pageItem;
 
+              const [metaPrimary, metaSecondary] = this.pageItemMetaFromSource(sourceItem);
               const nextPageItem = {
                 ...pageItem,
-                imageUrl: sourceItem.imageUrl,
-                imageMapped: true,
-                imageSource: 'manual' as const,
-                imageNote: 'Ảnh đã map đúng địa điểm từ sheet',
-                candidateImageUrls: sourceItem.candidateImageUrls,
+                id: sourceItem.id,
+                sourceKey: itemUsageKey(sourceItem),
+                sourceSectionKey: sourceItem.sectionKey,
+                name: this.refreshedPageItemName(pageItem, sourceItem.name),
+                rawName: this.normalizeDisplayName(sourceItem.name),
+                metaPrimary,
+                metaSecondary,
+                isPartner: sourceItem.isPartner,
+                imageNote: sourceItem.imageSource === 'manual'
+                  ? 'Ảnh đã map đúng địa điểm từ sheet'
+                  : pageItem.imageNote,
+                candidateImageUrls: sourceItem.imageSource === 'manual'
+                  ? sourceItem.candidateImageUrls
+                  : pageItem.candidateImageUrls,
+                ...(sourceItem.imageSource === 'manual'
+                  ? {
+                      imageUrl: sourceItem.imageUrl,
+                      imageMapped: true,
+                      imageSource: 'manual' as const,
+                    }
+                  : {}),
               };
 
-              if (
-                pageItem.imageUrl !== nextPageItem.imageUrl ||
-                pageItem.imageSource !== nextPageItem.imageSource ||
-                pageItem.imageMapped !== nextPageItem.imageMapped ||
-                JSON.stringify(pageItem.candidateImageUrls ?? []) !== JSON.stringify(nextPageItem.candidateImageUrls ?? [])
-              ) {
-                changed = true;
-              }
+              if (JSON.stringify(pageItem) !== JSON.stringify(nextPageItem)) changed = true;
               return nextPageItem;
             }),
           };
@@ -810,8 +892,9 @@ export class GuideService {
     libraryEntries: ImageLibraryFolderEntry[],
     sheetDriveManifest: SheetDriveImageManifest,
   ): GuideItem | null {
-    const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
-    if (!name) return null;
+    const rawName = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
+    if (!rawName) return null;
+    const name = this.normalizeDisplayName(rawName);
 
     const placeType = firstValue(row, 'mo_hinh', 'loai_dich_vu', 'phong_cach');
     const address = firstValue(row, 'dia_chi');
@@ -822,8 +905,9 @@ export class GuideService {
     const phone = firstValue(row, 'sdt');
     const price = firstValue(row, 'gia');
     const imageHint = firstValue(row, 'anh', 'hinh_anh', 'hinh', 'ten_anh', 'thu_muc_anh', 'folder_anh', 'link_anh', 'url', 'link');
-    const mappingKey = itemMappingKey(sectionKey, name, address);
-    const sheetDriveEntry = sheetDriveManifest.items[mappingKey];
+    const mappingKey = itemMappingKey(sectionKey, rawName, address);
+    const displayMappingKey = itemMappingKey(sectionKey, name, address);
+    const sheetDriveEntry = sheetDriveManifest.items[mappingKey] ?? sheetDriveManifest.items[displayMappingKey];
     const sheetDriveCandidateUrls = sheetDriveEntry
       ? (sheetDriveEntry.candidateImages && sheetDriveEntry.candidateImages.length > 0
           ? sheetDriveEntry.candidateImages
@@ -833,7 +917,7 @@ export class GuideService {
           .map((entry) => getDriveImageProxyUrl(entry.fileId))
       : [];
     const resolvedByName = () => resolveMappedImage(
-      sectionKey, placeType || SECTION_CONFIG[sectionKey].title, name, address,
+      sectionKey, placeType || SECTION_CONFIG[sectionKey].title, rawName, address,
       imageUrls, sequence, imageMapping, libraryEntries, this.workspaceRoot,
     );
     const resolvedByHint = () => resolveMappedImage(
@@ -842,7 +926,7 @@ export class GuideService {
     );
     const fallbackResolvedImage = (): ReturnType<typeof resolveMappedImage> => {
       const direct = resolvedByName();
-      if (!imageHint || normalizeText(imageHint) === normalizeText(name)) return direct;
+      if (!imageHint || normalizeText(imageHint) === normalizeText(rawName)) return direct;
       const hinted = resolvedByHint();
       return hinted.imageMapped || hinted.imageSource !== 'fallback'
         ? { ...hinted, imageMappingKey: mappingKey }

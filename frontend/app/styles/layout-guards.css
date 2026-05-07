@@ -707,6 +707,23 @@ body {
   align-items: flex-start;
 }
 
+.story-page.grid6 .grid6-name,
+.story-page.grid8-page .grid8-cell strong {
+  min-height: 0;
+}
+
+.story-page.grid6 .grid6-address,
+.story-page.grid8-page .grid8-meta {
+  min-height: 0;
+}
+
+.story-page.grid8-page {
+  --story-image-title-size: 0.5rem;
+  --story-image-title-line-height: 1.1;
+  --story-image-meta-size: 0.41rem;
+  --story-image-meta-line-height: 1.08;
+}
+
 .story-page :is(.grid6-address-pin, .grid8-pin) {
   margin-top: 0.12em;
 }
