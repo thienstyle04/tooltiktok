@@ -46,7 +46,7 @@ import { DataAllocator } from './logic/data-allocator';
 import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
 import { fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
-import { findWorkbookPath, syncWorkbookFromSheet } from './sync/workbook-source';
+import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
 
 @Injectable()
@@ -56,8 +56,16 @@ export class GuideService {
   readonly dataRoot = resolveBackendDataDir(this.toolRoot);
   readonly frontendRoot = path.resolve(this.toolRoot, '../frontend');
   readonly workspaceRoot = resolveWorkspaceRoot(this.toolRoot);
-  private readonly dalatImageDir = 'C:\\Data\\tn\\Hình cảnh ĐL-20260417T122322Z-3-001\\Hình cảnh ĐL';
-  private readonly tiktokReferenceDir = 'C:\\Data\\data\\ẢNH TIKTOK';
+  private readonly dalatImageDir = process.env.DALAT_IMAGE_DIR
+    ? path.resolve(this.workspaceRoot, process.env.DALAT_IMAGE_DIR)
+    : (fs.existsSync('C:\\Data\\tn\\Hình cảnh ĐL-20260417T122322Z-3-001\\Hình cảnh ĐL')
+      ? 'C:\\Data\\tn\\Hình cảnh ĐL-20260417T122322Z-3-001\\Hình cảnh ĐL'
+      : path.resolve(this.workspaceRoot, 'data/images/dalat'));
+  private readonly tiktokReferenceDir = process.env.TIKTOK_REFERENCE_DIR
+    ? path.resolve(this.workspaceRoot, process.env.TIKTOK_REFERENCE_DIR)
+    : (fs.existsSync('C:\\Data\\data\\ẢNH TIKTOK')
+      ? 'C:\\Data\\data\\ẢNH TIKTOK'
+      : path.resolve(this.workspaceRoot, 'data/images/tiktok'));
   private readonly imageMappingPath = path.join(this.dataRoot, 'image-mapping.json');
   private readonly generatedListsPath = path.join(this.dataRoot, 'generated-caption-lists.json');
   private readonly usedInventoryPath = path.join(this.dataRoot, 'used-inventory.json');
@@ -79,9 +87,12 @@ export class GuideService {
   private imageMappingCacheTime = 0;
   private readonly IMAGE_MAPPING_CACHE_TTL_MS = 30_000; // 30 giây
 
-  private lastSyncTime = this.getWorkbookLastModifiedTime();
+  private lastSyncTime = 0;
   private isSyncing = false;
-  private readonly AUTO_SYNC_ENABLED = ['1', 'true', 'yes'].includes(String(process.env.DALAT_AUTO_SYNC_SHEET ?? '').trim().toLowerCase());
+  private syncPromise: Promise<void> | null = null;
+  private manifestSyncPromise: Promise<void> | null = null;
+  private workbookSource: SheetWorkbookSource | null = null;
+  private readonly AUTO_SYNC_ENABLED = !['0', 'false', 'no'].includes(String(process.env.DALAT_AUTO_SYNC_SHEET ?? 'true').trim().toLowerCase());
   private readonly AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 phút
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -175,19 +186,17 @@ export class GuideService {
 
   // ─── Dataset ──────────────────────────────────────────────────────────────
 
-  getDataset(options: { refresh?: boolean } = {}): GuideDataset {
-    if (this.AUTO_SYNC_ENABLED) {
-      void this.triggerBackgroundSync();
-    }
+  async getDataset(options: { refresh?: boolean } = {}): Promise<GuideDataset> {
+    await this.prepareWorkbookForDataset(Boolean(options.refresh));
     if (options.refresh) {
       this.invalidateDatasetCache();
     }
-    const context = this.buildDatasetContext({ refreshGeneratedLists: Boolean(options.refresh) });
+    const context = this.buildDatasetContext();
     return {
       generatedAt: new Date().toISOString(),
       canvas: { width: 1588, height: 2248, previewWidth: 397, previewHeight: 562 },
       source: {
-        workbook: path.basename(this.getWorkbookPath()),
+        workbook: this.getWorkbookSource().workbookName,
         imageCount: context.imageUrls.length,
         manualMappedItemCount: context.manualMappedItemCount,
         mappedItemCount: context.mappedItemCount,
@@ -198,11 +207,11 @@ export class GuideService {
       },
       hero: {
         eyebrow: 'NestJS refactored tool',
-        title: 'Từ file Excel thành bộ ảnh TikTok cho nội dung Đà Lạt',
+        title: 'Đà Lạt TikTok Carousel Tool',
         description:
-          'Tool này chuyển workbook địa điểm thành các bộ ảnh carousel bám theo tinh thần ảnh mẫu, có preview trực tiếp và export PNG ngay trên trình duyệt.',
+          'Hệ thống tự động chuyển đổi dữ liệu từ Google Sheet thành các bộ ảnh TikTok Carousel chuyên nghiệp.',
         note:
-          'Ảnh hiện vẫn lấy từ pool "Hình cảnh ĐL". Khi có mapping ảnh theo từng địa điểm, backend có thể thay sang gán ảnh đúng theo item mà không phải đổi template.',
+          'Dữ liệu và hình ảnh đang được đồng bộ trực tiếp từ Google Sheet. Bạn có thể cập nhật nội dung và Drive link trong Sheet để thay đổi kết quả.',
         stats: [
           { label: 'Tổng địa điểm', value: context.totalItems },
           { label: 'Ảnh Đà Lạt', value: context.imageUrls.length },
@@ -225,7 +234,7 @@ export class GuideService {
     const deckId = String(request.deckId ?? '').trim();
     if (!deckId) throw new BadRequestException('Thiếu deckId để gửi sang DeepSeek.');
 
-    const dataset = this.getDataset();
+    const dataset = await this.getDataset();
     const deck = dataset.decks.find((d) => d.id === deckId);
     if (!deck) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
 
@@ -294,7 +303,7 @@ export class GuideService {
     this.persistGeneratedLists();
   }
 
-  generateDeckFromCaption(request: GenerateCaptionDeckRequest): GenerateCaptionDeckResponse {
+  async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     this.ensureGeneratedListsLoaded();
     const deckId = String(request.deckId ?? '').trim();
     if (!deckId) throw new BadRequestException('Thiếu deckId để tạo list mới từ caption.');
@@ -314,6 +323,7 @@ export class GuideService {
 
     if (!caption.headline || !caption.body) throw new BadRequestException('Cần có headline và body trước khi tạo list mới.');
 
+    await this.prepareWorkbookForDataset(false);
     const context = this.buildDatasetContext();
     const currentDeck = context.decks.find((d) => d.id === deckId);
     if (!currentDeck) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
@@ -371,12 +381,12 @@ export class GuideService {
     }
 
     const t0 = Date.now();
-    const workbookPath = this.getWorkbookPath();
+    const workbookSource = this.getWorkbookSource();
     const imageUrls = imageUrlsForDirectory(this.dalatImageDir, '/assets/dalat');
     const imageMapping = this.loadImageMapping();
     const imageLibraryEntries = this.loadImageLibraryEntries(imageMapping);
-    const sheetDriveManifest = this.loadSheetDriveManifest(workbookPath);
-    const itemsBySection = this.loadWorkbookItems(workbookPath, imageUrls, imageMapping, imageLibraryEntries, sheetDriveManifest);
+    const sheetDriveManifest = this.loadSheetDriveManifest(workbookSource.workbookName);
+    const itemsBySection = this.loadWorkbookItems(workbookSource.workbook, imageUrls, imageMapping, imageLibraryEntries, sheetDriveManifest);
     this.ensureInventoryLoaded();
     const renderUsage = this.createUsageScope();
     const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, renderUsage.itemIds, renderUsage.imageUrls);
@@ -701,24 +711,24 @@ export class GuideService {
 
   // ─── Private: workbook loading ────────────────────────────────────────────
 
-  private getWorkbookPath(): string {
-    const workbookPath = findWorkbookPath(this.workspaceRoot);
-    if (!workbookPath) throw new NotFoundException('Không tìm thấy file Excel nguồn trong thư mục gốc.');
-    return workbookPath;
+  private getWorkbookSource(): SheetWorkbookSource {
+    if (!this.workbookSource) {
+      throw new NotFoundException('Chua tai duoc du lieu tu Google Sheet.');
+    }
+    return this.workbookSource;
   }
 
-  private loadSheetDriveManifest(workbookPath: string): SheetDriveImageManifest {
-    return readSheetDriveManifest(this.dataRoot, workbookPath);
+  private loadSheetDriveManifest(workbookName: string): SheetDriveImageManifest {
+    return readSheetDriveManifest(this.dataRoot, workbookName);
   }
 
   private loadWorkbookItems(
-    workbookPath: string,
+    workbook: XLSX.WorkBook,
     imageUrls: string[],
     imageMapping: ImageMappingFile,
     libraryEntries: ImageLibraryFolderEntry[],
     sheetDriveManifest: SheetDriveImageManifest,
   ): WorkbookItemsBySection {
-    const workbook = XLSX.readFile(workbookPath, { cellDates: false });
     const results = Object.keys(SECTION_CONFIG).reduce((carry, sectionKey) => {
       carry[sectionKey as SectionKey] = [];
       return carry;
@@ -1187,44 +1197,75 @@ export class GuideService {
     return { headline: normalizeHeadline(nextHeadline), body: normalizeBody(nextBody), hashtags: normalizeHashtags(nextHashtags) };
   }
 
-  private async triggerBackgroundSync(): Promise<void> {
-    const now = Date.now();
-    if (this.isSyncing || (now - this.lastSyncTime) < this.AUTO_SYNC_INTERVAL_MS) {
+  private async prepareWorkbookForDataset(forceRefresh: boolean): Promise<void> {
+    if (forceRefresh || !this.workbookSource) {
+      await this.syncWorkbookNow(forceRefresh ? 'lam moi theo yeu cau' : 'tai du lieu lan dau');
       return;
     }
 
-    this.isSyncing = true;
-    console.log('[sync] Bắt đầu tự động đồng bộ từ Google Sheet...');
+    if (this.AUTO_SYNC_ENABLED) void this.triggerBackgroundSync();
+  }
+
+  private async triggerBackgroundSync(): Promise<void> {
+    const now = Date.now();
+    if (this.syncPromise || (now - this.lastSyncTime) < this.AUTO_SYNC_INTERVAL_MS) {
+      return;
+    }
 
     try {
-      const result = await syncWorkbookFromSheet(this.workspaceRoot);
-      const manifest = await buildSheetDriveManifest(result.workbookPath);
-      writeSheetDriveManifest(this.dataRoot, manifest);
-
-      this.lastSyncTime = Date.now();
-      this.invalidateDatasetCache();
-      console.log(`[sync] Tự động đồng bộ hoàn tất: ${result.workbookPath} (${result.bytes} bytes), ${Object.keys(manifest.items).length} ảnh Drive.`);
-    } catch (error) {
-      console.error('[sync] Tự động đồng bộ thất bại:', error);
-      // Vẫn cập nhật lastSyncTime để tránh thử lại liên tục nếu lỗi
-      this.lastSyncTime = Date.now();
-    } finally {
-      this.isSyncing = false;
+      await this.syncWorkbookNow('dong bo nen');
+    } catch {
+      // syncWorkbookNow already logs the error; keep serving the current Google Sheet snapshot.
     }
+  }
+
+  private async syncWorkbookNow(reason: string): Promise<void> {
+    if (this.syncPromise) return this.syncPromise;
+
+    this.isSyncing = true;
+    console.log(`[sync] Bat dau tai du lieu Google Sheet (${reason})...`);
+
+    this.syncPromise = (async () => {
+      try {
+        const result = await fetchWorkbookFromSheet();
+        this.workbookSource = result;
+        void this.refreshSheetDriveManifest(result);
+        this.lastSyncTime = Date.now();
+        this.invalidateDatasetCache();
+        console.log(`[sync] Da tai du lieu Google Sheet: ${result.workbookName} (${result.bytes} bytes).`);
+      } catch (error) {
+        console.error('[sync] Tai du lieu Google Sheet that bai:', error);
+        this.lastSyncTime = Date.now();
+        throw error;
+      } finally {
+        this.isSyncing = false;
+        this.syncPromise = null;
+      }
+    })();
+
+    return this.syncPromise;
+  }
+
+  private async refreshSheetDriveManifest(source: SheetWorkbookSource): Promise<void> {
+    if (this.manifestSyncPromise) return this.manifestSyncPromise;
+
+    this.manifestSyncPromise = (async () => {
+      try {
+        const manifest = await buildSheetDriveManifest(source);
+        writeSheetDriveManifest(this.dataRoot, manifest);
+        this.invalidateDatasetCache();
+        console.log(`[sync] Dong bo anh Drive hoan tat: ${Object.keys(manifest.items).length} anh.`);
+      } catch (error) {
+        console.error('[sync] Dong bo anh Drive that bai:', error);
+      } finally {
+        this.manifestSyncPromise = null;
+      }
+    })();
+
+    return this.manifestSyncPromise;
   }
 
   // ─── Utility ──────────────────────────────────────────────────────────────
-
-  private getWorkbookLastModifiedTime(): number {
-    const workbookPath = findWorkbookPath(this.workspaceRoot);
-    if (!workbookPath || !fs.existsSync(workbookPath)) return 0;
-
-    try {
-      return fs.statSync(workbookPath).mtimeMs;
-    } catch {
-      return 0;
-    }
-  }
 
   private cloneJson<T>(value: T): T {
     return JSON.parse(JSON.stringify(value)) as T;

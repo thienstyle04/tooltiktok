@@ -1,5 +1,3 @@
-const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://127.0.0.1:3000';
-
 const HOP_BY_HOP_HEADERS = [
   'accept-encoding',
   'connection',
@@ -18,7 +16,7 @@ const BODYLESS_RESPONSE_STATUSES = new Set([101, 204, 205, 304]);
 
 export async function proxyBackendRequest(request, options = {}) {
   const requestUrl = new URL(request.url);
-  const backendUrl = new URL(`${requestUrl.pathname}${requestUrl.search}`, normalizeOrigin(backendOrigin));
+  const backendUrl = new URL(`${requestUrl.pathname}${requestUrl.search}`, getBackendOrigin());
   const method = request.method.toUpperCase();
 
   try {
@@ -64,4 +62,8 @@ function getForwardHeaders(request) {
 
 function normalizeOrigin(origin) {
   return origin.replace(/\/+$/, '');
+}
+
+function getBackendOrigin() {
+  return normalizeOrigin(process.env.BACKEND_ORIGIN || process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://127.0.0.1:3000');
 }

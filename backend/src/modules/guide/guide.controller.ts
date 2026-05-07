@@ -71,7 +71,7 @@ export class GuideController {
   }
 
   @Get('api/guide-data')
-  getGuideData(@Query('refresh') refresh?: string): GuideDataset {
+  getGuideData(@Query('refresh') refresh?: string): Promise<GuideDataset> {
     const shouldRefresh = ['1', 'true', 'yes'].includes(String(refresh ?? '').trim().toLowerCase());
     return this.guideService.getDataset({ refresh: shouldRefresh });
   }
@@ -82,7 +82,7 @@ export class GuideController {
   }
 
   @Post('api/decks/generate-from-caption')
-  generateDeckFromCaption(@Body() request: GenerateCaptionDeckRequest): GenerateCaptionDeckResponse {
+  generateDeckFromCaption(@Body() request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     return this.guideService.generateDeckFromCaption(request);
   }
 

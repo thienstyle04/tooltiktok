@@ -40,7 +40,7 @@ export function resolveBackendRoot(startDir = __dirname): string {
 }
 
 export function resolveWorkspaceRoot(backendRoot = resolveBackendRoot()): string {
-  return path.resolve(backendRoot, '../../');
+  return path.resolve(backendRoot, '..');
 }
 
 export function resolveBackendDataDir(backendRoot = resolveBackendRoot()): string {

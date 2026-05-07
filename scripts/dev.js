@@ -48,6 +48,7 @@ async function main() {
     }),
     startFrontendProcess(frontendPort, {
       ...process.env,
+      BACKEND_ORIGIN: backendOrigin,
       PORT: String(frontendPort),
       NEXT_PUBLIC_BACKEND_ORIGIN: backendOrigin,
     }),

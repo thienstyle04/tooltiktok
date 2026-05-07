@@ -617,17 +617,21 @@ body {
   --story-image-title-size: 0.68rem;
   --story-image-title-line-height: 1.14;
   --story-image-title-lines: 2;
+  --story-image-title-slot: 1.55rem;
   --story-image-meta-size: 0.5rem;
   --story-image-meta-line-height: 1.16;
   --story-image-meta-lines: 2;
+  --story-image-meta-slot: 1.16rem;
 }
 
 .story-page.grid8,
 .story-page.grid8-page {
   --story-image-title-size: 0.62rem;
   --story-image-title-line-height: 1.16;
+  --story-image-title-slot: 1.44rem;
   --story-image-meta-size: 0.46rem;
   --story-image-meta-line-height: 1.16;
+  --story-image-meta-slot: 1.07rem;
 }
 
 .story-page :is(
@@ -692,6 +696,19 @@ body {
   -webkit-line-clamp: var(--story-image-meta-lines);
   line-clamp: var(--story-image-meta-lines);
   -webkit-box-orient: vertical;
+}
+
+.story-page :is(.grid6-name, .grid8-cell strong) {
+  min-height: var(--story-image-title-slot);
+}
+
+.story-page :is(.grid6-address, .grid8-meta) {
+  min-height: var(--story-image-meta-slot);
+  align-items: flex-start;
+}
+
+.story-page :is(.grid6-address-pin, .grid8-pin) {
+  margin-top: 0.12em;
 }
 
 /* Deck canvas guard: preview uses a wrap grid so all pages stay visible without horizontal mouse travel. */
