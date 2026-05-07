@@ -1,4 +1,4 @@
-const { spawn } = require('node:child_process');
+const { execFileSync, spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
@@ -28,6 +28,8 @@ async function main() {
     defaultFrontendPort,
     'FRONTEND_PORT',
   );
+
+  stopExistingWorkspaceDevProcesses();
 
   const backendPort = await findAvailablePort(requestedBackendPort, host);
   const frontendPort = await findAvailablePort(requestedFrontendPort, host, new Set([backendPort]));
@@ -148,6 +150,92 @@ function warnIfPortMoved(label, requestedPort, selectedPort) {
   console.warn(`[dev] ${label} port ${requestedPort} is busy; using ${selectedPort} instead.`);
 }
 
+function stopExistingWorkspaceDevProcesses() {
+  const processIds = findExistingWorkspaceDevProcessIds();
+  if (!processIds.length) return;
+
+  console.warn(
+    `[dev] stopping existing dev process(es) for this workspace: ${processIds.join(', ')}`,
+  );
+
+  for (const pid of processIds) {
+    stopProcessTreeSync(pid);
+  }
+}
+
+function findExistingWorkspaceDevProcessIds() {
+  if (process.platform === 'win32') {
+    return findExistingWindowsDevProcessIds();
+  }
+
+  return findExistingPosixDevProcessIds();
+}
+
+function findExistingWindowsDevProcessIds() {
+  const script = `
+$frontend = ${toPowerShellString(frontendDir)}
+$backend = ${toPowerShellString(backendDir)}
+$current = ${process.pid}
+Get-CimInstance Win32_Process | Where-Object {
+  $_.ProcessId -ne $current -and
+  $_.CommandLine -and
+  $_.Name -match '^(node|node.exe|cmd.exe)$' -and
+  (
+    ($_.CommandLine -like "*$frontend*" -and $_.CommandLine -match 'next\\\\dist\\\\') -or
+    ($_.CommandLine -like "*$backend*" -and $_.CommandLine -match 'ts-node')
+  )
+} | Select-Object -ExpandProperty ProcessId
+`;
+
+  try {
+    const output = execFileSync(
+      'powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+      { encoding: 'utf8' },
+    );
+    return parseProcessIds(output);
+  } catch {
+    return [];
+  }
+}
+
+function findExistingPosixDevProcessIds() {
+  try {
+    const output = execFileSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8' });
+    const normalizedFrontendDir = frontendDir.split(path.sep).join('/');
+    const normalizedBackendDir = backendDir.split(path.sep).join('/');
+
+    return output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const match = line.match(/^(\d+)\s+(.+)$/);
+        if (!match) return null;
+        return { pid: Number(match[1]), commandLine: match[2].split(path.sep).join('/') };
+      })
+      .filter((entry) => entry && entry.pid !== process.pid)
+      .filter((entry) => (
+        (entry.commandLine.includes(normalizedFrontendDir) && entry.commandLine.includes('next/dist/')) ||
+        (entry.commandLine.includes(normalizedBackendDir) && entry.commandLine.includes('ts-node'))
+      ))
+      .map((entry) => entry.pid);
+  } catch {
+    return [];
+  }
+}
+
+function parseProcessIds(output) {
+  return [...new Set(String(output)
+    .split(/\r?\n/)
+    .map((line) => Number(line.trim()))
+    .filter((pid) => Number.isInteger(pid) && pid > 0))];
+}
+
+function toPowerShellString(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
 function resolveNpmCliPath() {
   const candidates = [
     process.env.npm_execpath,
@@ -185,6 +273,23 @@ function stopProcessTree(pid) {
   if (!pid) return;
   if (process.platform === 'win32') {
     spawn('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' });
+    return;
+  }
+  try {
+    process.kill(-pid, 'SIGTERM');
+  } catch {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {
+      // Process already stopped.
+    }
+  }
+}
+
+function stopProcessTreeSync(pid) {
+  if (!pid) return;
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' });
     return;
   }
   try {
