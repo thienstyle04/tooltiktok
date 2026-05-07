@@ -18,7 +18,7 @@ export default function DeckCanvas({ list, selectedPageIndex, onPageSelect }) {
             list={list}
             page={page}
             index={index}
-            selectedPageIndex={selectedPageIndex}
+            selected={index === selectedPageIndex}
             onSelect={onPageSelect}
           />
         ))}

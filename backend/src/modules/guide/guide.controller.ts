@@ -128,7 +128,7 @@ export class GuideController {
     const asset = await this.guideService.getDriveFileAsset(fileId);
     response.setHeader('Content-Type', asset.contentType);
     response.setHeader('Content-Length', asset.contentLength);
-    response.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
+    response.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800, immutable');
     response.send(asset.body);
   }
 }

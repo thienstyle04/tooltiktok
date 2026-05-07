@@ -12,16 +12,24 @@ function countDeckPartners(deck) {
   }, 0), 0);
 }
 
+function isPortableImageUrl(value) {
+  const url = String(value || '').trim();
+  return /^https?:\/\//i.test(url) || url.startsWith('/assets/drive-file');
+}
+
 function deckCover(deck) {
   const lists = deck?.lists || [];
+  let fallback = '';
   for (const list of lists) {
     for (const page of list.pages || []) {
-      if (page.backgroundImage) return page.backgroundImage;
+      if (isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
+      if (!fallback && page.backgroundImage) fallback = page.backgroundImage;
       const itemImage = page.items?.find((item) => item.imageUrl)?.imageUrl;
-      if (itemImage) return itemImage;
+      if (isPortableImageUrl(itemImage)) return itemImage;
+      if (!fallback && itemImage) fallback = itemImage;
     }
   }
-  return '';
+  return fallback;
 }
 
 export default function TemplateGalleryPanel({

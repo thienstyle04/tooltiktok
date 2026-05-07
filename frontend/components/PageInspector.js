@@ -1,4 +1,21 @@
-﻿import { currentPageLabel, imageSourceClass, sourceLabel } from '../lib/utils';
+import { currentPageLabel, imageSourceClass, sourceLabel } from '../lib/utils';
+
+function isPortableImageUrl(value) {
+  const url = String(value || '').trim();
+  return /^https?:\/\//i.test(url) || url.startsWith('/assets/drive-file');
+}
+
+function firstPortableListImage(list) {
+  for (const page of list?.pages || []) {
+    if (isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
+    for (const item of page.items || []) {
+      if (isPortableImageUrl(item.imageUrl)) return item.imageUrl;
+      const candidate = item.candidateImageUrls?.find(isPortableImageUrl);
+      if (candidate) return candidate;
+    }
+  }
+  return '';
+}
 
 export default function PageInspector({ deck, list, selectedPageIndex }) {
   const page = list?.pages?.[selectedPageIndex];
@@ -11,7 +28,10 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
   const mappedCount = items.filter((item) => item.imageSource === 'manual' || item.imageSource === 'auto' || item.imageMapped).length;
   const fallbackCount = items.filter((item) => imageSourceClass(item) === 'fallback').length;
   const partnerCount = items.filter((item) => item.isPartner).length;
-  const coverImage = hasItems ? (items[0]?.imageUrl || page.backgroundImage || '') : (page.backgroundImage || '');
+  const pageBackground = isPortableImageUrl(page.backgroundImage)
+    ? page.backgroundImage
+    : firstPortableListImage(list) || page.backgroundImage || '';
+  const coverImage = hasItems ? (items[0]?.imageUrl || pageBackground) : pageBackground;
 
   return (
     <>

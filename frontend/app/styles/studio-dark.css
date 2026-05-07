@@ -701,6 +701,11 @@ body {
   background: #221d1a;
 }
 
+.slide-card-frame.is-selected .story-page {
+  outline: 3px solid var(--studio-clay);
+  box-shadow: 0 18px 48px rgba(240, 127, 90, 0.22);
+}
+
 .slide-card-number {
   background: var(--studio-clay);
   color: #161413;
