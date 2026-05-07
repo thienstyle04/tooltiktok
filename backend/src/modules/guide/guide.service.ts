@@ -347,6 +347,7 @@ export class GuideService {
       seed,
       deckUsage.itemIds,
       deckUsage.imageUrls,
+      context.coverImageUrls,
     );
     const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
     const generatedPages = applyCaptionToPages(basePages, safeCaption);
@@ -386,33 +387,34 @@ export class GuideService {
     const imageMapping = this.loadImageMapping();
     const imageLibraryEntries = this.loadImageLibraryEntries(imageMapping);
     const sheetDriveManifest = this.loadSheetDriveManifest(workbookSource.workbookName);
+    const coverImageUrls = this.loadCoverImageUrls(sheetDriveManifest);
     const itemsBySection = this.loadWorkbookItems(workbookSource.workbook, imageUrls, imageMapping, imageLibraryEntries, sheetDriveManifest);
     this.ensureInventoryLoaded();
     const renderUsage = this.createUsageScope();
-    const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, renderUsage.itemIds, renderUsage.imageUrls);
+    const baseDecks = buildDecks(itemsBySection, imageUrls, imageLibraryEntries, coverImageUrls, renderUsage.itemIds, renderUsage.imageUrls);
     baseDecks.forEach((deck) => this.markUsedInDeck(deck.lists.flatMap((list) => list.pages), renderUsage));
     if (options.refreshGeneratedLists || this.hasGeneratedListsNeedingTemplateRefresh()) {
-      this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, renderUsage, baseDecks);
+      this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, coverImageUrls, renderUsage, baseDecks);
     }
     const referenceSets = this.buildReferenceSets();
-    const decks = this.mergeGeneratedLists(baseDecks);
+    const decks = this.mergeGeneratedLists(baseDecks, coverImageUrls);
     const totalItems = Object.values(itemsBySection).reduce((s, items) => s + items.length, 0);
     const mappedItemCount = Object.values(itemsBySection).reduce((s, items) => s + items.filter((i) => i.imageMapped).length, 0);
     const manualMappedItemCount = Object.values(itemsBySection).reduce((s, items) => s + items.filter((i) => i.imageSource === 'manual').length, 0);
     const autoMappedItemCount = Object.values(itemsBySection).reduce((s, items) => s + items.filter((i) => i.imageSource === 'auto').length, 0);
 
-    const context: DatasetBuildContext = { imageUrls, imageLibraryEntries, itemsBySection, referenceSets, totalItems, mappedItemCount, manualMappedItemCount, autoMappedItemCount, decks };
+    const context: DatasetBuildContext = { imageUrls, coverImageUrls, imageLibraryEntries, itemsBySection, referenceSets, totalItems, mappedItemCount, manualMappedItemCount, autoMappedItemCount, decks };
     this.datasetContextCache = context;
     this.datasetContextCacheTime = Date.now();
     console.log(`[cache] dataset context MISS — built in ${Date.now() - t0}ms`);
     return context;
   }
 
-  private mergeGeneratedLists(decks: GuideDeck[]): GuideDeck[] {
+  private mergeGeneratedLists(decks: GuideDeck[], coverImageUrls: string[] = []): GuideDeck[] {
     return decks.map((deck) => {
       const generatedLists = this.generatedListsByDeckId.get(deck.id) ?? [];
       if (generatedLists.length === 0) return deck;
-      return { ...deck, lists: [...deck.lists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list))] };
+      return { ...deck, lists: [...deck.lists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list, coverImageUrls))] };
     });
   }
 
@@ -436,19 +438,25 @@ export class GuideService {
     return false;
   }
 
-  private sanitizeGeneratedListForDisplay(list: GuideDeckList): GuideDeckList {
+  private sanitizeGeneratedListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
     if (!/caption-/i.test(list.id)) return list;
 
     const safeDescription = sanitizeCaptionBodyForPages(list.description, list.pages);
     const pages = list.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, list, safeDescription));
-    const portableCoverImage = this.firstPortableImageForPages(pages);
+    const portableCoverImage = this.coverImageForList(list, coverImageUrls) || this.firstPortableImageForPages(pages);
     return {
       ...list,
       description: safeDescription,
-      pages: pages.map((page) => page.type === 'cover' && !this.isPortableImageUrl(page.backgroundImage) && portableCoverImage
+      pages: pages.map((page) => page.type === 'cover' && portableCoverImage
         ? { ...page, backgroundImage: portableCoverImage }
         : page),
     };
+  }
+
+  private coverImageForList(list: GuideDeckList, coverImageUrls: string[]): string {
+    const pool = coverImageUrls.filter((url) => this.isPortableImageUrl(url));
+    if (pool.length === 0) return '';
+    return pool[stableHash(`${list.id}|${list.title}|${list.description}|cover`) % pool.length] || '';
   }
 
   private isPortableImageUrl(value?: string): boolean {
@@ -605,6 +613,7 @@ export class GuideService {
     itemsBySection: WorkbookItemsBySection,
     imageUrls: string[],
     libraryEntries: ImageLibraryFolderEntry[],
+    coverImageUrls: string[],
     renderUsage: DataAllocator,
     baseDecks: GuideDeck[] = [],
   ): void {
@@ -630,6 +639,7 @@ export class GuideService {
           `refresh:${deckId}:${list.id}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`,
           deckUsage.itemIds,
           deckUsage.imageUrls,
+          coverImageUrls,
         );
         const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
         const regeneratedPages = applyCaptionToPages(basePages, safeCaption);
@@ -742,6 +752,17 @@ export class GuideService {
 
   private loadSheetDriveManifest(workbookName: string): SheetDriveImageManifest {
     return readSheetDriveManifest(this.dataRoot, workbookName);
+  }
+
+  private loadCoverImageUrls(sheetDriveManifest: SheetDriveImageManifest): string[] {
+    const seen = new Set<string>();
+    return (sheetDriveManifest.coverImages ?? [])
+      .map((entry) => entry.fileId ? getDriveImageProxyUrl(entry.fileId) : '')
+      .filter((url) => {
+        if (!url || seen.has(url)) return false;
+        seen.add(url);
+        return true;
+      });
   }
 
   private loadWorkbookItems(

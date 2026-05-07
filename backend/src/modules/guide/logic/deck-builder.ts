@@ -171,6 +171,17 @@ function portableBackgroundFor(
   return primary || backgroundFor(imageUrls, seed, usedImageUrls);
 }
 
+function coverBackgroundFor(
+  coverImageUrls: string[],
+  mappedImageUrls: string[],
+  imageUrls: string[],
+  seed: string,
+  usedImageUrls?: Set<string>,
+): string {
+  const coverImage = backgroundFor(coverImageUrls.filter(isPortableImageUrl), seed, usedImageUrls);
+  return coverImage || portableBackgroundFor(mappedImageUrls, imageUrls, seed, usedImageUrls);
+}
+
 function normalizeText(value: string): string {
   return value
     .normalize('NFD')
@@ -1373,10 +1384,12 @@ function buildItineraryPages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || []);
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const displayItemCount = 8;
   const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.daytimeFoodItems;
@@ -1409,7 +1422,7 @@ function buildItineraryPages(
     buildCoverPage(
       'Gợi ý lịch trình 3N2Đ',
       'Một bộ khung ngắn để đi Đà Lạt lần đầu mà vẫn có ăn sáng, cafe, check-in và chỗ chơi đáng lưu.',
-      background(`${seedPrefix}-cover-itinerary`),
+      coverBackground(`${seedPrefix}-cover-itinerary`),
     ),
     buildListPage('Ngày 1', 'terracotta', 'Ngày 1 - tuyến trung tâm',
       'Một page gom đủ check-in sớm, ăn sáng, cafe, ăn trưa và ăn tối của ngày đầu.',
@@ -1571,10 +1584,12 @@ function buildItinerary4N2DGrid8Pages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || []);
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const cafeDayItems = pools.dayCafeItems;
   const checkinDayItems = balancedCheckinPool(pools.dayCheckinItems, 16, `${seedPrefix}-4n2d-checkin-pool`);
@@ -1622,7 +1637,7 @@ function buildItinerary4N2DGrid8Pages(
       ...buildCoverPage(
         '4N2Đ ĐÀ LẠT\n8 ĐIỂM MỖI TRANG',
         'Lịch trình dạng lưới: ảnh bao quanh, tiêu đề ở giữa, mỗi điểm có thời gian rõ ràng.',
-        background(`${seedPrefix}-cover`),
+        coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'journey-4n2d-grid8',
     },
@@ -1721,10 +1736,12 @@ function buildItinerary4N3DPages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || []);
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.daytimeFoodItems;
   const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
@@ -1807,7 +1824,7 @@ function buildItinerary4N3DPages(
       ...buildCoverPage(
         '4N3Đ ĐÀ LẠT\nĐI CHẬM CHILL SÂU',
         '', // subtitle removed as requested
-        background(`${seedPrefix}-journey-cover`),
+        coverBackground(`${seedPrefix}-journey-cover`),
       ),
       layoutVariant: 'journey-4n3d',
     },
@@ -1882,10 +1899,12 @@ function buildMustGoPages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || []);
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastOrLunchItems = dedupeItems([...pools.morningFoodItems, ...pools.lightMealItems]);
   const freeCheckinItems = balancedCheckinPool(
@@ -1894,7 +1913,7 @@ function buildMustGoPages(
     `${seedPrefix}-must-checkin-balanced`,
   );
   return [
-    buildCoverPage('Những điểm không thể bỏ qua', 'Dùng cho các bộ ảnh kiểu must-go: điểm nổi tiếng, check-in đẹp, cafe có concept và chỗ ở đáng ghim.', background(`${seedPrefix}-cover-must-go`)),
+    buildCoverPage('Những điểm không thể bỏ qua', 'Dùng cho các bộ ảnh kiểu must-go: điểm nổi tiếng, check-in đẹp, cafe có concept và chỗ ở đáng ghim.', coverBackground(`${seedPrefix}-cover-must-go`)),
     buildListPage('Must go', 'terracotta', 'Điểm nổi tiếng nên ghé', 'Trang này gom nhiều điểm nổi bật hơ để người xem lưu ngay nếu không muốn bỏ lỡ nơi nổi tiếng khi đến Đà Lạt.',
       pickMixedItemsWithPartnerQuota(pools.famousItems, 4, `${seedPrefix}-must-famous-page`, pick).map((i) => pageItemWithResolver(i, 'Điểm nổi tiếng', imageResolver)),
       background(`${seedPrefix}-must-famous-page`), 'dense'),
@@ -1920,10 +1939,12 @@ function buildFirstTimePages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || []);
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastOrLunchItems = dedupeItems([...pools.morningFoodItems, ...pools.lightMealItems]);
   const firstCheckinItems = balancedCheckinPool(
@@ -1932,7 +1953,7 @@ function buildFirstTimePages(
     `${seedPrefix}-first-checkin-balanced`,
   );
   return [
-    buildCoverPage('Đi Đà Lạt lần đầu nên lưu gì', 'Một bộ trang dành cho người chuẩn bị đi Đà Lạt: ăn sáng, cafe, check-in, địa điểm nổi tiếng và dịch vụ cần nhớ.', background(`${seedPrefix}-cover-first-time`)),
+    buildCoverPage('Đi Đà Lạt lần đầu nên lưu gì', 'Một bộ trang dành cho người chuẩn bị đi Đà Lạt: ăn sáng, cafe, check-in, địa điểm nổi tiếng và dịch vụ cần nhớ.', coverBackground(`${seedPrefix}-cover-first-time`)),
     buildListPage('Lưu ý', 'terracotta', 'Đi sớm để săn ảnh đẹp', 'Mở đầu bằng các điểm hợp buổi sáng để bộ nội dung có nhịp giống mẫu, nhưng tăng số điểm để người mới nhìn là có nhiều gợi ý hơn.',
       pickMixedItemsWithPartnerQuota(pools.morningScheduleItems, 4, `${seedPrefix}-first-morning-page`, pick).map((i) => pageItemWithResolver(i, 'Sáng sớm', imageResolver)),
       background(`${seedPrefix}-first-morning-page`), 'dense'),
@@ -1994,6 +2015,7 @@ function buildPov3DayPages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(
@@ -2005,6 +2027,7 @@ function buildPov3DayPages(
     { orientation: 'portrait' },
   );
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
@@ -2019,9 +2042,9 @@ function buildPov3DayPages(
     `${seedPrefix}-cover`,
     pick,
   )[0];
-  const coverImage = coverItem
+  const coverImage = coverBackground(`${seedPrefix}-cover-bg`) || (coverItem
     ? photomodePageItemWithResolver(coverItem, 'Đà Lạt', imageResolver).imageUrl
-    : background(`${seedPrefix}-cover-bg`);
+    : '');
 
   return [
     {
@@ -2215,10 +2238,12 @@ function buildGrid6Pages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || []);
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
   const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
@@ -2228,7 +2253,7 @@ function buildGrid6Pages(
       ...buildCoverPage(
         'TOP 6 ĐỊA ĐIỂM ĐÀ LẠT',
         'Một bộ gợi ý ngắn, dễ quét nhanh để chọn điểm đi, ăn uống và chụp hình trong ngày.',
-        background(`${seedPrefix}-cover`),
+        coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'grid-6',
     },
@@ -2305,10 +2330,12 @@ function buildGrid8Pages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || []);
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
   const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
@@ -2383,7 +2410,7 @@ function buildGrid8Pages(
       ...buildCoverPage(
         'ĐÀ LẠT 8 ĐIỂM / 1 TRANG',
         'Mẫu lưới dày để xem nhiều lựa chọn hơn trong một lần lướt.',
-        background(`${seedPrefix}-cover`),
+        coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'grid-8',
     },
@@ -2398,10 +2425,12 @@ function buildGrid4Pages(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || []);
   const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
   const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
@@ -2476,7 +2505,7 @@ function buildGrid4Pages(
       ...buildCoverPage(
         'TOP 4 ĐỊA ĐIỂM ĐÀ LẠT',
         'Biến thể lưới gọn, mỗi trang 4 hình để xem rõ tên điểm, ảnh và vị trí trước khi chọn.',
-        background(`${seedPrefix}-cover`),
+        coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'grid-4',
     },
@@ -2494,17 +2523,18 @@ export function buildPagesForDeck(
   seedPrefix: string,
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
 ): DeckPage[] {
   const pools = createDeckBuildPools(itemsBySection);
-  if (deckId === 'itinerary-3n2d') return buildItineraryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
-  if (deckId === 'itinerary-4n3d') return buildItinerary4N3DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
-  if (deckId === 'itinerary-4n2d-grid8') return buildItinerary4N2DGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
-  if (deckId === 'pov-3-day') return buildPov3DayPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
-  if (deckId === 'must-go') return buildMustGoPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
-  if (deckId === 'first-time') return buildFirstTimePages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
-  if (deckId === 'grid-6') return buildGrid6Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
-  if (deckId === 'grid-8') return buildGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
-  if (deckId === 'grid-4') return buildGrid4Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls);
+  if (deckId === 'itinerary-3n2d') return buildItineraryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'itinerary-4n3d') return buildItinerary4N3DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'itinerary-4n2d-grid8') return buildItinerary4N2DGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'pov-3-day') return buildPov3DayPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'must-go') return buildMustGoPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'first-time') return buildFirstTimePages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'grid-6') return buildGrid6Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'grid-8') return buildGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'grid-4') return buildGrid4Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   throw new Error(`Không hỗ trợ deck: ${deckId}`);
 }
 
@@ -2512,73 +2542,74 @@ export function buildDecks(
   itemsBySection: WorkbookItemsBySection,
   imageUrls: string[],
   libraryEntries: ImageLibraryFolderEntry[],
+  coverImageUrls: string[] = [],
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
 ): GuideDeck[] {
-  const common = { itemsBySection, imageUrls, libraryEntries, globalUsedItemIds, globalUsedImageUrls };
+  const common = { itemsBySection, imageUrls, libraryEntries, coverImageUrls, globalUsedItemIds, globalUsedImageUrls };
   return [
     {
       id: 'itinerary-3n2d',
       navTitle: 'Lịch trình 3N2Đ',
       title: 'Bộ trang gợi ý lịch trình 3N2Đ',
       description: 'Format này nghiêng về kiểu kể theo ngày: có cover riêng, mỗi ngày là một trang, rồi chốt thêm trang ăn sáng và dịch vụ.',
-      lists: [buildDeckList('itinerary-3n2d', 'main', 'List chính', 'List lịch trình 3N2Đ', 'Danh sách ảnh chính cho bộ lịch trình 3N2Đ.', buildPagesForDeck('itinerary-3n2d', common.itemsBySection, common.imageUrls, common.libraryEntries, 'itinerary-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('itinerary-3n2d', 'main', 'List chính', 'List lịch trình 3N2Đ', 'Danh sách ảnh chính cho bộ lịch trình 3N2Đ.', buildPagesForDeck('itinerary-3n2d', common.itemsBySection, common.imageUrls, common.libraryEntries, 'itinerary-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'itinerary-4n3d',
       navTitle: 'Lịch trình 4N3Đ',
       title: 'Bộ trang 4N3Đ kiểu travel journal',
       description: 'Format mới khác 3N2Đ: cover poster, route map, mỗi ngày có ảnh hero lớn và 5 stop nhỏ theo nhịp đi chậm.',
-      lists: [buildDeckList('itinerary-4n3d', 'main', 'List chính', 'List lịch trình 4N3Đ', 'Danh sách ảnh chính cho bộ 4N3Đ thiết kế kiểu travel journal.', buildPagesForDeck('itinerary-4n3d', common.itemsBySection, common.imageUrls, common.libraryEntries, 'itinerary-4n3d-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('itinerary-4n3d', 'main', 'List chính', 'List lịch trình 4N3Đ', 'Danh sách ảnh chính cho bộ 4N3Đ thiết kế kiểu travel journal.', buildPagesForDeck('itinerary-4n3d', common.itemsBySection, common.imageUrls, common.libraryEntries, 'itinerary-4n3d-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'itinerary-4n2d-grid8',
       navTitle: 'Lịch trình 4N2Đ lưới 8',
       title: 'Bộ trang 4N2Đ dạng 8 ảnh quanh tiêu đề',
       description: 'Mẫu mới dùng chủ đề 4N2Đ, mỗi trang có 8 ảnh bao quanh tiêu đề ở giữa và mỗi địa điểm có thời gian cụ thể.',
-      lists: [buildDeckList('itinerary-4n2d-grid8', 'main', 'List chính', 'List lịch trình 4N2Đ lưới 8', 'Danh sách ảnh chính cho mẫu 4N2Đ dạng 8 ảnh quanh tiêu đề, có Lưu trú và Dịch vụ.', buildPagesForDeck('itinerary-4n2d-grid8', common.itemsBySection, common.imageUrls, common.libraryEntries, 'itinerary-4n2d-grid8-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('itinerary-4n2d-grid8', 'main', 'List chính', 'List lịch trình 4N2Đ lưới 8', 'Danh sách ảnh chính cho mẫu 4N2Đ dạng 8 ảnh quanh tiêu đề, có Lưu trú và Dịch vụ.', buildPagesForDeck('itinerary-4n2d-grid8', common.itemsBySection, common.imageUrls, common.libraryEntries, 'itinerary-4n2d-grid8-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'pov-3-day',
       navTitle: 'POV 3 ngày',
       title: 'Bộ trang POV 3 ngày vi vu khắp Đà Lạt',
       description: 'Format này bám sát photomode TikTok: cover mạnh, rồi chia theo nhóm điểm local như check-in free, cafe, ăn uống và dịch vụ cần lưu ý.',
-      lists: [buildDeckList('pov-3-day', 'main', 'List chính', 'List POV 3 ngày', 'Danh sách ảnh chính cho bộ POV 3 ngày vi vu khắp Đà Lạt.', buildPagesForDeck('pov-3-day', common.itemsBySection, common.imageUrls, common.libraryEntries, 'pov-3-day-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('pov-3-day', 'main', 'List chính', 'List POV 3 ngày', 'Danh sách ảnh chính cho bộ POV 3 ngày vi vu khắp Đà Lạt.', buildPagesForDeck('pov-3-day', common.itemsBySection, common.imageUrls, common.libraryEntries, 'pov-3-day-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'must-go',
       navTitle: 'Điểm không thể bỏ qua',
       title: 'Bộ trang các điểm không thể bỏ qua',
       description: 'Format này bám gần series must-go: cover mạnh, sau đó tách riêng điểm nổi tiếng, check-in free, cafe và lưu trú.',
-      lists: [buildDeckList('must-go', 'main', 'List chính', 'List must-go', 'Danh sách ảnh chính cho bộ điểm không thể bỏ qua.', buildPagesForDeck('must-go', common.itemsBySection, common.imageUrls, common.libraryEntries, 'must-go-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('must-go', 'main', 'List chính', 'List must-go', 'Danh sách ảnh chính cho bộ điểm không thể bỏ qua.', buildPagesForDeck('must-go', common.itemsBySection, common.imageUrls, common.libraryEntries, 'must-go-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'first-time',
       navTitle: 'Lưu ý cho người mới',
       title: 'Bộ trang dành cho người chuẩn bị đến Đà Lạt',
       description: 'Format này đi theo logic tư vấn trước chuyến đi: đi sớm, ăn gì, ngồi cafe ở đâu, check-in ở đâu và cần nhớ gì.',
-      lists: [buildDeckList('first-time', 'main', 'List chính', 'List cho người mới', 'Danh sách ảnh chính cho bộ lưu ý người mới đến Đà Lạt.', buildPagesForDeck('first-time', common.itemsBySection, common.imageUrls, common.libraryEntries, 'first-time-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('first-time', 'main', 'List chính', 'List cho người mới', 'Danh sách ảnh chính cho bộ lưu ý người mới đến Đà Lạt.', buildPagesForDeck('first-time', common.itemsBySection, common.imageUrls, common.libraryEntries, 'first-time-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'grid-6',
       navTitle: 'Mẫu Lưới 6 Ô',
       title: 'Bộ trang bố cục lưới 2x3 (6 địa điểm)',
       description: 'Mẫu thiết kế mật độ thông tin cao, mỗi trang hiển thị 6 địa điểm theo dạng lưới 2 cột x 3 hàng.',
-      lists: [buildDeckList('grid-6', 'main', 'List chính', 'List lưới 6 ô', 'Danh sách ảnh chính cho mẫu lưới 2x3.', buildPagesForDeck('grid-6', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-6-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('grid-6', 'main', 'List chính', 'List lưới 6 ô', 'Danh sách ảnh chính cho mẫu lưới 2x3.', buildPagesForDeck('grid-6', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-6-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'grid-8',
       navTitle: 'Mẫu Lưới 8 Ô',
       title: 'Bộ trang bố cục lưới 2x4 (8 địa điểm)',
       description: 'Biến thể dày hơn của mẫu lưới 6 ô, mỗi trang hiển thị 8 dữ liệu ảnh cùng tên và vị trí ngắn để scan nhanh.',
-      lists: [buildDeckList('grid-8', 'main', 'List chính', 'List lưới 8 ô', 'Danh sách ảnh chính cho mẫu lưới 2x4.', buildPagesForDeck('grid-8', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-8-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('grid-8', 'main', 'List chính', 'List lưới 8 ô', 'Danh sách ảnh chính cho mẫu lưới 2x4.', buildPagesForDeck('grid-8', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-8-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'grid-4',
       navTitle: 'Mẫu Lưới 4 Ô',
       title: 'Bộ trang bố cục lưới 2x2 (4 địa điểm)',
       description: 'Biến thể từ mẫu lưới 6 ô, giữ cùng phong cách hiển thị nhưng mỗi trang chỉ còn 4 hình và cân bằng đối tác/không đối tác.',
-      lists: [buildDeckList('grid-4', 'main', 'List chính', 'List lưới 4 ô', 'Danh sách ảnh chính cho mẫu lưới 2x2.', buildPagesForDeck('grid-4', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-4-main', common.globalUsedItemIds, common.globalUsedImageUrls))],
+      lists: [buildDeckList('grid-4', 'main', 'List chính', 'List lưới 4 ô', 'Danh sách ảnh chính cho mẫu lưới 2x2.', buildPagesForDeck('grid-4', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-4-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
   ];
 }

@@ -227,7 +227,7 @@ export async function resolveDriveLinkToEntry(link: string, placeName: string, a
   return (await resolveDriveLinkToEntries(link, placeName, address))[0] ?? null;
 }
 
-export async function resolveDriveLinkToEntries(link: string, placeName: string, address: string): Promise<DriveFolderEntry[]> {
+export async function resolveDriveLinkToEntries(link: string, placeName: string, address: string, maxEntries = 6): Promise<DriveFolderEntry[]> {
   const directFileId = extractDriveFileId(link);
   if (directFileId) {
     return [{
@@ -253,7 +253,7 @@ export async function resolveDriveLinkToEntries(link: string, placeName: string,
       score: scoreDriveEntry(entry, placeName, address),
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
-    .slice(0, 6)
+    .slice(0, Math.max(1, maxEntries))
     .map((candidate) => candidate.entry);
 }
 

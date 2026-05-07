@@ -203,6 +203,7 @@ export interface GenerateCaptionDeckResponse {
 
 export interface DatasetBuildContext {
   imageUrls: string[];
+  coverImageUrls: string[];
   imageLibraryEntries: ImageLibraryFolderEntry[];
   itemsBySection: WorkbookItemsBySection;
   referenceSets: ReferenceSet[];

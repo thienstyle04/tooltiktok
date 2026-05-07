@@ -27,6 +27,7 @@ export interface SheetDriveImageManifest {
   workbookName: string;
   workbookMtimeMs: number;
   items: Record<string, SheetDriveImageManifestEntry>;
+  coverImages: DriveFolderEntry[];
 }
 
 function isLikelyLinkHeader(header: string): boolean {
@@ -77,6 +78,16 @@ function preferredImageLink(row: Record<string, string>): string {
   );
 }
 
+function firstLinkValue(row: Record<string, string>): string {
+  const preferred = preferredImageLink(row);
+  if (preferred) return preferred;
+
+  const linkEntry = Object.entries(row).find(([header, value]) =>
+    isLikelyLinkHeader(header) && /^https?:\/\//i.test(String(value ?? '').trim()),
+  );
+  return String(linkEntry?.[1] ?? '').trim();
+}
+
 export function getSheetDriveManifestPath(dataRoot: string): string {
   return path.join(dataRoot, SHEET_DRIVE_MANIFEST_FILE);
 }
@@ -88,6 +99,7 @@ export function emptySheetDriveManifest(): SheetDriveImageManifest {
     workbookName: PREFERRED_WORKBOOK_NAME,
     workbookMtimeMs: 0,
     items: {},
+    coverImages: [],
   };
 }
 
@@ -104,6 +116,7 @@ export function readSheetDriveManifest(dataRoot: string, workbookName?: string):
       workbookName: String(parsed.workbookName ?? PREFERRED_WORKBOOK_NAME),
       workbookMtimeMs: Number(parsed.workbookMtimeMs ?? 0),
       items: parsed.items && typeof parsed.items === 'object' ? parsed.items as Record<string, SheetDriveImageManifestEntry> : {},
+      coverImages: Array.isArray(parsed.coverImages) ? parsed.coverImages as DriveFolderEntry[] : [],
     };
 
     return manifest;
@@ -115,12 +128,31 @@ export function readSheetDriveManifest(dataRoot: string, workbookName?: string):
 export async function buildSheetDriveManifest(source: SheetWorkbookSource): Promise<SheetDriveImageManifest> {
   const workbook = source.workbook;
   const items: Record<string, SheetDriveImageManifestEntry> = {};
+  const coverImages = new Map<string, DriveFolderEntry>();
 
   for (const sheetName of workbook.SheetNames) {
     const sectionKey = normalizeText(sheetName) as SectionKey;
+    const sheet = workbook.Sheets[sheetName];
+
+    if (normalizeText(sheetName) === 'hinh_nen') {
+      for (const row of workbookRowsWithLinks(sheet)) {
+        const imageLink = firstLinkValue(row);
+        if (!imageLink) continue;
+
+        const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', 50).catch((error) => {
+          console.warn(`[sync] Bo qua anh nen Drive loi: ${error instanceof Error ? error.message : String(error)}`);
+          return [];
+        });
+
+        for (const entry of candidateImages) {
+          if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
+        }
+      }
+      continue;
+    }
+
     if (!(sectionKey in SECTION_CONFIG)) continue;
 
-    const sheet = workbook.Sheets[sheetName];
     for (const row of workbookRowsWithLinks(sheet)) {
       const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
       if (!name) continue;
@@ -157,6 +189,7 @@ export async function buildSheetDriveManifest(source: SheetWorkbookSource): Prom
     workbookName: source.workbookName,
     workbookMtimeMs: source.fetchedAt,
     items,
+    coverImages: [...coverImages.values()],
   };
 }
 
