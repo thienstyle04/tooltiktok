@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 
 import { DriveFolderEntry, resolveDriveLinkToEntries } from './drive-images';
 import { firstValue, itemMappingKey, normalizeText } from '../logic/image-resolver';
-import { PREFERRED_WORKBOOK_NAME } from './workbook-source';
+import { PREFERRED_WORKBOOK_NAME, SheetWorkbookSource } from './workbook-source';
 import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 import { SectionKey } from '../../../common/interfaces/guide.types';
 
@@ -91,7 +91,7 @@ export function emptySheetDriveManifest(): SheetDriveImageManifest {
   };
 }
 
-export function readSheetDriveManifest(dataRoot: string, workbookPath?: string): SheetDriveImageManifest {
+export function readSheetDriveManifest(dataRoot: string, workbookName?: string): SheetDriveImageManifest {
   const manifestPath = getSheetDriveManifestPath(dataRoot);
   if (!fs.existsSync(manifestPath)) return emptySheetDriveManifest();
 
@@ -106,21 +106,14 @@ export function readSheetDriveManifest(dataRoot: string, workbookPath?: string):
       items: parsed.items && typeof parsed.items === 'object' ? parsed.items as Record<string, SheetDriveImageManifestEntry> : {},
     };
 
-    if (workbookPath && fs.existsSync(workbookPath)) {
-      const workbookName = path.basename(workbookPath);
-      if (manifest.workbookName !== workbookName) {
-        return emptySheetDriveManifest();
-      }
-    }
-
     return manifest;
   } catch {
     return emptySheetDriveManifest();
   }
 }
 
-export async function buildSheetDriveManifest(workbookPath: string): Promise<SheetDriveImageManifest> {
-  const workbook = XLSX.readFile(workbookPath, { cellDates: false });
+export async function buildSheetDriveManifest(source: SheetWorkbookSource): Promise<SheetDriveImageManifest> {
+  const workbook = source.workbook;
   const items: Record<string, SheetDriveImageManifestEntry> = {};
 
   for (const sheetName of workbook.SheetNames) {
@@ -158,12 +151,11 @@ export async function buildSheetDriveManifest(workbookPath: string): Promise<She
     }
   }
 
-  const workbookStats = fs.statSync(workbookPath);
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
-    workbookName: path.basename(workbookPath),
-    workbookMtimeMs: workbookStats.mtimeMs,
+    workbookName: source.workbookName,
+    workbookMtimeMs: source.fetchedAt,
     items,
   };
 }

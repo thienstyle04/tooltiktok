@@ -116,8 +116,19 @@ export function getConfiguredLibraryRoots(
 
   const addRoot = (key: string, targetPath: string): void => {
     const normalizedPath = String(targetPath ?? '').trim();
-    if (!normalizedPath || !fs.existsSync(normalizedPath) || !fs.statSync(normalizedPath).isDirectory()) return;
-    const resolvedPath = path.resolve(normalizedPath);
+    if (!normalizedPath) return;
+    let resolvedPath = path.isAbsolute(normalizedPath)
+      ? path.resolve(normalizedPath)
+      : path.resolve(workspaceRoot, normalizedPath);
+
+    if (!fs.existsSync(resolvedPath)) {
+      const fallbackPath = path.resolve(workspaceRoot, 'data/images/library', path.basename(normalizedPath));
+      if (fs.existsSync(fallbackPath) && fs.statSync(fallbackPath).isDirectory()) {
+        resolvedPath = fallbackPath;
+      }
+    }
+
+    if (!fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isDirectory()) return;
     if (seenPaths.has(resolvedPath)) return;
     seenPaths.add(resolvedPath);
     results.push({ key, path: resolvedPath });

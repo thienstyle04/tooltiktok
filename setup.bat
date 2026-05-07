@@ -45,6 +45,11 @@ if not exist "backend\.env" (
 ) else (
     echo ^> File backend\.env da ton tai.
 )
+findstr /b /c:"DALAT_AUTO_SYNC_SHEET=" "backend\.env" >nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    echo DALAT_AUTO_SYNC_SHEET=true>>"backend\.env"
+    echo ^> Da bat tu dong dong bo Google Sheet trong backend\.env.
+)
 echo.
 
 echo ==============================================================

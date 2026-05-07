@@ -1,18 +1,16 @@
-const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://127.0.0.1:3000';
-
 export async function apiFetch(path, init = {}) {
   let sameOriginResponse = null;
   let sameOriginError = null;
 
   try {
     sameOriginResponse = await fetch(path, init);
-    if (sameOriginResponse.status !== 404) return sameOriginResponse;
+    if (sameOriginResponse.status !== 404 || !shouldTryBackendFallback(path)) {
+      return sameOriginResponse;
+    }
   } catch (error) {
     sameOriginError = error;
     if (!shouldTryBackendFallback(path)) throw error;
   }
-
-  if (!shouldTryBackendFallback(path)) return sameOriginResponse;
 
   try {
     return await fetch(toBackendUrl(path), init);
@@ -27,5 +25,9 @@ function shouldTryBackendFallback(path) {
 }
 
 function toBackendUrl(path) {
-  return new URL(path, backendOrigin.replace(/\/+$/, '')).toString();
+  return new URL(path, getBackendOrigin()).toString();
+}
+
+function getBackendOrigin() {
+  return (process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://127.0.0.1:3000').replace(/\/+$/, '');
 }
