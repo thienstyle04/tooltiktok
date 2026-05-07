@@ -40,6 +40,8 @@ export interface GuideItem {
 export interface PageItem {
   label: string;
   id?: string;
+  sourceKey?: string;
+  sourceSectionKey?: SectionKey;
   name: string;
   metaPrimary: string;
   metaSecondary: string;
@@ -203,6 +205,7 @@ export interface GenerateCaptionDeckResponse {
 
 export interface DatasetBuildContext {
   imageUrls: string[];
+  coverImageUrls: string[];
   imageLibraryEntries: ImageLibraryFolderEntry[];
   itemsBySection: WorkbookItemsBySection;
   referenceSets: ReferenceSet[];

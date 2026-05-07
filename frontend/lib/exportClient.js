@@ -25,6 +25,38 @@ const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
   // Drive proxy images are differentiated by ?id=..., so every template export must keep query params.
   includeQueryParams: true,
 });
+const EXPORT_QUALITY_PROFILES = Object.freeze({
+  optimized: {
+    id: 'optimized',
+    label: 'chất lượng cao tối ưu',
+    pixelRatio: 2,
+    imageFormat: 'image/jpeg',
+    imageExtension: 'jpg',
+    imageQuality: 0.92,
+    sourceImageMaxDimension: 2400,
+    sourceImageFormat: 'image/jpeg',
+    sourceImageQuality: 0.9,
+    imagePrepareConcurrency: 12,
+    renderChunkSize: 4,
+    captureConcurrency: 1,
+    renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
+  },
+  original: {
+    id: 'original',
+    label: 'chất lượng gốc',
+    pixelRatio: BATCH_EXPORT_PIXEL_RATIO,
+    imageFormat: BATCH_IMAGE_FORMAT,
+    imageExtension: BATCH_IMAGE_EXTENSION,
+    imageQuality: BATCH_IMAGE_QUALITY,
+    sourceImageMaxDimension: BATCH_SOURCE_IMAGE_MAX_DIMENSION,
+    sourceImageFormat: BATCH_IMAGE_FORMAT,
+    sourceImageQuality: BATCH_SOURCE_IMAGE_QUALITY,
+    imagePrepareConcurrency: BATCH_IMAGE_PREPARE_CONCURRENCY,
+    renderChunkSize: null,
+    captureConcurrency: null,
+    renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
+  },
+});
 
 let fontEmbedCSS = null;
 let batchImageCache = new Map();
@@ -61,6 +93,10 @@ function exportCallbacks(callbacks = {}) {
     completeProgress: callbacks.completeProgress || noop,
     failProgress: callbacks.failProgress || noop,
   };
+}
+
+function exportQualityProfile(quality) {
+  return EXPORT_QUALITY_PROFILES[quality] || EXPORT_QUALITY_PROFILES.optimized;
 }
 
 export async function ensureExportFontsReady(node, options = {}) {
@@ -196,9 +232,9 @@ async function getCachedImageBlobUrl(src, options = {}) {
     const entry = batchImageCache.get(cacheKey);
     const result = await entry.blobPromise;
     const blob = result?.blob || null;
-    if (!blob) return { blobUrl: null, timedOut: Boolean(result?.timedOut) };
+    if (!blob) return { blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
     if (!entry.objectUrl) entry.objectUrl = URL.createObjectURL(blob);
-    return { blobUrl: entry.objectUrl, timedOut: false };
+    return { blob, blobUrl: entry.objectUrl, timedOut: false };
   }
 
   const blobPromise = fetchImageBlob(src).then(async (result) => {
@@ -214,10 +250,10 @@ async function getCachedImageBlobUrl(src, options = {}) {
   const result = await blobPromise;
   const blob = result?.blob || null;
   if (!blob) {
-    return { blobUrl: null, timedOut: Boolean(result?.timedOut) };
+    return { blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
   }
   entry.objectUrl = URL.createObjectURL(blob);
-  return { blobUrl: entry.objectUrl, timedOut: false };
+  return { blob, blobUrl: entry.objectUrl, timedOut: false };
 }
 
 async function waitForImageReady(img) {
@@ -306,6 +342,7 @@ function collectImageTargets(node, options = {}) {
 
 async function prepareImageTarget(target, options = {}) {
   const shouldWaitForReady = options.waitForReady !== false;
+  const shouldUseUniqueObjectUrl = options.uniqueObjectUrl === true;
   const blobOptions = {
     maxDimension: options.maxImageDimension,
     imageFormat: options.sourceImageFormat,
@@ -314,8 +351,9 @@ async function prepareImageTarget(target, options = {}) {
 
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
-    const { blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
-    if (!blobUrl) {
+    const { blob, blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+    const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
+    if (!preparedBlobUrl) {
       if (shouldWaitForReady) {
         await waitForImageReady(img);
       }
@@ -323,16 +361,17 @@ async function prepareImageTarget(target, options = {}) {
     }
 
     img.dataset.originalSrc = originalSrc;
-    img.src = blobUrl;
+    img.src = preparedBlobUrl;
     if (shouldWaitForReady) {
       await waitForImageReady(img);
     }
-    return { img, originalSrc };
+    return { img, originalSrc, objectUrl: shouldUseUniqueObjectUrl ? preparedBlobUrl : null };
   }
 
   const { element, originalBackgroundImage, originalSrc } = target;
-  const { blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
-  if (!blobUrl) {
+  const { blob, blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+  const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
+  if (!preparedBlobUrl) {
     if (shouldWaitForReady) {
       await waitForBackgroundReady(originalSrc);
     }
@@ -340,11 +379,11 @@ async function prepareImageTarget(target, options = {}) {
   }
 
   element.dataset.originalBackgroundImage = originalBackgroundImage;
-  element.style.backgroundImage = originalBackgroundImage.replace(/url\((['"]?)(.*?)\1\)/i, `url("${blobUrl}")`);
+  element.style.backgroundImage = originalBackgroundImage.replace(/url\((['"]?)(.*?)\1\)/i, `url("${preparedBlobUrl}")`);
   if (shouldWaitForReady) {
-    await waitForBackgroundReady(blobUrl);
+    await waitForBackgroundReady(preparedBlobUrl);
   }
-  return { element, originalBackgroundImage };
+  return { element, originalBackgroundImage, objectUrl: shouldUseUniqueObjectUrl ? preparedBlobUrl : null };
 }
 
 async function prepareImageTargets(targets, options = {}) {
@@ -371,6 +410,7 @@ function restoreImagesFromBlobs(handles) {
       handle.element.style.backgroundImage = handle.originalBackgroundImage;
       handle.element.removeAttribute('data-original-background-image');
     }
+    if (handle.objectUrl) URL.revokeObjectURL(handle.objectUrl);
   }
 }
 
@@ -548,6 +588,14 @@ function batchCaptureConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
   if (cores >= 8) return 2;
   return 1;
+}
+
+function batchRenderChunkSize(profile) {
+  return Number(profile?.renderChunkSize || batchRenderConcurrencyLimit());
+}
+
+function batchCaptureConcurrencyForProfile(profile) {
+  return Number(profile?.captureConcurrency || batchCaptureConcurrencyLimit());
 }
 
 function collectPartnerNames(list) {
@@ -874,8 +922,9 @@ export async function exportActiveList(context, callbacks = {}) {
 
 export async function exportBatch(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { dataset, selectedListIds } = context;
+  const { dataset, selectedListIds, quality = 'optimized' } = context;
   if (!dataset || selectedListIds.size === 0) return;
+  const qualityProfile = exportQualityProfile(quality);
 
   const listIds = Array.from(selectedListIds);
   const allLists = [];
@@ -892,15 +941,15 @@ export async function exportBatch(context, callbacks = {}) {
   }
 
   cb.setBusy(true);
-  cb.setStatus(`Đang chuẩn bị xuất ${allLists.length} list...`);
-  cb.showProgress(`Chuẩn bị xuất ${allLists.length} list...`, 2);
+  cb.setStatus(`Đang chuẩn bị xuất ${allLists.length} list (${qualityProfile.label})...`);
+  cb.showProgress(`Chuẩn bị xuất ${allLists.length} list (${qualityProfile.label})...`, 2);
   resetBatchImageCache();
 
   try {
     const mainZip = new JSZip();
     const totalPages = Math.max(allLists.reduce((total, item) => total + (item.list.pages?.length || 0), 0), 1);
     let renderedPages = 0;
-    cb.updateProgress(3, `Đang chuẩn bị ${allLists.length} folder chất lượng cao...`);
+    cb.updateProgress(3, `Đang chuẩn bị ${allLists.length} folder ${qualityProfile.label}...`);
     await ensureExportFontsReady(document.documentElement, { decodeImages: false, embedFonts: true });
 
     const folders = allLists.map((item) => createListFolder(mainZip, item.list, true, item.deck.id));
@@ -925,13 +974,13 @@ export async function exportBatch(context, callbacks = {}) {
     });
 
     const baseDate = Date.now();
-    const concurrencyLimit = batchRenderConcurrencyLimit();
+    const concurrencyLimit = batchRenderChunkSize(qualityProfile);
     for (let i = 0; i < pageTasks.length; i += concurrencyLimit) {
       const chunk = pageTasks.slice(i, i + concurrencyLimit);
       const chunkStart = i + 1;
       const chunkEnd = i + chunk.length;
-      cb.setStatus(`Đang chuẩn bị ảnh chất lượng cao ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
-      cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang chuẩn bị ảnh chất lượng cao ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
+      cb.setStatus(`Đang chuẩn bị ảnh ${qualityProfile.label} ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
+      cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang chuẩn bị ảnh ${qualityProfile.label} ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
       const renderedChunk = renderBatchTaskPages(chunk);
       await waitForExportLayout();
       if (renderedChunk.some((task) => !task.pageNode)) {
@@ -939,31 +988,32 @@ export async function exportBatch(context, callbacks = {}) {
       }
       const preparedImages = await inlineImagesForNodes(renderedChunk.map((task) => task.pageNode), {
         waitForReady: true,
-        concurrency: BATCH_IMAGE_PREPARE_CONCURRENCY,
-        maxImageDimension: BATCH_SOURCE_IMAGE_MAX_DIMENSION,
-        sourceImageFormat: BATCH_IMAGE_FORMAT,
-        sourceImageQuality: BATCH_SOURCE_IMAGE_QUALITY,
+        concurrency: qualityProfile.imagePrepareConcurrency,
+        maxImageDimension: qualityProfile.sourceImageMaxDimension,
+        sourceImageFormat: qualityProfile.sourceImageFormat,
+        sourceImageQuality: qualityProfile.sourceImageQuality,
+        uniqueObjectUrl: true,
       });
 
       try {
-        await mapWithConcurrency(renderedChunk, batchCaptureConcurrencyLimit(), async (task, chunkIdx) => {
+        await mapWithConcurrency(renderedChunk, batchCaptureConcurrencyForProfile(qualityProfile), async (task, chunkIdx) => {
           const globalIdx = i + chunkIdx;
           const blob = await renderPageBlobWithRetry(task.pageNode, {
             imagesReady: true,
-            pixelRatio: BATCH_EXPORT_PIXEL_RATIO,
-            imageFormat: BATCH_IMAGE_FORMAT,
-            imageQuality: BATCH_IMAGE_QUALITY,
+            pixelRatio: qualityProfile.pixelRatio,
+            imageFormat: qualityProfile.imageFormat,
+            imageQuality: qualityProfile.imageQuality,
             embedFonts: true,
             waitForImageReady: false,
-            renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
+            renderTimeoutMs: qualityProfile.renderTimeoutMs,
           });
-          const exportName = exportNameWithExtension(task.pageNode, task.pageIndex, BATCH_IMAGE_EXTENSION);
+          const exportName = exportNameWithExtension(task.pageNode, task.pageIndex, qualityProfile.imageExtension);
           task.folder.file(exportName, blob, {
             date: new Date(baseDate + (pageTasks.length - globalIdx) * 4000),
             compression: 'STORE',
           });
           renderedPages += 1;
-          cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang render PNG chất lượng cao ${renderedPages}/${totalPages} trang...`);
+          cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang render ${qualityProfile.label} ${renderedPages}/${totalPages} trang...`);
         });
       } finally {
         restoreImagesFromBlobs(preparedImages);

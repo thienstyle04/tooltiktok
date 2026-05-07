@@ -94,6 +94,19 @@ function isServiceListPage(page) {
   return key.includes('dich vu');
 }
 
+function isStayListPage(page) {
+  const key = `${page?.chipText || ''} ${page?.title || ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .toLowerCase();
+  return key.includes('homestay') || key.includes('luu tru');
+}
+
+function isServiceOrStayListPage(page) {
+  return isServiceListPage(page) || isStayListPage(page);
+}
+
 function isGeneratedCaptionList(list) {
   return /caption-/i.test(String(list?.id || ''));
 }
@@ -482,6 +495,17 @@ function renderGridAddress(value) {
   `;
 }
 
+function renderGridSecondary(value) {
+  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!cleanValue) return '';
+
+  return `
+    <div class="grid6-address grid6-address-extra story-image-meta">
+      <span class="grid6-address-text">${escapeHtml(cleanValue)}</span>
+    </div>
+  `;
+}
+
 function normalizeGridText(value) {
   return String(value || '')
     .normalize('NFD')
@@ -497,6 +521,8 @@ function compactGridItemName(value) {
 
   if (normalized.includes('nha tho domaine de marie')) return 'Nhà thờ Domain';
   if (normalized.includes('kdl the florest') || normalized.includes('the florest')) return 'The Florest';
+  if (normalized.includes('truong dai hoc da lat')) return 'ĐH Đà Lạt';
+  if (normalized.includes('doc han thuyen')) return 'Dốc Hàn Thuyên';
 
   const cleaned = original
     .replace(/^\s*(Ăn\s+(sáng|trưa|tối)|Cafe|Cà phê|Check-?in|Điểm ghé|Bắt đầu|Chốt chuyến|Dịch vụ|Cần lưu|Cần nhớ|Nên ghé|Buổi sáng|Sáng sớm)\s*:\s*/i, '')
@@ -505,15 +531,15 @@ function compactGridItemName(value) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (cleaned.length <= 24) return cleaned;
+  if (cleaned.length <= 21) return cleaned;
   const words = cleaned.split(' ');
   const kept = [];
   for (const word of words) {
     const next = [...kept, word].join(' ');
-    if (next.length > 24) break;
+    if (next.length > 21) break;
     kept.push(word);
   }
-  return kept.length > 0 ? kept.join(' ') : cleaned.slice(0, 24).trim();
+  return kept.length > 0 ? kept.join(' ') : cleaned.slice(0, 21).trim();
 }
 
 function gridDisplayName(item) {
@@ -550,6 +576,7 @@ export function renderGrid6Items(items, { numbered = false, twoDigitNumber = fal
         ${showLabel && item.label ? `<div class="grid6-service-label">${escapeHtml(item.label)}</div>` : ''}
         <div class="grid6-name story-image-title">${escapeHtml(itemName)}</div>
         ${renderGridAddress(item.metaPrimary)}
+        ${renderGridSecondary(item.metaSecondary)}
       </div>
     </div>
   `;
@@ -568,6 +595,12 @@ function renderGrid8Meta(value) {
       <span>${escapeHtml(cleanAddress)}</span>
     </div>
   `;
+}
+
+function renderGrid8Secondary(value) {
+  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!cleanValue) return '';
+  return `<div class="grid8-meta grid8-meta-extra story-image-meta"><span>${escapeHtml(cleanValue)}</span></div>`;
 }
 
 function journeyGrid8Intro(page) {
@@ -618,6 +651,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
             ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
             <strong class="story-image-title">${escapeHtml(displayName)}</strong>
             ${showMeta ? renderGrid8Meta(item.metaPrimary) : ''}
+            ${showMeta ? renderGrid8Secondary(item.metaSecondary) : ''}
           </div>
         </article>
       `;
@@ -638,6 +672,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
               ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
               <strong class="story-image-title">${escapeHtml(displayName)}</strong>
               ${showMeta ? renderGrid8Meta(item.metaPrimary) : ''}
+              ${showMeta ? renderGrid8Secondary(item.metaSecondary) : ''}
             </div>
           </article>
         `;
@@ -725,7 +760,7 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, grid8Title, page.chipText, page.backgroundImage, grid8Intro, { showLabel: isServiceListPage(page) })}
+          ${renderGrid8Items(page.items, grid8Title, page.chipText, page.backgroundImage, grid8Intro, { showLabel: isServiceOrStayListPage(page) })}
         </div>
       </article>
     `;
@@ -733,10 +768,11 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
 
   if (isJourneyGrid8Layout(page)) {
     const hideCenterChip = page.chipText === 'Lưu trú' || page.chipText === 'Homestay' || page.chipText === 'Dịch vụ';
+    const showJourneyServiceLabel = isServiceOrStayListPage(page) || hideCenterChip;
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page', 'journey-grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: !hideCenterChip })}
+          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: !hideCenterChip, showLabel: showJourneyServiceLabel })}
         </div>
       </article>
     `;
@@ -753,7 +789,7 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
       : page.layoutVariant === 'grid-8'
         ? ' grid8-body'
         : '';
-    const showServiceLabel = isServiceListPage(page);
+    const showServiceLabel = isServiceOrStayListPage(page);
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid6', gridVariantClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid6-header">

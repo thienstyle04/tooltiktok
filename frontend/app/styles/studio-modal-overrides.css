@@ -37,6 +37,31 @@
   gap: 14px;
 }
 
+.export-quality-panel {
+  border-color: var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-surface-2);
+}
+
+.export-quality-options {
+  gap: 10px;
+}
+
+.export-quality-option {
+  border-color: var(--studio-line);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.export-quality-option.active {
+  border-color: rgba(240, 127, 90, 0.55);
+  background: rgba(240, 127, 90, 0.1);
+}
+
+.export-quality-option small {
+  color: var(--studio-muted);
+}
+
 .export-deck-group,
 .export-list-item {
   border-radius: 8px;

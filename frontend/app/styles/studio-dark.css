@@ -832,6 +832,100 @@ body {
   color: var(--studio-muted);
 }
 
+.generated-list-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.generated-list-head {
+  align-items: center;
+}
+
+.generated-list-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 42px;
+  height: 32px;
+  border: 1px solid rgba(240, 127, 90, 0.36);
+  border-radius: 8px;
+  background: rgba(240, 127, 90, 0.12);
+  color: var(--studio-clay-strong);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.generated-list-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.generated-list-card {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-surface-2);
+  color: var(--studio-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.generated-list-card:hover,
+.generated-list-card.active {
+  border-color: rgba(240, 127, 90, 0.48);
+  background: rgba(240, 127, 90, 0.1);
+}
+
+.generated-list-index {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(159, 185, 208, 0.13);
+  color: var(--studio-blue);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.generated-list-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.generated-list-copy strong,
+.generated-list-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generated-list-copy strong {
+  color: var(--studio-ink);
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.generated-list-copy small,
+.generated-list-empty {
+  color: var(--studio-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.generated-list-action {
+  color: var(--studio-clay-strong);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .stats-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -1219,8 +1313,14 @@ body {
 
 .modal-description,
 .export-select-all-label,
-.export-list-meta {
+.export-list-meta,
+.export-quality-option small {
   color: var(--studio-muted);
+}
+
+.export-quality-panel,
+.export-quality-option {
+  border-color: var(--studio-line);
 }
 
 .modal-close-btn {

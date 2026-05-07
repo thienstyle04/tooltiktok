@@ -107,6 +107,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedListsForExport, setSelectedListsForExport] = useState(new Set());
+  const [exportQuality, setExportQuality] = useState('optimized');
   const [selectedListsForDelete, setSelectedListsForDelete] = useState(new Set());
   const [progress, setProgress] = useState({ visible: false, failed: false, value: 0, label: 'Đang chuẩn bị xuất file...' });
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
@@ -123,6 +124,10 @@ export default function DeckStudio({ initialDataset = null }) {
   const captionSourceList = useMemo(
     () => (activeDeck?.lists || []).find((list) => listIsMain(list)) || activeList,
     [activeDeck, activeList],
+  );
+  const captionInspectList = useMemo(
+    () => (activeList && !listIsMain(activeList) ? activeList : captionSourceList),
+    [activeList, captionSourceList],
   );
   const activePage = activeList?.pages?.[selectedPageIndex] || null;
   const activePageItems = Array.isArray(activePage?.items) ? activePage.items : [];
@@ -273,6 +278,13 @@ export default function DeckStudio({ initialDataset = null }) {
     setSelectedPageIndex(0);
     setStatus(`Đang xem list: ${list.navTitle || list.title}.`);
   }, [pushSelectionSnapshot]);
+
+  const previewGeneratedList = useCallback((list) => {
+    handleListSelect(list);
+    setActiveView('preview');
+    setCaptionToolsVisible(false);
+    setStatus(`Đã mở preview list: ${list.navTitle || list.title}.`);
+  }, [handleListSelect]);
 
   const handlePageSelect = useCallback((listId, pageIndex) => {
     pushSelectionSnapshot();
@@ -471,9 +483,9 @@ export default function DeckStudio({ initialDataset = null }) {
   const handleExportBatch = useCallback(async () => {
     setExportModalOpen(false);
     setActiveView('preview');
-    await exportBatch({ dataset, selectedListIds: selectedListsForExport }, exportCb);
+    await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality }, exportCb);
     setSelectedListsForExport(new Set());
-  }, [dataset, exportCb, selectedListsForExport]);
+  }, [dataset, exportCb, exportQuality, selectedListsForExport]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -674,6 +686,7 @@ export default function DeckStudio({ initialDataset = null }) {
               dataset={dataset}
               activeDeck={activeDeck}
               activeList={captionSourceList}
+              selectedListId={activeListId}
               tone={captionTone}
               setTone={setCaptionTone}
               caption={caption}
@@ -681,6 +694,7 @@ export default function DeckStudio({ initialDataset = null }) {
               busy={busy}
               onDeckSelect={handleDeckSelect}
               onListSelect={handleListSelect}
+              onGeneratedListSelect={previewGeneratedList}
               onRequestCaption={requestCaption}
               onCreateList={createDeckFromCaption}
               onCopy={copyText}
@@ -691,11 +705,11 @@ export default function DeckStudio({ initialDataset = null }) {
                 <div className="panel-head compact">
                   <div>
                     <p className="panel-kicker">Mẫu đang chọn</p>
-                    <h3 className="panel-title">{captionSourceList?.navTitle || captionSourceList?.title || 'Chưa có list'}</h3>
+                    <h3 className="panel-title">{captionInspectList?.navTitle || captionInspectList?.title || 'Chưa có list'}</h3>
                   </div>
                 </div>
                 <div id="pageInspector" className="page-inspector">
-                  <PageInspector deck={activeDeck} list={captionSourceList} selectedPageIndex={selectedPageIndex} />
+                  <PageInspector deck={activeDeck} list={captionInspectList} selectedPageIndex={selectedPageIndex} />
                 </div>
               </section>
             </aside>
@@ -739,6 +753,8 @@ export default function DeckStudio({ initialDataset = null }) {
         dataset={dataset}
         selectedIds={selectedListsForExport}
         setSelectedIds={setSelectedListsForExport}
+        quality={exportQuality}
+        setQuality={setExportQuality}
         busy={busy}
         onClose={() => {
           setExportModalOpen(false);

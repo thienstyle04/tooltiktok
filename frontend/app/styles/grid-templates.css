@@ -79,6 +79,7 @@
   padding: 7px 8px;
   display: flex;
   flex-direction: column;
+  gap: 1px;
 }
 
 .grid6-name {
@@ -145,6 +146,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.grid6-address-extra {
+  padding-left: 11px;
+  font-size: 0.43rem;
+  line-height: 1.03;
+  opacity: 0.94;
 }
 
 .grid4 .grid6-overlay {
@@ -577,13 +585,13 @@
   position: absolute;
   left: 7px;
   right: 7px;
-  bottom: 7px;
+  bottom: 6px;
   z-index: 1;
   color: var(--journey-title-color, #fffaf0);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
+  gap: 1px;
 }
 
 .grid8-cell-time {
@@ -628,9 +636,9 @@
   display: -webkit-box;
   margin: 0;
   color: var(--journey-title-color, #fffaf0);
-  font-size: 0.5rem;
+  font-size: 0.47rem;
   font-weight: 900;
-  line-height: 1.14;
+  line-height: 1.1;
   text-shadow: 0 1px 3px rgba(0,0,0,0.65);
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -647,16 +655,16 @@
 }
 
 .journey-grid8-page .grid8-cell strong {
-  min-height: 1.16rem;
-  font-size: 0.52rem;
-  line-height: 1.16;
+  min-height: 0;
+  font-size: 0.48rem;
+  line-height: 1.1;
   -webkit-line-clamp: 2;
   line-clamp: 2;
 }
 
 .journey-grid8-page .grid8-cell-copy {
-  gap: 3px;
-  min-height: 34px;
+  gap: 1px;
+  min-height: 0;
   justify-content: flex-end;
 }
 
@@ -691,10 +699,16 @@
 }
 
 .grid8-cell .grid8-meta {
-  margin-top: 3px;
+  margin-top: 0;
   color: rgba(255,255,255,0.86);
   font-size: 0.46rem;
   text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+}
+
+.grid8-cell .grid8-meta-extra {
+  font-size: 0.38rem;
+  line-height: 1.04;
+  opacity: 0.94;
 }
 
 .grid8-center {

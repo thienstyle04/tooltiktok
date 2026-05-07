@@ -1,6 +1,29 @@
-﻿import { listIsMain } from '../lib/utils';
+import { listIsMain } from '../lib/utils';
 
-export default function ExportModal({ open, dataset, selectedIds, setSelectedIds, busy, onClose, onExport }) {
+const EXPORT_QUALITY_OPTIONS = [
+  {
+    id: 'optimized',
+    title: 'Chất lượng cao tối ưu',
+    description: 'Khuyên dùng cho 30-50 list. Title vẫn render 2x, ảnh Drive được nén/resize hợp lý để xuất nhanh hơn.',
+  },
+  {
+    id: 'original',
+    title: 'Chất lượng gốc',
+    description: 'PNG như hiện tại, ảnh đẹp nhất nhưng thời gian xuất lâu và file ZIP lớn hơn.',
+  },
+];
+
+export default function ExportModal({
+  open,
+  dataset,
+  selectedIds,
+  setSelectedIds,
+  quality,
+  setQuality,
+  busy,
+  onClose,
+  onExport,
+}) {
   if (!open) return null;
   const decksWithLists = (dataset?.decks || [])
     .map((deck) => ({
@@ -23,6 +46,32 @@ export default function ExportModal({ open, dataset, selectedIds, setSelectedIds
         </div>
         <div className="modal-body">
           <p className="modal-description">Chọn các list cần xuất. Mỗi list sẽ là một folder bên trong file ZIP.</p>
+
+          <section className="export-quality-panel">
+            <div>
+              <p className="panel-kicker">Chất lượng render</p>
+              <p className="modal-description compact">Chọn mức xuất phù hợp số lượng list và mục đích dùng ảnh.</p>
+            </div>
+            <div className="export-quality-options">
+              {EXPORT_QUALITY_OPTIONS.map((option) => (
+                <label key={option.id} className={`export-quality-option ${quality === option.id ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="exportQuality"
+                    value={option.id}
+                    checked={quality === option.id}
+                    onChange={() => setQuality(option.id)}
+                    disabled={busy}
+                  />
+                  <span>
+                    <strong>{option.title}</strong>
+                    <small>{option.description}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
+
           <div id="exportDeckList" className="export-deck-list">
             {decksWithLists.map((deck) => {
               const allSelected = deck.exportLists.every((list) => selectedIds.has(list.id));
