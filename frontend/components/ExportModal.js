@@ -4,7 +4,7 @@ const EXPORT_QUALITY_OPTIONS = [
   {
     id: 'optimized',
     title: 'Chất lượng cao tối ưu',
-    description: 'Khuyên dùng cho 30-50 list. Title vẫn render 2x, ảnh Drive được nén/resize hợp lý để xuất nhanh hơn.',
+    description: 'Khuyên dùng cho 30-50 list. PNG bo góc trong suốt, ảnh Drive được nén/resize để nhẹ hơn bản gốc.',
   },
   {
     id: 'original',

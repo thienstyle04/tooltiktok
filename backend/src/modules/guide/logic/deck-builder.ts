@@ -18,13 +18,13 @@ import { allowedImageKindsForItem, createListImageResolver, stableHash, topDirKi
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
 const DEFAULT_PARTNER_TARGET_PER_PAGE = 3;
-export const ITINERARY_3N2D_TEMPLATE_VERSION = 14;
-export const ITINERARY_4N3D_TEMPLATE_VERSION = 10;
-export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 12;
-export const POV_3_DAY_TEMPLATE_VERSION = 9;
-export const GRID_4_TEMPLATE_VERSION = 13;
-export const GRID_6_TEMPLATE_VERSION = 13;
-export const GRID_8_TEMPLATE_VERSION = 12;
+export const ITINERARY_3N2D_TEMPLATE_VERSION = 15;
+export const ITINERARY_4N3D_TEMPLATE_VERSION = 11;
+export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 13;
+export const POV_3_DAY_TEMPLATE_VERSION = 10;
+export const GRID_4_TEMPLATE_VERSION = 15;
+export const GRID_6_TEMPLATE_VERSION = 14;
+export const GRID_8_TEMPLATE_VERSION = 13;
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -149,7 +149,7 @@ export function metaText(item: GuideItem): [string, string] {
 
 function serviceMetaText(item: GuideItem): [string, string] {
   const primary = item.address || 'Đang cập nhật địa chỉ';
-  return [primary, `SĐT: ${item.phone || 'Đang cập nhật'}`];
+  return [primary, item.phone ? `SĐT: ${item.phone}` : ''];
 }
 
 export function backgroundFor(imageUrls: string[], seed: string, usedImageUrls?: Set<string>): string {
@@ -1406,7 +1406,7 @@ function buildItineraryPages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const displayItemCount = 8;
@@ -1606,7 +1606,7 @@ function buildItinerary4N2DGrid8Pages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const cafeDayItems = pools.dayCafeItems;
@@ -1758,7 +1758,7 @@ function buildItinerary4N3DPages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastItems = pools.morningFoodItems;
@@ -1921,7 +1921,7 @@ function buildMustGoPages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const freeCheckinItems = balancedCheckinPool(
@@ -1960,7 +1960,7 @@ function buildFirstTimePages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const firstCheckinItems = balancedCheckinPool(
@@ -2042,7 +2042,7 @@ function buildPov3DayPages(
     globalUsedImageUrls || [],
     { orientation: 'portrait' },
   );
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const checkinItems = balancedCheckinPool(
@@ -2258,7 +2258,7 @@ function buildGrid6Pages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
@@ -2350,7 +2350,7 @@ function buildGrid8Pages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
@@ -2445,7 +2445,7 @@ function buildGrid4Pages(
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || []);
-  const background = (seed: string) => portableBackgroundFor(mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const activityPage = finalActivityPagePool(pools, seedPrefix);
@@ -2457,7 +2457,7 @@ function buildGrid4Pages(
       'MÓN NGON ĐÀ LẠT',
       '4 quán ăn được gom riêng để người xem chọn bữa nhanh.',
       buildGridPageItems(pools.foodItems, pools.foodItems, 4, `${seedPrefix}-food`, pick, imageResolver, mealLabelForItem),
-      '',
+      background(`${seedPrefix}-food-cover-bg`),
       'grid-4',
     ),
     buildListPage(
@@ -2466,7 +2466,7 @@ function buildGrid4Pages(
       'QUÁN CAFE ĐÀ LẠT',
       '4 quán cafe được tách riêng khỏi nhóm ăn uống.',
       buildGridPageItems(pools.cafeItems, pools.cafeItems, 4, `${seedPrefix}-cafe`, pick, imageResolver, (item) => item.type),
-      '',
+      background(`${seedPrefix}-cafe-cover-bg`),
       'grid-4',
     ),
     buildListPage(
@@ -2475,7 +2475,7 @@ function buildGrid4Pages(
       'ĐỊA ĐIỂM CHECK-IN',
       '4 địa điểm check-in rõ nhóm, không trộn khu du lịch.',
       buildBalancedCheckinGridItems(pools.checkinItems, 4, `${seedPrefix}-checkin`, pick, imageResolver),
-      '',
+      background(`${seedPrefix}-checkin-cover-bg`),
       'grid-4',
     ),
     buildListPage(
@@ -2484,7 +2484,7 @@ function buildGrid4Pages(
       'CHƠI ĐÊM ĐÀ LẠT',
       'Các điểm đi buổi tối, nghe nhạc, ăn đêm và lên kế hoạch sau 20h.',
       buildGridPageItems(nightlifeItems, nightlifeItems, 4, `${seedPrefix}-nightlife`, pick, imageResolver, photomodeServiceLabel),
-      '',
+      background(`${seedPrefix}-nightlife-cover-bg`),
       'grid-4',
     ),
     buildListPage(
@@ -2493,7 +2493,7 @@ function buildGrid4Pages(
       'DỊCH VỤ CẦN CHÚ Ý',
       'Lưu trú, thuê xe & quà tặng',
       buildGridPageItems(pools.serviceItems, pools.serviceItems, 4, `${seedPrefix}-services`, pick, imageResolver, photomodeServiceLabel),
-      '',
+      background(`${seedPrefix}-services-cover-bg`),
       'grid-4',
     ),
     buildListPage(
@@ -2502,7 +2502,7 @@ function buildGrid4Pages(
       'HOMESTAY ĐÀ LẠT',
       'Các chỗ nghỉ nên xem riêng để dễ chốt phòng, không trộn với dịch vụ khác.',
       buildGridPageItems(pools.stayItems, pools.stayItems, 4, `${seedPrefix}-homestay`, pick, imageResolver, photomodeServiceLabel),
-      '',
+      background(`${seedPrefix}-homestay-cover-bg`),
       'grid-4',
     ),
     buildListPage(
@@ -2511,7 +2511,7 @@ function buildGrid4Pages(
       activityPage.title,
       activityPage.isActivity ? 'Các hoạt động và điểm ghé được luân phiên với trang khu du lịch giữa các list.' : 'Các khu du lịch được tách riêng khỏi check-in.',
       buildGridPageItems(activityPage.items, activityPage.items, 4, `${seedPrefix}-activity`, pick, imageResolver, (item) => item.type),
-      '',
+      background(`${seedPrefix}-activity-cover-bg`),
       'grid-4',
     ),
   ];

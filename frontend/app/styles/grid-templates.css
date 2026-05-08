@@ -865,6 +865,83 @@
   text-shadow: 0 2px 6px rgba(0,0,0,0.7);
 }
 
+/* Grid 4 printed pages use the full-image cover structure. */
+.story-page.grid4-feature-cover {
+  background: #1f1c17;
+  overflow: hidden;
+}
+
+.grid4-feature-bg,
+.grid4-feature-shade,
+.grid4-feature-copy {
+  position: absolute;
+  inset: 0;
+}
+
+.grid4-feature-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.grid4-feature-shade {
+  background:
+    linear-gradient(180deg, rgba(16, 14, 11, 0.42) 0%, rgba(16, 14, 11, 0.56) 48%, rgba(16, 14, 11, 0.72) 100%),
+    radial-gradient(circle at 50% 42%, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+.grid4-feature-copy {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 34px;
+  text-align: center;
+  color: #fffaf0;
+}
+
+.grid4-feature-kicker {
+  color: #ffdb88;
+  font-size: 2.35rem;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.48);
+}
+
+.grid4-feature-title {
+  margin: 18px 0 0;
+  max-width: 94%;
+  color: #fffaf0;
+  font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
+  font-size: 2.05rem;
+  font-weight: 950;
+  line-height: 1.08;
+  text-transform: uppercase;
+  text-shadow: 0 5px 12px rgba(0,0,0,0.58);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.grid4-feature-subtitle {
+  margin: 28px auto 0;
+  max-width: 86%;
+  color: rgba(255,250,240,0.94);
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.26;
+  text-shadow: 0 3px 10px rgba(0,0,0,0.62);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Keep every generated deck on the readable local Vietnamese font. */
 .story-page,
 .story-page * {
@@ -872,14 +949,20 @@
 }
 
 .batch-export-root {
-  position: fixed;
+  /* Use absolute (not fixed) positioning to avoid browser optimizations
+     that deprioritize rendering of off-viewport fixed elements.
+     The element must remain in the layout tree and paint-ready for
+     html2canvas to capture it, even when the tab is in background. */
+  position: absolute;
   top: 0;
-  left: -10000px;
+  left: -9999px;
   width: 397px;
   height: auto;
   overflow: visible;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
+  contain: layout style;
+  will-change: contents;
 }
 
 .batch-export-root .list-preview-grid {
@@ -897,6 +980,8 @@
   height: 562px;
   margin: 0 0 18px;
   border-radius: 28px;
+  clip-path: inset(0 round 28px);
+  overflow: hidden;
   cursor: default;
   scroll-snap-align: none;
   transition: none;
