@@ -1,4 +1,4 @@
-﻿import { escapeHtml, sanitizeFilePart } from './utils';
+import { escapeHtml, sanitizeFilePart } from './utils';
 
 function sourceLabel(item) {
   const source = item?.imageSource || (item?.imageMapped ? 'manual' : 'fallback');
@@ -73,12 +73,31 @@ function coverBackgroundImage(page, list) {
   return fallback || page.backgroundImage || '';
 }
 
+function firstPortablePageImage(page) {
+  for (const item of page?.items || []) {
+    if (isPortableImageUrl(item.imageUrl)) return item.imageUrl;
+    for (const candidate of item.candidateImageUrls || []) {
+      if (isPortableImageUrl(candidate)) return candidate;
+    }
+  }
+  return '';
+}
+
+function grid4FeatureBackgroundImage(page, list) {
+  if (isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
+  return firstPortablePageImage(page) || coverBackgroundImage(page, list);
+}
+
 export function pageCounter(index, total) {
   return `${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
 }
 
 function isGridLayout(page) {
   return page.layoutVariant === 'grid-6' || page.layoutVariant === 'grid-8' || page.layoutVariant === 'grid-4';
+}
+
+function isGrid4FeaturePage(page) {
+  return page?.layoutVariant === 'grid-4' && page?.type === 'cover';
 }
 
 function isJourneyGrid8Layout(page) {
@@ -251,6 +270,31 @@ function grid8IntroForPage(page, pageSubtitle, list) {
   if (!pageSubtitle || sameGridText(pageSubtitle, list?.description)) return contextualGrid8Intro(page, list);
   if (page.layoutVariant === 'grid-8') return contextualGrid8Intro(page, list);
   return pageSubtitle;
+}
+
+function gridFeatureSubtitle(page, pageSubtitle, list) {
+  if (pageSubtitle && !sameGridText(pageSubtitle, list?.description)) return pageSubtitle;
+  const kind = gridPageKind(page);
+  const variants = GRID8_INTRO_VARIANTS[kind] || GRID8_INTRO_VARIANTS.generic;
+  return pickListVariant(list, variants, kind);
+}
+
+function renderGrid4FeaturePage(page, index, listId, list, pageSubtitle) {
+  const backgroundImage = grid4FeatureBackgroundImage(page, list);
+  const featureSubtitle = gridFeatureSubtitle(page, pageSubtitle, list);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid4-feature-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <div class="grid4-feature-bg">
+        ${renderPreviewImage(backgroundImage, page.title)}
+      </div>
+      <div class="grid4-feature-shade"></div>
+      <div class="grid4-feature-copy">
+        <div class="grid4-feature-kicker">ĐÀ LẠT</div>
+        <h1 class="grid4-feature-title">${escapeHtml(page.title || page.chipText || '')}</h1>
+        ${featureSubtitle ? `<p class="grid4-feature-subtitle">${escapeHtml(featureSubtitle)}</p>` : ''}
+      </div>
+    </article>
+  `;
 }
 
 export function renderInlineHashtags(hashtags) {
@@ -531,15 +575,7 @@ function compactGridItemName(value) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (cleaned.length <= 21) return cleaned;
-  const words = cleaned.split(' ');
-  const kept = [];
-  for (const word of words) {
-    const next = [...kept, word].join(' ');
-    if (next.length > 21) break;
-    kept.push(word);
-  }
-  return kept.length > 0 ? kept.join(' ') : cleaned.slice(0, 21).trim();
+  return cleaned;
 }
 
 function gridDisplayName(item) {
@@ -779,6 +815,10 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
   }
 
   if (isGridLayout(page)) {
+    if (isGrid4FeaturePage(page)) {
+      return renderGrid4FeaturePage(page, index, listId, list, pageSubtitle);
+    }
+
     const gridVariantClass = page.layoutVariant === 'grid-4'
       ? ' grid4'
       : page.layoutVariant === 'grid-8'

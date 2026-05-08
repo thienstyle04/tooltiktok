@@ -50,6 +50,8 @@ import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifes
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
 
+const GENERATED_CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
+
 @Injectable()
 export class GuideService {
   // toolRoot points to the backend folder root
@@ -414,9 +416,10 @@ export class GuideService {
 
   private mergeGeneratedLists(decks: GuideDeck[], coverImageUrls: string[] = []): GuideDeck[] {
     return decks.map((deck) => {
+      const baseLists = deck.lists.map((list) => this.sanitizeBaseListForDisplay(list));
       const generatedLists = this.generatedListsByDeckId.get(deck.id) ?? [];
-      if (generatedLists.length === 0) return deck;
-      return { ...deck, lists: [...deck.lists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list, coverImageUrls))] };
+      if (generatedLists.length === 0) return { ...deck, lists: baseLists };
+      return { ...deck, lists: [...baseLists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list, coverImageUrls))] };
     });
   }
 
@@ -455,6 +458,28 @@ export class GuideService {
     };
   }
 
+  private sanitizeBaseListForDisplay(list: GuideDeckList): GuideDeckList {
+    const pages = list.pages.map((page) => this.sanitizeBasePageForDisplay(page, list));
+    return { ...list, pages };
+  }
+
+  private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
+    if (page.type !== 'list' || page.layoutVariant !== 'journey-4n3d') return page;
+
+    const rawSubtitle = String(page.subtitle ?? '').trim();
+    const pageSubtitle = rawSubtitle ? sanitizeCaptionBodyForPages(page.subtitle, [page]) : '';
+    const shouldUseContextualSubtitle =
+      !rawSubtitle ||
+      this.samePlainText(pageSubtitle, GENERATED_CAPTION_BODY_FALLBACK);
+
+    return {
+      ...page,
+      subtitle: shouldUseContextualSubtitle
+        ? this.contextualGeneratedPageSubtitle(page, list)
+        : pageSubtitle,
+    };
+  }
+
   private coverImageForList(list: GuideDeckList, coverImageUrls: string[]): string {
     const pool = coverImageUrls.filter((url) => this.isPortableImageUrl(url));
     if (pool.length === 0) return '';
@@ -488,10 +513,16 @@ export class GuideService {
       };
     }
 
+    const rawSubtitle = String(page.subtitle ?? '').trim();
     const pageSubtitle = sanitizeCaptionBodyForPages(page.subtitle, [page]);
+    const shouldUseContextualSubtitle =
+      !rawSubtitle ||
+      page.layoutVariant === 'grid-8' ||
+      this.samePlainText(pageSubtitle, safeDescription) ||
+      this.samePlainText(pageSubtitle, GENERATED_CAPTION_BODY_FALLBACK);
     return {
       ...page,
-      subtitle: page.layoutVariant === 'grid-8' || this.samePlainText(pageSubtitle, safeDescription)
+      subtitle: shouldUseContextualSubtitle
         ? this.contextualGeneratedPageSubtitle(page, list)
         : pageSubtitle,
     };
@@ -513,6 +544,12 @@ export class GuideService {
     if (page.type !== 'list') return 'generic';
 
     const key = normalizeText(`${page.chipText} ${page.title}`);
+    if (page.layoutVariant === 'journey-4n3d') {
+      if (key.includes('day_01') || key.includes('ngay_1') || key.includes('vao_pho')) return 'journey_day1';
+      if (key.includes('day_02') || key.includes('ngay_2') || key.includes('san_anh')) return 'journey_day2';
+      if (key.includes('day_03') || key.includes('ngay_3') || key.includes('di_sau')) return 'journey_day3';
+      if (key.includes('day_04') || key.includes('ngay_4') || key.includes('cham_roi')) return 'journey_day4';
+    }
     if (key.includes('quan_an') || key.includes('mon_ngon')) return 'food';
     if (key.includes('cafe') || key.includes('ca_phe')) return 'cafe';
     if (key.includes('check_in')) return 'checkin';
@@ -535,6 +572,30 @@ export class GuideService {
 
   private generatedSubtitleVariants(kind: string): string[] {
     const variants: Record<string, string[]> = {
+      journey_day1: [
+        'Ngày đầu đi nhẹ trong phố: ăn sáng, cafe, check-in và một điểm ghé vừa đủ nhịp.',
+        'Khởi động lịch bằng các điểm dễ đi, ít vòng xa, hợp để quen nhịp Đà Lạt.',
+        'Một ngày mở màn gọn gàng: có bữa sáng, có cafe, có góc chụp và thời gian nghỉ.',
+        'Day 01 ưu tiên các điểm gần nhau để đi chậm, dễ chọn và không bị cuốn lịch quá dày.',
+      ],
+      journey_day2: [
+        'Ngày thứ hai ưu tiên ảnh đẹp, quán dễ nghỉ chân và các điểm đi trong cùng cung.',
+        'Một ngày dành cho check-in nhiều hơn, xen kẽ cafe và bữa ăn để lịch không bị đuối.',
+        'Day 02 gom các điểm lên hình ổn, phù hợp khi đã bắt nhịp và muốn đi sâu hơn.',
+        'Lịch ngày hai rõ cung hơn: chọn điểm chính trước, rồi thêm quán nghỉ chân vừa đủ.',
+      ],
+      journey_day3: [
+        'Ngày giữa chuyến đi sâu hơn một chút, thêm điểm trải nghiệm và bữa tối rõ ràng.',
+        'Day 03 dành cho các điểm cần nhiều thời gian hơn, có chỗ ăn và chỗ dừng hợp nhịp.',
+        'Một ngày để đổi mood: bớt vội, thêm trải nghiệm, vẫn giữ các điểm ăn nghỉ dễ theo.',
+        'Lịch ngày ba cân bằng giữa đi chơi, ăn uống và vài điểm đáng ghé trước khi tối xuống.',
+      ],
+      journey_day4: [
+        'Ngày cuối đi chậm, chốt vài điểm dễ ghé rồi dành thời gian nghỉ và mua quà.',
+        'Day 04 giữ lịch nhẹ để còn trả phòng, mua quà và không bị gấp trước lúc về.',
+        'Một ngày kết chuyến vừa đủ: ít điểm hơn, dễ xoay giờ và có khoảng trống nghỉ chân.',
+        'Lịch ngày cuối ưu tiên những điểm thuận đường, không nhồi quá nhiều để về nhẹ nhàng.',
+      ],
       food: [
         'Nhóm quán ăn được gom riêng để người xem chọn bữa nhanh, dễ scan trước khi đi.',
         'Một trang chỉ dành cho đồ ăn, ưu tiên chỗ dễ gọi món và tiện ghé theo lịch.',
@@ -699,7 +760,7 @@ export class GuideService {
   private pageItemMetaFromSource(item: GuideItem): [string, string] {
     if (item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu') {
       const primary = item.address || 'Đang cập nhật địa chỉ';
-      return [primary, `SĐT: ${item.phone || 'Đang cập nhật'}`];
+      return [primary, item.phone ? `SĐT: ${item.phone}` : ''];
     }
     return metaText(item);
   }

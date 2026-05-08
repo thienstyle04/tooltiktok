@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "savedAt": "2026-05-07T10:08:45.875Z",
+  "savedAt": "2026-05-08T07:43:13.763Z",
   "decks": {
     "itinerary-3n2d": [
       {
@@ -176,7 +176,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=10uG94UQNFpbxjd6f84YIOLEdac-dhXYL",
+            "backgroundImage": "/assets/drive-file?id=1Bz3DY4Sj6B704Si-h0_obbhDYzGWhWs0",
             "layoutVariant": "itinerary"
           },
           {
@@ -347,7 +347,7 @@
                 "rawName": "Cồng chiêng Tây Nguyên"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1zJ8wKJuhJ4NkoytnGjFjZNju1NfgGS2b",
+            "backgroundImage": "/assets/drive-file?id=1vlVJ3QzFTFhjxew5R-7jIw0OhEkUNDH6",
             "layoutVariant": "itinerary"
           },
           {
@@ -515,7 +515,7 @@
                 "rawName": "Warm Đà Lạt"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1zPbGwd_290OIvMM2L1pXrR0eQgKRUPGI",
+            "backgroundImage": "/assets/drive-file?id=11ERXKtxRrhZGBMpKIKcq9S7fqAwAcv8y",
             "layoutVariant": "itinerary"
           },
           {
@@ -710,7 +710,7 @@
                 "rawName": "Stell. Studio"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1BKH73jtGBmMQNvfwJiMHfGTFbILF2qjh",
+            "backgroundImage": "/assets/drive-file?id=1KAUiPYUIEnaG6WzEDtpVV5Bl6UJUEHhy",
             "layoutVariant": "compact"
           },
           {
@@ -727,7 +727,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "My House homestay",
                 "metaPrimary": "54/5 Phạm Ngọc Thạch",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=15D1MXiiIWU3qUPR5eZ5k-ovkEloStqMd",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -750,7 +750,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Lens Hotel",
                 "metaPrimary": "113 Bùi Thị Xuân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1jYk4CtUHJtpAeQhrVupJ2KZKYE4Qyefg",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -773,7 +773,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nori Homestay",
                 "metaPrimary": "58B Hoàng Văn Thụ",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1IrcolncFIG2Dm4QdEyCljzcW6ytjEVpj",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -796,7 +796,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Sol Dalat House",
                 "metaPrimary": "1D Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Yiy5VkjjvQDJ-TOAIUM3FEaKr4H_iGwu",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -819,7 +819,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The Aratana",
                 "metaPrimary": "BL 03, Khu quy hoạch Thái Lâm",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1orvZVGqGr6-aepVf_Gx840e_I4KpWnEc",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -842,7 +842,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The Luxe Hotel Đà Lạt",
                 "metaPrimary": "17 đường 3/4",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1g_vhnCxnhLat7ZLvpydbx6TNvuuDrbXH",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -865,7 +865,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "S-Chill Home",
                 "metaPrimary": "Đường Vạn Thành",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1hBYIwlWPOlBI-24_CZ9CiOFYbWeFo8E6",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -888,7 +888,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Âm Ấm Homestay",
                 "metaPrimary": "70/8 Đoàn Thị Điểm",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1sTMu8UH57X-TeoAAm5RhacEv5AJZIuKW",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -905,7 +905,7 @@
                 "rawName": "Âm Ấm Homestay"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1A9SdDFbnV-LglSMDbu86mB98Cw8l9NSk",
+            "backgroundImage": "/assets/drive-file?id=1KPvU3a3VByLHPGHNYIWRhPcJYNUM2sdu",
             "layoutVariant": "compact"
           }
         ],
@@ -916,7 +916,7 @@
           "#lichtrinhdalat",
           "#dulichdalat"
         ],
-        "templateVersion": 14
+        "templateVersion": 15
       },
       {
         "id": "itinerary-3n2d-caption-02-u059",
@@ -1090,7 +1090,7 @@
                 "rawName": "Tiemsachcobanruou"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=16XZc0Zngkmugpf2J8ctSXlshBqdslTlw",
+            "backgroundImage": "/assets/drive-file?id=1B3EChTpwRSeMW7-ZDjp0_D-WpeVJyEa1",
             "layoutVariant": "itinerary"
           },
           {
@@ -1262,7 +1262,7 @@
                 "rawName": "Chụp tháp Vinaphone"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1JC5dxbh31QXU_Gsww29H6g_-LKiec9R1",
+            "backgroundImage": "/assets/drive-file?id=1Q5VFNispBKVQiN4Iaqjo1tSKw9dMWJuf",
             "layoutVariant": "itinerary"
           },
           {
@@ -1433,7 +1433,7 @@
                 "rawName": "On The Rock Cocktail Bar"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1ASjkVMQ6UPMq36R9loojiFCfIK35axc0",
+            "backgroundImage": "/assets/drive-file?id=1CV4J40a0b0xoz6VcomPqn4qvTxPbIDuR",
             "layoutVariant": "itinerary"
           },
           {
@@ -1519,7 +1519,7 @@
                 "sourceSectionKey": "dich_vu",
                 "name": "Langfarm",
                 "metaPrimary": "Nhiều chi nhánh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=13hFh_MtlDbmZx_naOpUBEhlfCmPqCPQw",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1628,7 +1628,7 @@
                 "rawName": "Stell. Studio"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1u-0i9ZZ9LLzYXio5_zUrvoPEr6hTXoBl",
+            "backgroundImage": "/assets/drive-file?id=1XyQlT5mh2I47GOraxN1doLgHHwVHyrad",
             "layoutVariant": "compact"
           },
           {
@@ -1645,7 +1645,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Rinbon Home",
                 "metaPrimary": "40 Võ Thị Sáu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1GzIJwsKFIMQUKdLmnuGV_WsMdxi4aQ8l",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1668,7 +1668,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Alida Homestay And Coffee",
                 "metaPrimary": "38 Triệu Việt Vương",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1yl3XWkjvnB59-NYZoVOTOCYc6i5X1EZA",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1691,7 +1691,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Homestay Dưới Gốc Thông",
                 "metaPrimary": "2/2 Khởi Nghĩa Bắc Sơn",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1sqJ-FHmYZkImri2C4Fi6tXVRPeeE3LOk",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1714,7 +1714,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Mercure Dalat Resort",
                 "metaPrimary": "03 Nguyễn Du",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1wYly3sv_nlj77aIWrFTXXNrkEdMDMEte",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1737,7 +1737,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Queen T&T Hotel",
                 "metaPrimary": "239b Phan Đình Phùng",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1QQyXi5ad7UCnU7RmUdtZ_mM-4_HhOWhG",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1760,7 +1760,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nature Boutique Hotel",
                 "metaPrimary": "H16 H17 Nguyễn Thị Nghĩa",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1rA-h0FQWa6RzE3KxqksnMsIEk_zmIjB_",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1783,7 +1783,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Homestay Thùy Dương",
                 "metaPrimary": "Hẻm 17 Hùng Vương",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1qbw0xDNQw1FkWe4qfcuiDHFfUyRPH7wb",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1806,7 +1806,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Tulip 2 Hotel",
                 "metaPrimary": "14  Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1KLbgJ5J_w6pD7x5WKLRMLXMEw89o8SAE",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -1823,7 +1823,7 @@
                 "rawName": "Tulip 2 Hotel"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1JiMqwv3WJdv8PsUwMUokYvT3o5rfui79",
+            "backgroundImage": "/assets/drive-file?id=1_4ERGc9DAeJOi68BoqSDlFN8IaywBP_w",
             "layoutVariant": "compact"
           }
         ],
@@ -1834,7 +1834,7 @@
           "#3n2ddalat",
           "#dulichsinho"
         ],
-        "templateVersion": 14
+        "templateVersion": 15
       },
       {
         "id": "itinerary-3n2d-caption-03-wqp1",
@@ -2016,7 +2016,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1SiTXdg8EpWfMQHW5VDMhFm7ZUm3HMfqj",
+            "backgroundImage": "/assets/drive-file?id=1lcJUHeEp-xd953XM3yJkNEGxE14lRWB2",
             "layoutVariant": "itinerary"
           },
           {
@@ -2187,7 +2187,7 @@
                 "rawName": "Nobar Dalat"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=15D1MXiiIWU3qUPR5eZ5k-ovkEloStqMd",
+            "backgroundImage": "/assets/drive-file?id=13aAG25nJ7qe-LaappIZD2kIcvBKQBEBa",
             "layoutVariant": "itinerary"
           },
           {
@@ -2350,7 +2350,7 @@
                 "rawName": "La Tulipe Rouge"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1zGvJoMXpPO90kU-d4x5HcSgVK3ghe-Dk",
+            "backgroundImage": "/assets/drive-file?id=1q5kc3AH2NJYYmM_H4aDSetL_cOKjtxi5",
             "layoutVariant": "itinerary"
           },
           {
@@ -2545,7 +2545,7 @@
                 "rawName": "Long Vân Limousine"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1INUVTlPikZqlxpnN3U6ZmFuQjPuh0wNT",
+            "backgroundImage": "/assets/drive-file?id=1wF-AkI2T0K9J47FGZ-oe04ZO4wIlJrLK",
             "layoutVariant": "compact"
           },
           {
@@ -2562,7 +2562,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Daisy Stayin Đà Lạt",
                 "metaPrimary": "100/12 Vạn Hạnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1oFmq9_E4Td41oohNyUhq8thTFnY7YvRt",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -2585,7 +2585,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Duparc Hotel Dalat",
                 "metaPrimary": "15A Trần Phú",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=19my-qGdHvUpUFYYrTNxlUU4NOzil6ywg",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -2608,7 +2608,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Icon The Homestay",
                 "metaPrimary": "26/7/4 Đ. Lữ Gia",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1O070-PC4qv7dbsgXgGwlzXjKb5WPgRen",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -2631,7 +2631,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Dễ Chịu Homestay",
                 "metaPrimary": "Hẻm 10 Nguyễn Hữu Cảnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1iE4_2dp5WdOGP_Dd5qZdPM8soMxphySX",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -2654,7 +2654,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "1000m2",
                 "metaPrimary": "70/5 Pasteur",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1vjjh7HnzzxOqd21WiWhfZAc_PLn35VSJ",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -2677,7 +2677,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Dốc View/ Home",
                 "metaPrimary": "89B/17, Đ. Đào Duy Từ",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1NASQf4a1wUzTkq__6xvW0jeui1CoYR0K",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -2700,7 +2700,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Perfect Homestay Đà Lạt",
                 "metaPrimary": "Nguyễn Trung Trực",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1rKGO7xeF2WiSiw17ReGnGOFT1asifRxq",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -2723,7 +2723,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "HLS Dalat",
                 "metaPrimary": "35 Đường Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1068CoWKFGLuXoGkaik-oK62vc3zsQ7vc",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -2740,7 +2740,7 @@
                 "rawName": "HLS Dalat"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1rNAWLX4QyGGhKzlHsBiiSsp1Su0XfHFp",
+            "backgroundImage": "/assets/drive-file?id=1hspl_1dsmQo2mAMDdq0m6tPBn1jWQwPa",
             "layoutVariant": "compact"
           }
         ],
@@ -2751,7 +2751,7 @@
           "#3n2ddalat",
           "#dulichsinho"
         ],
-        "templateVersion": 14
+        "templateVersion": 15
       }
     ],
     "itinerary-4n3d": [
@@ -2933,7 +2933,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1Ie1qh87SE59WYVSm11ZtDjPRGeo7FdVf",
+            "backgroundImage": "/assets/drive-file?id=1isOCALIeSXrOEiTCm1ibTbOrOTiC2rMR",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -3096,7 +3096,7 @@
                 "rawName": "La Tulipe Rouge"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1YwAo6X4J51d7Q73OCTW9O1NdCI7jVqhj",
+            "backgroundImage": "/assets/drive-file?id=1oEofrvRgTNPJrhu0JQbKwkLxot6IuwRz",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -3267,7 +3267,7 @@
                 "rawName": "Moon Lounge"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1y5zKOrUhcENLROaIJt1bFTkAJxaG-D7-",
+            "backgroundImage": "/assets/drive-file?id=18p6AHHc5W-dUTNO7YIei3yJ1QZrCdGKF",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -3439,7 +3439,7 @@
                 "rawName": "Nobar Dalat"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=10uG94UQNFpbxjd6f84YIOLEdac-dhXYL",
+            "backgroundImage": "/assets/drive-file?id=1Bz3DY4Sj6B704Si-h0_obbhDYzGWhWs0",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -3456,7 +3456,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Memory Inn",
                 "metaPrimary": "27A Đường Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1t9DjiExrNQYsO9rKh3gkifIuLIme8hKf",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -3479,7 +3479,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "TP Hotel",
                 "metaPrimary": "6B Trần Quang Diệu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=11QtP1Ka47sQtMxhBc0zLySkhXgTv19VV",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -3502,7 +3502,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Homestay Aurora Đà Lạt",
                 "metaPrimary": "50 Sương Nguyệt Ánh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1xed88WEaTtuIAYF-xGvZhjeshxdgB1mJ",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -3525,7 +3525,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Golf Valley",
                 "metaPrimary": "94 Đường Bùi Thị Xuân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1A9SdDFbnV-LglSMDbu86mB98Cw8l9NSk",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -3548,7 +3548,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Láye Homestay",
                 "metaPrimary": "15 Đ. Trần Anh Tông",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1fDpWE279SqhpC-AU7RYYZjPsTsehfE06",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -3571,7 +3571,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Daisy Stayin Đà Lạt",
                 "metaPrimary": "100/12 Vạn Hạnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1oFmq9_E4Td41oohNyUhq8thTFnY7YvRt",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -3594,7 +3594,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Cloudy Hillside boutique",
                 "metaPrimary": "81 Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=17b1g_MhTrvmoJZhP5I88Ar5dbMoGZ5fv",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -3611,7 +3611,7 @@
                 "rawName": "Cloudy Hillside boutique"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=15tx5VrXo85jWRXabYsi6gdhc0JfSQkp7",
+            "backgroundImage": "/assets/drive-file?id=1ssBRRk3Ngg6d_QZmow3Wud2xZKvrkEf_",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -3783,7 +3783,7 @@
                 "rawName": "Thuê Xe Nguyên Vũ"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1x-Fr1wb_2S-QzwNaMCW1Z-05VFtncX-R",
+            "backgroundImage": "/assets/drive-file?id=114qPCpRdI8ghSAt54hBJxFESn8zGv1fg",
             "layoutVariant": "journey-4n3d"
           }
         ],
@@ -3794,7 +3794,7 @@
           "#dulichchamsau",
           "#camnangdalat"
         ],
-        "templateVersion": 10
+        "templateVersion": 11
       },
       {
         "id": "itinerary-4n3d-caption-02-ycuc",
@@ -3978,7 +3978,7 @@
                 "rawName": "On The Rock Cocktail Bar"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1ehJ2Jvwj9V-PgrsiQ8mYP46957zludtA",
+            "backgroundImage": "/assets/drive-file?id=12kPVQ83D9FPzZByGbBLm68WnSnfMa0Za",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -4139,7 +4139,7 @@
                 "rawName": "Dalat CAVA"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1n4YSzLT1ZLjM5A3-s5R2N82MusyyLjCt",
+            "backgroundImage": "/assets/drive-file?id=1jW-rRA-eBbtriRVLCbvqpaQ2r1QCh_Fi",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -4309,7 +4309,7 @@
                 "rawName": "Fox's Den"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1tESrMXmINyZAxgQkGu3IOatGAjB-GM1J",
+            "backgroundImage": "/assets/drive-file?id=1_QqwO5ECWeqjdPyHUa6X54sOb5Cmp0Oq",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -4477,7 +4477,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1_-lgt8JUxHILPukuDSrser3Dvt_6Lrj2",
+            "backgroundImage": "/assets/drive-file?id=1pyIzxiLqz2OpD30uBbUea6OThO-SvD_7",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -4494,7 +4494,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Bình An Hotel",
                 "metaPrimary": "06 Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1q7I6gbLudAkfxBADejaGY0-xHd5dFDeT",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -4517,7 +4517,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nắng's Villa & Coffee",
                 "metaPrimary": "Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=12I8Ru7yksO3zJHRBP_b1NuhYghu1QNYy",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -4540,7 +4540,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Golden Sun Hotel - Dalat",
                 "metaPrimary": "01 Bà Huyện Thanh Quan",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1YBjajaVkqnJ7whHSdSBjvUD2ay4VKUzL",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -4563,7 +4563,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Savio Hotel",
                 "metaPrimary": "36/9b Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1KUJoPoZPEb2ljpESfORihkf-CsS9SEHm",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -4586,7 +4586,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Ami hotel Dalat",
                 "metaPrimary": "40 Tô Hiến Thành",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Lmqypc3JMAWJ9pMI1eiQape51AWhcC3d",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -4609,7 +4609,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Tulip 2 Hotel",
                 "metaPrimary": "14  Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1KLbgJ5J_w6pD7x5WKLRMLXMEw89o8SAE",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -4632,7 +4632,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Perfect Homestay Đà Lạt",
                 "metaPrimary": "Nguyễn Trung Trực",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1rKGO7xeF2WiSiw17ReGnGOFT1asifRxq",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -4649,7 +4649,7 @@
                 "rawName": "Perfect Homestay Đà Lạt"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1Ynnh5xCBPGeCLI07lcMrLcnwAGG-ysKw",
+            "backgroundImage": "/assets/drive-file?id=1m2fSh-2OvhYAyDugBH1zesv_NGK1e4i0",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -4821,7 +4821,7 @@
                 "rawName": "Thuê xe máy Mai Sơn"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1K-WaNk1p7Wupxz2fWDa86WG62BqOtoZ_",
+            "backgroundImage": "/assets/drive-file?id=10oThB5V4_xYVET0nq5GeZ-vSRxRf7Dgm",
             "layoutVariant": "journey-4n3d"
           }
         ],
@@ -4832,7 +4832,7 @@
           "#dulichchamsau",
           "#camnangdalat"
         ],
-        "templateVersion": 10
+        "templateVersion": 11
       },
       {
         "id": "itinerary-4n3d-caption-03-zl83",
@@ -5015,7 +5015,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1-gkIf_LrKaqIQJNAxvg-ID-XLk5Le_7L",
+            "backgroundImage": "/assets/drive-file?id=15rAtUoi7gmfAWa6VpvBbsoR7QDIa2k22",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -5179,7 +5179,7 @@
                 "rawName": "Kyama Homebar"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1An7WOQR9z5AvaNUm-DRBuEfFiMcI_nB3",
+            "backgroundImage": "/assets/drive-file?id=1tqlc24nDYRbKPREeZ4jzZprI1uhNsAMP",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -5348,7 +5348,7 @@
                 "rawName": "Dạo bộ quanh Hồ Xuân Hương"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1qdcPddIESsPYMt_NDIjIEpPVTyIW8urz",
+            "backgroundImage": "/assets/drive-file?id=1KAUiPYUIEnaG6WzEDtpVV5Bl6UJUEHhy",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -5517,7 +5517,7 @@
                 "rawName": "Nghe nhạc Acoustic"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1bqVGnoLDT1aK3XBMjCa16zEj3Y97FHUR",
+            "backgroundImage": "/assets/drive-file?id=1v_GdCREVccwHceD7mzqCJs5gJh04sQVI",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -5534,7 +5534,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Teak House Đà Lạt",
                 "metaPrimary": "Phường 3,Đà Lạt",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1G1RHeL2Lyl_wfyXHFJ8rlTU49DD-xA73",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -5557,7 +5557,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Du Sam House",
                 "metaPrimary": "91 Phan Bội Châu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1KT6YoRVnVkqpAaFHKtCF-ItrN5uQAo_A",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -5580,7 +5580,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "TTR Vincent Hotel",
                 "metaPrimary": "26 Trần Lê",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1g68mCnk_mum7DyabV5UYH1t1wBBZV5x9",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -5603,7 +5603,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nature Boutique Hotel",
                 "metaPrimary": "H16 H17 Nguyễn Thị Nghĩa",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1rA-h0FQWa6RzE3KxqksnMsIEk_zmIjB_",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -5626,7 +5626,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Moonhill homestay",
                 "metaPrimary": "Hẻm 65B Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1tb7j11SQ44gLNAY0ZxkNAqOlLWct_QOy",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -5649,7 +5649,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Sol Dalat House",
                 "metaPrimary": "1D Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Yiy5VkjjvQDJ-TOAIUM3FEaKr4H_iGwu",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -5672,7 +5672,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Archy Stayin",
                 "metaPrimary": "89 Nam Hồ",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1CCSQ_p6Kx6TvJ8508HD0xst9DnrvPZf2",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -5689,7 +5689,7 @@
                 "rawName": "Archy Stayin"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1zcgRK6w8V2yXVBkvsN6JLv-ADsXdj1v1",
+            "backgroundImage": "/assets/drive-file?id=10PDIibqv0BwNKvH8WxlpzwyD7NqlQuo2",
             "layoutVariant": "journey-4n3d"
           },
           {
@@ -5861,7 +5861,7 @@
                 "rawName": "Nhà Xe Phong Phú"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=125FYH1gFc_XeOlxu_Ll_bICRKOthtcYe",
+            "backgroundImage": "/assets/drive-file?id=1EZXzS1yae-qkb5YCggrLBCLFFERMFdU_",
             "layoutVariant": "journey-4n3d"
           }
         ],
@@ -5872,7 +5872,7 @@
           "#dulichchamsau",
           "#camnangdalat"
         ],
-        "templateVersion": 10
+        "templateVersion": 11
       }
     ],
     "itinerary-4n2d-grid8": [
@@ -6073,7 +6073,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1q0ALYjm_t8FOe8OfJZAqA7JJeDftLifu",
+            "backgroundImage": "/assets/drive-file?id=1hoiR2Hjd9p4nXuqHW_q_OdINKV94jX5v",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -6268,7 +6268,7 @@
                 "rawName": "Chợ đêm Đà Lạt"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1x-Fr1wb_2S-QzwNaMCW1Z-05VFtncX-R",
+            "backgroundImage": "/assets/drive-file?id=1c1gHapf1ea-yYGV2DaHc_m9Jy-QrA2n_",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -6462,7 +6462,7 @@
                 "rawName": "Dalat CAVA"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1rrw7rNdwhsQ0O8J7cxVrziqQsp1q0Hmz",
+            "backgroundImage": "/assets/drive-file?id=1v_GdCREVccwHceD7mzqCJs5gJh04sQVI",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -6652,7 +6652,7 @@
                 "rawName": "The Roof by Banla Dalat"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=11DXx7xKyC-lXHPD3HhJ3YEJbwlGGdZv9",
+            "backgroundImage": "/assets/drive-file?id=19Xa-wlq6_a3Yug_HxqdLAFOHZXXW4UQp",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -6847,7 +6847,7 @@
                 "rawName": "Thiên Di Spa"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1VjUQjVAB2_se4nAhi9jMrON3i9P-2iGa",
+            "backgroundImage": "/assets/drive-file?id=1IR06h0OmY2PhdVVmTEqeXQxAPBbis-hv",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -6864,7 +6864,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Ơi Homestay",
                 "metaPrimary": "82/6 Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1eJzPBQr-lmpCi2RmvoWUqdBBeydMzRki",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -6887,7 +6887,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Daisy Stayin Đà Lạt",
                 "metaPrimary": "100/12 Vạn Hạnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1oFmq9_E4Td41oohNyUhq8thTFnY7YvRt",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -6910,7 +6910,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Duparc Hotel Dalat",
                 "metaPrimary": "15A Trần Phú",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=19my-qGdHvUpUFYYrTNxlUU4NOzil6ywg",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -6933,7 +6933,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nori Homestay",
                 "metaPrimary": "58B Hoàng Văn Thụ",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1IrcolncFIG2Dm4QdEyCljzcW6ytjEVpj",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -6956,7 +6956,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Perfect Homestay Đà Lạt",
                 "metaPrimary": "Nguyễn Trung Trực",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1rKGO7xeF2WiSiw17ReGnGOFT1asifRxq",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -6979,7 +6979,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Lens Hotel",
                 "metaPrimary": "113 Bùi Thị Xuân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1jYk4CtUHJtpAeQhrVupJ2KZKYE4Qyefg",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -7002,7 +7002,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Mercure Dalat Resort",
                 "metaPrimary": "03 Nguyễn Du",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1wYly3sv_nlj77aIWrFTXXNrkEdMDMEte",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -7025,7 +7025,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Homestay Dưới Gốc Thông",
                 "metaPrimary": "2/2 Khởi Nghĩa Bắc Sơn",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1sqJ-FHmYZkImri2C4Fi6tXVRPeeE3LOk",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -7042,7 +7042,7 @@
                 "rawName": "Homestay Dưới Gốc Thông"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1RRObqf2Vdj_nOLArz29-q06c5HefVFgx",
+            "backgroundImage": "/assets/drive-file?id=1JBFyMebydRiJwiVqCkSWx8ITeBsxd0Vb",
             "layoutVariant": "journey-4n2d-grid8"
           }
         ],
@@ -7053,7 +7053,7 @@
           "#camnangdalat",
           "#dulichchamsau"
         ],
-        "templateVersion": 12
+        "templateVersion": 13
       },
       {
         "id": "itinerary-4n2d-grid8-caption-02-2o6m",
@@ -7251,7 +7251,7 @@
                 "rawName": "Dạo bộ quanh Hồ Xuân Hương"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1ZGrI6oRVu2ikAgIUbIEK71FzPp-GuOvU",
+            "backgroundImage": "/assets/drive-file?id=1PZeIBLN5DlSl4Ju0A8zBw0zg5TnVASHK",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -7444,7 +7444,7 @@
                 "rawName": "Kyama Homebar"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1uL0xpCB-JRjuxg62ChOVaPVUAkoQ_w_A",
+            "backgroundImage": "/assets/drive-file?id=1Bz3DY4Sj6B704Si-h0_obbhDYzGWhWs0",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -7636,7 +7636,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=17b1g_MhTrvmoJZhP5I88Ar5dbMoGZ5fv",
+            "backgroundImage": "/assets/drive-file?id=1aEFWwvf2Py_ra_OgpvpGa7ZkAu-hzbC9",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -7830,7 +7830,7 @@
                 "rawName": "Moon Lounge"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=16eyA-9wdWWzscK81lFI0cgVVn_OqMgkC",
+            "backgroundImage": "/assets/drive-file?id=1DJd7Lu34zsUoqDmtBdF6ePSVaDJs0rkA",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -8025,7 +8025,7 @@
                 "rawName": "Nhà Xe Phong Phú"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1INUVTlPikZqlxpnN3U6ZmFuQjPuh0wNT",
+            "backgroundImage": "/assets/drive-file?id=1B3EChTpwRSeMW7-ZDjp0_D-WpeVJyEa1",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -8042,7 +8042,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Golden Sun Hotel - Dalat",
                 "metaPrimary": "01 Bà Huyện Thanh Quan",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1YBjajaVkqnJ7whHSdSBjvUD2ay4VKUzL",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -8065,7 +8065,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Du Sam House",
                 "metaPrimary": "91 Phan Bội Châu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1KT6YoRVnVkqpAaFHKtCF-ItrN5uQAo_A",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -8088,7 +8088,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "TP Hotel",
                 "metaPrimary": "6B Trần Quang Diệu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=11QtP1Ka47sQtMxhBc0zLySkhXgTv19VV",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -8111,7 +8111,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Amory Dalat Hotel",
                 "metaPrimary": "21 Hồ Xuân Hương",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1-VZ6gAumWcCEZQ8My63sQ2aIUgqSZ54v",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -8134,7 +8134,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nắng's Villa & Coffee",
                 "metaPrimary": "Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=12I8Ru7yksO3zJHRBP_b1NuhYghu1QNYy",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -8157,7 +8157,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Villa Hotel Thao Nguyen",
                 "metaPrimary": "09 Võ Trường Toản",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Viy4FNwvyDPebbRO_gLqj5W3YXdYOp65",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -8180,7 +8180,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The November Stay",
                 "metaPrimary": "31 Xô Viết Nghệ Tĩnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1G7cuFLkSC1azRIai1j0gYRwQwy-s7m0b",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -8203,7 +8203,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Moon Valley Villas",
                 "metaPrimary": "31C Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1WZoOz0sc5nDcmJyMpp_UNqJoh3PP2FcM",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -8220,7 +8220,7 @@
                 "rawName": "Moon Valley Villas"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1pkS_tNwYhx4ANeK3OorQFNuyvLyN5JfL",
+            "backgroundImage": "/assets/drive-file?id=1eLi-bI4Um_xZ4hMAE3f_KzSeWxTioYBw",
             "layoutVariant": "journey-4n2d-grid8"
           }
         ],
@@ -8231,7 +8231,7 @@
           "#dulichbanbe",
           "#xuhuongdalat"
         ],
-        "templateVersion": 12
+        "templateVersion": 13
       },
       {
         "id": "itinerary-4n2d-grid8-caption-03-420b",
@@ -8426,7 +8426,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1bqXW3QiAgIkBmT-enlfykoiGJQHAGx5j",
+            "backgroundImage": "/assets/drive-file?id=1c1qJ8EiBu2-9h6vWTUbPsJ7FMnmzSqu6",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -8619,7 +8619,7 @@
                 "rawName": "On The Rock Cocktail Bar"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1Z9Kc_REikmM9dGO-xOcb5FufFY3wc-4m",
+            "backgroundImage": "/assets/drive-file?id=1RI_fiPbSl9ETyzhsK4zfl0A6vmxYI21n",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -8813,7 +8813,7 @@
                 "rawName": "Peng Quán"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1Yiy5VkjjvQDJ-TOAIUM3FEaKr4H_iGwu",
+            "backgroundImage": "/assets/drive-file?id=1yj_r4Trb9_5vAQdPCKtmjJyMSD0Ieg90",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -9006,7 +9006,7 @@
                 "rawName": "Hẻm Ký Ức"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1pCh24prPdGYt3e-2t7XsTlTTSX9CaOku",
+            "backgroundImage": "/assets/drive-file?id=14-GWFF3bKiEHyjWI6mVzXd3bXMJ4o0AW",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -9201,7 +9201,7 @@
                 "rawName": "Chip’Farm"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1An7WOQR9z5AvaNUm-DRBuEfFiMcI_nB3",
+            "backgroundImage": "/assets/drive-file?id=1tqlc24nDYRbKPREeZ4jzZprI1uhNsAMP",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -9218,7 +9218,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Rinbon Home",
                 "metaPrimary": "40 Võ Thị Sáu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1GzIJwsKFIMQUKdLmnuGV_WsMdxi4aQ8l",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -9241,7 +9241,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Alida Homestay And Coffee",
                 "metaPrimary": "38 Triệu Việt Vương",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1yl3XWkjvnB59-NYZoVOTOCYc6i5X1EZA",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -9264,7 +9264,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The Manor Villas Dalat",
                 "metaPrimary": "6B Đống Đa",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1VW686OXqKJBpw7tKbUaUYPgD6M11bcQo",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -9287,7 +9287,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Icon the homestay",
                 "metaPrimary": "26/7/4 Lữ Gia",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1tIzqwUq8t3_Cd3YiVBHnUtz9vKoKNDAT",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -9310,7 +9310,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Aurora Hotel Dalat",
                 "metaPrimary": "44 Tô Hiến Thành",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1YKv8u5QBCCpFwtz2tMm7Yr5TOP2yXUa4",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -9333,7 +9333,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Gaun hill villa",
                 "metaPrimary": "36/45 Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1MH7-KnDeEBDRVV0a-DH5ZPtW8yLY7XAT",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -9356,7 +9356,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The Luxe Hotel",
                 "metaPrimary": "17 Ba Tháng Tư",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1SsY2J827BA00D8hrnV0Kbm8GdBbIxgIm",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -9379,7 +9379,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Villa Trà My - Đà Lạt",
                 "metaPrimary": "49/10B Phạm Hồng Thái",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1-v7pN3GsBPKT1seMrhwTBWEICxRuLiH9",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -9396,7 +9396,7 @@
                 "rawName": "Villa Trà My - Đà Lạt"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1EWAmRZA4iq5sGoYKJeLHEesZ8vEIncf6",
+            "backgroundImage": "/assets/drive-file?id=1mrhpi6IKlBej8qvMdzNXeMjyOo_qoXOp",
             "layoutVariant": "journey-4n2d-grid8"
           }
         ],
@@ -9407,7 +9407,7 @@
           "#dulich4ngay",
           "#xuhuongdalat"
         ],
-        "templateVersion": 12
+        "templateVersion": 13
       },
       {
         "id": "itinerary-4n2d-grid8-caption-04-5d4o",
@@ -9603,7 +9603,7 @@
                 "rawName": "Fox's Den"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1Xnyg2Z8rFJs6pqZBVTinUHczF_oGh6om",
+            "backgroundImage": "/assets/drive-file?id=1Fa1z8kYYsEi4MeRJo2JdVk2gmUBOeKTz",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -9796,7 +9796,7 @@
                 "rawName": "Cồng chiêng Tây Nguyên"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1m0BLGiQyn6xh5N4tKhXvVsReOXukm8Fz",
+            "backgroundImage": "/assets/drive-file?id=1SguLPe0k_DRf-ZE5olYoFWmkjm_kTMCT",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -9990,7 +9990,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=10yt4WTc3dNoy91eqoedRw3bNeAY5Z9rh",
+            "backgroundImage": "/assets/drive-file?id=1YNfeHJYmaWOxOZWGA5zFry_mtsnRx4RE",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -10184,7 +10184,7 @@
                 "rawName": "Tiemsachcobanruou"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1KlCYueQIomYmVc4aBK5Blq7h7gaViJ6l",
+            "backgroundImage": "/assets/drive-file?id=1acOBFJTMhPN__Jjtb2WmI1VjIp0qE7o-",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -10379,7 +10379,7 @@
                 "rawName": "Xe Phương Trang"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1k-7Yu-4d8Zjj8sve3PGYKFgGFeBF8qpX",
+            "backgroundImage": "/assets/drive-file?id=1WREfTKqtIUtH8_R4nO4uz7NOh4h6cRqK",
             "layoutVariant": "journey-4n2d-grid8"
           },
           {
@@ -10396,7 +10396,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Dốc View/ Home",
                 "metaPrimary": "89B/17, Đ. Đào Duy Từ",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1NASQf4a1wUzTkq__6xvW0jeui1CoYR0K",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -10419,7 +10419,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "1000m2",
                 "metaPrimary": "70/5 Pasteur",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1vjjh7HnzzxOqd21WiWhfZAc_PLn35VSJ",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -10442,7 +10442,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Dễ Chịu Homestay",
                 "metaPrimary": "Hẻm 10 Nguyễn Hữu Cảnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1iE4_2dp5WdOGP_Dd5qZdPM8soMxphySX",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -10465,7 +10465,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "TTC Hotel - Đà Lạt",
                 "metaPrimary": "4 Nguyễn Thị Minh Khai",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=140pRPbUddF-NzzjVSPjheHObDqvqQ_mC",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -10488,7 +10488,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Khách sạn Marguerite",
                 "metaPrimary": "30-32 Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1pkS_tNwYhx4ANeK3OorQFNuyvLyN5JfL",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -10511,7 +10511,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Cozy view house",
                 "metaPrimary": "Đường Tô Hiến Thành",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1lt12hMzJOK-Sm_6nCZLk50suIC-it9Jr",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -10534,7 +10534,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The Palette 2",
                 "metaPrimary": "B11 KQH Phạm Hồng Thái",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1kfPOiikhEaOV-s_n3AoZLZKiMwVKc69h",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -10557,7 +10557,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Savio Hotel",
                 "metaPrimary": "36/9b Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1KUJoPoZPEb2ljpESfORihkf-CsS9SEHm",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -10574,7 +10574,7 @@
                 "rawName": "Savio Hotel"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=144JmLakHv_Szhy9U2nNAs_XGyVnnyA2V",
+            "backgroundImage": "/assets/drive-file?id=1B5hIb5GKvOPzmmVCbJwgRCMj9jUUpTGj",
             "layoutVariant": "journey-4n2d-grid8"
           }
         ],
@@ -10585,7 +10585,7 @@
           "#dulich4ngay",
           "#xuhuongdalat"
         ],
-        "templateVersion": 12
+        "templateVersion": 13
       }
     ],
     "pov-3-day": [
@@ -11008,7 +11008,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Cozy view house",
                 "metaPrimary": "Đường Tô Hiến Thành",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1lt12hMzJOK-Sm_6nCZLk50suIC-it9Jr",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -11031,7 +11031,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Ami hotel Dalat",
                 "metaPrimary": "40 Tô Hiến Thành",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Lmqypc3JMAWJ9pMI1eiQape51AWhcC3d",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -11054,7 +11054,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Teak House Đà Lạt",
                 "metaPrimary": "Phường 3,Đà Lạt",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1G1RHeL2Lyl_wfyXHFJ8rlTU49DD-xA73",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -11162,7 +11162,7 @@
           "#dulichdalat",
           "#xuhuongdalat"
         ],
-        "templateVersion": 9
+        "templateVersion": 10
       },
       {
         "id": "pov-3-day-caption-02-6q7c",
@@ -11579,7 +11579,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Túi Ba Gang",
                 "metaPrimary": "63 Ba Tháng Hai",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1tdd6xlD-m0jyLflP8AB2OjU2gqx2Kxh0",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -11602,7 +11602,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The Palette 2",
                 "metaPrimary": "B11 KQH Phạm Hồng Thái",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1kfPOiikhEaOV-s_n3AoZLZKiMwVKc69h",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -11625,7 +11625,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Golden Sun Hotel - Dalat",
                 "metaPrimary": "01 Bà Huyện Thanh Quan",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1YBjajaVkqnJ7whHSdSBjvUD2ay4VKUzL",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -11733,7 +11733,7 @@
           "#dulichdalat",
           "#xuhuongdalat"
         ],
-        "templateVersion": 9
+        "templateVersion": 10
       },
       {
         "id": "pov-3-day-caption-03-79ds",
@@ -12158,7 +12158,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Memory Inn",
                 "metaPrimary": "27A Đường Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1t9DjiExrNQYsO9rKh3gkifIuLIme8hKf",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -12181,7 +12181,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Amelia House",
                 "metaPrimary": "1/5 Nguyễn Đình Chiểu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1byAHE4MqyT_Lwcqt3B-fCF29fQuoGp3Z",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -12204,7 +12204,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "QR Hotel",
                 "metaPrimary": "73  An Bình",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1uVOfZalgWRE99Dt1h2U0N3QPvijkYZYE",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -12312,7 +12312,7 @@
           "#xuhuongdalat",
           "#dulichdalat"
         ],
-        "templateVersion": 9
+        "templateVersion": 10
       }
     ],
     "grid-6": [
@@ -13081,7 +13081,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Tulip 2 Hotel",
                 "metaPrimary": "14  Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1KLbgJ5J_w6pD7x5WKLRMLXMEw89o8SAE",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -13104,7 +13104,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Homestay Thùy Dương",
                 "metaPrimary": "Hẻm 17 Hùng Vương",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1qbw0xDNQw1FkWe4qfcuiDHFfUyRPH7wb",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -13127,7 +13127,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nature Boutique Hotel",
                 "metaPrimary": "H16 H17 Nguyễn Thị Nghĩa",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1rA-h0FQWa6RzE3KxqksnMsIEk_zmIjB_",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -13150,7 +13150,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Queen T&T Hotel",
                 "metaPrimary": "239b Phan Đình Phùng",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1QQyXi5ad7UCnU7RmUdtZ_mM-4_HhOWhG",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -13173,7 +13173,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Dalat Boutique PNP Hotel",
                 "metaPrimary": "14 Huỳnh Thúc Kháng",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1_TIpslahOIG8TIKP7hiXCTM1UhwxyKSf",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -13196,7 +13196,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Bình An Hotel",
                 "metaPrimary": "06 Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1q7I6gbLudAkfxBADejaGY0-xHd5dFDeT",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -13373,7 +13373,7 @@
           "#dulichdalat",
           "#xuhuongdalat"
         ],
-        "templateVersion": 13
+        "templateVersion": 14
       },
       {
         "id": "grid-6-caption-02-8rer",
@@ -14055,7 +14055,7 @@
                 "sourceSectionKey": "dich_vu",
                 "name": "Langfarm",
                 "metaPrimary": "Nhiều chi nhánh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=13hFh_MtlDbmZx_naOpUBEhlfCmPqCPQw",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -14135,7 +14135,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Perfect Homestay",
                 "metaPrimary": "T17 Nguyễn Trung Trực",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Io2T-ISW_g02FlyfHIiO87dwanMwtjfB",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -14158,7 +14158,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Ngọc Trai Vàng",
                 "metaPrimary": "52 Đoàn Thị Điểm",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1LS1CsfVSCr6I00fZpJZblwgt083_aGjT",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -14181,7 +14181,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Villa Hotel Thao Nguyen",
                 "metaPrimary": "09 Võ Trường Toản",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Viy4FNwvyDPebbRO_gLqj5W3YXdYOp65",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -14204,7 +14204,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The November Stay",
                 "metaPrimary": "31 Xô Viết Nghệ Tĩnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1G7cuFLkSC1azRIai1j0gYRwQwy-s7m0b",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -14227,7 +14227,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Savio Villa",
                 "metaPrimary": "36/9b Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=12nYQ9Y8v8clAXej_8b95OZ7jyWkLbKzH",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -14250,7 +14250,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Láye Homestay",
                 "metaPrimary": "15 Đ. Trần Anh Tông",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1fDpWE279SqhpC-AU7RYYZjPsTsehfE06",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -14427,7 +14427,7 @@
           "#xuhuongdalat",
           "#chilldalat"
         ],
-        "templateVersion": 13
+        "templateVersion": 14
       },
       {
         "id": "grid-6-caption-03-9gvc",
@@ -15188,7 +15188,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Ơi Home",
                 "metaPrimary": "23 Lê Hồng Phong",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1P0UnQBBynsioeDTyvnKltHoA5Q6eunmn",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -15211,7 +15211,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Memory Inn",
                 "metaPrimary": "27A Đường Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1t9DjiExrNQYsO9rKh3gkifIuLIme8hKf",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -15234,7 +15234,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "QR Hotel",
                 "metaPrimary": "73  An Bình",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1uVOfZalgWRE99Dt1h2U0N3QPvijkYZYE",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -15257,7 +15257,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Amelia House",
                 "metaPrimary": "1/5 Nguyễn Đình Chiểu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1byAHE4MqyT_Lwcqt3B-fCF29fQuoGp3Z",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -15280,7 +15280,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Lens Hotel",
                 "metaPrimary": "113 Bùi Thị Xuân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1jYk4CtUHJtpAeQhrVupJ2KZKYE4Qyefg",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -15303,7 +15303,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Là Mơ homestay",
                 "metaPrimary": "10 Nguyễn Hữu Cảnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1QDxj3GRKMKV5XKYfI8hOYjV6O9C-nTPt",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -15480,7 +15480,7 @@
           "#khamphadalat",
           "#chilldalat"
         ],
-        "templateVersion": 13
+        "templateVersion": 14
       }
     ],
     "grid-8": [
@@ -15688,7 +15688,7 @@
                 "rawName": "Bánh Mì Xíu Mại Bé Linh"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1428VDfImtdwJdF_L92UZlIfC4T51kI-g",
+            "backgroundImage": "/assets/drive-file?id=1ZARbuoOTiMeYrSTJa-d2Pm4GN-5uFonM",
             "layoutVariant": "grid-8"
           },
           {
@@ -15875,7 +15875,7 @@
                 "rawName": "Ô cửa mùa đông"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1k84PuGvaU9d0Q228PqaqXBI_XBKVN8_Y",
+            "backgroundImage": "/assets/drive-file?id=1Y28BA8dGb17KnoPmmQQ3z3Wgk-x_AGpd",
             "layoutVariant": "grid-8"
           },
           {
@@ -16062,7 +16062,7 @@
                 "rawName": "Dốc Hùng Vương"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1WS9mhhKhUJsbnLuJMJlns1NTPzJVkJKi",
+            "backgroundImage": "/assets/drive-file?id=10oThB5V4_xYVET0nq5GeZ-vSRxRf7Dgm",
             "layoutVariant": "grid-8"
           },
           {
@@ -16256,7 +16256,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1_-lgt8JUxHILPukuDSrser3Dvt_6Lrj2",
+            "backgroundImage": "/assets/drive-file?id=1nBGjVxx4vXWZ5_kRPdgUgOA44wr3ZwNN",
             "layoutVariant": "grid-8"
           },
           {
@@ -16451,7 +16451,7 @@
                 "rawName": "Nhà Xe Phong Phú"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=14Pn4a0u5XMG63tf2wndNIiqXn3GuH9mB",
+            "backgroundImage": "/assets/drive-file?id=1pyIzxiLqz2OpD30uBbUea6OThO-SvD_7",
             "layoutVariant": "grid-8"
           },
           {
@@ -16468,7 +16468,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Golf Valley",
                 "metaPrimary": "94 Đường Bùi Thị Xuân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1A9SdDFbnV-LglSMDbu86mB98Cw8l9NSk",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -16491,7 +16491,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "HLS Dalat",
                 "metaPrimary": "35 Đường Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1068CoWKFGLuXoGkaik-oK62vc3zsQ7vc",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -16514,7 +16514,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Misty Valley Đà Lạt",
                 "metaPrimary": "49 Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1-zDKvrNowMUNSG97Db_Cpx3GXH5b4X0X",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -16537,7 +16537,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nature hotel",
                 "metaPrimary": "8A Nam Kỳ Khởi Nghĩa",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=15wM5q9gHIaeVRz1jDUet5_ZYDekrIT28",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -16560,7 +16560,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Ơi Homestay",
                 "metaPrimary": "82/6 Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1eJzPBQr-lmpCi2RmvoWUqdBBeydMzRki",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -16583,7 +16583,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Archy Stayin",
                 "metaPrimary": "89 Nam Hồ",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1CCSQ_p6Kx6TvJ8508HD0xst9DnrvPZf2",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -16606,7 +16606,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Ơi Home",
                 "metaPrimary": "23 Lê Hồng Phong",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1P0UnQBBynsioeDTyvnKltHoA5Q6eunmn",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -16629,7 +16629,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Memory Inn",
                 "metaPrimary": "27A Đường Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1t9DjiExrNQYsO9rKh3gkifIuLIme8hKf",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -16646,7 +16646,7 @@
                 "rawName": "Memory Inn"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1_igg3KF-AH3PdTFwmtf9BAldFXwKTBCW",
+            "backgroundImage": "/assets/drive-file?id=1-v_E7UnGkQ8GOU4pv-H1eFYBUEeKWfD5",
             "layoutVariant": "grid-8"
           },
           {
@@ -16841,7 +16841,7 @@
                 "rawName": "Camping và săn mây Cầu Đất"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1CCSQ_p6Kx6TvJ8508HD0xst9DnrvPZf2",
+            "backgroundImage": "/assets/drive-file?id=1XnMhn8yo3MMAAuvKRcRC3LGrAhPk7pZ5",
             "layoutVariant": "grid-8"
           }
         ],
@@ -16852,7 +16852,7 @@
           "#khamphamoidalat",
           "#camtaydalat"
         ],
-        "templateVersion": 12
+        "templateVersion": 13
       },
       {
         "id": "grid-8-caption-02-hy2m",
@@ -17056,7 +17056,7 @@
                 "rawName": "Tiệm Nướng Trong Rừng"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1_dKL2Kd_SKpiKWT_TrQhzkm92HkzPqjs",
+            "backgroundImage": "/assets/drive-file?id=1qY5btD2rQfTbDQELTD-3DCSDSRZ9Fd-h",
             "layoutVariant": "grid-8"
           },
           {
@@ -17243,7 +17243,7 @@
                 "rawName": "Quyền Cà Phê"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1n2S62JKMfrVc9E5fdOccGphga3oHbXM1",
+            "backgroundImage": "/assets/drive-file?id=1mwpkz1Hts0RUGBkHs3MV-qhmiSkGgcJ0",
             "layoutVariant": "grid-8"
           },
           {
@@ -17430,7 +17430,7 @@
                 "rawName": "Cạnh cà phê Đương"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1pCh24prPdGYt3e-2t7XsTlTTSX9CaOku",
+            "backgroundImage": "/assets/drive-file?id=1-ec4HqTpcPY9Gzr9WpyGGpffJTFUDKaP",
             "layoutVariant": "grid-8"
           },
           {
@@ -17625,7 +17625,7 @@
                 "rawName": "Ngắm nhà lồng tại Xóm Lèo"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=12t4H-IeOO3UgcdGpaYUxToKA_gy2-54x",
+            "backgroundImage": "/assets/drive-file?id=1g9oXbvn_4i2inu8XtpcgXmUEnVoT0lo2",
             "layoutVariant": "grid-8"
           },
           {
@@ -17820,7 +17820,7 @@
                 "rawName": "Đặc Sản Nhà Tôm"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=12I8Ru7yksO3zJHRBP_b1NuhYghu1QNYy",
+            "backgroundImage": "/assets/drive-file?id=1mrhpi6IKlBej8qvMdzNXeMjyOo_qoXOp",
             "layoutVariant": "grid-8"
           },
           {
@@ -17837,7 +17837,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "QR Hotel",
                 "metaPrimary": "73  An Bình",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1uVOfZalgWRE99Dt1h2U0N3QPvijkYZYE",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -17860,7 +17860,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Amelia House",
                 "metaPrimary": "1/5 Nguyễn Đình Chiểu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1byAHE4MqyT_Lwcqt3B-fCF29fQuoGp3Z",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -17883,7 +17883,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Savio Villa",
                 "metaPrimary": "36/9b Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=12nYQ9Y8v8clAXej_8b95OZ7jyWkLbKzH",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -17906,7 +17906,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Láye Homestay",
                 "metaPrimary": "15 Đ. Trần Anh Tông",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1fDpWE279SqhpC-AU7RYYZjPsTsehfE06",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -17929,7 +17929,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Nhà Mận Homestay",
                 "metaPrimary": "C2 Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1GaxTVT_69sB55A2dQm4d2T72K7C6Kfl2",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -17952,7 +17952,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The Gate Boutique Hotel",
                 "metaPrimary": "28 Đường Đặng Thái Thân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1SjbUzZnc9mKiEMz-IrTlNXbvsvAQgSHJ",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -17975,18 +17975,18 @@
                 "sourceSectionKey": "homestay",
                 "name": "Vịnh Mây Hotel",
                 "metaPrimary": "65/90 Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
-                "imageUrl": "/assets/drive-file?id=1zJ8wKJuhJ4NkoytnGjFjZNju1NfgGS2b",
+                "metaSecondary": "",
+                "imageUrl": "/assets/drive-file?id=1zrmawGLa2xTNebamLZxMpaCuCKpA8XWt",
                 "imageMapped": true,
                 "imageSource": "manual",
                 "imageNote": "Ảnh đã map đúng địa điểm từ sheet",
                 "candidateImageUrls": [
-                  "/assets/drive-file?id=1zJ8wKJuhJ4NkoytnGjFjZNju1NfgGS2b",
-                  "/assets/drive-file?id=1QYMVGZ55F7YARnc6Gr2hOJep6c4jwvND",
-                  "/assets/drive-file?id=1K-LCKnfMzbicveGV9SPWkNpDyXC4yRPk",
-                  "/assets/drive-file?id=1f7Ueuy1Iia6d5ltbVUIaGLDZHJtpLZQs",
-                  "/assets/drive-file?id=1lEvqPku-h70nxXrnt6TX_AfndAbdPlzR",
-                  "/assets/drive-file?id=1FU9UdV8eI0zzxlz-sazA--EMW6Q2v_49"
+                  "/assets/drive-file?id=1zrmawGLa2xTNebamLZxMpaCuCKpA8XWt",
+                  "/assets/drive-file?id=1dAcY94aLNjAyftcMaE40irYqW96JcRns",
+                  "/assets/drive-file?id=1pEmA-T7mREfGnRla3K_Jysji14P3J09j",
+                  "/assets/drive-file?id=16RZUSs1qsQRQXV6N5eqN6163UQtYpQ2s",
+                  "/assets/drive-file?id=1UfpDa7GiZWLbLR1d3PlQ0Uc4MaTpVniW",
+                  "/assets/drive-file?id=1xg119rvXOqlgfhu9LnB1c8XKe7qJxt13"
                 ],
                 "isPartner": false,
                 "rawName": "Vịnh Mây Hotel"
@@ -17998,7 +17998,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Payon Villa Dalat",
                 "metaPrimary": "Hẻm 65B Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Muc-u14rhu51K04kEONclRMDJH6ewApw",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -18015,7 +18015,7 @@
                 "rawName": "Payon Villa Dalat"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1vn4hxPfZasF7NYHvhLwMrwca1lVevsdQ",
+            "backgroundImage": "/assets/drive-file?id=18p6AHHc5W-dUTNO7YIei3yJ1QZrCdGKF",
             "layoutVariant": "grid-8"
           },
           {
@@ -18210,7 +18210,7 @@
                 "rawName": "Hanna Land Đà Lạt"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=15GM_FVjn-qu84cx_-AcE7HN5xqqs7mSo",
+            "backgroundImage": "/assets/drive-file?id=1lvn1kZo4OiRjbBfjUxjWhFoaDHUClT8E",
             "layoutVariant": "grid-8"
           }
         ],
@@ -18221,7 +18221,7 @@
           "#chillcungbanbe",
           "#dulichgenz"
         ],
-        "templateVersion": 12
+        "templateVersion": 13
       },
       {
         "id": "grid-8-caption-03-iqe8",
@@ -18428,7 +18428,7 @@
                 "rawName": "Bò Tơ Ông Minh"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1INUVTlPikZqlxpnN3U6ZmFuQjPuh0wNT",
+            "backgroundImage": "/assets/drive-file?id=1wF-AkI2T0K9J47FGZ-oe04ZO4wIlJrLK",
             "layoutVariant": "grid-8"
           },
           {
@@ -18615,7 +18615,7 @@
                 "rawName": "Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1Rw8tuuLymGkUbEbk3z7hgF55KC_4-NtI",
+            "backgroundImage": "/assets/drive-file?id=1EZXzS1yae-qkb5YCggrLBCLFFERMFdU_",
             "layoutVariant": "grid-8"
           },
           {
@@ -18803,7 +18803,7 @@
                 "rawName": "Sân Vận Động Đà Lạt"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=19c1i4VtwXgFlqgaHYCkajwpdK0jcNGfo",
+            "backgroundImage": "/assets/drive-file?id=15ufgAqIQ9OYtjreiw4XrcE9xDGRSmYvN",
             "layoutVariant": "grid-8"
           },
           {
@@ -18996,7 +18996,7 @@
                 "rawName": "Đêm Nhạc Bình Minh Ơi"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1n4YSzLT1ZLjM5A3-s5R2N82MusyyLjCt",
+            "backgroundImage": "/assets/drive-file?id=1jW-rRA-eBbtriRVLCbvqpaQ2r1QCh_Fi",
             "layoutVariant": "grid-8"
           },
           {
@@ -19191,7 +19191,7 @@
                 "rawName": "Chip’Farm"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=10uG94UQNFpbxjd6f84YIOLEdac-dhXYL",
+            "backgroundImage": "/assets/drive-file?id=1YqljNVg5nEcojgFyvEjnM56i7Fqw1T6l",
             "layoutVariant": "grid-8"
           },
           {
@@ -19208,7 +19208,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Khách Sạn Nam Khang 2 Đalat",
                 "metaPrimary": "59/1 Nguyễn Văn Trỗi",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1cvEozeh8Zu8_06vkGLByT1VNKNy2WeS0",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -19231,7 +19231,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Villa Trà My - Đà Lạt",
                 "metaPrimary": "49/10B Phạm Hồng Thái",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1-v7pN3GsBPKT1seMrhwTBWEICxRuLiH9",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -19254,7 +19254,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "The Luxe Hotel",
                 "metaPrimary": "17 Ba Tháng Tư",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1SsY2J827BA00D8hrnV0Kbm8GdBbIxgIm",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -19277,7 +19277,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "TTC Hotel - Đà Lạt",
                 "metaPrimary": "4 Nguyễn Thị Minh Khai",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=140pRPbUddF-NzzjVSPjheHObDqvqQ_mC",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -19300,7 +19300,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Khách sạn Marguerite",
                 "metaPrimary": "30-32 Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1pkS_tNwYhx4ANeK3OorQFNuyvLyN5JfL",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -19323,7 +19323,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Pha Lê Vàng House",
                 "metaPrimary": "59/4 An Dương Vương",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1amu2ZCXuvF62lRnkgRE0WRHVm58tcRSn",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -19346,7 +19346,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Mỹ Kim Villa",
                 "metaPrimary": "58 Pasteur",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1IwqzrlQSKE-GKat52S1dWazp8ueZLG_I",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -19369,7 +19369,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "GreenMeadow Hotel DaLat",
                 "metaPrimary": "20 Nguyễn Viết Xuân",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1J0WQ7jg9hYLLF4qHSxYzBjrQblYo625x",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -19386,7 +19386,7 @@
                 "rawName": "GreenMeadow Hotel DaLat"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1QDxj3GRKMKV5XKYfI8hOYjV6O9C-nTPt",
+            "backgroundImage": "/assets/drive-file?id=1XyQlT5mh2I47GOraxN1doLgHHwVHyrad",
             "layoutVariant": "grid-8"
           },
           {
@@ -19581,7 +19581,7 @@
                 "rawName": "Khám phá Thác Hang Cọp hoặc Thác Pongour"
               }
             ],
-            "backgroundImage": "/assets/drive-file?id=1SjbUzZnc9mKiEMz-IrTlNXbvsvAQgSHJ",
+            "backgroundImage": "/assets/drive-file?id=1OePcIe3KcL4OtPxTZ8W8-jQJ2S0DCZoN",
             "layoutVariant": "grid-8"
           }
         ],
@@ -19592,7 +19592,7 @@
           "#dulichgenz",
           "#meodulich"
         ],
-        "templateVersion": 12
+        "templateVersion": 13
       }
     ],
     "grid-4": [
@@ -19707,7 +19707,7 @@
                 "rawName": "Tiệm Nướng Trong Rừng"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1wF-AkI2T0K9J47FGZ-oe04ZO4wIlJrLK",
             "layoutVariant": "grid-4"
           },
           {
@@ -19802,7 +19802,7 @@
                 "rawName": "Gấp Gáp Cà Phê"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1gm1B-kFGmxMGSo5NCIdlKgKYayQyefq5",
             "layoutVariant": "grid-4"
           },
           {
@@ -19901,7 +19901,7 @@
                 "rawName": "Dốc Hùng Vương"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1g9oXbvn_4i2inu8XtpcgXmUEnVoT0lo2",
             "layoutVariant": "grid-4"
           },
           {
@@ -20002,7 +20002,7 @@
                 "rawName": "Kyama Homebar"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=13aAG25nJ7qe-LaappIZD2kIcvBKQBEBa",
             "layoutVariant": "grid-4"
           },
           {
@@ -20105,7 +20105,7 @@
                 "rawName": "LATA's Đà Lạt"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1nLSZSGPNimb67QfIex3TuyX-mTkrgo5E",
             "layoutVariant": "grid-4"
           },
           {
@@ -20122,7 +20122,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Chivas Dalat Hotel",
                 "metaPrimary": "H51 Nguyễn Thị Nghĩa",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1TZOd88Auhru5_GgfYN7qX-p0xnKESKGY",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -20145,7 +20145,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Flower Hill Hotel",
                 "metaPrimary": "21 Lê Hồng Phong",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1Rej9-1WvtO5BQWiJOYCVApQTo-eQ0f-2",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -20168,7 +20168,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Savio Villa",
                 "metaPrimary": "36/9b Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=12nYQ9Y8v8clAXej_8b95OZ7jyWkLbKzH",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -20191,7 +20191,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Láye Homestay",
                 "metaPrimary": "15 Đ. Trần Anh Tông",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1fDpWE279SqhpC-AU7RYYZjPsTsehfE06",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -20208,7 +20208,7 @@
                 "rawName": "Láye Homestay"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1A7ShSdSxkGxKHw3aJPnrkqcg12rJZWXp",
             "layoutVariant": "grid-4"
           },
           {
@@ -20311,7 +20311,7 @@
                 "rawName": "Đạp vịt Hồ Xuân Hương"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1EOQ8LiAdyK2rtw9rJWnVDuuH-iixuOBF",
             "layoutVariant": "grid-4"
           }
         ],
@@ -20322,7 +20322,7 @@
           "#dulichgan",
           "#quandat"
         ],
-        "templateVersion": 13
+        "templateVersion": 15
       },
       {
         "id": "grid-4-caption-02-kexu",
@@ -20437,7 +20437,7 @@
                 "rawName": "Tiệm nướng lẩu Rừng Mơ"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=18p6AHHc5W-dUTNO7YIei3yJ1QZrCdGKF",
             "layoutVariant": "grid-4"
           },
           {
@@ -20532,7 +20532,7 @@
                 "rawName": "Chip Corner"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1TxPQ_xwJBpcXE78iA32qlZWXTlubE5c3",
             "layoutVariant": "grid-4"
           },
           {
@@ -20632,7 +20632,7 @@
                 "rawName": "Cạnh cà phê Đương"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1XyQlT5mh2I47GOraxN1doLgHHwVHyrad",
             "layoutVariant": "grid-4"
           },
           {
@@ -20735,7 +20735,7 @@
                 "rawName": "Nghe nhạc Acoustic"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1jUypdvEpQRHNZMseBy99PlfwT9XV_uef",
             "layoutVariant": "grid-4"
           },
           {
@@ -20838,7 +20838,7 @@
                 "rawName": "Thuê xe máy Mai Sơn"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=114bSyT2srMbD0kfPTA8nnj0EOpGMEXi6",
             "layoutVariant": "grid-4"
           },
           {
@@ -20855,7 +20855,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Aurora Hotel Dalat",
                 "metaPrimary": "44 Tô Hiến Thành",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1YKv8u5QBCCpFwtz2tMm7Yr5TOP2yXUa4",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -20878,7 +20878,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Gaun hill villa",
                 "metaPrimary": "36/45 Hoàng Hoa Thám",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1MH7-KnDeEBDRVV0a-DH5ZPtW8yLY7XAT",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -20901,7 +20901,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Du Sam House",
                 "metaPrimary": "91 Phan Bội Châu",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1KT6YoRVnVkqpAaFHKtCF-ItrN5uQAo_A",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -20924,7 +20924,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Golden Sun Hotel - Dalat",
                 "metaPrimary": "01 Bà Huyện Thanh Quan",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1YBjajaVkqnJ7whHSdSBjvUD2ay4VKUzL",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -20941,7 +20941,7 @@
                 "rawName": "Golden Sun Hotel - Dalat"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1U0cqfLf9hZEfY-7nA5PB_FYgaz8qQLll",
             "layoutVariant": "grid-4"
           },
           {
@@ -21043,7 +21043,7 @@
                 "rawName": "KDL Thúy Thuận"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1eLi-bI4Um_xZ4hMAE3f_KzSeWxTioYBw",
             "layoutVariant": "grid-4"
           }
         ],
@@ -21054,7 +21054,7 @@
           "#dulichgenz",
           "#chillcungmlem"
         ],
-        "templateVersion": 13
+        "templateVersion": 15
       },
       {
         "id": "grid-4-caption-03-m7gg",
@@ -21169,7 +21169,7 @@
                 "rawName": "Xích Lô Quán"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1SguLPe0k_DRf-ZE5olYoFWmkjm_kTMCT",
             "layoutVariant": "grid-4"
           },
           {
@@ -21264,7 +21264,7 @@
                 "rawName": "Em Koffie"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=19wKHieW7h-yccv5BnVDgfZ-XMnaUA98m",
             "layoutVariant": "grid-4"
           },
           {
@@ -21367,7 +21367,7 @@
                 "rawName": "Nhà Thờ Con Gà"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1pVmA1DQ35jOfpZowznu2kNdLW4jeEEuB",
             "layoutVariant": "grid-4"
           },
           {
@@ -21469,7 +21469,7 @@
                 "rawName": "444"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1mrhpi6IKlBej8qvMdzNXeMjyOo_qoXOp",
             "layoutVariant": "grid-4"
           },
           {
@@ -21572,7 +21572,7 @@
                 "rawName": "Tiệm gội nhà Cá"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1KPvU3a3VByLHPGHNYIWRhPcJYNUM2sdu",
             "layoutVariant": "grid-4"
           },
           {
@@ -21589,7 +21589,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Khách sạn Duy Long",
                 "metaPrimary": "02 Triệu Việt Vương",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1bdhCx8w6SQuS3lrEDfoYfYbEt7IIChbe",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -21612,7 +21612,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Hawaii Hotel Dalat",
                 "metaPrimary": "53 Đồng Tâm",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1fLFcoBevncrVl8d5KgMNcBErvWDQdvVF",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -21635,7 +21635,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Khách sạn Marguerite",
                 "metaPrimary": "30-32 Nguyễn Chí Thanh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1pkS_tNwYhx4ANeK3OorQFNuyvLyN5JfL",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -21658,7 +21658,7 @@
                 "sourceSectionKey": "homestay",
                 "name": "Daisy Stayin Đà Lạt",
                 "metaPrimary": "100/12 Vạn Hạnh",
-                "metaSecondary": "SĐT: Đang cập nhật",
+                "metaSecondary": "",
                 "imageUrl": "/assets/drive-file?id=1oFmq9_E4Td41oohNyUhq8thTFnY7YvRt",
                 "imageMapped": true,
                 "imageSource": "manual",
@@ -21675,7 +21675,7 @@
                 "rawName": "Daisy Stayin Đà Lạt"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1NEbaijCn4EDBWeMMwWgFzQIliZUjrDgE",
             "layoutVariant": "grid-4"
           },
           {
@@ -21778,7 +21778,7 @@
                 "rawName": "Thăm Nhà thờ Con Gà & Trường Cao đẳng Sư phạm"
               }
             ],
-            "backgroundImage": "",
+            "backgroundImage": "/assets/drive-file?id=1Qoo1TgyAS4G7nrnAVPyoleqe5jrFEIT_",
             "layoutVariant": "grid-4"
           }
         ],
@@ -21789,7 +21789,7 @@
           "#dulichtiktok",
           "#chillcungmlem"
         ],
-        "templateVersion": 13
+        "templateVersion": 15
       }
     ]
   }

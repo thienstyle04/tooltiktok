@@ -152,7 +152,12 @@ export default function DeckStudio({ initialDataset = null }) {
   }, []);
 
   const failProgress = useCallback((label = 'Xuất file thất bại.') => {
-    setProgress({ visible: true, failed: true, value: 100, label });
+    setProgress((prev) => ({
+      visible: true,
+      failed: true,
+      value: Math.min(99, Math.max(0, Number(prev.value) || 0)),
+      label,
+    }));
   }, []);
 
   const exportCb = useMemo(() => ({

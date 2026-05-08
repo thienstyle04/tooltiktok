@@ -1,11 +1,46 @@
 'use client';
 
-import { saveAs } from 'file-saver';
 import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { listIsMain, sanitizeFilePart } from './utils';
+
+/**
+ * Download a blob as a file. More reliable than file-saver's saveAs because:
+ * 1. file-saver silently fails in background tabs (browser blocks <a> click)
+ * 2. We add retry logic and fallback to window.open for background tabs
+ */
+function downloadBlobFile(blob, filename) {
+  let url = null;
+  try {
+    url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    // Give the browser time to start the download before cleanup
+    setTimeout(() => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+      if (url) URL.revokeObjectURL(url);
+    }, 10000);
+    return true;
+  } catch (error) {
+    // Fallback: open in new tab (works even in background)
+    try {
+      if (url) {
+        window.open(url, '_blank');
+        return true;
+      }
+    } catch (fallbackError) {
+      console.warn(`Download fallback failed: ${fallbackError?.message || fallbackError}`);
+    }
+    console.warn(`Download failed: ${error?.message || error}${url ? ` Blob URL: ${url}` : ''}`);
+    return false;
+  }
+}
 
 const EXPORT_PIXEL_RATIO = 2;
 const BATCH_EXPORT_PIXEL_RATIO = EXPORT_PIXEL_RATIO;
@@ -16,29 +51,33 @@ const BATCH_SOURCE_IMAGE_MAX_DIMENSION = 0;
 const BATCH_SOURCE_IMAGE_QUALITY = 1;
 const BATCH_IMAGE_PREPARE_CONCURRENCY = 24;
 const IMAGE_FETCH_TIMEOUT_MS = 5000;
-const IMAGE_READY_TIMEOUT_MS = 1200;
+const IMAGE_READY_TIMEOUT_MS = 800;
 const PAGE_RENDER_TIMEOUT_MS = 16000;
 const BATCH_PAGE_RENDER_TIMEOUT_MS = 30000;
 const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 60000;
+const DEFAULT_EXPORT_CORNER_RADIUS = 28;
 const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
   cacheBust: false,
   // Drive proxy images are differentiated by ?id=..., so every template export must keep query params.
   includeQueryParams: true,
 });
+const BATCH_CACHE_TRIM_INTERVAL = 50;
 const EXPORT_QUALITY_PROFILES = Object.freeze({
   optimized: {
     id: 'optimized',
     label: 'chất lượng cao tối ưu',
     pixelRatio: 2,
-    imageFormat: 'image/jpeg',
-    imageExtension: 'jpg',
-    imageQuality: 0.92,
-    sourceImageMaxDimension: 2400,
+    imageFormat: 'image/png',
+    imageExtension: 'png',
+    imageQuality: 1,
+    backgroundColor: null,
+    sourceImageMaxDimension: 1800,
     sourceImageFormat: 'image/jpeg',
-    sourceImageQuality: 0.9,
-    imagePrepareConcurrency: 12,
-    renderChunkSize: 4,
-    captureConcurrency: 1,
+    sourceImageQuality: 0.86,
+    imagePrepareConcurrency: 24,
+    renderChunkSize: null,
+    captureConcurrency: null,
+    preferHtml2Canvas: true,
     renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
   },
   original: {
@@ -61,6 +100,7 @@ const EXPORT_QUALITY_PROFILES = Object.freeze({
 let fontEmbedCSS = null;
 let batchImageCache = new Map();
 let batchExportRoot = null;
+let activeWakeLock = null;
 
 function noop() {}
 
@@ -99,11 +139,132 @@ function exportQualityProfile(quality) {
   return EXPORT_QUALITY_PROFILES[quality] || EXPORT_QUALITY_PROFILES.optimized;
 }
 
+async function requestExportWakeLock() {
+  if (activeWakeLock || typeof navigator === 'undefined' || !navigator.wakeLock?.request) return null;
+  try {
+    activeWakeLock = await navigator.wakeLock.request('screen');
+    activeWakeLock.addEventListener?.('release', () => {
+      activeWakeLock = null;
+    });
+  } catch {
+    activeWakeLock = null;
+  }
+  return activeWakeLock;
+}
+
+async function releaseExportWakeLock() {
+  const wakeLock = activeWakeLock;
+  activeWakeLock = null;
+  if (wakeLock && typeof wakeLock.release === 'function') {
+    try {
+      await wakeLock.release();
+    } catch {
+      // Ignore wake-lock release races; export cleanup must continue.
+    }
+  }
+}
+
+function parsePixelValue(value, fallback = 0) {
+  const parsed = Number.parseFloat(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function exportCornerRadiusFor(pageNode, outputWidth) {
+  const rect = pageNode.getBoundingClientRect();
+  const scale = rect.width > 0 ? outputWidth / rect.width : 1;
+  const styles = window.getComputedStyle?.(pageNode);
+  const cssRadius = styles
+    ? parsePixelValue(styles.borderTopLeftRadius, DEFAULT_EXPORT_CORNER_RADIUS)
+    : DEFAULT_EXPORT_CORNER_RADIUS;
+  return Math.max(0, Math.round(cssRadius * scale));
+}
+
+function roundedRectPath(ctx, width, height, radius) {
+  const safeRadius = Math.max(0, Math.min(radius, width / 2, height / 2));
+  ctx.beginPath();
+  ctx.moveTo(safeRadius, 0);
+  ctx.lineTo(width - safeRadius, 0);
+  ctx.quadraticCurveTo(width, 0, width, safeRadius);
+  ctx.lineTo(width, height - safeRadius);
+  ctx.quadraticCurveTo(width, height, width - safeRadius, height);
+  ctx.lineTo(safeRadius, height);
+  ctx.quadraticCurveTo(0, height, 0, height - safeRadius);
+  ctx.lineTo(0, safeRadius);
+  ctx.quadraticCurveTo(0, 0, safeRadius, 0);
+  ctx.closePath();
+}
+
+function clipCanvasToPageCorners(sourceCanvas, pageNode, imageFormat, backgroundColor) {
+  try {
+    const width = sourceCanvas.width || 0;
+    const height = sourceCanvas.height || 0;
+    if (!width || !height) return sourceCanvas;
+    const radius = exportCornerRadiusFor(pageNode, width);
+    if (!radius) return sourceCanvas;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return sourceCanvas;
+
+    if (imageFormat === 'image/jpeg') {
+      ctx.fillStyle = backgroundColor || '#11110f';
+      ctx.fillRect(0, 0, width, height);
+    } else if (backgroundColor) {
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    ctx.save();
+    roundedRectPath(ctx, width, height, radius);
+    ctx.clip();
+    ctx.drawImage(sourceCanvas, 0, 0, width, height);
+    ctx.restore();
+    return canvas;
+  } catch {
+    return sourceCanvas;
+  }
+}
+
+async function clipBlobToPageCorners(blob, pageNode, imageFormat, imageQuality, backgroundColor) {
+  if (!blob || typeof createImageBitmap !== 'function') return blob;
+
+  let bitmap = null;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    return blob;
+  }
+
+  try {
+    const width = bitmap.width || 0;
+    const height = bitmap.height || 0;
+    if (!width || !height) return blob;
+    const radius = exportCornerRadiusFor(pageNode, width);
+    if (!radius) return blob;
+
+    const sourceCanvas = document.createElement('canvas');
+    sourceCanvas.width = width;
+    sourceCanvas.height = height;
+    const sourceCtx = sourceCanvas.getContext('2d');
+    if (!sourceCtx) return blob;
+    sourceCtx.drawImage(bitmap, 0, 0, width, height);
+
+    const clippedCanvas = clipCanvasToPageCorners(sourceCanvas, pageNode, imageFormat, backgroundColor);
+    return await canvasToBlob(clippedCanvas, imageFormat, imageQuality) || blob;
+  } catch {
+    return blob;
+  } finally {
+    if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+  }
+}
+
 export async function ensureExportFontsReady(node, options = {}) {
   const shouldDecodeImages = options.decodeImages !== false;
   const shouldEmbedFonts = options.embedFonts !== false;
   if (document.fonts && document.fonts.ready) {
-    await document.fonts.ready;
+    await settleWithin(document.fonts.ready, 3000);
   }
 
   if (shouldDecodeImages) {
@@ -111,7 +272,8 @@ export async function ensureExportFontsReady(node, options = {}) {
     await Promise.all(images.map(async (image) => {
       if (typeof image.decode === 'function') {
         try {
-          await image.decode();
+          // Use settleWithin to avoid hanging in background tabs
+          await settleWithin(image.decode(), IMAGE_READY_TIMEOUT_MS);
         } catch {
           return;
         }
@@ -120,7 +282,10 @@ export async function ensureExportFontsReady(node, options = {}) {
   }
 
   if (shouldEmbedFonts && !fontEmbedCSS && htmlToImage && typeof htmlToImage.getFontEmbedCSS === 'function') {
-    fontEmbedCSS = await htmlToImage.getFontEmbedCSS(document.documentElement);
+    fontEmbedCSS = await settleWithin(
+      htmlToImage.getFontEmbedCSS(document.documentElement),
+      5000,
+    );
   }
 }
 
@@ -258,7 +423,8 @@ async function getCachedImageBlobUrl(src, options = {}) {
 
 async function waitForImageReady(img) {
   if (img.complete && img.naturalWidth > 0) {
-    if (typeof img.decode === 'function') {
+    // Already loaded; skip decode in background tabs since it can stall.
+    if (typeof img.decode === 'function' && document.visibilityState !== 'hidden') {
       try {
         await settleWithin(img.decode(), IMAGE_READY_TIMEOUT_MS);
       } catch {
@@ -486,8 +652,21 @@ function cloneVisiblePageForExport(sourceNode) {
   return prepareExportStoryPages([clone])[0];
 }
 
+function forceLayoutSync() {
+  // Force synchronous style recalculation + layout. Works in background tabs
+  // unlike requestAnimationFrame which pauses when the tab is hidden.
+  if (batchExportRoot) {
+    batchExportRoot.getBoundingClientRect();
+    // Force style flush: read a layout-dependent property.
+    void batchExportRoot.offsetHeight;
+  }
+}
+
 async function waitForExportLayout() {
-  await new Promise((resolve) => requestAnimationFrame(resolve));
+  forceLayoutSync();
+  // Use setTimeout only — never requestAnimationFrame — so exports
+  // keep running when the browser tab is in the background.
+  await new Promise((resolve) => setTimeout(resolve, 50));
 }
 
 function escapeXml(value) {
@@ -579,15 +758,16 @@ function renderConcurrencyLimit() {
 
 function batchRenderConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 8;
-  if (cores >= 8) return 6;
-  return 4;
+  if (cores >= 12) return 12;
+  if (cores >= 8) return 8;
+  return 6;
 }
 
 function batchCaptureConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 8) return 2;
-  return 1;
+  if (cores >= 12) return 3;
+  if (cores >= 8) return 3;
+  return 2;
 }
 
 function batchRenderChunkSize(profile) {
@@ -662,11 +842,28 @@ export async function renderPageBlob(pageNode, options = {}) {
   const preferHtml2Canvas = options.preferHtml2Canvas === true;
   const shouldEmbedFonts = options.embedFonts !== false;
   const allowFallback = options.allowFallback !== false;
+  let cornersAlreadyClipped = false;
+  const finalizeCanvasBlob = (canvas) => canvasToBlob(
+    clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor),
+    imageFormat,
+    imageQuality,
+  );
+  const finalizeBlob = (blob) => cornersAlreadyClipped ? blob : clipBlobToPageCorners(
+    blob,
+    pageNode,
+    imageFormat,
+    imageQuality,
+    backgroundColor,
+  );
   await ensureExportFontsReady(pageNode, { decodeImages: !imagesReady, embedFonts: shouldEmbedFonts });
   const blobUrls = imagesReady ? [] : await inlineImagesAsBlobs(pageNode, { waitForReady: options.waitForImageReady });
 
   try {
-    if (preferHtml2Canvas) {
+    // html2canvas is the preferred engine for batch exports because:
+    // 1. It works reliably in background tabs (no rAF / foreignObject dependency)
+    // 2. It renders CSS layout more faithfully than html-to-image's SVG pipeline
+    // 3. It's faster: single-pass canvas draw vs SVG serialization + Image decode
+    if (preferHtml2Canvas || document.visibilityState === 'hidden') {
       try {
         const canvas = await rejectAfter(html2canvas(pageNode, {
           scale: pixelRatio,
@@ -675,60 +872,77 @@ export async function renderPageBlob(pageNode, options = {}) {
           backgroundColor,
           logging: false,
         }), renderTimeoutMs, 'Canvas render timed out');
-        const blob = await canvasToBlob(canvas, imageFormat, imageQuality);
-        if (blob) return blob;
+        const blob = await finalizeCanvasBlob(canvas);
+        if (blob) {
+          cornersAlreadyClipped = true;
+          return blob;
+        }
       } catch (error) {
-        console.warn('Fast canvas export failed, retrying with html-to-image.', error);
+        console.warn(`html2canvas export failed, trying fallback: ${error?.message || error}`);
       }
     }
-    if (imageFormat === 'image/png' && htmlToImage && typeof htmlToImage.toBlob === 'function') {
-      try {
-        const blob = await rejectAfter(htmlToImage.toBlob(pageNode, {
-          pixelRatio,
-          ...HTML_TO_IMAGE_RENDER_OPTIONS,
-          backgroundColor,
-          skipAutoScale: true,
-          skipFonts: !shouldEmbedFonts,
-          fontEmbedCSS: shouldEmbedFonts ? fontEmbedCSS || undefined : undefined,
-        }), renderTimeoutMs, 'Render timed out');
-        if (blob) return blob;
-      } catch (error) {
-        console.warn('html-to-image export failed, retrying with canvas.', error);
+    // html-to-image SVG path: only used for single-page PNG exports in foreground.
+    // Avoid in background tabs — foreignObject → Image pipeline freezes.
+    if (document.visibilityState !== 'hidden') {
+      if (imageFormat === 'image/png' && htmlToImage && typeof htmlToImage.toBlob === 'function') {
+        try {
+          const blob = await rejectAfter(htmlToImage.toBlob(pageNode, {
+            pixelRatio,
+            ...HTML_TO_IMAGE_RENDER_OPTIONS,
+            backgroundColor,
+            skipAutoScale: true,
+            skipFonts: !shouldEmbedFonts,
+            fontEmbedCSS: shouldEmbedFonts ? fontEmbedCSS || undefined : undefined,
+          }), renderTimeoutMs, 'Render timed out');
+          if (blob) return await finalizeBlob(blob);
+        } catch (error) {
+          console.warn(`html-to-image export failed, retrying with canvas: ${error?.message || error}`);
+        }
+      }
+      if (htmlToImage && typeof htmlToImage.toCanvas === 'function') {
+        try {
+          const canvas = await rejectAfter(htmlToImage.toCanvas(pageNode, {
+            pixelRatio,
+            ...HTML_TO_IMAGE_RENDER_OPTIONS,
+            backgroundColor,
+            skipAutoScale: true,
+            skipFonts: !shouldEmbedFonts,
+            fontEmbedCSS: shouldEmbedFonts ? fontEmbedCSS || undefined : undefined,
+          }), renderTimeoutMs, 'Canvas render timed out');
+          const blob = await finalizeCanvasBlob(canvas);
+          if (blob) {
+            cornersAlreadyClipped = true;
+            return blob;
+          }
+        } catch (error) {
+          console.warn(`html-to-image canvas export failed, retrying with html2canvas: ${error?.message || error}`);
+        }
       }
     }
-    if (htmlToImage && typeof htmlToImage.toCanvas === 'function') {
+    // Final html2canvas attempt (if we haven't tried it already)
+    if (!preferHtml2Canvas && document.visibilityState !== 'hidden') {
       try {
-        const canvas = await rejectAfter(htmlToImage.toCanvas(pageNode, {
-          pixelRatio,
-          ...HTML_TO_IMAGE_RENDER_OPTIONS,
+        const canvas = await rejectAfter(html2canvas(pageNode, {
+          scale: pixelRatio,
+          useCORS: true,
+          imageTimeout: IMAGE_FETCH_TIMEOUT_MS,
           backgroundColor,
-          skipAutoScale: true,
-          skipFonts: !shouldEmbedFonts,
-          fontEmbedCSS: shouldEmbedFonts ? fontEmbedCSS || undefined : undefined,
+          logging: false,
         }), renderTimeoutMs, 'Canvas render timed out');
-        const blob = await canvasToBlob(canvas, imageFormat, imageQuality);
-        if (blob) return blob;
+        const blob = await finalizeCanvasBlob(canvas);
+        if (blob) {
+          cornersAlreadyClipped = true;
+          return blob;
+        }
       } catch (error) {
-        console.warn('html-to-image canvas export failed, retrying with html2canvas.', error);
+        console.warn(`Canvas export failed, writing a fallback page: ${error?.message || error}`);
       }
-    }
-    try {
-      const canvas = await rejectAfter(html2canvas(pageNode, {
-        scale: pixelRatio,
-        useCORS: true,
-        imageTimeout: IMAGE_FETCH_TIMEOUT_MS,
-        backgroundColor,
-        logging: false,
-      }), renderTimeoutMs, 'Canvas render timed out');
-      const blob = await canvasToBlob(canvas, imageFormat, imageQuality);
-      if (blob) return blob;
-    } catch (error) {
-      console.warn('Canvas export failed, writing a fallback page.', error);
     }
     if (!allowFallback) {
-      throw new Error('Render PNG quá thời gian, chưa tạo được ảnh hợp lệ.');
+      throw new Error('Render ảnh quá thời gian, chưa tạo được ảnh hợp lệ.');
     }
-    return createFallbackPageBlob(pageNode, pixelRatio, imageFormat, imageQuality);
+    const fallbackBlob = await createFallbackPageBlob(pageNode, pixelRatio, imageFormat, imageQuality);
+    return await finalizeBlob(fallbackBlob);
   } finally {
     restoreImagesFromBlobs(blobUrls);
   }
@@ -741,12 +955,16 @@ async function renderPageBlobWithRetry(pageNode, options = {}) {
       allowFallback: false,
     });
   } catch (error) {
-    console.warn('Page render failed, retrying with a longer timeout.', error);
-    await waitForExportLayout();
+    console.warn(`Page render failed, retrying with a longer timeout: ${error?.message || error}`);
+    // Use synchronous layout flush + short delay instead of rAF-based wait.
+    forceLayoutSync();
+    await new Promise((resolve) => setTimeout(resolve, 80));
     return renderPageBlob(pageNode, {
       ...options,
-      allowFallback: false,
+      allowFallback: options.allowFallbackOnRetry !== false,
       waitForImageReady: true,
+      // In background tabs, always use html2canvas for reliable rendering.
+      preferHtml2Canvas: options.preferHtml2Canvas || document.visibilityState === 'hidden',
       renderTimeoutMs: Math.max(
         Number(options.renderTimeoutMs || 0),
         BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS,
@@ -805,12 +1023,16 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
       restoreImagesFromBlobs(preparedImages);
     }
     cb.updateProgress(92, 'Đang lưu file PNG...');
-    saveAs(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${pageNode.dataset.exportName}`);
+    if (!downloadBlobFile(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${pageNode.dataset.exportName}`)) {
+      throw new Error('Trình duyệt chặn bước tải PNG. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    }
     cb.completeProgress('Đã xuất xong PNG.');
     cb.setStatus('Đã xuất PNG.');
   } catch (error) {
-    cb.failProgress('Xuất PNG thất bại.');
-    cb.setStatus(`Lỗi: ${error.message}`);
+    const message = error?.message || 'Không rõ lỗi.';
+    console.warn(`Page PNG export failed: ${message}`);
+    cb.failProgress(`Xuất PNG thất bại: ${message}`);
+    cb.setStatus(`Lỗi: ${message}`);
   } finally {
     clearBatchExportRoot();
     resetBatchImageCache();
@@ -907,12 +1129,16 @@ export async function exportActiveList(context, callbacks = {}) {
       },
     }, cb);
     cb.updateProgress(99, 'Đang lưu file ZIP...');
-    saveAs(blob, `${deck.id}-${sanitizeFilePart(list.id)}.zip`);
+    if (!downloadBlobFile(blob, `${deck.id}-${sanitizeFilePart(list.id)}.zip`)) {
+      throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    }
     cb.completeProgress(`Đã xuất xong ZIP cho "${list.title}".`);
     cb.setStatus(`Đã xong ZIP cho list "${list.title}".`);
   } catch (error) {
-    cb.failProgress('Xuất ZIP thất bại.');
-    cb.setStatus(`Lỗi: ${error.message}`);
+    const message = error?.message || 'Không rõ lỗi.';
+    console.warn(`List ZIP export failed: ${message}`);
+    cb.failProgress(`Xuất ZIP thất bại: ${message}`);
+    cb.setStatus(`Lỗi: ${message}`);
   } finally {
     clearBatchExportRoot();
     resetBatchImageCache();
@@ -947,6 +1173,7 @@ export async function exportBatch(context, callbacks = {}) {
 
   try {
     const mainZip = new JSZip();
+    await requestExportWakeLock();
     const totalPages = Math.max(allLists.reduce((total, item) => total + (item.list.pages?.length || 0), 0), 1);
     let renderedPages = 0;
     cb.updateProgress(3, `Đang chuẩn bị ${allLists.length} folder ${qualityProfile.label}...`);
@@ -975,6 +1202,7 @@ export async function exportBatch(context, callbacks = {}) {
 
     const baseDate = Date.now();
     const concurrencyLimit = batchRenderChunkSize(qualityProfile);
+    let pagesSinceLastTrim = 0;
     for (let i = 0; i < pageTasks.length; i += concurrencyLimit) {
       const chunk = pageTasks.slice(i, i + concurrencyLimit);
       const chunkStart = i + 1;
@@ -1003,6 +1231,8 @@ export async function exportBatch(context, callbacks = {}) {
             pixelRatio: qualityProfile.pixelRatio,
             imageFormat: qualityProfile.imageFormat,
             imageQuality: qualityProfile.imageQuality,
+            backgroundColor: qualityProfile.backgroundColor,
+            preferHtml2Canvas: qualityProfile.preferHtml2Canvas,
             embedFonts: true,
             waitForImageReady: false,
             renderTimeoutMs: qualityProfile.renderTimeoutMs,
@@ -1019,6 +1249,12 @@ export async function exportBatch(context, callbacks = {}) {
         restoreImagesFromBlobs(preparedImages);
         clearBatchExportRoot();
       }
+      // Periodically trim image cache to prevent OOM on large batch exports (20-50 lists)
+      pagesSinceLastTrim += chunk.length;
+      if (pagesSinceLastTrim >= BATCH_CACHE_TRIM_INTERVAL) {
+        resetBatchImageCache();
+        pagesSinceLastTrim = 0;
+      }
     }
 
     cb.updateProgress(90, 'Đang đóng file ZIP hàng loạt...');
@@ -1027,16 +1263,29 @@ export async function exportBatch(context, callbacks = {}) {
       compression: 'STORE',
       streamFiles: true,
     }, (metadata) => {
-      cb.updateProgress(90 + (Number(metadata?.percent || 0) * 0.09), 'Đang đóng file ZIP hàng loạt...');
+      const zipPercent = Number(metadata?.percent || 0);
+      cb.updateProgress(
+        Math.min(98, 90 + (zipPercent * 0.08)),
+        `Đang đóng file ZIP hàng loạt... ${Math.round(zipPercent)}%`,
+      );
     });
     cb.updateProgress(99, 'Đang lưu file ZIP hàng loạt...');
-    saveAs(archive, `batch-export-${Date.now()}.zip`);
+    // Yield to event loop before download — lets the browser settle after
+    // heavy ZIP generation so the download trigger is more reliable.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const downloadStarted = downloadBlobFile(archive, `batch-export-${Date.now()}.zip`);
+    if (!downloadStarted) {
+      throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    }
     cb.completeProgress(`Đã xuất xong ${allLists.length} list.`);
     cb.setStatus(`Đã xuất xong ${allLists.length} list.`);
   } catch (error) {
-    cb.failProgress('Xuất hàng loạt thất bại.');
-    cb.setStatus(`Lỗi: ${error.message}`);
+    const message = error?.message || 'Không rõ lỗi.';
+    console.warn(`Batch export failed: ${message}`);
+    cb.failProgress(`Xuất hàng loạt thất bại: ${message}`);
+    cb.setStatus(`Lỗi: ${message}`);
   } finally {
+    await releaseExportWakeLock();
     cb.setBusy(false);
     clearBatchExportRoot();
     resetBatchImageCache();
