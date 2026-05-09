@@ -44,7 +44,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline } from './logic/deck-builder';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION } from './logic/deck-builder';
 import { fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
@@ -431,6 +431,7 @@ export class GuideService {
     if (deckId === 'grid-4') return GRID_4_TEMPLATE_VERSION;
     if (deckId === 'grid-6') return GRID_6_TEMPLATE_VERSION;
     if (deckId === 'grid-8') return GRID_8_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-guide') return SPOTLIGHT_GUIDE_TEMPLATE_VERSION;
     return undefined;
   }
 
@@ -1439,7 +1440,7 @@ export class GuideService {
 
     this.manifestSyncPromise = (async () => {
       try {
-        const manifest = await buildSheetDriveManifest(source);
+        const manifest = await buildSheetDriveManifest(source, this.loadSheetDriveManifest(source.workbookName));
         writeSheetDriveManifest(this.dataRoot, manifest);
         this.invalidateDatasetCache();
         console.log(`[sync] Dong bo anh Drive hoan tat: ${Object.keys(manifest.items).length} anh.`);

@@ -104,6 +104,27 @@ function isJourneyGrid8Layout(page) {
   return page.layoutVariant === 'journey-4n2d-grid8';
 }
 
+function isSpotlightLayout(page) {
+  return page.layoutVariant === 'spotlight';
+}
+
+function spotlightPositionClass(page, index, item) {
+  const variants = [
+    'spotlight-pos-lower-left',
+    'spotlight-pos-upper-right',
+    'spotlight-pos-center-left',
+    'spotlight-pos-lower-right',
+    'spotlight-pos-upper-left',
+    'spotlight-pos-center-right',
+  ];
+  const raw = `${page?.title || ''}|${item?.rawName || item?.name || ''}|${item?.metaPrimary || ''}|${index}`;
+  let hash = 0;
+  for (let charIndex = 0; charIndex < raw.length; charIndex += 1) {
+    hash = (hash * 33 + raw.charCodeAt(charIndex)) >>> 0;
+  }
+  return variants[hash % variants.length];
+}
+
 function isServiceListPage(page) {
   const key = `${page?.chipText || ''} ${page?.title || ''}`
     .normalize('NFD')
@@ -387,6 +408,22 @@ function sanitizeSubtitleForDisplay(value, pages) {
 export function renderCoverPage(page, index, total, listId, hashtags = [], list = null) {
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
   const backgroundImage = coverBackgroundImage(page, list);
+  if (isSpotlightLayout(page)) {
+    return `
+      <article class="${escapeHtml(storyPageClass(listId, 'grid4-feature-cover', 'spotlight-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+        <div class="grid4-feature-bg">
+          ${renderPreviewImage(backgroundImage, page.title)}
+        </div>
+        <div class="grid4-feature-shade"></div>
+        <div class="grid4-feature-copy">
+          <div class="grid4-feature-kicker">ĐÀ LẠT</div>
+          <h1 class="grid4-feature-title">${escapeHtml(page.title)}</h1>
+          <p class="grid4-feature-subtitle">${escapeHtml(coverSubtitle)}</p>
+        </div>
+      </article>
+    `;
+  }
+
   if (isJourneyGrid8Layout(page)) {
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-cover-page', 'journey-grid8-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
@@ -547,6 +584,78 @@ function renderGridSecondary(value) {
     <div class="grid6-address grid6-address-extra story-image-meta">
       <span class="grid6-address-text">${escapeHtml(cleanValue)}</span>
     </div>
+  `;
+}
+
+function renderSpotlightMetaLine(value, className = '') {
+  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!cleanValue) return '';
+
+  return `
+    <div class="spotlight-meta ${escapeHtml(className)}">
+      <span class="spotlight-pin">${renderPhotomodePin()}</span>
+      <span>${escapeHtml(cleanValue)}</span>
+    </div>
+  `;
+}
+
+function renderSpotlightPage(page, index, listId, list, pageSubtitle) {
+  const item = page.items?.[0] || {};
+  const backgroundImage = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
+  const positionClass = spotlightPositionClass(page, index, item);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-page', positionClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || item.name || 'spotlight')}.png">
+      <div class="spotlight-bg">
+        ${renderPreviewImage(backgroundImage, item.name || page.title)}
+      </div>
+      <div class="spotlight-shade"></div>
+      <div class="spotlight-copy">
+        <h2 class="spotlight-title story-image-title">${escapeHtml(item.rawName || item.name || page.title || '')}</h2>
+        <div class="spotlight-info">
+          ${renderSpotlightMetaLine(item.metaPrimary)}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightListItems(items, options = {}) {
+  const showLabels = options.showLabels !== false;
+  return (items || []).map((item) => `
+    <article class="spotlight-list-row ${escapeHtml(imageSourceClass(item))}">
+      <div class="spotlight-list-thumb">
+        ${renderPreviewImage(item.imageUrl, item.name)}
+      </div>
+      <div class="spotlight-list-copy">
+        ${showLabels && item.label ? `<span class="spotlight-list-label">${escapeHtml(item.label)}</span>` : ''}
+        <strong class="story-image-title">${escapeHtml(item.rawName || item.name || '')}</strong>
+        ${renderSpotlightMetaLine(item.metaPrimary)}
+        ${renderSpotlightMetaLine(item.metaSecondary, 'secondary')}
+      </div>
+    </article>
+  `).join('');
+}
+
+function renderSpotlightListPage(page, index, listId, list, pageSubtitle) {
+  const backgroundImage = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
+  const showItemLabels = !isStayListPage(page);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-list-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || page.title || 'list')}.png">
+      <div class="spotlight-bg">
+        ${renderPreviewImage(backgroundImage, page.title)}
+      </div>
+      <div class="spotlight-list-shade"></div>
+      <div class="spotlight-list-panel">
+        <div class="spotlight-list-heading">
+          <span>${escapeHtml(page.chipText || '')}</span>
+          <h2>${escapeHtml(page.title || '')}</h2>
+          ${pageSubtitle ? `<p>${escapeHtml(pageSubtitle)}</p>` : ''}
+        </div>
+        <div class="spotlight-list-stack">
+          ${renderSpotlightListItems(page.items, { showLabels: showItemLabels })}
+        </div>
+      </div>
+    </article>
   `;
 }
 
@@ -771,6 +880,14 @@ function journey4N3DTitle(chipText, title) {
 
 export function renderListPage(page, index, total, listId, hashtags = [], list = null) {
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
+  if (isSpotlightLayout(page)) {
+    return renderSpotlightPage(page, index, listId, list, pageSubtitle);
+  }
+
+  if (page.layoutVariant === 'spotlight-list') {
+    return renderSpotlightListPage(page, index, listId, list, pageSubtitle);
+  }
+
   if (page.layoutVariant === 'photomode') {
     const photomodeTitleHtml = /^pov-3-day/i.test(String(listId || '')) && page.title
       ? `

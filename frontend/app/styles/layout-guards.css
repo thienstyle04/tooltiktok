@@ -146,6 +146,7 @@
 .story-page[data-list-id^="grid-6"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="grid-8"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="grid-4"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
+.story-page[data-list-id^="spotlight-guide"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 
 .story-page.title-font-1 {
   --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
@@ -247,6 +248,8 @@
 .story-page .page-title,
 .story-page .journey-cover-title,
 .story-page .photomode-cover-title,
+.story-page .spotlight-title,
+.story-page .spotlight-list-heading h2,
 .story-page .grid6-cover-title,
 .story-page .grid8-cover-title,
 .story-page .grid8-center-title,
@@ -271,6 +274,8 @@
 .story-page.has-inline-hashtags .cover-title,
 .story-page .journey-cover-title,
 .story-page .photomode-cover-title,
+.story-page .spotlight-title,
+.story-page .spotlight-list-heading h2,
 .story-page .grid6-cover-title,
 .story-page .grid8-cover-title {
   line-height: 1.18;
@@ -282,6 +287,8 @@
 .story-page.has-inline-hashtags .cover-title,
 .story-page .journey-cover-title,
 .story-page .photomode-cover-title,
+.story-page .spotlight-title,
+.story-page .spotlight-list-heading h2,
 .story-page .grid6-cover-title,
 .story-page .grid8-cover-title {
   font-family: "Baloo 2", "Be Vietnam Pro", sans-serif !important;

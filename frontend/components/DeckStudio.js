@@ -24,6 +24,22 @@ import TemplateGalleryPanel from './TemplateGalleryPanel';
 
 const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
+async function readApiPayload(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function apiErrorMessage(payload, fallback) {
+  if (payload?.message) return payload.message;
+  if (payload?.detail) return payload.detail;
+  return fallback;
+}
+
 function stripVietnameseMarks(value) {
   return String(value || '')
     .normalize('NFD')
@@ -331,8 +347,8 @@ export default function DeckStudio({ initialDataset = null }) {
           },
         }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.message || `DeepSeek trả lỗi HTTP ${response.status}`);
+      const payload = await readApiPayload(response);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `DeepSeek trả lỗi HTTP ${response.status}`));
       setCaption({
         headline: payload.headline || '',
         body: sanitizeCaptionBody(payload.body, captionSourceList),
@@ -340,7 +356,7 @@ export default function DeckStudio({ initialDataset = null }) {
       });
       setStatus(`Đã nhận caption DeepSeek cho list "${captionSourceList.title}".`);
     } catch (error) {
-      console.error(error);
+      console.warn(error);
       setStatus(`Gọi DeepSeek thất bại: ${error.message}`);
     } finally {
       setBusy(false);

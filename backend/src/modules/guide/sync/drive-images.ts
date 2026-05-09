@@ -2,6 +2,9 @@ const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FETCH_TIMEOUT_MS = 15_000;
+const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 750, 1_500];
+const DRIVE_BROWSER_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
 const folderEntriesCache = new Map<string, { expiresAt: number; entries: DriveFolderEntry[] }>();
 const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFileAsset }>();
@@ -109,6 +112,21 @@ function createTimeoutSignal(ms: number): { signal: AbortSignal; cancel: () => v
   };
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function createDriveHeaders(): Record<string, string> {
+  return {
+    Referer: 'https://drive.google.com/',
+    'User-Agent': DRIVE_BROWSER_USER_AGENT,
+  };
+}
+
+function isRetryableDriveStatus(status: number): boolean {
+  return status === 401 || status === 403 || status === 429 || status >= 500;
+}
+
 function createDriveFallbackAsset(fileId: string): DriveFileAsset {
   const safeFileId = escapeSvgText(fileId);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
@@ -195,6 +213,53 @@ async function fetchText(url: string): Promise<string> {
   return response.text();
 }
 
+async function fetchTextWithRetry(url: string): Promise<string> {
+  let lastError: unknown = null;
+
+  for (const delayMs of DRIVE_FETCH_RETRY_DELAYS_MS) {
+    if (delayMs > 0) await wait(delayMs);
+
+    try {
+      const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
+      const response = await fetch(url, {
+        headers: createDriveHeaders(),
+        redirect: 'follow',
+        signal: timeout.signal,
+      }).finally(timeout.cancel);
+      if (response.ok) return response.text();
+
+      lastError = new Error(`Drive HTTP ${response.status}`);
+      if (!isRetryableDriveStatus(response.status)) break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Drive fetch failed.');
+}
+
+async function fetchDriveResponseWithRetry(url: string): Promise<Response | null> {
+  for (const delayMs of DRIVE_FETCH_RETRY_DELAYS_MS) {
+    if (delayMs > 0) await wait(delayMs);
+
+    let response: Response;
+    try {
+      const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
+      response = await fetch(url, {
+        headers: createDriveHeaders(),
+        redirect: 'follow',
+        signal: timeout.signal,
+      }).finally(timeout.cancel);
+    } catch {
+      continue;
+    }
+
+    if (response.ok || !isRetryableDriveStatus(response.status)) return response;
+  }
+
+  return null;
+}
+
 export async function listDriveFolderEntries(folderId: string): Promise<DriveFolderEntry[]> {
   const cached = folderEntriesCache.get(folderId);
   const now = Date.now();
@@ -202,7 +267,7 @@ export async function listDriveFolderEntries(folderId: string): Promise<DriveFol
     return cached.entries;
   }
 
-  const html = await fetchText(`https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folderId)}#list`);
+  const html = await fetchTextWithRetry(`https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folderId)}#list`);
   const matches = Array.from(html.matchAll(/<a [^>]*href="([^"]*\/file\/d\/[a-zA-Z0-9_-]+\/view[^"]*)"[^>]*>(.*?)<\/a>/gs));
   const seenFileIds = new Set<string>();
   const entries = matches
@@ -271,21 +336,8 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
   ];
 
   for (const url of candidateUrls) {
-    let response: Response;
-    try {
-      const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
-      response = await fetch(url, {
-        headers: {
-          Referer: 'https://drive.google.com/',
-          'User-Agent': 'Codex Drive Image Proxy',
-        },
-        redirect: 'follow',
-        signal: timeout.signal,
-      }).finally(timeout.cancel);
-    } catch {
-      continue;
-    }
-    if (!response.ok) continue;
+    const response = await fetchDriveResponseWithRetry(url);
+    if (!response?.ok) continue;
 
     const body = Buffer.from(await response.arrayBuffer());
     const headerContentType = String(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();

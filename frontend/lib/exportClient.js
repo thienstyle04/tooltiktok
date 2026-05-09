@@ -387,6 +387,95 @@ async function resizeImageBlobForExport(blob, options = {}) {
   }
 }
 
+function parseObjectPositionAxis(token, fallback = 0.5) {
+  const value = String(token || '').trim().toLowerCase();
+  if (!value || value === 'center') return 0.5;
+  if (value === 'left' || value === 'top') return 0;
+  if (value === 'right' || value === 'bottom') return 1;
+  if (value.endsWith('%')) {
+    const percent = Number.parseFloat(value);
+    if (Number.isFinite(percent)) return Math.min(1, Math.max(0, percent / 100));
+  }
+  return fallback;
+}
+
+function imageObjectPosition(img) {
+  const styles = window.getComputedStyle?.(img);
+  const tokens = String(styles?.objectPosition || img.style.objectPosition || '50% 50%')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (tokens.length === 1) {
+    const token = tokens[0].toLowerCase();
+    if (token === 'left' || token === 'right') return { x: parseObjectPositionAxis(token), y: 0.5 };
+    if (token === 'top' || token === 'bottom') return { x: 0.5, y: parseObjectPositionAxis(token) };
+  }
+  return {
+    x: parseObjectPositionAxis(tokens[0], 0.5),
+    y: parseObjectPositionAxis(tokens[1], 0.5),
+  };
+}
+
+async function fitImageBlobToElement(blob, img, options = {}) {
+  if (!options.fitImagesToElement || !blob || typeof createImageBitmap !== 'function') return blob;
+  if (String(blob.type || '').includes('svg')) return blob;
+
+  const styles = window.getComputedStyle?.(img);
+  const objectFit = String(styles?.objectFit || img.style.objectFit || '').trim();
+  if (objectFit !== 'cover') return blob;
+
+  const rect = img.getBoundingClientRect?.();
+  const cssWidth = Number(rect?.width || img.clientWidth || 0);
+  const cssHeight = Number(rect?.height || img.clientHeight || 0);
+  if (cssWidth < 1 || cssHeight < 1) return blob;
+
+  let bitmap = null;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    return blob;
+  }
+
+  try {
+    const sourceWidth = bitmap.width || 0;
+    const sourceHeight = bitmap.height || 0;
+    if (!sourceWidth || !sourceHeight) return blob;
+
+    const fitPixelRatio = Math.max(1, Number(options.fitPixelRatio || 1));
+    const targetWidth = Math.max(1, Math.round(cssWidth * fitPixelRatio));
+    const targetHeight = Math.max(1, Math.round(cssHeight * fitPixelRatio));
+    const sourceRatio = sourceWidth / sourceHeight;
+    const targetRatio = targetWidth / targetHeight;
+    const position = imageObjectPosition(img);
+
+    let sx = 0;
+    let sy = 0;
+    let sw = sourceWidth;
+    let sh = sourceHeight;
+    if (sourceRatio > targetRatio) {
+      sw = Math.round(sourceHeight * targetRatio);
+      sx = Math.round((sourceWidth - sw) * position.x);
+    } else if (sourceRatio < targetRatio) {
+      sh = Math.round(sourceWidth / targetRatio);
+      sy = Math.round((sourceHeight - sh) * position.y);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return blob;
+    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+    return await canvasToBlob(
+      canvas,
+      options.imageFormat || blob.type || 'image/jpeg',
+      normalizeImageQuality(options.imageQuality, 0.86),
+    ) || blob;
+  } finally {
+    if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+  }
+}
+
 async function getCachedImageBlobUrl(src, options = {}) {
   if (!src || src.startsWith('blob:') || src.startsWith('data:')) {
     return { blobUrl: null, timedOut: false };
@@ -518,7 +607,13 @@ async function prepareImageTarget(target, options = {}) {
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
     const { blob, blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
-    const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
+    const displayBlob = await fitImageBlobToElement(blob, img, {
+      ...blobOptions,
+      fitImagesToElement: options.fitImagesToElement,
+      fitPixelRatio: options.fitPixelRatio,
+    });
+    const shouldUseTargetObjectUrl = Boolean(displayBlob && (shouldUseUniqueObjectUrl || displayBlob !== blob));
+    const preparedBlobUrl = shouldUseTargetObjectUrl ? URL.createObjectURL(displayBlob) : blobUrl;
     if (!preparedBlobUrl) {
       if (shouldWaitForReady) {
         await waitForImageReady(img);
@@ -531,7 +626,7 @@ async function prepareImageTarget(target, options = {}) {
     if (shouldWaitForReady) {
       await waitForImageReady(img);
     }
-    return { img, originalSrc, objectUrl: shouldUseUniqueObjectUrl ? preparedBlobUrl : null };
+    return { img, originalSrc, objectUrl: shouldUseTargetObjectUrl ? preparedBlobUrl : null };
   }
 
   const { element, originalBackgroundImage, originalSrc } = target;
@@ -1014,7 +1109,10 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
     const pageNode = pageNodes.find((node) => Number(node.dataset.pageIndex) === selectedPageIndex);
     if (!pageNode) throw new Error(`Không tìm thấy trang ${selectedPageIndex + 1}/${list.pages.length} để xuất.`);
     cb.updateProgress(36, 'Đang chuẩn bị ảnh cho trang...');
-    const preparedImages = await inlineImagesAsBlobs(pageNode);
+    const preparedImages = await inlineImagesAsBlobs(pageNode, {
+      fitImagesToElement: true,
+      fitPixelRatio: EXPORT_PIXEL_RATIO,
+    });
     let blob;
     try {
       cb.updateProgress(66, 'Đang render PNG...');
@@ -1060,6 +1158,8 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
     options.onChunkPreparing?.({ list, chunkStart, chunkEnd, pageCount: pageNodes.length });
     const preparedImages = (await Promise.all(chunk.map((pageNode) => inlineImagesAsBlobs(pageNode, {
       waitForReady: options.waitForImageReady,
+      fitImagesToElement: true,
+      fitPixelRatio: options.pixelRatio || EXPORT_PIXEL_RATIO,
     })))).flat();
     try {
       await Promise.all(chunk.map(async (pageNode, chunkIdx) => {
@@ -1220,6 +1320,8 @@ export async function exportBatch(context, callbacks = {}) {
         maxImageDimension: qualityProfile.sourceImageMaxDimension,
         sourceImageFormat: qualityProfile.sourceImageFormat,
         sourceImageQuality: qualityProfile.sourceImageQuality,
+        fitImagesToElement: true,
+        fitPixelRatio: qualityProfile.pixelRatio,
         uniqueObjectUrl: true,
       });
 
