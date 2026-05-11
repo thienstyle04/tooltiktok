@@ -126,6 +126,8 @@ export default function DeckStudio({ initialDataset = null }) {
   const [exportQuality, setExportQuality] = useState('optimized');
   const [selectedListsForDelete, setSelectedListsForDelete] = useState(new Set());
   const [progress, setProgress] = useState({ visible: false, failed: false, value: 0, label: 'Đang chuẩn bị xuất file...' });
+  const [partners, setPartners] = useState([]);
+  const [savingCoverText, setSavingCoverText] = useState(false);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const selectionHistoryRef = useRef([]);
 
@@ -241,6 +243,10 @@ export default function DeckStudio({ initialDataset = null }) {
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
+    // Fetch partner list
+    apiFetch('/api/partners').then(async (res) => {
+      if (res.ok) setPartners(await res.json());
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -323,6 +329,72 @@ export default function DeckStudio({ initialDataset = null }) {
     setStatus(message);
   }, []);
 
+  const updateActiveCoverTextInDataset = useCallback((updates) => {
+    if (!dataset || !activeDeckId || !activeListId) return null;
+    let updatedList = null;
+    const nextDataset = {
+      ...dataset,
+      decks: dataset.decks.map((deck) => {
+        if (deck.id !== activeDeckId) return deck;
+        return {
+          ...deck,
+          lists: deck.lists.map((list) => {
+            if (list.id !== activeListId) return list;
+            const pages = (list.pages || []).map((page, index) => {
+              if (index !== selectedPageIndex || page.type !== 'cover') return page;
+              return {
+                ...page,
+                ...(updates.coverTitle !== undefined ? { title: updates.coverTitle } : {}),
+                ...(updates.coverSubtitle !== undefined ? { subtitle: updates.coverSubtitle } : {}),
+              };
+            });
+            updatedList = {
+              ...list,
+              ...(updates.coverTitle !== undefined ? { title: updates.coverTitle || list.title, coverTitle: updates.coverTitle || list.coverTitle } : {}),
+              pages,
+            };
+            return updatedList;
+          }),
+        };
+      }),
+    };
+    writeCachedDataset(nextDataset);
+    setDataset(nextDataset);
+    return updatedList;
+  }, [activeDeckId, activeListId, dataset, selectedPageIndex]);
+
+  const handleCoverTextChange = useCallback((updates) => {
+    updateActiveCoverTextInDataset(updates);
+  }, [updateActiveCoverTextInDataset]);
+
+  const saveCoverText = useCallback(async () => {
+    if (!activeDeck || !activeList || !activePage || activePage.type !== 'cover') return;
+    if (listIsMain(activeList)) {
+      setStatus('List gốc lấy từ Google Sheet: chữ cover đã sửa tạm trong phiên, muốn lưu lâu dài hãy sửa trên Sheet hoặc tạo list AI.');
+      return;
+    }
+
+    setSavingCoverText(true);
+    try {
+      const response = await apiFetch(`/api/decks/${encodeURIComponent(activeDeck.id)}/lists/${encodeURIComponent(activeList.id)}/cover`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coverTitle: activePage.title || activeList.coverTitle || activeList.title || '',
+          coverSubtitle: activePage.subtitle || '',
+        }),
+      });
+      const payload = await readApiPayload(response);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Lưu chữ cover thất bại: HTTP ${response.status}`));
+      clearCachedDataset();
+      setStatus('Đã lưu chữ cover cho list AI.');
+    } catch (error) {
+      setStatus(error?.message || 'Không lưu được chữ cover.');
+    } finally {
+      setSavingCoverText(false);
+    }
+  }, [activeDeck, activeList, activePage]);
+
   const requestCaption = useCallback(async (target = 'full') => {
     if (!activeDeck || !captionSourceList) {
       setStatus('Chưa có list để gửi sang DeepSeek.');
@@ -341,6 +413,7 @@ export default function DeckStudio({ initialDataset = null }) {
           tone: captionTone,
           target,
           current: {
+            coverTitle: (caption.coverTitle || '').trim(),
             headline: caption.headline.trim(),
             body: caption.body.trim(),
             hashtags: normalizeHashtagInput(caption.hashtags),
@@ -349,11 +422,21 @@ export default function DeckStudio({ initialDataset = null }) {
       });
       const payload = await readApiPayload(response);
       if (!response.ok) throw new Error(apiErrorMessage(payload, `DeepSeek trả lỗi HTTP ${response.status}`));
-      setCaption({
-        headline: payload.headline || '',
-        body: sanitizeCaptionBody(payload.body, captionSourceList),
-        hashtags: Array.isArray(payload.hashtags) ? payload.hashtags.join(' ') : '',
-      });
+      if (target === 'full') {
+        setCaption({
+          coverTitle: (payload.coverTitle || '').slice(0, 35),
+          headline: payload.headline || '',
+          body: sanitizeCaptionBody(payload.body, captionSourceList) || '',
+          hashtags: Array.isArray(payload.hashtags) ? payload.hashtags.join(' ') : '',
+        });
+      } else {
+        setCaption((prev) => ({
+          coverTitle: target === 'cover_title' ? (payload.coverTitle || '').slice(0, 35) : prev.coverTitle,
+          headline: target === 'headline' ? (payload.headline || '') : prev.headline,
+          body: target === 'body' ? (sanitizeCaptionBody(payload.body, captionSourceList) || '') : prev.body,
+          hashtags: target === 'hashtags' ? (Array.isArray(payload.hashtags) ? payload.hashtags.join(' ') : '') : prev.hashtags,
+        }));
+      }
       setStatus(`Đã nhận caption DeepSeek cho list "${captionSourceList.title}".`);
     } catch (error) {
       console.warn(error);
@@ -368,8 +451,13 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
     }
-    if (!caption.headline.trim() || !caption.body.trim()) {
-      setStatus('Cần có headline và body trước khi tạo list AI từ caption.');
+    const coverTitle = (caption.coverTitle || '').trim();
+    if (!coverTitle) {
+      setStatus('Cần có tiêu đề cover (≤ 35 ký tự) trước khi tạo list AI.');
+      return;
+    }
+    if (!caption.body.trim()) {
+      setStatus('Cần có body caption trước khi tạo list AI.');
       return;
     }
 
@@ -383,6 +471,7 @@ export default function DeckStudio({ initialDataset = null }) {
           deckId: activeDeck.id,
           listId: captionSourceList?.id || activeListId,
           caption: {
+            coverTitle: coverTitle.slice(0, 35),
             headline: caption.headline.trim(),
             body: caption.body.trim(),
             hashtags: normalizeHashtagInput(caption.hashtags),
@@ -406,6 +495,37 @@ export default function DeckStudio({ initialDataset = null }) {
       setBusy(false);
     }
   }, [activeDeck, activeListId, caption, captionSourceList, loadDataset]);
+
+  const createPartnerSpotlight = useCallback(async (partner) => {
+    if (!partner?.id && !partner?.name) {
+      setStatus('Chưa chọn đối tác.');
+      return;
+    }
+    setBusy(true);
+    setStatus(`Đang tạo spotlight cho "${partner.name}"...`);
+    try {
+      const response = await apiFetch('/api/decks/generate-partner-spotlight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partnerId: partner.id, partnerName: partner.name }),
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `Tạo spotlight đối tác thất bại: HTTP ${response.status}`);
+      }
+      const payload = await response.json();
+      await loadDataset('Đang nạp lại dữ liệu sau khi tạo spotlight đối tác...', {
+        activeDeckId: payload.deckId,
+        activeListId: payload.listId,
+        selectedPageIndex: 0,
+      }, true);
+      setStatus(`Đã tạo spotlight "${payload.partnerName}" (${payload.pageCount} trang).`);
+    } catch (error) {
+      setStatus(error?.message || 'Không tạo được spotlight đối tác.');
+    } finally {
+      setBusy(false);
+    }
+  }, [loadDataset]);
 
   const deleteGeneratedList = useCallback(async (deckId, listId) => {
     const confirmed = window.confirm('Bạn có chắc chắn muốn xóa bộ ảnh AI này?');
@@ -718,6 +838,8 @@ export default function DeckStudio({ initialDataset = null }) {
               onGeneratedListSelect={previewGeneratedList}
               onRequestCaption={requestCaption}
               onCreateList={createDeckFromCaption}
+              onCreatePartnerSpotlight={createPartnerSpotlight}
+              partners={partners}
               onCopy={copyText}
             />
 
@@ -730,7 +852,11 @@ export default function DeckStudio({ initialDataset = null }) {
                   </div>
                 </div>
                 <div id="pageInspector" className="page-inspector">
-                  <PageInspector deck={activeDeck} list={captionInspectList} selectedPageIndex={selectedPageIndex} />
+                  <PageInspector
+                    deck={activeDeck}
+                    list={captionInspectList}
+                    selectedPageIndex={selectedPageIndex}
+                  />
                 </div>
               </section>
             </aside>
@@ -760,7 +886,14 @@ export default function DeckStudio({ initialDataset = null }) {
                   </div>
                 </div>
                 <div id="pageInspector" className="page-inspector">
-                  <PageInspector deck={activeDeck} list={activeList} selectedPageIndex={selectedPageIndex} />
+                  <PageInspector
+                    deck={activeDeck}
+                    list={activeList}
+                    selectedPageIndex={selectedPageIndex}
+                    onCoverTextChange={handleCoverTextChange}
+                    onCoverTextSave={saveCoverText}
+                    savingCoverText={savingCoverText}
+                  />
                 </div>
               </section>
 

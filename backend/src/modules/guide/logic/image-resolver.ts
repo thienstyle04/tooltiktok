@@ -711,7 +711,7 @@ export function createListImageResolver(
         return { ...common, imageUrl: pickedManual, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm từ sheet' };
       }
       if (item.candidateImageUrls && item.candidateImageUrls.length > 0) {
-        const sorted = filterImageUrlsForResolverOptions(
+        const sorted = preferImageUrlsForResolverOptions(
           preferredImageCandidates(item.name, item.candidateImageUrls),
           libraryEntries,
           resolverOptions,
@@ -724,7 +724,6 @@ export function createListImageResolver(
       if (
         item.imageUrl &&
         !shouldAvoidImageForItem(item.name, item.imageUrl) &&
-        filterImageUrlsForResolverOptions([item.imageUrl], libraryEntries, resolverOptions).length > 0 &&
         !localUsedUrls.has(item.imageUrl)
       ) {
         rememberPicked(item.imageUrl);
@@ -738,7 +737,7 @@ export function createListImageResolver(
         : libraryEntries.find((e) => e.assetUrls.includes(item.imageUrl))?.assetUrls || [];
 
       if (candidates.length > 0) {
-        const sortedUrls = filterImageUrlsForResolverOptions(
+        const sortedUrls = preferImageUrlsForResolverOptions(
           preferredImageCandidates(item.name, candidates),
           libraryEntries,
           resolverOptions,
@@ -751,7 +750,6 @@ export function createListImageResolver(
       if (
         item.imageUrl &&
         !shouldAvoidImageForItem(item.name, item.imageUrl) &&
-        filterImageUrlsForResolverOptions([item.imageUrl], libraryEntries, resolverOptions).length > 0 &&
         !localUsedUrls.has(item.imageUrl)
       ) {
         rememberPicked(item.imageUrl);

@@ -13,6 +13,8 @@ import {
   DeepSeekCaptionResponse,
   GenerateCaptionDeckRequest,
   GenerateCaptionDeckResponse,
+  GeneratePartnerSpotlightRequest,
+  GeneratePartnerSpotlightResponse,
   GeneratedListsStore,
   GuideDeck,
   GuideDeckList,
@@ -23,6 +25,8 @@ import {
   PageItem,
   ReferenceSet,
   SectionKey,
+  UpdateGeneratedListCoverRequest,
+  UpdateGeneratedListCoverResponse,
   WorkbookItemsBySection,
 } from '../../common/interfaces/guide.types';
 
@@ -44,7 +48,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION } from './logic/deck-builder';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION } from './logic/deck-builder';
 import { fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
@@ -248,6 +252,7 @@ export class GuideService {
     const tone = (request.tone ?? 'lich_trinh_huu_ich') as DeepSeekCaptionResponse['tone'];
     const target = (request.target ?? 'full') as DeepSeekCaptionResponse['target'];
     const current = {
+      coverTitle: String(request.current?.coverTitle ?? '').trim(),
       headline: String(request.current?.headline ?? '').trim(),
       body: String(request.current?.body ?? '').trim(),
       hashtags: Array.isArray(request.current?.hashtags)
@@ -262,7 +267,7 @@ export class GuideService {
       );
     }
 
-    const prompt = this.buildDeepSeekPrompt(deck, deckList, tone, target, current);
+    const prompt = this.buildDeepSeekPrompt(deck, deckList, tone, target, current, this.getUsedCaptionTitles(deck.id));
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -272,7 +277,7 @@ export class GuideService {
           { role: 'system', content: 'Bạn là content creator du lịch TikTok. Chỉ trả về đúng JSON object hợp lệ, không thêm markdown, không giải thích.' },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.9,
+        temperature: 1.1,
         max_tokens: 900,
         stream: false,
       }),
@@ -289,7 +294,17 @@ export class GuideService {
 
     const parsed = this.parseDeepSeekJson(content);
     const normalizedCaption = this.normalizeCaptionPayload(parsed, current, target, tone, this.collectCaptionForbiddenNames(deckList));
-    return { deckId, listId, target, tone, headline: normalizedCaption.headline, body: normalizedCaption.body, hashtags: normalizedCaption.hashtags, raw: content };
+    return {
+      deckId,
+      listId,
+      target,
+      tone,
+      coverTitle: normalizedCaption.coverTitle,
+      headline: normalizedCaption.headline,
+      body: normalizedCaption.body,
+      hashtags: normalizedCaption.hashtags,
+      raw: content,
+    };
   }
 
   deleteGeneratedList(deckId: string, listId: string): void {
@@ -304,6 +319,53 @@ export class GuideService {
       this.generatedListsByDeckId.set(deckId, filtered);
     }
     this.persistGeneratedLists();
+    this.invalidateDatasetCache();
+  }
+
+  updateGeneratedListCover(
+    deckId: string,
+    listId: string,
+    request: UpdateGeneratedListCoverRequest,
+  ): UpdateGeneratedListCoverResponse {
+    this.ensureGeneratedListsLoaded();
+    const existing = this.generatedListsByDeckId.get(deckId);
+    if (!existing) throw new NotFoundException(`Khong tim thay deck: ${deckId}`);
+
+    const listIndex = existing.findIndex((list) => list.id === listId);
+    if (listIndex < 0) throw new NotFoundException(`Khong tim thay list: ${listId}`);
+
+    const coverTitle = sanitizeDeckHeadline(String(request.coverTitle ?? '').trim()).slice(0, 60);
+    const coverSubtitle = String(request.coverSubtitle ?? '').replace(/\s+/g, ' ').trim().slice(0, 220);
+    const list = this.cloneJson(existing[listIndex]);
+    const pages = (list.pages || []).map((page, index) => {
+      if (index !== 0 || page.type !== 'cover') return page;
+      return {
+        ...page,
+        title: coverTitle || page.title,
+        subtitle: coverSubtitle,
+      };
+    });
+
+    const nextList: GuideDeckList = {
+      ...list,
+      title: coverTitle || list.title,
+      coverTitle: coverTitle || list.coverTitle || list.title,
+      pages,
+    };
+
+    const nextLists = [...existing];
+    nextLists[listIndex] = nextList;
+    this.generatedListsByDeckId.set(deckId, nextLists);
+    this.persistGeneratedLists();
+    this.invalidateDatasetCache();
+
+    const coverPage = nextList.pages[0]?.type === 'cover' ? nextList.pages[0] : null;
+    return {
+      deckId,
+      listId,
+      coverTitle: nextList.coverTitle || nextList.title,
+      coverSubtitle: coverPage?.subtitle || '',
+    };
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
@@ -313,18 +375,20 @@ export class GuideService {
 
     const caption = this.normalizeCaptionPayload(
       {
+        coverTitle: String(request.caption?.coverTitle ?? '').trim(),
         headline: String(request.caption?.headline ?? '').trim(),
         body: String(request.caption?.body ?? '').trim(),
         hashtags: Array.isArray(request.caption?.hashtags)
           ? request.caption!.hashtags.map((h) => String(h).trim()).filter(Boolean)
           : [],
       },
-      { headline: '', body: '', hashtags: [] },
+      { coverTitle: '', headline: '', body: '', hashtags: [] },
       'full',
       'lich_trinh_huu_ich',
     );
 
-    if (!caption.headline || !caption.body) throw new BadRequestException('Cần có headline và body trước khi tạo list mới.');
+    if (!caption.coverTitle) throw new BadRequestException('Cần có tiêu đề cover (≤ 35 ký tự) trước khi tạo list mới.');
+    if (!caption.body) throw new BadRequestException('Cần có body caption trước khi tạo list mới.');
 
     await this.prepareWorkbookForDataset(false);
     const context = this.buildDatasetContext();
@@ -337,11 +401,24 @@ export class GuideService {
     const generatedNumber = existing.length + 1;
     const generatedSuffix = `${String(generatedNumber).padStart(2, '0')}-${timestamp}`;
 
-    const seed = [deckId, generatedSuffix, caption.headline, caption.body, caption.hashtags.join(' ')].join('|');
+    const seed = [deckId, generatedSuffix, String(existing.length), caption.coverTitle, caption.headline, caption.body, caption.hashtags.join(' '), timestamp].join('|');
 
     this.ensureInventoryLoaded();
     const deckUsage = this.createUsageScope();
     currentDeck.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
+    // Mark images from ALL previously generated lists. The image resolver uses
+    // the seed (which includes generatedNumber + timestamp) to sort candidates
+    // differently each time, so even when all 6 images are "used", the resolver
+    // picks them in a different order → different image per list.
+    for (const prevList of existing) {
+      for (const page of prevList.pages) {
+        if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
+        if (page.type !== 'list') continue;
+        for (const item of page.items) {
+          if (item.imageUrl) deckUsage.imageUrls.add(item.imageUrl);
+        }
+      }
+    }
     const basePages = buildPagesForDeck(
       deckId,
       context.itemsBySection,
@@ -355,7 +432,9 @@ export class GuideService {
     const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
     const generatedPages = applyCaptionToPages(basePages, safeCaption);
 
-    const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, safeCaption.headline, safeCaption.body, generatedPages);
+    const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, safeCaption.coverTitle, safeCaption.body, generatedPages);
+    generatedList.coverTitle = safeCaption.coverTitle;
+    generatedList.postCaption = safeCaption.headline;
     generatedList.captionHashtags = safeCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
 
@@ -364,8 +443,101 @@ export class GuideService {
 
     this.generatedListsByDeckId.set(deckId, [...existing, generatedList]);
     this.persistGeneratedLists();
+    this.invalidateDatasetCache();
 
     return { deckId, listId: generatedList.id, navTitle: generatedList.navTitle, title: generatedList.title };
+  }
+
+  // ─── Partner Spotlight ────────────────────────────────────────────────────
+
+  async getPartnerList(): Promise<Array<{ id: string; name: string; section: string; address: string; imageCount: number }>> {
+    await this.prepareWorkbookForDataset(false);
+    const context = this.buildDatasetContext();
+    const allItems = Object.values(context.itemsBySection).flat();
+    return allItems
+      .filter((item) => item.isPartner)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        section: item.sectionKey,
+        address: item.address,
+        imageCount: (item.candidateImageUrls || []).length + (item.imageUrl && !(item.candidateImageUrls || []).includes(item.imageUrl) ? 1 : 0),
+      }));
+  }
+
+  async generatePartnerSpotlight(request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
+    const partnerId = String(request.partnerId ?? '').trim();
+    const partnerName = String(request.partnerName ?? '').trim();
+    if (!partnerId && !partnerName) {
+      throw new BadRequestException('Cần có partnerId hoặc partnerName để sinh mẫu spotlight đối tác.');
+    }
+
+    await this.prepareWorkbookForDataset(false);
+    const context = this.buildDatasetContext();
+
+    // Find the partner item
+    const allItems = Object.values(context.itemsBySection).flat();
+    const partnerItem = allItems.find((item) =>
+      item.isPartner && (
+        item.id === partnerId ||
+        normalizeText(item.name) === normalizeText(partnerName) ||
+        item.name === partnerName
+      ),
+    );
+    if (!partnerItem) {
+      throw new NotFoundException(`Không tìm thấy đối tác: ${partnerName || partnerId}`);
+    }
+
+    const deckId = 'spotlight-partner';
+    const timestamp = Date.now().toString(36).slice(-4);
+    const listSuffix = `partner-${normalizeText(partnerItem.name).slice(0, 20)}-${timestamp}`;
+
+    this.ensureGeneratedListsLoaded();
+    this.ensureInventoryLoaded();
+    const deckUsage = this.createUsageScope();
+
+    const pools = this.createDeckBuildPoolsFromSection(context.itemsBySection);
+    const pages = buildSpotlightPartnerPages(
+      partnerItem,
+      pools,
+      context.imageUrls,
+      context.imageLibraryEntries,
+      `spotlight-partner:${partnerItem.id}:${timestamp}`,
+      deckUsage.itemIds,
+      deckUsage.imageUrls,
+      context.coverImageUrls,
+    );
+
+    const generatedList = buildDeckList(
+      deckId,
+      listSuffix,
+      partnerItem.name,
+      partnerItem.name.toUpperCase(),
+      partnerItem.address || partnerItem.type || '',
+      pages,
+    );
+    generatedList.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
+    generatedList.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
+
+    const existing = this.generatedListsByDeckId.get(deckId) ?? [];
+    this.generatedListsByDeckId.set(deckId, [...existing, generatedList]);
+    this.persistGeneratedLists();
+    this.markUsedInDeck(pages);
+    this.persistInventory();
+    this.invalidateDatasetCache();
+
+    return {
+      deckId,
+      listId: generatedList.id,
+      navTitle: generatedList.navTitle,
+      title: generatedList.title,
+      partnerName: partnerItem.name,
+      pageCount: pages.length,
+    };
+  }
+
+  private createDeckBuildPoolsFromSection(itemsBySection: WorkbookItemsBySection): any {
+    return createDeckBuildPools(itemsBySection);
   }
 
   // ─── Private: dataset context ─────────────────────────────────────────────
@@ -432,6 +604,7 @@ export class GuideService {
     if (deckId === 'grid-6') return GRID_6_TEMPLATE_VERSION;
     if (deckId === 'grid-8') return GRID_8_TEMPLATE_VERSION;
     if (deckId === 'spotlight-guide') return SPOTLIGHT_GUIDE_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-partner') return SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
     return undefined;
   }
 
@@ -507,10 +680,11 @@ export class GuideService {
 
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
     if (page.type === 'cover') {
+      const coverSubtitle = String(page.subtitle ?? '').trim();
       return {
         ...page,
         title: sanitizeDeckHeadline(list.title || page.title),
-        subtitle: safeDescription,
+        subtitle: coverSubtitle || safeDescription,
       };
     }
 
@@ -689,9 +863,10 @@ export class GuideService {
       const deckUsage = this.createUsageScope();
       const baseDeck = baseDecks.find((deck) => deck.id === deckId);
       baseDeck?.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
-      const refreshedLists = lists.map((list) => {
+      const refreshedLists = lists.map((list, listIndex) => {
         const caption: CaptionBlocks = {
-          headline: sanitizeDeckHeadline(list.title),
+          coverTitle: sanitizeDeckHeadline(list.coverTitle || list.title),
+          headline: String(list.postCaption ?? '').trim(),
           body: list.description,
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
@@ -700,7 +875,7 @@ export class GuideService {
           itemsBySection,
           imageUrls,
           libraryEntries,
-          `refresh:${deckId}:${list.id}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`,
+          `refresh:${deckId}:${list.id}:${listIndex}:${caption.coverTitle}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`,
           deckUsage.itemIds,
           deckUsage.imageUrls,
           coverImageUrls,
@@ -710,12 +885,22 @@ export class GuideService {
         this.markUsedInDeck(regeneratedPages, deckUsage);
         this.markUsedInDeck(regeneratedPages, renderUsage);
         if (
-          list.title !== safeCaption.headline ||
+          list.title !== safeCaption.coverTitle ||
+          list.coverTitle !== safeCaption.coverTitle ||
+          list.postCaption !== safeCaption.headline ||
           list.description !== safeCaption.body ||
           list.templateVersion !== templateVersion ||
           JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)
         ) changed = true;
-        return { ...list, title: safeCaption.headline, description: safeCaption.body, templateVersion, pages: regeneratedPages };
+        return {
+          ...list,
+          title: safeCaption.coverTitle,
+          coverTitle: safeCaption.coverTitle,
+          postCaption: safeCaption.headline,
+          description: safeCaption.body,
+          templateVersion,
+          pages: regeneratedPages,
+        };
       });
       this.generatedListsByDeckId.set(deckId, refreshedLists);
     }
@@ -1135,12 +1320,26 @@ export class GuideService {
 
   // ─── Private: DeepSeek prompt helpers ────────────────────────────────────
 
+  private getUsedCaptionTitles(deckId: string): string[] {
+    this.ensureGeneratedListsLoaded();
+    const lists = this.generatedListsByDeckId.get(deckId) ?? [];
+    const titles: string[] = [];
+    for (const list of lists) {
+      const coverTitle = String(list.coverTitle || list.title || '').trim();
+      const postCaption = String(list.postCaption || '').trim();
+      if (coverTitle) titles.push(coverTitle);
+      if (postCaption) titles.push(postCaption);
+    }
+    return [...new Set(titles)];
+  }
+
   private buildDeepSeekPrompt(
     deck: GuideDeck,
     deckList: GuideDeckList,
     tone: DeepSeekCaptionResponse['tone'],
     target: DeepSeekCaptionResponse['target'],
-    current: { headline: string; body: string; hashtags: string[] },
+    current: { coverTitle: string; headline: string; body: string; hashtags: string[] },
+    usedTitles: string[] = [],
   ): string {
     const pageLines = deckList.pages.map((page, index) => {
       if (page.type === 'cover') return `Trang ${index + 1}: cover | tiêu đề: ${page.title} | mô tả: ${page.subtitle}`;
@@ -1179,6 +1378,7 @@ export class GuideService {
       deckList.id,
       tone,
       target,
+      current.coverTitle,
       current.headline,
       current.body,
       current.hashtags.join(','),
@@ -1189,7 +1389,7 @@ export class GuideService {
     const bodyShape = bodyShapes[Math.floor(variationSeed / diversityAngles.length) % bodyShapes.length];
 
     return [
-      'Tạo caption TikTok cho bộ ảnh du lịch Đà Lạt sau.',
+      'Tạo nội dung TikTok cho bộ ảnh du lịch Đà Lạt sau.',
       `Tên chủ đề: ${deck.title}`,
       `Mô tả chung: ${deck.description}`,
       `Danh sách địa điểm: ${deckList.title}`,
@@ -1199,30 +1399,45 @@ export class GuideService {
       `Phần cần sinh: ${target}`,
       `Goc trien khai bat buoc cho lan sinh nay: ${diversityAngle}.`,
       `Kieu body bat buoc cho lan sinh nay: ${bodyShape}.`,
-      current.headline ? `Headline hiện tại: ${current.headline}` : '',
+      current.coverTitle ? `Tiêu đề cover hiện tại: ${current.coverTitle}` : '',
+      current.headline ? `Caption đăng bài hiện tại: ${current.headline}` : '',
       current.body ? `Body hiện tại: ${current.body}` : '',
       current.hashtags.length ? `Hashtags hiện tại: ${current.hashtags.join(' ')}` : '',
+      '',
+      (current.coverTitle || current.headline || current.body)
+        ? 'QUAN TRỌNG: Nội dung bạn sinh ra lần này PHẢI HOÀN TOÀN KHÁC với nội dung hiện tại ở trên. Không được dùng lại cùng ý, cùng cấu trúc câu, cùng từ mở đầu, hay cùng góc nhìn. Hãy đổi hoàn toàn cách tiếp cận, dùng từ vựng khác, mở đầu khác, và truyền tải thông điệp theo hướng mới.'
+        : '',
+      usedTitles.length > 0
+        ? `CÁC TIÊU ĐỀ ĐÃ DÙNG (TUYỆT ĐỐI KHÔNG ĐƯỢC LẶP LẠI BẤT KỲ CÁI NÀO DƯỚI ĐÂY):\n${usedTitles.map((t, i) => `${i + 1}. "${t}"`).join('\n')}\nHãy nghĩ ra tiêu đề và caption hoàn toàn mới, khác 100% so với danh sách trên.`
+        : '',
       '',
       'DỮ LIỆU ĐỊA ĐIỂM CHI TIẾT:',
       ...pageLines,
       '',
-      'YÊU CẦU QUAN TRỌNG VỀ HEADLINE (TIÊU ĐỀ CHÍNH):',
-      '- Headline phải CỰC KỲ ĐA DẠNG, không được lặp lại các mẫu tiêu đề cũ như "POV 3 ngày...", "Lịch trình...".',
-      '- Headline phải bám sát "Tone yêu cầu". Nếu là Gen Z, hãy dùng ngôn ngữ bắt trend. Nếu là Tinh tế, hãy dùng câu chữ giàu chất thơ.',
-      '- Phải sáng tạo ra các góc nhìn mới (ví dụ: "Phá đảo Đà Lạt", "Góc nhỏ chill cực", "Đà Lạt 0đ", "Mùa này đi đâu?").',
-      '- Headline: viết hoa hoặc rất nổi bật, tuyệt đối không vượt quá 35 ký tự. Phải thật thu hút ngay từ 3 giây đầu.',
-      '- Không dùng chữ "free" trong headline. Nếu cần nói về chi phí, hãy dùng cách mềm hơn như "0đ", "dễ đi", "gọn ví" hoặc bỏ hẳn khỏi headline.',
+      'YÊU CẦU QUAN TRỌNG VỀ COVER TITLE (TIÊU ĐỀ TRANG COVER):',
+      '- `coverTitle` là chữ in đậm ở trang bìa của bộ ảnh. Phải thật ngắn, dễ scan.',
+      '- Tuyệt đối KHÔNG vượt quá 35 ký tự (tính cả khoảng trắng).',
+      '- Viết hoa hoặc rất nổi bật, bám sát "Tone yêu cầu". Không được trùng với "Caption đăng bài".',
+      '- Không dùng chữ "free" trong cover title. Thay bằng "0đ", "dễ đi", "gọn ví" hoặc bỏ luôn.',
+      '- Không nhắc tên quán/địa điểm cụ thể trong cover title.',
+      '',
+      'YÊU CẦU QUAN TRỌNG VỀ HEADLINE (CAPTION ĐĂNG BÀI):',
+      '- `headline` là caption người dùng copy để dán vào TikTok khi đăng bài.',
+      '- Chỉ viết DUY NHẤT 1 câu ngắn gọn (tối đa 80 ký tự), giọng văn bám sát "Tone yêu cầu".',
+      '- Câu phải có hook thu hút ngay, có thể thêm 1 emoji cuối câu (không quá 1 emoji).',
+      '- Không lặp lại nguyên văn cover title. Không dùng chữ "free" / "deck".',
+      '- Có thể mời người xem lưu lại bộ ảnh, nhưng tuyệt đối không gọi tên địa điểm/quán cụ thể.',
       '',
       'CÁC YÊU CẦU KHÁC:',
       '- TUYỆT ĐỐI không dùng từ "deck" trong nội dung. Thay vào đó hãy dùng: "hình", "ảnh", "bộ ảnh", "cẩm nang", "lịch trình", "list này"...',
       '- Body: Phải đa dạng cấu trúc câu, không lặp lại các motif cũ. Tối đa 250 ký tự. Tuyệt đối không liệt kê hoặc gọi tên địa điểm/quán cụ thể trong list.',
       '- Body không được viết kiểu lịch trình theo từng chặng/ngày như "ngày đầu ghé...", "ngày hai...", "tối lượn..."; chỉ nói lợi ích tổng quát của list.',
-      '- Dữ liệu địa điểm chỉ dùng để hiểu tinh thần list; không chép tên địa điểm/quán vào headline hoặc body caption.',
+      '- Dữ liệu địa điểm chỉ dùng để hiểu tinh thần list; không chép tên địa điểm/quán vào cover title, headline, hay body caption.',
       '- Khong mo ta bo cuc thiet ke hoac kich thuoc layout trong caption. Tranh cac cum: "2x3", "3x3", "2x4", "luoi", "layout", "grid", "o anh", "o hinh".',
       '- Moi lan bam sinh lai phai doi goc viet, doi nhip cau, doi dong tu mo dau; khong chi thay vai tu dong nghia.',
       '- Hashtags: đúng 5 hashtag, trong đó bắt buộc có #riviudalat #dalat #dalatreview. 2 hashtag còn lại phải liên quan chặt chẽ đến nội dung và tone.',
       '- Trả về JSON object đúng schema:',
-      '{"headline":"...","body":"...","hashtags":["#...","#...","#...","#...","#..."]}',
+      '{"coverTitle":"...","headline":"...","body":"...","hashtags":["#...","#...","#...","#...","#..."]}',
     ].filter(Boolean).join('\n');
   }
 
@@ -1325,12 +1540,17 @@ export class GuideService {
 
   private normalizeCaptionPayload(
     parsed: Record<string, unknown>,
-    current: { headline: string; body: string; hashtags: string[] },
+    current: { coverTitle: string; headline: string; body: string; hashtags: string[] },
     target: DeepSeekCaptionResponse['target'],
     tone: DeepSeekCaptionResponse['tone'],
     forbiddenPlaceNames: string[] = [],
-  ): { headline: string; body: string; hashtags: string[] } {
-    const nextHeadline = String(parsed.headline ?? parsed.hook ?? '').trim();
+  ): { coverTitle: string; headline: string; body: string; hashtags: string[] } {
+    const nextCoverTitle = String(
+      parsed.coverTitle ?? (parsed as Record<string, unknown>).cover_title ?? parsed.cover ?? '',
+    ).trim();
+    const nextHeadline = String(
+      parsed.headline ?? parsed.hook ?? (parsed as Record<string, unknown>).caption_text ?? '',
+    ).trim();
     const nextBody = String(parsed.body ?? parsed.caption ?? '').trim();
     const nextHashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags.map((h) => String(h).trim()).filter(Boolean) : [];
 
@@ -1353,15 +1573,22 @@ export class GuideService {
       .replace(/\s{2,}/g, ' ')
       .replace(/\s+([,.!?])/g, '$1')
       .trim();
-    const normalizeHeadline = (v: string) => {
+    const normalizeCoverTitle = (v: string) => {
       const fallback = 'ĐI ĐÀ LẠT THÌ LƯU NGAY LIST NÀY';
-      const withoutLayout = removeLayoutTerms(sanitizeDeckHeadline(v || current.headline || fallback));
+      const withoutLayout = removeLayoutTerms(sanitizeDeckHeadline(v || fallback));
       const clean = withoutLayout.replace(/\s+/g, ' ').trim();
       return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 35);
     };
+    const normalizeHeadline = (v: string) => {
+      const fallback = 'Lưu list này rồi đi Đà Lạt cho đỡ mò từng nơi nhé.';
+      const withoutLayout = removeLayoutTerms(v || fallback);
+      const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
+      const clean = withoutPlaces.replace(/\s+/g, ' ').trim();
+      return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 80);
+    };
     const normalizeBody = (v: string) => {
       const fallback = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
-      const withoutLayout = removeLayoutTerms(v || current.body || fallback);
+      const withoutLayout = removeLayoutTerms(v || fallback);
       if (this.bodyListsStops(withoutLayout, forbiddenPlaceNames)) return fallback;
       const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
       const clean = withoutPlaces.replace(/\s+/g, ' ').trim();
@@ -1380,10 +1607,44 @@ export class GuideService {
       return unique.slice(0, 5);
     };
 
-    if (target === 'headline') return { headline: normalizeHeadline(nextHeadline), body: normalizeBody(current.body), hashtags: normalizeHashtags(current.hashtags) };
-    if (target === 'body') return { headline: normalizeHeadline(current.headline), body: normalizeBody(nextBody), hashtags: normalizeHashtags(current.hashtags) };
-    if (target === 'hashtags') return { headline: normalizeHeadline(current.headline), body: normalizeBody(current.body), hashtags: normalizeHashtags(nextHashtags) };
-    return { headline: normalizeHeadline(nextHeadline), body: normalizeBody(nextBody), hashtags: normalizeHashtags(nextHashtags) };
+    if (target === 'cover_title') {
+      return {
+        coverTitle: normalizeCoverTitle(nextCoverTitle || current.coverTitle),
+        headline: normalizeHeadline(current.headline),
+        body: normalizeBody(current.body),
+        hashtags: normalizeHashtags(current.hashtags),
+      };
+    }
+    if (target === 'headline') {
+      return {
+        coverTitle: normalizeCoverTitle(current.coverTitle),
+        headline: normalizeHeadline(nextHeadline),
+        body: normalizeBody(current.body),
+        hashtags: normalizeHashtags(current.hashtags),
+      };
+    }
+    if (target === 'body') {
+      return {
+        coverTitle: normalizeCoverTitle(current.coverTitle),
+        headline: normalizeHeadline(current.headline),
+        body: normalizeBody(nextBody),
+        hashtags: normalizeHashtags(current.hashtags),
+      };
+    }
+    if (target === 'hashtags') {
+      return {
+        coverTitle: normalizeCoverTitle(current.coverTitle),
+        headline: normalizeHeadline(current.headline),
+        body: normalizeBody(current.body),
+        hashtags: normalizeHashtags(nextHashtags),
+      };
+    }
+    return {
+      coverTitle: normalizeCoverTitle(nextCoverTitle),
+      headline: normalizeHeadline(nextHeadline),
+      body: normalizeBody(nextBody),
+      hashtags: normalizeHashtags(nextHashtags),
+    };
   }
 
   private async prepareWorkbookForDataset(forceRefresh: boolean): Promise<void> {

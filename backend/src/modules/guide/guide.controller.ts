@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import * as path from 'node:path';
 import { getAppConfig } from '../../config';
 import { GuideService } from './guide.service';
@@ -7,7 +7,11 @@ import {
   DeepSeekCaptionResponse,
   GenerateCaptionDeckRequest,
   GenerateCaptionDeckResponse,
+  GeneratePartnerSpotlightRequest,
+  GeneratePartnerSpotlightResponse,
   GuideDataset,
+  UpdateGeneratedListCoverRequest,
+  UpdateGeneratedListCoverResponse,
 } from '../../common/interfaces/guide.types';
 
 @Controller()
@@ -76,6 +80,11 @@ export class GuideController {
     return this.guideService.getDataset({ refresh: shouldRefresh });
   }
 
+  @Get('api/partners')
+  getPartners(): Promise<Array<{ id: string; name: string; section: string; address: string; imageCount: number }>> {
+    return this.guideService.getPartnerList();
+  }
+
   @Post('api/ai/deepseek/caption')
   generateDeepSeekCaption(@Body() request: DeepSeekCaptionRequest): Promise<DeepSeekCaptionResponse> {
     return this.guideService.generateDeepSeekCaption(request);
@@ -84,6 +93,20 @@ export class GuideController {
   @Post('api/decks/generate-from-caption')
   generateDeckFromCaption(@Body() request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     return this.guideService.generateDeckFromCaption(request);
+  }
+
+  @Post('api/decks/generate-partner-spotlight')
+  generatePartnerSpotlight(@Body() request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
+    return this.guideService.generatePartnerSpotlight(request);
+  }
+
+  @Patch('api/decks/:deckId/lists/:listId/cover')
+  updateGeneratedListCover(
+    @Param('deckId') deckId: string,
+    @Param('listId') listId: string,
+    @Body() request: UpdateGeneratedListCoverRequest,
+  ): UpdateGeneratedListCoverResponse {
+    return this.guideService.updateGeneratedListCover(deckId, listId, request);
   }
 
   @Delete('api/decks/:deckId/lists/:listId')

@@ -416,9 +416,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         </div>
         <div class="grid4-feature-shade"></div>
         <div class="grid4-feature-copy">
-          <div class="grid4-feature-kicker">ĐÀ LẠT</div>
-          <h1 class="grid4-feature-title">${escapeHtml(page.title)}</h1>
-          <p class="grid4-feature-subtitle">${escapeHtml(coverSubtitle)}</p>
+          ${coverSubtitle ? `<p class="grid4-feature-subtitle spotlight-cover-caption">${escapeHtml(coverSubtitle)}</p>` : ''}
         </div>
       </article>
     `;
@@ -599,10 +597,20 @@ function renderSpotlightMetaLine(value, className = '') {
   `;
 }
 
+function spotlightTitleFitClass(value) {
+  const length = String(value || '').trim().length;
+  if (length >= 28) return 'spotlight-title-fit-xs';
+  if (length >= 23) return 'spotlight-title-fit-sm';
+  if (length >= 18) return 'spotlight-title-fit-md';
+  return '';
+}
+
 function renderSpotlightPage(page, index, listId, list, pageSubtitle) {
   const item = page.items?.[0] || {};
   const backgroundImage = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
   const positionClass = spotlightPositionClass(page, index, item);
+  const titleText = item.rawName || item.name || page.title || '';
+  const titleFitClass = spotlightTitleFitClass(titleText);
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'spotlight-page', positionClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || item.name || 'spotlight')}.png">
       <div class="spotlight-bg">
@@ -610,7 +618,7 @@ function renderSpotlightPage(page, index, listId, list, pageSubtitle) {
       </div>
       <div class="spotlight-shade"></div>
       <div class="spotlight-copy">
-        <h2 class="spotlight-title story-image-title">${escapeHtml(item.rawName || item.name || page.title || '')}</h2>
+        <h2 class="spotlight-title story-image-title ${escapeHtml(titleFitClass)}">${escapeHtml(titleText)}</h2>
         <div class="spotlight-info">
           ${renderSpotlightMetaLine(item.metaPrimary)}
         </div>
@@ -649,7 +657,6 @@ function renderSpotlightListPage(page, index, listId, list, pageSubtitle) {
         <div class="spotlight-list-heading">
           <span>${escapeHtml(page.chipText || '')}</span>
           <h2>${escapeHtml(page.title || '')}</h2>
-          ${pageSubtitle ? `<p>${escapeHtml(pageSubtitle)}</p>` : ''}
         </div>
         <div class="spotlight-list-stack">
           ${renderSpotlightListItems(page.items, { showLabels: showItemLabels })}
@@ -1003,4 +1010,3 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     </article>
   `;
 }
-

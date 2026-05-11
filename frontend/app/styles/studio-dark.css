@@ -763,6 +763,40 @@ body {
   background: var(--studio-surface-2);
 }
 
+.inspector-cover-editor {
+  border-color: var(--studio-line);
+  background: var(--studio-surface-2);
+}
+
+.inspector-field span,
+.inspector-editor-actions span {
+  color: var(--studio-muted);
+}
+
+.inspector-field textarea {
+  border-color: var(--studio-line-strong);
+  background: #141715;
+  color: var(--studio-ink);
+  caret-color: var(--studio-clay-strong);
+  -webkit-text-fill-color: var(--studio-ink);
+}
+
+.inspector-field textarea::placeholder {
+  color: rgba(244, 241, 234, 0.46);
+  opacity: 1;
+}
+
+.inspector-field textarea::selection {
+  background: rgba(240, 127, 90, 0.38);
+  color: var(--studio-ink);
+  -webkit-text-fill-color: var(--studio-ink);
+}
+
+.inspector-field textarea:focus {
+  border-color: var(--studio-clay-strong);
+  box-shadow: 0 0 0 3px rgba(240, 127, 90, 0.22);
+}
+
 .inspector-thumb,
 .inspector-item-thumb {
   background: var(--studio-surface-3);
