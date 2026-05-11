@@ -1,6 +1,6 @@
 ﻿import { SELECTION_STORAGE_KEY } from './utils';
 
-export const emptyCaption = { headline: '', body: '', hashtags: '' };
+export const emptyCaption = { coverTitle: '', headline: '', body: '', hashtags: '' };
 
 export function normalizeSelection(dataset, selection) {
   const decks = dataset?.decks || [];

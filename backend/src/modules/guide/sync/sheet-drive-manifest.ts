@@ -9,6 +9,7 @@ import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 import { SectionKey } from '../../../common/interfaces/guide.types';
 
 export const SHEET_DRIVE_MANIFEST_FILE = 'sheet-drive-images.json';
+const DRIVE_MANIFEST_CONCURRENCY = 6;
 
 export interface SheetDriveImageManifestEntry {
   key: string;
@@ -88,6 +89,22 @@ function firstLinkValue(row: Record<string, string>): string {
   return String(linkEntry?.[1] ?? '').trim();
 }
 
+async function runLimited<T>(tasks: Array<() => Promise<T>>, concurrency: number): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  let nextIndex = 0;
+
+  const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
+    while (nextIndex < tasks.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await tasks[currentIndex]();
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
+
 export function getSheetDriveManifestPath(dataRoot: string): string {
   return path.join(dataRoot, SHEET_DRIVE_MANIFEST_FILE);
 }
@@ -125,10 +142,15 @@ export function readSheetDriveManifest(dataRoot: string, workbookName?: string):
   }
 }
 
-export async function buildSheetDriveManifest(source: SheetWorkbookSource): Promise<SheetDriveImageManifest> {
+export async function buildSheetDriveManifest(
+  source: SheetWorkbookSource,
+  previousManifest = emptySheetDriveManifest(),
+): Promise<SheetDriveImageManifest> {
   const workbook = source.workbook;
   const items: Record<string, SheetDriveImageManifestEntry> = {};
   const coverImages = new Map<string, DriveFolderEntry>();
+  const itemTasks: Array<() => Promise<void>> = [];
+  const coverTasks: Array<() => Promise<void>> = [];
 
   for (const sheetName of workbook.SheetNames) {
     const sectionKey = normalizeText(sheetName) as SectionKey;
@@ -139,14 +161,16 @@ export async function buildSheetDriveManifest(source: SheetWorkbookSource): Prom
         const imageLink = firstLinkValue(row);
         if (!imageLink) continue;
 
-        const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', 50).catch((error) => {
-          console.warn(`[sync] Bo qua anh nen Drive loi: ${error instanceof Error ? error.message : String(error)}`);
-          return [];
-        });
+        coverTasks.push(async () => {
+          const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', 50).catch((error) => {
+            console.warn(`[sync] Bo qua anh nen Drive loi: ${error instanceof Error ? error.message : String(error)}`);
+            return [];
+          });
 
-        for (const entry of candidateImages) {
-          if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
-        }
+          for (const entry of candidateImages) {
+            if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
+          }
+        });
       }
       continue;
     }
@@ -160,28 +184,38 @@ export async function buildSheetDriveManifest(source: SheetWorkbookSource): Prom
       const address = firstValue(row, 'dia_chi');
       const imageLink = preferredImageLink(row);
       if (!imageLink) continue;
-
-      const candidateImages = await resolveDriveLinkToEntries(imageLink, name, address).catch((error) => {
-        console.warn(`[sync] Bỏ qua ảnh Drive lỗi cho "${name}": ${error instanceof Error ? error.message : String(error)}`);
-        return [];
-      });
-      if (candidateImages.length === 0) continue;
-
-      const resolvedEntry = candidateImages[0];
-
       const key = itemMappingKey(sectionKey, name, address);
-      items[key] = {
-        key,
-        sectionKey,
-        name,
-        address,
-        sourceLink: imageLink,
-        fileId: resolvedEntry.fileId,
-        fileName: resolvedEntry.fileName,
-        candidateImages,
-      };
+
+      itemTasks.push(async () => {
+        const candidateImages = await resolveDriveLinkToEntries(imageLink, name, address).catch((error) => {
+          console.warn(`[sync] Skip Drive image for "${name}": ${error instanceof Error ? error.message : String(error)}`);
+          return [];
+        });
+        if (candidateImages.length === 0) {
+          const previousEntry = previousManifest.items[key];
+          if (previousEntry?.sourceLink === imageLink && previousEntry.fileId) {
+            items[key] = previousEntry;
+          }
+          return;
+        }
+
+        const resolvedEntry = candidateImages[0];
+
+        items[key] = {
+          key,
+          sectionKey,
+          name,
+          address,
+          sourceLink: imageLink,
+          fileId: resolvedEntry.fileId,
+          fileName: resolvedEntry.fileName,
+          candidateImages,
+        };
+      });
     }
   }
+
+  await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY);
 
   return {
     version: 1,

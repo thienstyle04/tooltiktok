@@ -185,6 +185,64 @@
   font-size: 0.9rem;
 }
 
+.inspector-cover-editor {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.inspector-field {
+  display: grid;
+  gap: 6px;
+}
+
+.inspector-field span {
+  color: var(--studio-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.inspector-field textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: #fffaf1;
+  color: var(--studio-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 10px 11px;
+  outline: none;
+}
+
+.inspector-field textarea:focus {
+  border-color: var(--studio-clay);
+  box-shadow: 0 0 0 3px rgba(255, 124, 86, 0.16);
+}
+
+.inspector-editor-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-editor-actions span {
+  min-width: 0;
+  color: var(--studio-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
 .inspector-item-source {
   border-radius: 6px;
   padding: 3px 6px;

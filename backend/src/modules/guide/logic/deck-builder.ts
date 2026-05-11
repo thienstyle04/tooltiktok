@@ -10,21 +10,24 @@ import {
   ImageLibraryFolderEntry,
   ListPage,
   PageItem,
+  SectionKey,
   WorkbookItemsBySection,
 } from '../../../common/interfaces/guide.types';
 import { hasItemKey, itemUsageKey, markItemKey } from './data-allocator';
 import { allowedImageKindsForItem, createListImageResolver, stableHash, topDirKind } from './image-resolver';
+import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
 const DEFAULT_PARTNER_TARGET_PER_PAGE = 3;
-export const ITINERARY_3N2D_TEMPLATE_VERSION = 15;
-export const ITINERARY_4N3D_TEMPLATE_VERSION = 11;
-export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 13;
-export const POV_3_DAY_TEMPLATE_VERSION = 10;
-export const GRID_4_TEMPLATE_VERSION = 15;
-export const GRID_6_TEMPLATE_VERSION = 14;
-export const GRID_8_TEMPLATE_VERSION = 13;
+export const ITINERARY_3N2D_TEMPLATE_VERSION = 16;
+export const ITINERARY_4N3D_TEMPLATE_VERSION = 12;
+export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 14;
+export const POV_3_DAY_TEMPLATE_VERSION = 11;
+export const GRID_4_TEMPLATE_VERSION = 16;
+export const GRID_6_TEMPLATE_VERSION = 15;
+export const GRID_8_TEMPLATE_VERSION = 14;
+export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 3;
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -846,7 +849,7 @@ export function buildListPage(
   subtitle: string,
   items: PageItem[],
   backgroundImage: string,
-  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' = 'standard',
+  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' = 'standard',
 ): ListPage {
   return { type: 'list', chipText, chipTone, title, subtitle, items, backgroundImage, layoutVariant };
 }
@@ -1056,6 +1059,14 @@ function shuffleItems(items: GuideItem[], seed: string): GuideItem[] {
 
 function shuffleListPages(pages: ListPage[], seed: string): ListPage[] {
   return [...pages].sort((a, b) => stableHash(`${seed}:page:${a.title}`) - stableHash(`${seed}:page:${b.title}`));
+}
+
+function shuffleSpotlightPages(pages: ListPage[], seed: string): ListPage[] {
+  return [...pages].sort((left, right) => {
+    const leftKey = `${left.title}:${left.items[0]?.sourceKey || left.items[0]?.id || left.items[0]?.name || ''}`;
+    const rightKey = `${right.title}:${right.items[0]?.sourceKey || right.items[0]?.id || right.items[0]?.name || ''}`;
+    return stableHash(`${seed}:page:${leftKey}`) - stableHash(`${seed}:page:${rightKey}`);
+  });
 }
 
 function pickPartnerBalancedItems(
@@ -1379,13 +1390,14 @@ export function sanitizeCaptionBodyForPages(body: string, pages: DeckPage[]): st
   return clean.slice(0, 250);
 }
 
-export function applyCaptionToPages(pages: DeckPage[], caption: { headline: string; body: string }): DeckPage[] {
+export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: string; headline: string; body: string }): DeckPage[] {
   const safeBody = sanitizeCaptionBodyForPages(caption.body, pages);
+  const coverTitle = String(caption.coverTitle ?? '').trim();
   return pages.map((page) => {
     if (page.type === 'cover') {
       return {
         ...page,
-        title: sanitizeDeckHeadline(caption.headline || page.title),
+        title: sanitizeDeckHeadline(coverTitle || caption.headline || page.title),
         subtitle: coverSubtitleFromCaption(safeBody, page.subtitle),
       };
     }
@@ -2247,6 +2259,309 @@ function buildGrid8PageItems(
   );
 }
 
+function spotlightLabelForItem(item: GuideItem, fallbackLabel: string): string {
+  if (item.sectionKey === 'quan_an') return mealLabelForItem(item);
+  if (item.sectionKey === 'dich_vu' || item.sectionKey === 'homestay') {
+    return photomodeServiceLabel(item) || fallbackLabel;
+  }
+  return item.type || fallbackLabel;
+}
+
+function pickSpotlightItem(
+  items: GuideItem[],
+  seed: string,
+  pick: PickFn,
+): GuideItem | null {
+  const displayReadyItems = preferDisplayReadyItems(items, 1);
+  const mappedReadyItems = preferMappedImageItems(displayReadyItems);
+  return pickMixedItemsWithPartnerQuota(mappedReadyItems, 1, seed, pick)[0] || null;
+}
+
+function buildSpotlightPage(
+  chipText: string,
+  chipTone: AccentTone,
+  title: string,
+  subtitle: string,
+  item: GuideItem | null,
+  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+): ListPage | null {
+  if (!item) return null;
+  const pageItem = pageItemWithResolver(item, spotlightLabelForItem(item, chipText), imageResolver);
+  return buildListPage(
+    chipText,
+    chipTone,
+    title,
+    subtitle,
+    [pageItem],
+    pageItem.imageUrl,
+    'spotlight',
+  );
+}
+
+function buildSpotlightPagesForCategory(
+  chipText: string,
+  chipTone: AccentTone,
+  title: string,
+  subtitle: string,
+  items: GuideItem[],
+  count: number,
+  seed: string,
+  pick: PickFn,
+  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+): ListPage[] {
+  return Array.from({ length: count }, (_, index) => {
+    const item = pickSpotlightItem(items, `${seed}-${index + 1}`, pick);
+    return buildSpotlightPage(chipText, chipTone, title, subtitle, item, imageResolver);
+  }).filter((page): page is ListPage => Boolean(page));
+}
+
+function buildSpotlightListItems(
+  items: GuideItem[],
+  count: number,
+  seed: string,
+  pick: PickFn,
+  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  labelFallback: string,
+): PageItem[] {
+  return shuffleItems(
+    pickMixedItemsWithPartnerQuota(
+      preferMappedImageItems(preferDisplayReadyItems(items, count)),
+      count,
+      seed,
+      pick,
+    ),
+    `${seed}-order`,
+  ).map((item) => pageItemWithResolver(item, spotlightLabelForItem(item, labelFallback), imageResolver));
+}
+
+function buildSpotlightGuidePages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const imageResolver = createListImageResolver(
+    imageUrls,
+    libraryEntries,
+    `${seedPrefix}:spotlight-guide`,
+    mappedImageUrls,
+    globalUsedImageUrls || [],
+    { orientation: 'portrait' },
+  );
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const pick = createListPicker(globalUsedItemIds);
+  const activityPage = finalActivityPagePool(pools, seedPrefix);
+  const tourismItems = preferDisplayReadyItems(
+    dedupeItems([
+      ...pools.dayTourismItems,
+      ...activityPage.items,
+      ...pools.dayFamousItems,
+    ]),
+    2,
+  );
+
+  const spotlightPages = shuffleSpotlightPages([
+    ...buildSpotlightPagesForCategory(
+      'Check-in',
+      'terracotta',
+      'Check-in Đà Lạt',
+      'Một điểm dễ lưu riêng để người xem nhớ rõ tên, ảnh và vị trí.',
+      balancedCheckinPool(pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems, 8, `${seedPrefix}-spotlight-checkin-pool`),
+      2,
+      `${seedPrefix}-checkin`,
+      pick,
+      imageResolver,
+    ),
+    ...buildSpotlightPagesForCategory(
+      'Cafe',
+      'gold',
+      'Quán cafe Đà Lạt',
+      'Một quán cafe nổi bật, giữ thông tin gọn để người xem dễ quyết định.',
+      pools.dayCafeItems.length > 0 ? pools.dayCafeItems : pools.cafeItems,
+      2,
+      `${seedPrefix}-cafe`,
+      pick,
+      imageResolver,
+    ),
+    ...buildSpotlightPagesForCategory(
+      'Quán ăn',
+      'berry',
+      'Quán ăn Đà Lạt',
+      'Một điểm ăn uống được tách riêng để hình, tên và thông tin không bị chen lẫn.',
+      pools.daytimeFoodItems.length > 0 ? pools.daytimeFoodItems : pools.foodItems,
+      2,
+      `${seedPrefix}-food`,
+      pick,
+      imageResolver,
+    ),
+    ...buildSpotlightPagesForCategory(
+      activityPage.isActivity ? 'Hoạt động' : 'Khu du lịch',
+      'pine',
+      activityPage.isActivity ? 'Hoạt động Đà Lạt' : 'Khu du lịch Đà Lạt',
+      activityPage.isActivity
+        ? 'Một hoạt động đáng lưu riêng để người xem không nhầm với nhóm check-in.'
+        : 'Một khu du lịch được tách riêng để tránh trộn sai với check-in.',
+      tourismItems,
+      2,
+      `${seedPrefix}-tourism`,
+      pick,
+      imageResolver,
+    ),
+  ], `${seedPrefix}-spotlight-order`);
+
+  return [
+    {
+      ...buildCoverPage(
+        'ĐÀ LẠT GỌN TRONG 10 TRANG',
+        'Một bộ gợi ý dạng spotlight: mỗi trang một địa điểm rõ ảnh, rõ tên, rõ thông tin để lưu và đi nhanh hơn.',
+        backgroundFor(coverImageUrls.filter(isPortableImageUrl), `${seedPrefix}-cover`) || coverImageUrls[0] || background(`${seedPrefix}-cover`),
+      ),
+      layoutVariant: 'spotlight',
+    },
+    ...spotlightPages,
+    buildListPage(
+      'Dịch vụ',
+      'slate',
+      'Dịch vụ cần lưu',
+      '7 lựa chọn hỗ trợ chuyến đi, ưu tiên đối tác và chỉ hiện SĐT khi dữ liệu có số.',
+      buildSpotlightListItems(pools.serviceItems, 7, `${seedPrefix}-services`, pick, imageResolver, 'Dịch vụ'),
+      background(`${seedPrefix}-services-bg`),
+      'spotlight-list',
+    ),
+    buildListPage(
+      'Homestay',
+      'pine',
+      'Homestay nên xem',
+      '7 lựa chọn lưu trú được gom riêng để dễ chốt chỗ ở trước chuyến đi.',
+      buildSpotlightListItems(pools.stayItems, 7, `${seedPrefix}-homestay`, pick, imageResolver, 'Lưu trú'),
+      background(`${seedPrefix}-homestay-bg`),
+      'spotlight-list',
+    ),
+  ];
+}
+
+// ─── Spotlight Partner: one partner, all their images as spotlight pages ──────
+
+export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 1;
+
+export function buildSpotlightPartnerPages(
+  partnerItem: GuideItem,
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const candidateUrls = (partnerItem.candidateImageUrls || []).filter(Boolean);
+  if (candidateUrls.length === 0 && partnerItem.imageUrl) {
+    candidateUrls.push(partnerItem.imageUrl);
+  }
+
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const imageResolver = createListImageResolver(
+    imageUrls,
+    libraryEntries,
+    `${seedPrefix}:spotlight-partner:${partnerItem.id}`,
+    mappedImageUrls,
+    globalUsedImageUrls || [],
+    { orientation: 'portrait' },
+  );
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const pick = createListPicker(globalUsedItemIds);
+
+  // Build spotlight pages from partner's candidate images
+  const spotlightPages: ListPage[] = candidateUrls.map((imageUrl, index) => {
+    const chipText = partnerItem.type || SECTION_CONFIG[partnerItem.sectionKey]?.title || 'Đối tác';
+    const chipTone: AccentTone = partnerItem.sectionKey === 'cafe' ? 'gold'
+      : partnerItem.sectionKey === 'quan_an' ? 'berry'
+      : partnerItem.sectionKey === 'homestay' ? 'pine'
+      : partnerItem.sectionKey === 'check_in' ? 'terracotta'
+      : 'slate';
+    const pageItem: PageItem = {
+      label: chipText,
+      id: `${partnerItem.id}-img-${index}`,
+      sourceKey: itemUsageKey(partnerItem),
+      sourceSectionKey: partnerItem.sectionKey,
+      name: partnerItem.name,
+      metaPrimary: partnerItem.address || 'Đang cập nhật',
+      metaSecondary: partnerItem.phone ? `SĐT: ${partnerItem.phone}` : '',
+      imageUrl,
+      imageMapped: true,
+      imageSource: 'manual',
+      imageNote: 'Ảnh đối tác từ Drive',
+      candidateImageUrls: candidateUrls,
+      isPartner: true,
+      rawName: partnerItem.name,
+    };
+    return buildListPage(
+      chipText,
+      chipTone,
+      partnerItem.name,
+      partnerItem.address || '',
+      [pageItem],
+      imageUrl,
+      'spotlight',
+    );
+  });
+
+  // Build list pages with other partners in same/related sections
+  const relatedSections: SectionKey[] = ['homestay', 'choi_dem', 'hoat_dong', 'dich_vu'];
+  const relatedPartnerItems = Object.values(pools)
+    .flat()
+    .filter((item): item is GuideItem =>
+      item && typeof item === 'object' && 'isPartner' in item &&
+      (item as GuideItem).isPartner &&
+      (item as GuideItem).id !== partnerItem.id &&
+      relatedSections.includes((item as GuideItem).sectionKey),
+    );
+  const uniqueRelatedPartners = dedupeItems(relatedPartnerItems);
+
+  const listPages: ListPage[] = [];
+  if (uniqueRelatedPartners.length > 0) {
+    const listItems = buildSpotlightListItems(
+      uniqueRelatedPartners,
+      Math.min(7, uniqueRelatedPartners.length),
+      `${seedPrefix}-partner-list`,
+      pick,
+      imageResolver,
+      'Đối tác',
+    );
+    if (listItems.length > 0) {
+      listPages.push(buildListPage(
+        'Đối tác khác',
+        'slate',
+        'Đối tác nên xem thêm',
+        '',
+        listItems,
+        background(`${seedPrefix}-partner-list-bg`),
+        'spotlight-list',
+      ));
+    }
+  }
+
+  // Cover page uses first partner image
+  const coverImage = candidateUrls[0] || background(`${seedPrefix}-cover`);
+
+  return [
+    {
+      ...buildCoverPage(
+        partnerItem.name.toUpperCase(),
+        partnerItem.address || partnerItem.type || '',
+        coverImage,
+      ),
+      layoutVariant: 'spotlight' as const,
+    },
+    ...spotlightPages,
+    ...listPages,
+  ];
+}
+
 function buildGrid6Pages(
   pools: DeckBuildPools,
   imageUrls: string[],
@@ -2551,6 +2866,7 @@ export function buildPagesForDeck(
   if (deckId === 'grid-6') return buildGrid6Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-8') return buildGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-4') return buildGrid4Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'spotlight-guide') return buildSpotlightGuidePages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   throw new Error(`Không hỗ trợ deck: ${deckId}`);
 }
 
@@ -2626,6 +2942,20 @@ export function buildDecks(
       title: 'Bộ trang bố cục lưới 2x2 (4 địa điểm)',
       description: 'Biến thể từ mẫu lưới 6 ô, giữ cùng phong cách hiển thị nhưng mỗi trang chỉ còn 4 hình và cân bằng đối tác/không đối tác.',
       lists: [buildDeckList('grid-4', 'main', 'List chính', 'List lưới 4 ô', 'Danh sách ảnh chính cho mẫu lưới 2x2.', buildPagesForDeck('grid-4', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-4-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
+    },
+    {
+      id: 'spotlight-guide',
+      navTitle: 'Mẫu Spotlight',
+      title: 'Bộ trang spotlight 1 địa điểm',
+      description: 'Mẫu mới gồm cover, 8 trang mỗi trang một địa điểm nổi bật, thêm 1 trang dịch vụ và 1 trang homestay dạng danh sách 7 mục.',
+      lists: [buildDeckList('spotlight-guide', 'main', 'List chính', 'List spotlight Đà Lạt', 'Danh sách ảnh chính cho mẫu spotlight một dữ liệu mỗi trang.', buildPagesForDeck('spotlight-guide', common.itemsBySection, common.imageUrls, common.libraryEntries, 'spotlight-guide-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
+    },
+    {
+      id: 'spotlight-partner',
+      navTitle: 'Spotlight Đối tác',
+      title: 'Bộ trang spotlight cho 1 đối tác',
+      description: 'Mẫu dành riêng cho đối tác: cover + mỗi ảnh Drive của đối tác là 1 trang spotlight + trang list đối tác liên quan. Chọn đối tác từ danh sách để sinh mẫu.',
+      lists: [],
     },
   ];
 }

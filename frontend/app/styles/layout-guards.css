@@ -146,6 +146,7 @@
 .story-page[data-list-id^="grid-6"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="grid-8"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="grid-4"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
+.story-page[data-list-id^="spotlight-guide"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 
 .story-page.title-font-1 {
   --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
@@ -247,6 +248,8 @@
 .story-page .page-title,
 .story-page .journey-cover-title,
 .story-page .photomode-cover-title,
+.story-page .spotlight-title,
+.story-page .spotlight-list-heading h2,
 .story-page .grid6-cover-title,
 .story-page .grid8-cover-title,
 .story-page .grid8-center-title,
@@ -271,6 +274,8 @@
 .story-page.has-inline-hashtags .cover-title,
 .story-page .journey-cover-title,
 .story-page .photomode-cover-title,
+.story-page .spotlight-title,
+.story-page .spotlight-list-heading h2,
 .story-page .grid6-cover-title,
 .story-page .grid8-cover-title {
   line-height: 1.18;
@@ -282,10 +287,12 @@
 .story-page.has-inline-hashtags .cover-title,
 .story-page .journey-cover-title,
 .story-page .photomode-cover-title,
+.story-page .spotlight-title,
+.story-page .spotlight-list-heading h2,
 .story-page .grid6-cover-title,
 .story-page .grid8-cover-title {
-  font-family: "Baloo 2", "Be Vietnam Pro", sans-serif !important;
-  font-weight: 800 !important;
+  font-family: var(--deck-title-font, "Baloo 2", "Be Vietnam Pro", sans-serif) !important;
+  font-weight: var(--deck-title-weight, 800) !important;
   letter-spacing: 0 !important;
   line-height: 1.08;
   text-wrap: balance;
@@ -614,24 +621,24 @@ body {
 
 /* Shared image text guard: keep item titles/descriptions readable across all deck templates. */
 .story-page {
-  --story-image-title-size: 0.68rem;
+  --story-image-title-size: 0.6rem;
   --story-image-title-line-height: 1.14;
   --story-image-title-lines: 2;
-  --story-image-title-slot: 1.55rem;
-  --story-image-meta-size: 0.5rem;
+  --story-image-title-slot: 1.4rem;
+  --story-image-meta-size: 0.44rem;
   --story-image-meta-line-height: 1.16;
   --story-image-meta-lines: 2;
-  --story-image-meta-slot: 1.16rem;
+  --story-image-meta-slot: 1.04rem;
 }
 
 .story-page.grid8,
 .story-page.grid8-page {
-  --story-image-title-size: 0.62rem;
+  --story-image-title-size: 0.54rem;
   --story-image-title-line-height: 1.16;
-  --story-image-title-slot: 1.44rem;
-  --story-image-meta-size: 0.46rem;
+  --story-image-title-slot: 1.28rem;
+  --story-image-meta-size: 0.4rem;
   --story-image-meta-line-height: 1.16;
-  --story-image-meta-slot: 1.07rem;
+  --story-image-meta-slot: 0.96rem;
 }
 
 .story-page :is(
@@ -718,9 +725,9 @@ body {
 }
 
 .story-page.grid8-page {
-  --story-image-title-size: 0.5rem;
+  --story-image-title-size: 0.44rem;
   --story-image-title-line-height: 1.1;
-  --story-image-meta-size: 0.41rem;
+  --story-image-meta-size: 0.36rem;
   --story-image-meta-line-height: 1.08;
 }
 
@@ -812,16 +819,16 @@ body {
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].itinerary {
-  --story-image-title-size: 0.68rem;
+  --story-image-title-size: 0.6rem;
   --story-image-title-line-height: 1.08;
-  --story-image-meta-size: 0.48rem;
+  --story-image-meta-size: 0.42rem;
   --story-image-meta-line-height: 1.1;
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].itinerary.crowded {
-  --story-image-title-size: 0.64rem;
+  --story-image-title-size: 0.56rem;
   --story-image-title-line-height: 1.06;
-  --story-image-meta-size: 0.44rem;
+  --story-image-meta-size: 0.4rem;
   --story-image-meta-line-height: 1.08;
   --story-image-meta-lines: 1;
 }
@@ -886,16 +893,16 @@ body {
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].compact {
-  --story-image-title-size: 0.66rem;
+  --story-image-title-size: 0.58rem;
   --story-image-title-line-height: 1.14;
-  --story-image-meta-size: 0.49rem;
+  --story-image-meta-size: 0.44rem;
   --story-image-meta-line-height: 1.12;
 }
 
 .story-page[data-list-id^="itinerary-3n2d"].compact.crowded {
-  --story-image-title-size: 0.64rem;
+  --story-image-title-size: 0.56rem;
   --story-image-title-line-height: 1.08;
-  --story-image-meta-size: 0.44rem;
+  --story-image-meta-size: 0.4rem;
   --story-image-meta-line-height: 1.1;
   --story-image-meta-lines: 1;
 }
@@ -949,4 +956,562 @@ body {
 
 .story-page[data-list-id^="itinerary-3n2d"].compact.crowded .item-meta {
   margin-top: 1px;
+}
+
+.story-page.spotlight-page .spotlight-title {
+  display: block;
+  min-height: 0;
+  max-width: 100%;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1.04;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: horizontal;
+}
+
+.story-page.spotlight-page .spotlight-info {
+  max-width: 100%;
+  margin-top: 1px;
+}
+
+.story-page.spotlight-page .spotlight-meta {
+  gap: 2px;
+  max-width: 100%;
+  min-height: 0;
+  align-items: center;
+  font-size: 0.64rem;
+  line-height: 1.06;
+}
+
+.story-page.spotlight-page .spotlight-meta span:last-child {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  padding-top: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.story-page.spotlight-page .spotlight-pin {
+  width: 9px;
+  height: 9px;
+  margin-top: 0;
+}
+
+
+/* Mobile-first readability pass: when a generated list is posted to TikTok on a
+   phone the canvas is scaled down to ~1080px wide, which makes the text look
+   oversized. These overrides shrink the on-slide text ~10% while preserving the
+   ratios between templates. Values below are the authoritative sizes and sit
+   after the template-specific rules so they win. */
+
+/* Cover pages */
+.story-page .cover-script {
+  font-size: 2.88rem;
+}
+
+.story-page .cover-title {
+  font-size: 1.96rem;
+}
+
+.story-page .cover-subtitle {
+  font-size: 0.9rem;
+}
+
+.story-page .cover-hashtag {
+  font-size: 0.6rem;
+}
+
+.story-page.has-inline-hashtags .cover-title {
+  font-size: 1.72rem;
+}
+
+.story-page.has-inline-hashtags .cover-subtitle {
+  font-size: 0.8rem;
+}
+
+.story-page.has-inline-hashtags .cover-script {
+  font-size: 2.26rem;
+}
+
+.story-page .cover-copy .page-inline-hashtag {
+  font-size: 0.72rem;
+}
+
+.story-page .cover-chip {
+  font-size: 0.86rem;
+}
+
+/* Shared page chrome */
+.story-page .page-title {
+  font-size: 1.8rem;
+}
+
+.story-page .page-lead {
+  font-size: 0.79rem;
+}
+
+.story-page .item-name {
+  font-size: 1.17rem;
+}
+
+.story-page .item-label {
+  font-size: 0.51rem;
+}
+
+.story-page .item-meta {
+  font-size: 0.76rem;
+}
+
+.story-page .item-meta.secondary {
+  font-size: 0.68rem;
+}
+
+/* Dense layout */
+.story-page.dense .page-title {
+  font-size: 1.35rem;
+}
+
+.story-page.dense .page-lead {
+  font-size: 0.62rem;
+}
+
+.story-page.dense .item-label {
+  font-size: 0.5rem;
+}
+
+.story-page.dense .item-name {
+  font-size: 0.81rem;
+}
+
+.story-page.dense .item-meta {
+  font-size: 0.52rem;
+}
+
+.story-page.dense .item-meta.secondary {
+  font-size: 0.5rem;
+}
+
+/* Compact layout */
+.story-page.compact .item-label {
+  font-size: 0.5rem;
+}
+
+.story-page.compact .item-name {
+  font-size: 0.85rem;
+}
+
+.story-page.compact .item-meta {
+  font-size: 0.54rem;
+}
+
+.story-page.compact .item-meta.secondary {
+  font-size: 0.5rem;
+}
+
+.story-page.compact.crowded .page-title {
+  font-size: 1rem;
+}
+
+.story-page.compact.crowded .item-label {
+  font-size: 0.45rem;
+}
+
+.story-page.compact.crowded .item-name {
+  font-size: 0.74rem;
+}
+
+.story-page.compact.crowded .item-meta {
+  font-size: 0.48rem;
+}
+
+.story-page.compact.crowded .item-meta.secondary {
+  font-size: 0.45rem;
+}
+
+/* Itinerary layout */
+.story-page.itinerary .page-title {
+  font-size: 1.37rem;
+}
+
+.story-page.itinerary .page-lead {
+  font-size: 0.65rem;
+}
+
+.story-page.itinerary .itinerary-time {
+  font-size: 0.49rem;
+}
+
+.story-page.itinerary .itinerary-name {
+  font-size: 0.9rem;
+}
+
+.story-page.itinerary .itinerary-detail {
+  font-size: 0.6rem;
+}
+
+/* Journey templates */
+.story-page .journey-cover-kicker {
+  font-size: 0.65rem;
+}
+
+.story-page .journey-cover-title {
+  font-size: 2.34rem;
+}
+
+.story-page .journey-cover-subtitle {
+  font-size: 0.74rem;
+}
+
+.story-page .journey-time-copy strong {
+  font-size: 0.7rem;
+}
+
+.story-page .journey-time-copy p {
+  font-size: 0.6rem;
+}
+
+.story-page .journey-stop-copy span {
+  font-size: 0.4rem;
+}
+
+.story-page .journey-stop-copy strong {
+  font-size: 0.71rem;
+}
+
+.story-page .journey-stop-copy p {
+  font-size: 0.44rem;
+}
+
+.story-page .journey-hero h4 {
+  font-size: 1.19rem;
+}
+
+.story-page .journey-hero p {
+  font-size: 0.56rem;
+}
+
+.story-page.journey4 .page-title {
+  font-size: 1.19rem;
+}
+
+.story-page.journey4 .page-lead {
+  font-size: 0.59rem;
+}
+
+/* Photomode templates */
+.story-page.photomode-cover .photomode-cover-title {
+  font-size: 2.88rem;
+}
+
+.story-page.photomode-cover .photomode-cover-subtitle {
+  font-size: 0.88rem;
+}
+
+.story-page .photomode-page-heading span {
+  font-size: 0.43rem;
+}
+
+.story-page .photomode-page-heading h3 {
+  font-size: 0.66rem;
+}
+
+.story-page .photomode-name {
+  font-size: 1.62rem;
+}
+
+.story-page .photomode-meta {
+  font-size: 0.6rem;
+}
+
+/* Grid templates: numeric font-size overrides live in grid-templates.css;
+   the shared CSS variables above already shrink grid6/grid8 title + meta. */
+
+/* Spotlight templates */
+.story-page.spotlight-cover .grid4-feature-title {
+  font-size: 2.24rem;
+}
+
+.story-page.spotlight-cover .grid4-feature-subtitle {
+  font-size: 0.72rem;
+}
+
+.story-page .spotlight-title,
+.story-page.spotlight-page .spotlight-title {
+  font-size: 1.08rem;
+}
+
+.story-page .spotlight-page-title {
+  font-size: 0.72rem;
+}
+
+.story-page .spotlight-lead {
+  font-size: 0.7rem;
+}
+
+.story-page .spotlight-meta {
+  font-size: 0.68rem;
+}
+
+.story-page .spotlight-meta.secondary {
+  font-size: 0.63rem;
+}
+
+.story-page .spotlight-list-heading span {
+  font-size: 0.65rem;
+}
+
+.story-page .spotlight-list-heading h2 {
+  font-size: 1.08rem;
+}
+
+.story-page .spotlight-list-heading p {
+  font-size: 0.52rem;
+}
+
+.story-page .spotlight-list-copy strong {
+  font-size: 0.58rem;
+}
+
+.story-page .spotlight-list-copy .spotlight-meta {
+  font-size: 0.4rem;
+}
+
+.story-page .spotlight-list-copy .spotlight-meta.secondary {
+  font-size: 0.38rem;
+}
+
+.story-page .spotlight-list-label {
+  font-size: 0.34rem;
+}
+
+
+/* Grid template hardcoded sizes: keep the layout but shrink the text ~10%. */
+.story-page .grid6-cover-header {
+  font-size: 1.8rem;
+}
+
+.story-page .grid6-cover-title {
+  font-size: 1.89rem;
+}
+
+.story-page .grid6-cover-subtitle {
+  font-size: 0.76rem;
+}
+
+.story-page .grid6-header-top {
+  font-size: 0.88rem;
+}
+
+.story-page.grid8 .grid6-header-top {
+  font-size: 0.76rem;
+}
+
+.story-page .grid6-name {
+  font-size: 0.62rem;
+}
+
+.story-page .grid4 .grid6-name {
+  font-size: 0.58rem;
+}
+
+.story-page .grid6-address {
+  font-size: 0.45rem;
+}
+
+.story-page .grid6-address-extra {
+  font-size: 0.39rem;
+}
+
+.story-page .grid6-name-pill-label,
+.story-page .grid6-address-pill-label {
+  font-size: 0.45rem;
+}
+
+.story-page .grid8-header-top {
+  font-size: 0.56rem;
+}
+
+.story-page .grid8-header-title {
+  font-size: 0.98rem;
+}
+
+.story-page .grid8-header-no {
+  font-size: 1.08rem;
+}
+
+.story-page .grid8-hero-copy h4 {
+  font-size: 1.07rem;
+}
+
+.story-page .grid8-hero-copy p {
+  font-size: 0.59rem;
+}
+
+.story-page .grid8-mini-no {
+  font-size: 0.47rem;
+}
+
+.story-page .grid8-mini strong {
+  font-size: 0.56rem;
+}
+
+.story-page .grid8-mini span {
+  font-size: 0.44rem;
+}
+
+.story-page .grid8-hero .grid8-meta {
+  font-size: 0.56rem;
+}
+
+.story-page .grid4-cover-kicker {
+  font-size: 0.56rem;
+}
+
+.story-page .grid4-cover-title {
+  font-size: 1.55rem;
+}
+
+.story-page .grid4-cover-subtitle {
+  font-size: 0.61rem;
+}
+
+.story-page .grid4-feature-kicker {
+  font-size: 2.12rem;
+}
+
+.story-page .grid4-feature-title {
+  font-size: 1.85rem;
+}
+
+.story-page .grid4-feature-subtitle {
+  font-size: 0.81rem;
+}
+
+.story-page .grid4-feature-footer {
+  font-size: 0.5rem;
+}
+
+/* Journey grid8 hero + cells */
+.story-page .journey-grid8-page .grid8-header-top {
+  font-size: 0.4rem;
+}
+
+.story-page .journey-grid8-page .grid8-header-title {
+  font-size: 0.35rem;
+}
+
+.story-page .journey-grid8-page .grid8-header-no {
+  font-size: 0.42rem;
+}
+
+.story-page .journey-grid8-page .grid8-cell strong {
+  font-size: 0.43rem;
+}
+
+.story-page .journey-grid8-page .grid8-meta {
+  font-size: 0.34rem;
+}
+
+.story-page .journey-grid8-page .grid8-center-title {
+  font-size: 0.52rem;
+}
+
+.story-page .journey-grid8-page .grid8-center-intro {
+  font-size: 0.36rem;
+}
+
+.story-page .grid8-cell .grid8-meta-extra {
+  font-size: 0.34rem;
+}
+
+.story-page .grid8-hero-copy .grid8-meta-extra {
+  font-size: 0.42rem;
+}
+
+/* Spotlight: numeric overrides (title class already handled above) */
+.story-page .spotlight-chip {
+  font-size: 0.56rem;
+}
+
+.story-page.spotlight-page .spotlight-title-fit-md {
+  font-size: 1rem;
+}
+
+.story-page.spotlight-page .spotlight-title-fit-sm {
+  font-size: 0.9rem;
+}
+
+.story-page.spotlight-page .spotlight-title-fit-xs {
+  font-size: 0.82rem;
+}
+
+.story-page .spotlight-list-copy .spotlight-meta {
+  font-size: 0.4rem;
+}
+
+.story-page .spotlight-list-copy .spotlight-meta.secondary {
+  font-size: 0.38rem;
+}
+
+.story-page .spotlight-list-heading h2 {
+  font-size: 1.08rem;
+}
+
+.story-page .spotlight-list-label {
+  font-size: 0.34rem;
+}
+
+/* Spotlight keeps one clean Vietnamese typeface. The random title-font variants
+   are still useful in older decks, but they make Spotlight headings look broken. */
+.story-page.spotlight-cover,
+.story-page.spotlight-page,
+.story-page.spotlight-list-page {
+  --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
+  --deck-title-weight: 850;
+}
+
+.story-page.spotlight-cover .grid4-feature-title {
+  max-width: 78%;
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-size: 1.34rem;
+  font-style: normal !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.2;
+  text-transform: none;
+}
+
+.story-page.spotlight-cover .grid4-feature-subtitle {
+  display: block;
+  max-width: 86%;
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-size: 0.64rem;
+  font-style: normal !important;
+  font-weight: 750 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.28;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: initial;
+}
+
+.story-page.spotlight-page .spotlight-title,
+.story-page.spotlight-list-page .spotlight-list-heading h2,
+.story-page.spotlight-list-page .spotlight-list-copy strong {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-style: normal !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
+}
+
+.story-page.spotlight-list-page .spotlight-list-heading h2 {
+  font-size: 1.08rem;
+  line-height: 1.08;
 }

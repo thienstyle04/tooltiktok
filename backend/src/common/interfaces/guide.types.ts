@@ -59,7 +59,7 @@ export interface CoverPage {
   title: string;
   subtitle: string;
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8';
+  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight';
 }
 
 export interface ListPage {
@@ -70,7 +70,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8';
+  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list';
 }
 
 export type DeckPage = CoverPage | ListPage;
@@ -80,6 +80,8 @@ export interface GuideDeckList {
   navTitle: string;
   title: string;
   description: string;
+  coverTitle?: string;
+  postCaption?: string;
   captionHashtags?: string[];
   templateVersion?: number;
   pages: DeckPage[];
@@ -165,8 +167,9 @@ export interface DeepSeekCaptionRequest {
   deckId?: string;
   listId?: string;
   tone?: 'gen_z' | 'tinh_te' | 'review_chan_that' | 'ban_hang_nhe' | 'lich_trinh_huu_ich';
-  target?: 'full' | 'headline' | 'body' | 'hashtags';
+  target?: 'full' | 'headline' | 'body' | 'hashtags' | 'cover_title';
   current?: {
+    coverTitle?: string;
     headline?: string;
     body?: string;
     hashtags?: string[];
@@ -176,8 +179,9 @@ export interface DeepSeekCaptionRequest {
 export interface DeepSeekCaptionResponse {
   deckId: string;
   listId: string;
-  target: 'full' | 'headline' | 'body' | 'hashtags';
+  target: 'full' | 'headline' | 'body' | 'hashtags' | 'cover_title';
   tone: 'gen_z' | 'tinh_te' | 'review_chan_that' | 'ban_hang_nhe' | 'lich_trinh_huu_ich';
+  coverTitle: string;
   headline: string;
   body: string;
   hashtags: string[];
@@ -185,6 +189,7 @@ export interface DeepSeekCaptionResponse {
 }
 
 export interface CaptionBlocks {
+  coverTitle: string;
   headline: string;
   body: string;
   hashtags: string[];
@@ -201,6 +206,32 @@ export interface GenerateCaptionDeckResponse {
   listId: string;
   navTitle: string;
   title: string;
+}
+
+export interface GeneratePartnerSpotlightRequest {
+  partnerId?: string;
+  partnerName?: string;
+}
+
+export interface GeneratePartnerSpotlightResponse {
+  deckId: string;
+  listId: string;
+  navTitle: string;
+  title: string;
+  partnerName: string;
+  pageCount: number;
+}
+
+export interface UpdateGeneratedListCoverRequest {
+  coverTitle?: string;
+  coverSubtitle?: string;
+}
+
+export interface UpdateGeneratedListCoverResponse {
+  deckId: string;
+  listId: string;
+  coverTitle: string;
+  coverSubtitle: string;
 }
 
 export interface DatasetBuildContext {

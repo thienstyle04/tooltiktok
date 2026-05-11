@@ -17,7 +17,14 @@ function firstPortableListImage(list) {
   return '';
 }
 
-export default function PageInspector({ deck, list, selectedPageIndex }) {
+export default function PageInspector({
+  deck,
+  list,
+  selectedPageIndex,
+  onCoverTextChange,
+  onCoverTextSave,
+  savingCoverText = false,
+}) {
   const page = list?.pages?.[selectedPageIndex];
   if (!deck || !list || !page) {
     return <p className="empty-inspector">Chọn một trang trong preview để xem dữ liệu và ảnh đang dùng.</p>;
@@ -32,6 +39,8 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
     ? page.backgroundImage
     : firstPortableListImage(list) || page.backgroundImage || '';
   const coverImage = hasItems ? (items[0]?.imageUrl || pageBackground) : pageBackground;
+  const canEditCover = !hasItems && page.type === 'cover' && typeof onCoverTextChange === 'function';
+  const canSaveCover = canEditCover && typeof onCoverTextSave === 'function';
 
   return (
     <>
@@ -43,6 +52,7 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
           <p>{hasItems ? 'Trang dữ liệu' : 'Trang bìa'} · {page.chipText || 'Cover'} · Trang {currentPageLabel(selectedPageIndex, list)}</p>
         </div>
       </div>
+
       {hasItems ? (
         <>
           <div className="inspector-stats">
@@ -66,10 +76,34 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
           </ul>
         </>
       ) : (
-        <div className="inspector-cover-note">
-          <strong>Trang này là cover</strong>
-          <span>Cover chỉ dùng ảnh nền và tiêu đề. Dữ liệu địa điểm/dịch vụ sẽ hiện khi chọn các trang nội dung phía sau.</span>
-        </div>
+        <>
+          {canEditCover ? (
+            <div className="inspector-cover-editor">
+              <label className="inspector-field">
+                <span>Chữ cover</span>
+                <textarea
+                  value={page.subtitle || ''}
+                  placeholder="Nhập chữ muốn hiện trên cover..."
+                  rows={4}
+                  maxLength={220}
+                  onChange={(event) => onCoverTextChange({ coverSubtitle: event.target.value })}
+                />
+              </label>
+              <div className="inspector-editor-actions">
+                <span>{list.id?.includes('caption-') ? 'List AI: lưu để lần sau mở lại vẫn còn.' : 'List gốc: sửa tạm trong phiên hiện tại.'}</span>
+                {canSaveCover ? (
+                  <button className="toolbar-button secondary" type="button" disabled={savingCoverText} onClick={onCoverTextSave}>
+                    {savingCoverText ? 'Đang lưu...' : 'Lưu chữ cover'}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          <div className="inspector-cover-note">
+            <strong>Trang này là cover</strong>
+            <span>Cover dùng ảnh nền và chữ phụ. Sửa nội dung ở ô trên rồi xuất lại, không cần sinh caption AI.</span>
+          </div>
+        </>
       )}
     </>
   );

@@ -7,7 +7,8 @@ const rootDir = path.resolve(__dirname, '..');
 const backendDir = path.join(rootDir, 'backend');
 const frontendDir = path.join(rootDir, 'frontend');
 const npmCliPath = resolveNpmCliPath();
-const defaultHost = '127.0.0.1';
+const defaultHost = '0.0.0.0';
+const displayHost = '127.0.0.1';
 const defaultBackendPort = 3000;
 const defaultFrontendPort = 3001;
 let shuttingDown = false;
@@ -33,13 +34,17 @@ async function main() {
 
   const backendPort = await findAvailablePort(requestedBackendPort, host);
   const frontendPort = await findAvailablePort(requestedFrontendPort, host, new Set([backendPort]));
-  const backendOrigin = `http://${host}:${backendPort}`;
-  const frontendOrigin = `http://${host}:${frontendPort}`;
+  const backendOrigin = `http://${backendOriginHost(host)}:${backendPort}`;
+  const frontendOrigin = `http://${backendOriginHost(host)}:${frontendPort}`;
+  const networkHost = firstNetworkHost();
 
   warnIfPortMoved('backend', requestedBackendPort, backendPort);
   warnIfPortMoved('frontend', requestedFrontendPort, frontendPort);
   console.log(`[dev] backend: ${backendOrigin}/`);
   console.log(`[dev] frontend: ${frontendOrigin}/`);
+  if (networkHost && host === defaultHost) {
+    console.log(`[dev] network: http://${networkHost}:${frontendPort}/`);
+  }
 
   processes = [
     startNpmProcess('backend', ['run', 'start:dev'], backendDir, {
@@ -69,13 +74,28 @@ function startFrontendProcess(port, env) {
     return startProcess(
       'frontend',
       process.execPath,
-      [nextCliPath, 'dev', '--webpack', '-p', String(port)],
+      [nextCliPath, 'dev', '--webpack', '-H', env.HOST || defaultHost, '-p', String(port)],
       frontendDir,
       env,
     );
   }
 
-  return startNpmProcess('frontend', ['run', 'dev', '--', '-p', String(port)], frontendDir, env);
+  return startNpmProcess('frontend', ['run', 'dev', '--', '-H', env.HOST || defaultHost, '-p', String(port)], frontendDir, env);
+}
+
+function backendOriginHost(host) {
+  return host === '0.0.0.0' || host === '::' ? displayHost : host;
+}
+
+function firstNetworkHost() {
+  const os = require('node:os');
+  const interfaces = os.networkInterfaces();
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries || []) {
+      if (entry.family === 'IPv4' && !entry.internal) return entry.address;
+    }
+  }
+  return '';
 }
 
 function startProcess(label, command, args, cwd, env) {
@@ -110,7 +130,7 @@ async function findAvailablePort(preferredPort, host, reservedPorts = new Set())
 }
 
 async function isPortAvailable(port, host) {
-  const hostsToCheck = [...new Set([host, defaultHost, '::'])];
+  const hostsToCheck = [...new Set([host, displayHost, '::'])];
   for (const candidateHost of hostsToCheck) {
     if (!(await canListen(port, candidateHost))) return false;
   }

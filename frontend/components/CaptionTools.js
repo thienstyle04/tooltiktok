@@ -11,11 +11,13 @@ export default function CaptionTools({
   caption,
   setCaption,
   busy,
+  partners,
   onDeckSelect,
   onListSelect,
   onGeneratedListSelect,
   onRequestCaption,
   onCreateList,
+  onCreatePartnerSpotlight,
   onCopy,
 }) {
   const decks = dataset?.decks || [];
@@ -99,15 +101,36 @@ export default function CaptionTools({
         <section className="ai-block">
           <div className="ai-block-head">
             <div>
-              <p className="ai-block-label">Headline</p>
-              <p className="ai-block-note">Tối đa 35 ký tự, dùng cho cover.</p>
+              <p className="ai-block-label">Tiêu đề cover</p>
+              <p className="ai-block-note">Tối đa 35 ký tự, dùng làm title trang cover.</p>
+            </div>
+            <div className="ai-block-actions">
+              <button id="regenCoverTitleBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => onRequestCaption('cover_title')}>Sinh lại</button>
+              <button id="copyCoverTitleBtn" className="toolbar-button" type="button" onClick={() => onCopy((caption.coverTitle || '').trim(), 'Đã copy tiêu đề cover.')}>Copy</button>
+            </div>
+          </div>
+          <textarea
+            id="captionCoverTitle"
+            className="ai-output compact"
+            placeholder="Tiêu đề cover sẽ hiện ở đây..."
+            maxLength={35}
+            value={caption.coverTitle || ''}
+            onChange={(event) => setCaption((prev) => ({ ...prev, coverTitle: event.target.value.slice(0, 35) }))}
+          />
+        </section>
+
+        <section className="ai-block">
+          <div className="ai-block-head">
+            <div>
+              <p className="ai-block-label">Caption đăng bài</p>
+              <p className="ai-block-note">Nội dung copy dán khi đăng TikTok.</p>
             </div>
             <div className="ai-block-actions">
               <button id="regenHeadlineBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => onRequestCaption('headline')}>Sinh lại</button>
-              <button id="copyHeadlineBtn" className="toolbar-button" type="button" onClick={() => onCopy(caption.headline.trim(), 'Đã copy headline.')}>Copy</button>
+              <button id="copyHeadlineBtn" className="toolbar-button" type="button" onClick={() => onCopy(caption.headline.trim(), 'Đã copy caption đăng bài.')}>Copy</button>
             </div>
           </div>
-          <textarea id="captionHeadline" className="ai-output compact" placeholder="Headline sẽ hiện ở đây..." value={caption.headline} onChange={(event) => setCaption((prev) => ({ ...prev, headline: event.target.value }))} />
+          <textarea id="captionHeadline" className="ai-output compact" placeholder="Caption đăng bài sẽ hiện ở đây..." value={caption.headline} onChange={(event) => setCaption((prev) => ({ ...prev, headline: event.target.value }))} />
         </section>
 
         <section className="ai-block">
@@ -136,6 +159,39 @@ export default function CaptionTools({
             </div>
           </div>
           <textarea id="captionHashtags" className="ai-output compact" placeholder="Hashtags sẽ hiện ở đây..." value={caption.hashtags} onChange={(event) => setCaption((prev) => ({ ...prev, hashtags: event.target.value }))} />
+        </section>
+
+        <section className="ai-block generated-list-panel">
+          <div className="ai-block-head generated-list-head">
+            <div>
+              <p className="ai-block-label">Spotlight Đối tác</p>
+              <p className="ai-block-note">Chọn đối tác để sinh bộ ảnh spotlight riêng.</p>
+            </div>
+          </div>
+          {(partners || []).length > 0 ? (
+            <div className="partner-spotlight-picker">
+              <div className="generated-list-grid">
+                {(partners || []).map((partner) => (
+                  <button
+                    key={partner.id}
+                    type="button"
+                    className="generated-list-card"
+                    disabled={busy}
+                    onClick={() => onCreatePartnerSpotlight?.(partner)}
+                  >
+                    <span className="generated-list-index">{partner.imageCount}</span>
+                    <span className="generated-list-copy">
+                      <strong>{partner.name}</strong>
+                      <small>{partner.section} · {partner.address}</small>
+                    </span>
+                    <span className="generated-list-action">Tạo</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="generated-list-empty">Chưa có đối tác nào trong dữ liệu.</p>
+          )}
         </section>
 
         <section className="ai-block generated-list-panel">

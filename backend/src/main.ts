@@ -59,8 +59,17 @@ function getAllowedCorsOrigins(frontendOrigin: string): Set<string> {
 function isLocalDevOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
-    return url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+    return url.protocol === 'http:' && (url.hostname === 'localhost' || isPrivateNetworkHost(url.hostname));
   } catch {
     return false;
   }
+}
+
+function isPrivateNetworkHost(hostname: string): boolean {
+  if (hostname === '127.0.0.1' || hostname === '0.0.0.0') return true;
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+  return false;
 }

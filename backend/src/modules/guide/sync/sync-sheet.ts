@@ -1,5 +1,5 @@
 import { resolveBackendDataDir, resolveBackendRoot } from '../../../config';
-import { buildSheetDriveManifest, writeSheetDriveManifest } from './sheet-drive-manifest';
+import { buildSheetDriveManifest, readSheetDriveManifest, writeSheetDriveManifest } from './sheet-drive-manifest';
 import { fetchWorkbookFromSheet } from './workbook-source';
 
 async function main(): Promise<void> {
@@ -7,7 +7,8 @@ async function main(): Promise<void> {
   const dataRoot = resolveBackendDataDir(toolRoot);
 
   const source = await fetchWorkbookFromSheet();
-  const manifest = await buildSheetDriveManifest(source);
+  const previousManifest = readSheetDriveManifest(dataRoot, source.workbookName);
+  const manifest = await buildSheetDriveManifest(source, previousManifest);
   const manifestPath = writeSheetDriveManifest(dataRoot, manifest);
 
   console.log(`Da tai du lieu tu Google Sheet: ${source.workbookName}`);
