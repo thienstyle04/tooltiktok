@@ -268,20 +268,34 @@ export class GuideService {
     }
 
     const prompt = this.buildDeepSeekPrompt(deck, deckList, tone, target, current, this.getUsedCaptionTitles(deck.id));
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: 'Bạn là content creator du lịch TikTok. Chỉ trả về đúng JSON object hợp lệ, không thêm markdown, không giải thích.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 1.1,
-        max_tokens: 900,
-        stream: false,
-      }),
-    });
+    const deepseekController = new AbortController();
+    const deepseekTimeout = setTimeout(() => deepseekController.abort(), 30_000);
+    let response: Response;
+    try {
+      response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: 'Bạn là content creator du lịch TikTok. Chỉ trả về đúng JSON object hợp lệ, không thêm markdown, không giải thích.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 1.1,
+          max_tokens: 900,
+          stream: false,
+        }),
+        signal: deepseekController.signal,
+      });
+    } catch (fetchError: any) {
+      clearTimeout(deepseekTimeout);
+      if (fetchError?.name === 'AbortError') {
+        throw new BadRequestException('DeepSeek API không phản hồi sau 30 giây. Vui lòng thử lại.');
+      }
+      throw new BadRequestException(`Không kết nối được DeepSeek: ${fetchError?.message || fetchError}`);
+    } finally {
+      clearTimeout(deepseekTimeout);
+    }
 
     const responseText = await response.text();
     if (!response.ok) throw new BadRequestException(`DeepSeek API lỗi HTTP ${response.status}: ${responseText}`);
