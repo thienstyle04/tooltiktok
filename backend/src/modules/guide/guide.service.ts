@@ -11,6 +11,8 @@ import {
   DeckPage,
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
+  GenerateBatchListsRequest,
+  GenerateBatchListsResponse,
   GenerateCaptionDeckRequest,
   GenerateCaptionDeckResponse,
   GeneratePartnerSpotlightRequest,
@@ -460,6 +462,125 @@ export class GuideService {
     this.invalidateDatasetCache();
 
     return { deckId, listId: generatedList.id, navTitle: generatedList.navTitle, title: generatedList.title };
+  }
+
+  // ─── Batch list generation ────────────────────────────────────────────────
+
+  async generateBatchLists(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    const deckId = String(request.deckId ?? '').trim();
+    if (!deckId) throw new BadRequestException('Thiếu deckId để tạo batch list.');
+
+    const count = Math.min(Math.max(Number(request.count ?? 5), 1), 10);
+
+    const apiKey = String(process.env.DEEPSEEK_API_KEY ?? '').trim();
+    if (!apiKey) {
+      throw new BadRequestException(
+        'Thiếu DEEPSEEK_API_KEY. Hãy thêm vào backend/.env rồi khởi động lại.',
+      );
+    }
+
+    const toneRotation: DeepSeekCaptionResponse['tone'][] = [
+      'gen_z',
+      'tinh_te',
+      'review_chan_that',
+      'ban_hang_nhe',
+      'lich_trinh_huu_ich',
+    ];
+
+    const results: Array<{ listId: string; navTitle: string; tone: string }> = [];
+    let failCount = 0;
+
+    // Get existing generated lists to know which tones have been used
+    this.ensureGeneratedListsLoaded();
+    const existingLists = this.generatedListsByDeckId.get(deckId) ?? [];
+    const startToneIndex = existingLists.length % toneRotation.length;
+
+    for (let i = 0; i < count; i++) {
+      const tone = toneRotation[(startToneIndex + i) % toneRotation.length];
+      try {
+        const dataset = await this.getDataset();
+        const deck = dataset.decks.find((d) => d.id === deckId);
+        if (!deck) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
+
+        const deckList = deck.lists[0];
+        if (!deckList) throw new NotFoundException('Deck không có list nào.');
+
+        const usedTitles = this.getUsedCaptionTitles(deckId);
+        const current = { coverTitle: '', headline: '', body: '', hashtags: [] as string[] };
+        const prompt = this.buildDeepSeekPrompt(deck, deckList, tone, 'full', current, usedTitles);
+
+        const deepseekController = new AbortController();
+        const deepseekTimeout = setTimeout(() => deepseekController.abort(), 30_000);
+        let response: Response;
+        try {
+          response = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+            body: JSON.stringify({
+              model: 'deepseek-chat',
+              messages: [
+                { role: 'system', content: 'Bạn là content creator du lịch TikTok. Chỉ trả về đúng JSON object hợp lệ, không thêm markdown, không giải thích.' },
+                { role: 'user', content: prompt },
+              ],
+              temperature: 1.1,
+              max_tokens: 900,
+              stream: false,
+            }),
+            signal: deepseekController.signal,
+          });
+        } finally {
+          clearTimeout(deepseekTimeout);
+        }
+
+        if (!response.ok) {
+          console.warn(`[batch] DeepSeek lỗi HTTP ${response.status} cho tone ${tone}`);
+          failCount++;
+          continue;
+        }
+
+        const responseText = await response.text();
+        let payload: any;
+        try { payload = JSON.parse(responseText); } catch { failCount++; continue; }
+
+        const content = String(payload?.choices?.[0]?.message?.content ?? '').trim();
+        if (!content) { failCount++; continue; }
+
+        const parsed = this.parseDeepSeekJson(content);
+        const caption = this.normalizeCaptionPayload(
+          parsed,
+          { coverTitle: '', headline: '', body: '', hashtags: [] },
+          'full',
+          tone,
+          this.collectCaptionForbiddenNames(deckList),
+        );
+
+        if (!caption.coverTitle || !caption.body) { failCount++; continue; }
+
+        const generated = await this.generateDeckFromCaption({
+          deckId,
+          caption: {
+            coverTitle: caption.coverTitle,
+            headline: caption.headline,
+            body: caption.body,
+            hashtags: caption.hashtags,
+          },
+        });
+
+        results.push({ listId: generated.listId, navTitle: generated.navTitle, tone });
+      } catch (error) {
+        console.warn(`[batch] Lỗi tạo list ${i + 1}/${count} (tone=${tone}):`, error instanceof Error ? error.message : error);
+        failCount++;
+      }
+    }
+
+    this.invalidateDatasetCache();
+
+    return {
+      deckId,
+      lists: results,
+      successCount: results.length,
+      failCount,
+    };
   }
 
   // ─── Partner Spotlight ────────────────────────────────────────────────────
