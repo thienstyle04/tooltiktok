@@ -915,6 +915,36 @@ function createListFolder(zip, list, zipInstance, deckId) {
   return zip.folder(zipInstance ? sanitizeFilePart(list.id) : `${deckId}-${sanitizeFilePart(list.id)}`);
 }
 
+function deckShortName(deckId) {
+  const map = {
+    'itinerary-3n2d': '3n2d',
+    'itinerary-4n3d': '4n3d',
+    'itinerary-4n2d-grid8': '4n2d',
+    'pov-3-day': 'pov3',
+    'must-go': 'mustgo',
+    'first-time': 'firsttime',
+    'grid-6': 'grid6',
+    'grid-8': 'grid8',
+    'grid-4': 'grid4',
+    'spotlight-guide': 'spotlight',
+    'spotlight-partner': 'partner',
+  };
+  return map[String(deckId || '')] || sanitizeFilePart(deckId || 'mau');
+}
+
+function batchFolderName(deckId, listIndexInDeck) {
+  const short = deckShortName(deckId);
+  const num = String(listIndexInDeck + 1).padStart(2, '0');
+  return `${short} mau ${num}`;
+}
+
+function todayDateTag() {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  return `${dd}-${mm}`;
+}
+
 async function addListMetadataFiles(folder, list) {
   const coverTitle = String(list.coverTitle || list.title || list.navTitle || '').trim();
   const postCaption = String(list.postCaption || list.title || '').trim();
@@ -1307,7 +1337,15 @@ export async function exportBatch(context, callbacks = {}) {
     cb.updateProgress(3, `Đang chuẩn bị ${allLists.length} folder ${qualityProfile.label}...`);
     await ensureExportFontsReady(document.documentElement, { decodeImages: false, embedFonts: true });
 
-    const folders = allLists.map((item) => createListFolder(mainZip, item.list, true, item.deck.id));
+    // Build per-deck index counters for folder naming (e.g. "3n2d mau 01", "3n2d mau 02")
+    const deckListCounters = new Map();
+    const folders = allLists.map((item) => {
+      const deckId = item.deck.id;
+      const idx = deckListCounters.get(deckId) ?? 0;
+      deckListCounters.set(deckId, idx + 1);
+      const folderName = batchFolderName(deckId, idx);
+      return mainZip.folder(folderName);
+    });
     await mapWithConcurrency(allLists, 6, (item, index) => addListMetadataFiles(folders[index], item.list));
 
     const pageTasks = [];
@@ -1403,7 +1441,7 @@ export async function exportBatch(context, callbacks = {}) {
     // Yield to event loop before download — lets the browser settle after
     // heavy ZIP generation so the download trigger is more reliable.
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const downloadStarted = downloadBlobFile(archive, `batch-export-${Date.now()}.zip`);
+    const downloadStarted = downloadBlobFile(archive, `${todayDateTag()}.zip`);
     if (!downloadStarted) {
       throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
     }
