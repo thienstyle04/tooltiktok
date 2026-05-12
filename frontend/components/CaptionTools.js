@@ -95,18 +95,18 @@ export default function CaptionTools({
         </div>
         <div className="ai-actions">
           <button id="generateCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={() => onRequestCaption('full')}>Tạo caption</button>
-          <button id="createDeckFromCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={onCreateList}>Tạo list AI</button>
           <div className="ai-batch-group">
+            <button id="createDeckFromCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={onCreateList}>Tạo list AI</button>
             <input
               id="batchCountInput"
               className="ai-batch-count"
               type="number"
-              min={1}
+              min={2}
               max={10}
               value={batchCount}
               disabled={busy}
-              onChange={(e) => setBatchCount(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
-              title="Số list cần tạo (1-10)"
+              onChange={(e) => setBatchCount(Math.min(10, Math.max(2, Number(e.target.value) || 2)))}
+              title="Số list cần tạo (2-10)"
             />
             <button
               id="createBatchListsBtn"
@@ -114,7 +114,7 @@ export default function CaptionTools({
               type="button"
               disabled={busy}
               onClick={() => onCreateBatchLists?.(batchCount)}
-              title={`Tự động tạo ${batchCount} list với ${batchCount} tone xoay vòng`}
+              title={`Tự động tạo ${batchCount} list với tone xoay vòng`}
             >
               Tạo {batchCount} list
             </button>
