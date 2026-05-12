@@ -208,6 +208,26 @@ export interface GenerateCaptionDeckResponse {
   title: string;
 }
 
+export interface GenerateBatchListsRequest {
+  deckId?: string;
+  count?: number;
+}
+
+export interface GenerateBatchListsProgress {
+  index: number;
+  total: number;
+  listId: string;
+  navTitle: string;
+  tone: string;
+}
+
+export interface GenerateBatchListsResponse {
+  deckId: string;
+  lists: Array<{ listId: string; navTitle: string; tone: string }>;
+  successCount: number;
+  failCount: number;
+}
+
 export interface GeneratePartnerSpotlightRequest {
   partnerId?: string;
   partnerName?: string;

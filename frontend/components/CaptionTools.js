@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { listIsMain } from '../lib/utils';
 
 export default function CaptionTools({
@@ -17,9 +18,11 @@ export default function CaptionTools({
   onGeneratedListSelect,
   onRequestCaption,
   onCreateList,
+  onCreateBatchLists,
   onCreatePartnerSpotlight,
   onCopy,
 }) {
+  const [batchCount, setBatchCount] = useState(5);
   const decks = dataset?.decks || [];
   const allLists = activeDeck?.lists || [];
   const mainLists = allLists.filter((list) => listIsMain(list));
@@ -93,6 +96,29 @@ export default function CaptionTools({
         <div className="ai-actions">
           <button id="generateCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={() => onRequestCaption('full')}>Tạo caption</button>
           <button id="createDeckFromCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={onCreateList}>Tạo list AI</button>
+          <div className="ai-batch-group">
+            <input
+              id="batchCountInput"
+              className="ai-batch-count"
+              type="number"
+              min={1}
+              max={10}
+              value={batchCount}
+              disabled={busy}
+              onChange={(e) => setBatchCount(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+              title="Số list cần tạo (1-10)"
+            />
+            <button
+              id="createBatchListsBtn"
+              className="toolbar-button secondary"
+              type="button"
+              disabled={busy}
+              onClick={() => onCreateBatchLists?.(batchCount)}
+              title={`Tự động tạo ${batchCount} list với ${batchCount} tone xoay vòng`}
+            >
+              Tạo {batchCount} list
+            </button>
+          </div>
           <button id="copyFullCaptionBtn" className="toolbar-button" type="button" onClick={() => onCopy([caption.headline, caption.body, caption.hashtags].filter(Boolean).join('\n\n'), 'Đã copy full caption.')}>Copy caption</button>
         </div>
       </div>

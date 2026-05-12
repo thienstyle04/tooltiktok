@@ -40,6 +40,37 @@
   padding-inline: 8px;
 }
 
+.ai-batch-group {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.ai-batch-count {
+  flex: 0 0 48px;
+  width: 48px;
+  min-height: 36px;
+  padding: 0 6px;
+  border: 1px solid var(--studio-line, #e0ddd6);
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-align: center;
+  color: var(--studio-ink);
+}
+
+.ai-batch-count::-webkit-inner-spin-button,
+.ai-batch-count::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+.ai-batch-group .toolbar-button {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline: 8px;
+}
+
 .ai-grid {
   flex: 1 1 auto;
   min-height: 0;

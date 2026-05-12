@@ -496,6 +496,41 @@ export default function DeckStudio({ initialDataset = null }) {
     }
   }, [activeDeck, activeListId, caption, captionSourceList, loadDataset]);
 
+  const createBatchLists = useCallback(async (count) => {
+    if (!activeDeck) {
+      setStatus('Chưa có deck để tạo batch list.');
+      return;
+    }
+    const safeCount = Math.min(10, Math.max(1, Number(count) || 5));
+    setBusy(true);
+    setStatus(`Đang tạo ${safeCount} list AI (xoay vòng tone)...`);
+    try {
+      const response = await apiFetch('/api/decks/generate-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deckId: activeDeck.id, count: safeCount }),
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `Tạo batch thất bại: HTTP ${response.status}`);
+      }
+      const payload = await response.json();
+      await loadDataset('Đang nạp lại dữ liệu sau khi tạo batch...', {
+        activeDeckId: activeDeck.id,
+        activeListId: payload.lists?.[0]?.listId || activeListId,
+        selectedPageIndex: 0,
+      }, true);
+      const msg = payload.failCount > 0
+        ? `Đã tạo ${payload.successCount}/${safeCount} list (${payload.failCount} lỗi).`
+        : `Đã tạo xong ${payload.successCount} list AI.`;
+      setStatus(msg);
+    } catch (error) {
+      setStatus(error?.message || 'Không tạo được batch list.');
+    } finally {
+      setBusy(false);
+    }
+  }, [activeDeck, activeListId, loadDataset]);
+
   const createPartnerSpotlight = useCallback(async (partner) => {
     if (!partner?.id && !partner?.name) {
       setStatus('Chưa chọn đối tác.');
@@ -838,6 +873,7 @@ export default function DeckStudio({ initialDataset = null }) {
               onGeneratedListSelect={previewGeneratedList}
               onRequestCaption={requestCaption}
               onCreateList={createDeckFromCaption}
+              onCreateBatchLists={createBatchLists}
               onCreatePartnerSpotlight={createPartnerSpotlight}
               partners={partners}
               onCopy={copyText}

@@ -5,6 +5,8 @@ import { GuideService } from './guide.service';
 import {
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
+  GenerateBatchListsRequest,
+  GenerateBatchListsResponse,
   GenerateCaptionDeckRequest,
   GenerateCaptionDeckResponse,
   GeneratePartnerSpotlightRequest,
@@ -93,6 +95,11 @@ export class GuideController {
   @Post('api/decks/generate-from-caption')
   generateDeckFromCaption(@Body() request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     return this.guideService.generateDeckFromCaption(request);
+  }
+
+  @Post('api/decks/generate-batch')
+  generateBatchLists(@Body() request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    return this.guideService.generateBatchLists(request);
   }
 
   @Post('api/decks/generate-partner-spotlight')
