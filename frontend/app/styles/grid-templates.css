@@ -1361,8 +1361,8 @@
   width: 397px;
   height: 562px;
   margin: 0 0 18px;
-  border-radius: 28px;
-  clip-path: inset(0 round 28px);
+  border-radius: 0;
+  clip-path: none;
   overflow: hidden;
   cursor: default;
   scroll-snap-align: none;

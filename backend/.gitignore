@@ -7,7 +7,7 @@ node_modules/
 
 # Generated build output
 dist/
-build/dist/
+build/
 
 # Runtime/temp files
 .temp/

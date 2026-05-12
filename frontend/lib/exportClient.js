@@ -55,7 +55,7 @@ const IMAGE_READY_TIMEOUT_MS = 5000;
 const PAGE_RENDER_TIMEOUT_MS = 45000;
 const BATCH_PAGE_RENDER_TIMEOUT_MS = 60000;
 const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 120000;
-const DEFAULT_EXPORT_CORNER_RADIUS = 28;
+const DEFAULT_EXPORT_CORNER_RADIUS = 0;
 const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
   cacheBust: false,
   // Drive proxy images are differentiated by ?id=..., so every template export must keep query params.
