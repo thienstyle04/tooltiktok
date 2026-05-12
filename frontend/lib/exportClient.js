@@ -940,18 +940,25 @@ export async function renderPageBlob(pageNode, options = {}) {
   const imageFormat = options.imageFormat || 'image/png';
 
   // Workaround: html2canvas cannot parse oklch() color function (Next.js 16 injects it).
-  // Override all oklch references with transparent fallback during render.
-  const oklchOverride = document.createElement('style');
-  oklchOverride.textContent = `
-    *, *::before, *::after {
-      text-decoration-color: currentColor !important;
-      accent-color: auto !important;
-      caret-color: auto !important;
-      outline-color: currentColor !important;
-      column-rule-color: currentColor !important;
-    }
-  `;
-  document.head.appendChild(oklchOverride);
+  // Patch window.getComputedStyle to strip oklch() from any returned CSSStyleDeclaration.
+  const _originalGetComputedStyle = window.getComputedStyle;
+  const _oklchPattern = /oklch\([^)]*\)/gi;
+  const _oklchFallback = 'transparent';
+  window.getComputedStyle = function patchedGetComputedStyle(element, pseudoElt) {
+    const style = _originalGetComputedStyle.call(this, element, pseudoElt);
+    return new Proxy(style, {
+      get(target, prop) {
+        const value = target[prop];
+        if (typeof value === 'string' && _oklchPattern.test(value)) {
+          _oklchPattern.lastIndex = 0;
+          return value.replace(_oklchPattern, _oklchFallback);
+        }
+        _oklchPattern.lastIndex = 0;
+        if (typeof value === 'function') return value.bind(target);
+        return value;
+      },
+    });
+  };
   const imageQuality = Number(options.imageQuality || 1);
   const backgroundColor = options.backgroundColor ?? (imageFormat === 'image/jpeg' ? '#ffffff' : null);
   const preferHtml2Canvas = options.preferHtml2Canvas === true;
@@ -1060,7 +1067,7 @@ export async function renderPageBlob(pageNode, options = {}) {
     return await finalizeBlob(fallbackBlob);
   } finally {
     restoreImagesFromBlobs(blobUrls);
-    if (oklchOverride.parentNode) oklchOverride.parentNode.removeChild(oklchOverride);
+    window.getComputedStyle = _originalGetComputedStyle;
   }
 }
 
