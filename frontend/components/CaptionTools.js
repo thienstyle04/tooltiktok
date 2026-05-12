@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { listIsMain } from '../lib/utils';
 
 export default function CaptionTools({
@@ -23,6 +23,8 @@ export default function CaptionTools({
   onCopy,
 }) {
   const [batchCount, setBatchCount] = useState(5);
+  const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
+  const batchDropdownRef = useRef(null);
   const decks = dataset?.decks || [];
   const allLists = activeDeck?.lists || [];
   const mainLists = allLists.filter((list) => listIsMain(list));
@@ -95,29 +97,49 @@ export default function CaptionTools({
         </div>
         <div className="ai-actions">
           <button id="generateCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={() => onRequestCaption('full')}>Tạo caption</button>
-          <div className="ai-batch-group">
-            <button id="createDeckFromCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={onCreateList}>Tạo list AI</button>
-            <input
-              id="batchCountInput"
-              className="ai-batch-count"
-              type="number"
-              min={2}
-              max={10}
-              value={batchCount}
-              disabled={busy}
-              onChange={(e) => setBatchCount(Math.min(10, Math.max(2, Number(e.target.value) || 2)))}
-              title="Số list cần tạo (2-10)"
-            />
+          <div className="ai-batch-group" ref={batchDropdownRef}>
             <button
-              id="createBatchListsBtn"
-              className="toolbar-button secondary"
+              id="createDeckFromCaptionBtn"
+              className="toolbar-button secondary ai-batch-main"
               type="button"
               disabled={busy}
-              onClick={() => onCreateBatchLists?.(batchCount)}
-              title={`Tự động tạo ${batchCount} list với tone xoay vòng`}
+              onClick={() => {
+                setBatchDropdownOpen(false);
+                if (batchCount === 1) {
+                  onCreateList();
+                } else {
+                  onCreateBatchLists?.(batchCount);
+                }
+              }}
             >
-              Tạo {batchCount} list
+              {batchCount === 1 ? 'Tạo list AI' : `Tạo ${batchCount} list`}
             </button>
+            <button
+              className="toolbar-button secondary ai-batch-arrow"
+              type="button"
+              disabled={busy}
+              aria-label="Chọn số lượng list"
+              onClick={() => setBatchDropdownOpen((prev) => !prev)}
+            >
+              ▾
+            </button>
+            {batchDropdownOpen && (
+              <div className="ai-batch-dropdown">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`ai-batch-option${batchCount === n ? ' active' : ''}`}
+                    onClick={() => {
+                      setBatchCount(n);
+                      setBatchDropdownOpen(false);
+                    }}
+                  >
+                    {n === 1 ? 'Tạo 1 list' : `Tạo ${n} list`}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button id="copyFullCaptionBtn" className="toolbar-button" type="button" onClick={() => onCopy([caption.headline, caption.body, caption.hashtags].filter(Boolean).join('\n\n'), 'Đã copy full caption.')}>Copy caption</button>
         </div>

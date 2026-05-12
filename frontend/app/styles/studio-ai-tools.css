@@ -31,7 +31,7 @@
 
 .ai-actions {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
   align-items: stretch;
 }
@@ -41,52 +41,77 @@
   padding-inline: 8px;
 }
 
+/* Split-button: [Tạo N list][▾] */
 .ai-batch-group {
-  display: grid;
-  grid-template-columns: 1fr 44px 1fr;
+  position: relative;
+  display: flex;
   align-items: stretch;
-  gap: 0;
   border-radius: 8px;
+  overflow: visible;
+}
+
+.ai-batch-main {
+  flex: 1 1 auto;
+  border-radius: 8px 0 0 8px !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.22) !important;
+  margin: 0 !important;
+}
+
+.ai-batch-arrow {
+  flex: 0 0 32px;
+  width: 32px;
+  padding: 0 !important;
+  border-radius: 0 8px 8px 0 !important;
+  margin: 0 !important;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.ai-batch-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--studio-panel, #1a1f1c);
+  border: 1px solid var(--studio-line, rgba(255,255,255,0.14));
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  min-width: 160px;
 }
 
-.ai-batch-group .toolbar-button {
-  border-radius: 0;
-  border: none;
-  margin: 0;
+.ai-batch-option {
+  display: block;
   width: 100%;
-  padding-inline: 8px;
-}
-
-.ai-batch-group .toolbar-button:first-child {
-  border-radius: 8px 0 0 8px;
-}
-
-.ai-batch-group .toolbar-button:last-child {
-  border-radius: 0 8px 8px 0;
-}
-
-.ai-batch-count {
-  flex: 0 0 44px;
-  width: 44px;
-  min-height: 36px;
-  padding: 0 4px;
+  padding: 11px 16px;
+  background: transparent;
   border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.22);
-  border-right: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.14);
+  border-bottom: 1px solid var(--studio-line, rgba(255,255,255,0.08));
+  color: var(--studio-soft, rgba(255,255,255,0.82));
   font-size: 0.88rem;
-  font-weight: 800;
-  text-align: center;
-  color: var(--studio-ink);
-  outline: none;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
 }
 
-.ai-batch-count::-webkit-inner-spin-button,
-.ai-batch-count::-webkit-outer-spin-button {
-  opacity: 1;
+.ai-batch-option:last-child {
+  border-bottom: none;
 }
+
+.ai-batch-option:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.ai-batch-option.active {
+  background: rgba(240, 127, 90, 0.18);
+  color: var(--studio-clay, #f07f5a);
+}
+
+/* Remove old number input styles */
+.ai-batch-count { display: none; }
 
 .ai-grid {
   flex: 1 1 auto;
