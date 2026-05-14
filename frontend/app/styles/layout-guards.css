@@ -1593,3 +1593,46 @@ body {
   -webkit-line-clamp: 3;
   line-clamp: 3;
 }
+
+/* Cover subtitle: limit to 3 lines max */
+.story-page .cover-subtitle {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 92%;
+}
+
+.story-page .grid6-cover-subtitle,
+.story-page .grid8-cover-subtitle {
+  font-size: 0.72rem;
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page .journey-cover-subtitle {
+  font-size: 0.72rem;
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page .photomode-cover-subtitle {
+  font-size: 0.82rem;
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

@@ -815,16 +815,13 @@ export class GuideService {
 
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
     if (page.type === 'cover') {
-      const coverSubtitle = String(page.subtitle ?? '').trim();
-      // Do not use body caption as cover subtitle — it makes the cover look cluttered.
-      // Only use the page's own subtitle if it's meaningful and not the same as body.
-      const shouldShowSubtitle = coverSubtitle
-        && !this.samePlainText(coverSubtitle, safeDescription)
-        && !this.samePlainText(coverSubtitle, GENERATED_CAPTION_BODY_FALLBACK);
+      // Use page's own subtitle if available, otherwise use the list description (body).
+      // Limit to a short version so it doesn't overflow the cover.
+      const coverSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
       return {
         ...page,
         title: sanitizeDeckHeadline(list.title || page.title),
-        subtitle: shouldShowSubtitle ? coverSubtitle : '',
+        subtitle: coverSubtitle,
       };
     }
 
