@@ -1481,14 +1481,20 @@ body {
 }
 
 .story-page.spotlight-cover .grid4-feature-title {
-  max-width: 78%;
+  max-width: 88%;
   font-family: "Be Vietnam Pro", Arial, sans-serif !important;
-  font-size: 1.34rem;
+  font-size: 1.18rem;
   font-style: normal !important;
   font-weight: 850 !important;
   letter-spacing: 0 !important;
-  line-height: 1.2;
+  line-height: 1.22;
   text-transform: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
 }
 
 .story-page.spotlight-cover .grid4-feature-subtitle {

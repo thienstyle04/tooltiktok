@@ -27,7 +27,7 @@ export const POV_3_DAY_TEMPLATE_VERSION = 12;
 export const GRID_4_TEMPLATE_VERSION = 17;
 export const GRID_6_TEMPLATE_VERSION = 16;
 export const GRID_8_TEMPLATE_VERSION = 15;
-export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 4;
+export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -152,7 +152,10 @@ export function metaText(item: GuideItem): [string, string] {
 
 function serviceMetaText(item: GuideItem): [string, string] {
   const primary = item.address || 'Đang cập nhật địa chỉ';
-  return [primary, item.phone ? `SĐT: ${item.phone}` : ''];
+  const secondaryParts: string[] = [];
+  if (item.price) secondaryParts.push(`Giá: ${item.price}`);
+  if (item.phone) secondaryParts.push(`SĐT: ${item.phone}`);
+  return [primary, secondaryParts.join(' · ')];
 }
 
 export function backgroundFor(imageUrls: string[], seed: string, usedImageUrls?: Set<string>): string {
@@ -2427,8 +2430,8 @@ function buildSpotlightGuidePages(
       'Dịch vụ',
       'slate',
       'Dịch vụ cần lưu',
-      '7 lựa chọn hỗ trợ chuyến đi, ưu tiên đối tác và chỉ hiện SĐT khi dữ liệu có số.',
-      buildSpotlightListItems(pools.serviceItems, 7, `${seedPrefix}-services`, pick, imageResolver, 'Dịch vụ'),
+      '9 lựa chọn hỗ trợ chuyến đi, ưu tiên đối tác và chỉ hiện SĐT khi dữ liệu có số.',
+      buildSpotlightListItems(pools.serviceItems, 9, `${seedPrefix}-services`, pick, imageResolver, 'Dịch vụ'),
       background(`${seedPrefix}-services-bg`),
       'spotlight-list',
     ),
@@ -2436,8 +2439,8 @@ function buildSpotlightGuidePages(
       'Homestay',
       'pine',
       'Homestay nên xem',
-      '7 lựa chọn lưu trú được gom riêng để dễ chốt chỗ ở trước chuyến đi.',
-      buildSpotlightListItems(pools.stayItems, 7, `${seedPrefix}-homestay`, pick, imageResolver, 'Lưu trú'),
+      '9 lựa chọn lưu trú được gom riêng để dễ chốt chỗ ở trước chuyến đi.',
+      buildSpotlightListItems(pools.stayItems, 9, `${seedPrefix}-homestay`, pick, imageResolver, 'Lưu trú'),
       background(`${seedPrefix}-homestay-bg`),
       'spotlight-list',
     ),
