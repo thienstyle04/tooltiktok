@@ -108,6 +108,10 @@ function isSpotlightLayout(page) {
   return page.layoutVariant === 'spotlight';
 }
 
+function isSpotlightPartnerCover(page) {
+  return page.layoutVariant === 'spotlight-partner' && page.type === 'cover';
+}
+
 function spotlightPositionClass(page, index, item) {
   const variants = [
     'spotlight-pos-lower-left',
@@ -408,14 +412,16 @@ function sanitizeSubtitleForDisplay(value, pages) {
 export function renderCoverPage(page, index, total, listId, hashtags = [], list = null) {
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
   const backgroundImage = coverBackgroundImage(page, list);
-  if (isSpotlightLayout(page)) {
+  if (isSpotlightLayout(page) || isSpotlightPartnerCover(page)) {
+    const coverClass = isSpotlightPartnerCover(page) ? 'spotlight-cover spotlight-partner-cover' : 'spotlight-cover';
     return `
-      <article class="${escapeHtml(storyPageClass(listId, 'grid4-feature-cover', 'spotlight-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <article class="${escapeHtml(storyPageClass(listId, 'grid4-feature-cover', coverClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid4-feature-bg">
           ${renderPreviewImage(backgroundImage, page.title)}
         </div>
         <div class="grid4-feature-shade"></div>
         <div class="grid4-feature-copy">
+          ${isSpotlightPartnerCover(page) ? `<h1 class="grid4-feature-title">${escapeHtml(page.title || '')}</h1>` : ''}
           ${coverSubtitle ? `<p class="grid4-feature-subtitle spotlight-cover-caption">${escapeHtml(coverSubtitle)}</p>` : ''}
         </div>
       </article>
@@ -627,9 +633,38 @@ function renderSpotlightPage(page, index, listId, list, pageSubtitle) {
   `;
 }
 
+function renderSpotlightPartnerPage(page, index, listId, list) {
+  const item = page.items?.[0] || {};
+  const backgroundImage = page.backgroundImage || item.imageUrl || coverBackgroundImage(page, list);
+  const positionClass = spotlightPositionClass(page, index, item);
+  const titleText = page.title || item.name || '';
+  const titleFitClass = spotlightTitleFitClass(titleText);
+  const descriptionText = item.metaSecondary || '';
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-page spotlight-partner-page', positionClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(titleText || item.rawName || 'partner')}.png">
+      <div class="spotlight-bg">
+        ${renderPreviewImage(backgroundImage, item.rawName || page.title)}
+      </div>
+      <div class="spotlight-shade"></div>
+      <div class="spotlight-copy">
+        <span class="spotlight-partner-brand">${escapeHtml(item.metaPrimary || item.rawName || '')}</span>
+        <h2 class="spotlight-title story-image-title ${escapeHtml(titleFitClass)}">${escapeHtml(titleText)}</h2>
+        <div class="spotlight-info">
+          ${descriptionText ? `<p class="spotlight-partner-desc">${escapeHtml(descriptionText)}</p>` : ''}
+          ${renderSpotlightMetaLine(page.subtitle)}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function renderSpotlightListItems(items, options = {}) {
   const showLabels = options.showLabels !== false;
-  return (items || []).map((item) => `
+  return (items || []).map((item) => {
+    const isHomestay = item.sourceSectionKey === 'homestay';
+    const metaSecondary = item.metaSecondary
+      || (isHomestay && item.price ? `Giá: ${item.price}` : '');
+    return `
     <article class="spotlight-list-row ${escapeHtml(imageSourceClass(item))}">
       <div class="spotlight-list-thumb">
         ${renderPreviewImage(item.imageUrl, item.name)}
@@ -638,10 +673,11 @@ function renderSpotlightListItems(items, options = {}) {
         ${showLabels && item.label ? `<span class="spotlight-list-label">${escapeHtml(item.label)}</span>` : ''}
         <strong class="story-image-title">${escapeHtml(item.rawName || item.name || '')}</strong>
         ${renderSpotlightMetaLine(item.metaPrimary)}
-        ${renderSpotlightMetaLine(item.metaSecondary, 'secondary')}
+        ${renderSpotlightMetaLine(metaSecondary, 'secondary')}
       </div>
     </article>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderSpotlightListPage(page, index, listId, list, pageSubtitle) {
@@ -661,6 +697,34 @@ function renderSpotlightListPage(page, index, listId, list, pageSubtitle) {
         <div class="spotlight-list-stack">
           ${renderSpotlightListItems(page.items, { showLabels: showItemLabels })}
         </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightPartnerInfoPage(page, index, listId, list) {
+  const backgroundImage = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
+  const itemRows = (page.items || []).map((item) => `
+    <article class="spotlight-partner-info-row">
+      <span>${escapeHtml(item.label || '')}</span>
+      <strong>${escapeHtml(item.metaPrimary || item.name || '')}</strong>
+    </article>
+  `).join('');
+
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-list-page spotlight-partner-info-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-thong-tin.png">
+      <div class="spotlight-bg">
+        ${renderPreviewImage(backgroundImage, page.title)}
+      </div>
+      <div class="spotlight-list-shade"></div>
+      <div class="spotlight-partner-info-panel">
+        <span class="spotlight-partner-info-kicker">${escapeHtml(page.chipText || '')}</span>
+        <h2>${escapeHtml(page.title || 'Thông tin cần lưu')}</h2>
+        <p>${escapeHtml(page.subtitle || '')}</p>
+        <div class="spotlight-partner-info-stack">
+          ${itemRows}
+        </div>
+        <div class="spotlight-partner-info-cta">Lưu lại khi cần cho chuyến Đà Lạt tới.</div>
       </div>
     </article>
   `;
@@ -889,6 +953,14 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
   if (isSpotlightLayout(page)) {
     return renderSpotlightPage(page, index, listId, list, pageSubtitle);
+  }
+
+  if (page.layoutVariant === 'spotlight-partner') {
+    return renderSpotlightPartnerPage(page, index, listId, list);
+  }
+
+  if (page.layoutVariant === 'spotlight-partner-info') {
+    return renderSpotlightPartnerInfoPage(page, index, listId, list);
   }
 
   if (page.layoutVariant === 'spotlight-list') {
