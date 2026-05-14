@@ -661,7 +661,9 @@ function renderSpotlightPartnerPage(page, index, listId, list) {
 function renderSpotlightListItems(items, options = {}) {
   const showLabels = options.showLabels !== false;
   return (items || []).map((item) => {
-    const metaSecondary = item.metaSecondary || (item.price ? `Giá: ${item.price}` : '');
+    const isHomestay = item.sourceSectionKey === 'homestay';
+    const metaSecondary = item.metaSecondary
+      || (isHomestay && item.price ? `Giá: ${item.price}` : '');
     return `
     <article class="spotlight-list-row ${escapeHtml(imageSourceClass(item))}">
       <div class="spotlight-list-thumb">

@@ -1134,12 +1134,16 @@ export class GuideService {
   }
 
   private pageItemMetaFromSource(item: GuideItem): [string, string] {
-    if (item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu') {
+    if (item.sectionKey === 'homestay') {
       const primary = item.address || 'Đang cập nhật địa chỉ';
       const secondaryParts: string[] = [];
       if (item.price) secondaryParts.push(`Giá: ${item.price}`);
       if (item.phone) secondaryParts.push(`SĐT: ${item.phone}`);
       return [primary, secondaryParts.join(' · ')];
+    }
+    if (item.sectionKey === 'dich_vu') {
+      const primary = item.address || 'Đang cập nhật địa chỉ';
+      return [primary, item.phone ? `SĐT: ${item.phone}` : ''];
     }
     return metaText(item);
   }

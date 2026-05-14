@@ -152,10 +152,13 @@ export function metaText(item: GuideItem): [string, string] {
 
 function serviceMetaText(item: GuideItem): [string, string] {
   const primary = item.address || 'Đang cập nhật địa chỉ';
-  const secondaryParts: string[] = [];
-  if (item.price) secondaryParts.push(`Giá: ${item.price}`);
-  if (item.phone) secondaryParts.push(`SĐT: ${item.phone}`);
-  return [primary, secondaryParts.join(' · ')];
+  if (item.sectionKey === 'homestay') {
+    const secondaryParts: string[] = [];
+    if (item.price) secondaryParts.push(`Giá: ${item.price}`);
+    if (item.phone) secondaryParts.push(`SĐT: ${item.phone}`);
+    return [primary, secondaryParts.join(' · ')];
+  }
+  return [primary, item.phone ? `SĐT: ${item.phone}` : ''];
 }
 
 export function backgroundFor(imageUrls: string[], seed: string, usedImageUrls?: Set<string>): string {
