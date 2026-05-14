@@ -1534,3 +1534,62 @@ body {
   font-style: normal !important;
   letter-spacing: 0 !important;
 }
+
+/* Cover title line-clamp: limit all cover titles to 2-3 lines max */
+.story-page .cover-title,
+.story-page.has-inline-hashtags .cover-title {
+  font-size: 1.72rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.story-page .journey-cover-title {
+  font-size: 1.9rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.story-page .grid6-cover-title,
+.story-page.grid4-cover .grid6-cover-title,
+.story-page.grid8-cover .grid6-cover-title {
+  font-size: 1.62rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.story-page .grid8-cover-title {
+  font-size: 1.48rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.story-page.photomode-cover .photomode-cover-title {
+  font-size: 2.4rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.story-page .grid4-feature-title {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
