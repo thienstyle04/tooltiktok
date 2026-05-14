@@ -6,6 +6,13 @@ echo ==============================================================
 echo KHOI DONG DALAT TIKTOK CAROUSEL TOOL
 echo ==============================================================
 echo.
+
+rem Backup list AI truoc khi khoi dong de tranh mat du lieu
+if exist "backend\data\generated-caption-lists.json" (
+  copy /y "backend\data\generated-caption-lists.json" "backend\data\generated-caption-lists.backup.json" >nul
+  echo ^> Da backup list AI vao generated-caption-lists.backup.json
+)
+
 echo Dang khoi dong Backend va Frontend cung luc...
 echo Vui long doi trong giay lat, ung dung se chay o http://localhost:3001
 echo (Ban co the nhan Ctrl+C de tat tool khi khong su dung)
