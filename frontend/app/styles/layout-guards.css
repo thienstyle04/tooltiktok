@@ -1596,8 +1596,8 @@ body {
 
 /* Cover subtitle: limit to 3 lines max */
 .story-page .cover-subtitle {
-  font-size: 0.76rem;
-  line-height: 1.42;
+  font-size: 0.68rem;
+  line-height: 1.38;
   display: -webkit-box !important;
   -webkit-line-clamp: 3 !important;
   line-clamp: 3 !important;
@@ -1608,8 +1608,8 @@ body {
 
 .story-page .grid6-cover-subtitle,
 .story-page .grid8-cover-subtitle {
-  font-size: 0.68rem;
-  line-height: 1.36;
+  font-size: 0.62rem;
+  line-height: 1.32;
   display: -webkit-box !important;
   -webkit-line-clamp: 3 !important;
   line-clamp: 3 !important;
@@ -1618,8 +1618,8 @@ body {
 }
 
 .story-page .journey-cover-subtitle {
-  font-size: 0.68rem;
-  line-height: 1.36;
+  font-size: 0.62rem;
+  line-height: 1.32;
   display: -webkit-box !important;
   -webkit-line-clamp: 3 !important;
   line-clamp: 3 !important;
@@ -1628,8 +1628,8 @@ body {
 }
 
 .story-page .photomode-cover-subtitle {
-  font-size: 0.76rem;
-  line-height: 1.36;
+  font-size: 0.68rem;
+  line-height: 1.32;
   display: -webkit-box !important;
   -webkit-line-clamp: 3 !important;
   line-clamp: 3 !important;
@@ -1638,8 +1638,8 @@ body {
 }
 
 .story-page .grid4-cover-subtitle {
-  font-size: 0.58rem;
-  line-height: 1.36;
+  font-size: 0.54rem;
+  line-height: 1.32;
   display: -webkit-box !important;
   -webkit-line-clamp: 3 !important;
   line-clamp: 3 !important;
