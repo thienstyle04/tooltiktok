@@ -999,6 +999,41 @@ export class GuideService {
       const baseDeck = baseDecks.find((deck) => deck.id === deckId);
       baseDeck?.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
       const refreshedLists = lists.map((list, listIndex) => {
+        if (deckId === 'spotlight-partner') {
+          const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
+          if (!partnerItem) return list;
+          const pools = this.createDeckBuildPoolsFromSection(itemsBySection);
+          const regeneratedPages = buildSpotlightPartnerPages(
+            partnerItem,
+            pools,
+            imageUrls,
+            libraryEntries,
+            `refresh:${deckId}:${list.id}:${listIndex}:${partnerItem.id}`,
+            deckUsage.itemIds,
+            deckUsage.imageUrls,
+            coverImageUrls,
+          );
+          this.markUsedInDeck(regeneratedPages, deckUsage);
+          this.markUsedInDeck(regeneratedPages, renderUsage);
+          if (
+            list.navTitle !== partnerItem.name ||
+            list.title !== partnerItem.name.toUpperCase() ||
+            list.coverTitle !== partnerItem.name.toUpperCase().slice(0, 35) ||
+            list.description !== (partnerItem.address || partnerItem.type || '') ||
+            list.templateVersion !== templateVersion ||
+            JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)
+          ) changed = true;
+          return {
+            ...list,
+            navTitle: partnerItem.name,
+            title: partnerItem.name.toUpperCase(),
+            coverTitle: partnerItem.name.toUpperCase().slice(0, 35),
+            description: partnerItem.address || partnerItem.type || '',
+            templateVersion,
+            pages: regeneratedPages,
+          };
+        }
+
         const caption: CaptionBlocks = {
           coverTitle: sanitizeDeckHeadline(list.coverTitle || list.title),
           headline: String(list.postCaption ?? '').trim(),
@@ -1043,6 +1078,26 @@ export class GuideService {
     if (changed) this.persistGeneratedLists();
   }
 
+  private findPartnerItemForGeneratedList(list: GuideDeckList, itemsBySection: WorkbookItemsBySection): GuideItem | undefined {
+    const allItems = Object.values(itemsBySection).flat().filter((item) => item.isPartner);
+    const sourceKeys = new Set<string>();
+    const names = new Set<string>();
+    for (const page of list.pages) {
+      if (page.type !== 'list') continue;
+      for (const item of page.items) {
+        if (item.sourceKey) sourceKeys.add(item.sourceKey);
+        if (item.rawName) names.add(normalizeText(item.rawName));
+        if (item.metaPrimary) names.add(normalizeText(item.metaPrimary));
+      }
+    }
+    const listName = normalizeText(list.navTitle || list.title || list.coverTitle || '');
+    return allItems.find((item) =>
+      sourceKeys.has(itemUsageKey(item)) ||
+      names.has(normalizeText(item.name)) ||
+      normalizeText(item.name) === listName,
+    );
+  }
+
   private normalizeDisplayName(value: string): string {
     const clean = String(value ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
     if (normalizeText(clean).startsWith('quoa_dac_san')) {
@@ -1081,7 +1136,10 @@ export class GuideService {
   private pageItemMetaFromSource(item: GuideItem): [string, string] {
     if (item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu') {
       const primary = item.address || 'Đang cập nhật địa chỉ';
-      return [primary, item.phone ? `SĐT: ${item.phone}` : ''];
+      const secondaryParts: string[] = [];
+      if (item.price) secondaryParts.push(`Giá: ${item.price}`);
+      if (item.phone) secondaryParts.push(`SĐT: ${item.phone}`);
+      return [primary, secondaryParts.join(' · ')];
     }
     return metaText(item);
   }
@@ -1123,6 +1181,7 @@ export class GuideService {
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
+      if (deckId === 'spotlight-partner') continue;
       const refreshedLists = lists.map((list) => ({
         ...list,
         pages: list.pages.map((page) => {
