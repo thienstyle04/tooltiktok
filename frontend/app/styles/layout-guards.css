@@ -25,6 +25,7 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: cover;
+  object-position: center 30%;
   display: block;
 }
 
@@ -1471,7 +1472,10 @@ body {
    are still useful in older decks, but they make Spotlight headings look broken. */
 .story-page.spotlight-cover,
 .story-page.spotlight-page,
-.story-page.spotlight-list-page {
+.story-page.spotlight-list-page,
+.story-page.spotlight-partner-cover,
+.story-page.spotlight-partner-page,
+.story-page.spotlight-partner-info-page {
   --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
   --deck-title-weight: 850;
 }
@@ -1514,4 +1518,13 @@ body {
 .story-page.spotlight-list-page .spotlight-list-heading h2 {
   font-size: 1.08rem;
   line-height: 1.08;
+}
+
+.story-page.spotlight-partner-cover .grid4-feature-title,
+.story-page.spotlight-partner-page .spotlight-title,
+.story-page.spotlight-partner-info-page h2,
+.story-page.spotlight-partner-info-page strong {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-style: normal !important;
+  letter-spacing: 0 !important;
 }
