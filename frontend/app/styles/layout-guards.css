@@ -1244,7 +1244,7 @@ body {
 
 .story-page .spotlight-title,
 .story-page.spotlight-page .spotlight-title {
-  font-size: 1.08rem;
+  font-size: 0.92rem;
 }
 
 .story-page .spotlight-page-title {
@@ -1268,7 +1268,7 @@ body {
 }
 
 .story-page .spotlight-list-heading h2 {
-  font-size: 1.08rem;
+  font-size: 0.88rem;
 }
 
 .story-page .spotlight-list-heading p {
@@ -1461,7 +1461,7 @@ body {
 }
 
 .story-page .spotlight-list-heading h2 {
-  font-size: 1.08rem;
+  font-size: 0.88rem;
 }
 
 .story-page .spotlight-list-label {
@@ -1522,8 +1522,8 @@ body {
 }
 
 .story-page.spotlight-list-page .spotlight-list-heading h2 {
-  font-size: 1.08rem;
-  line-height: 1.08;
+  font-size: 0.88rem;
+  line-height: 1.06;
 }
 
 .story-page.spotlight-partner-cover .grid4-feature-title,

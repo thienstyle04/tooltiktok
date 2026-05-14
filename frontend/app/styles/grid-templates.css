@@ -1228,11 +1228,11 @@
 }
 
 .spotlight-list-heading h2 {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   color: #fffaf0;
-  font-size: 1.08rem;
+  font-size: 0.88rem;
   font-weight: 900;
-  line-height: 1.08;
+  line-height: 1.06;
 }
 
 .spotlight-list-heading p {
@@ -1251,9 +1251,9 @@
 .spotlight-list-stack {
   display: grid;
   grid-template-rows: repeat(9, minmax(0, 1fr));
-  gap: 4px;
+  gap: 3px;
   min-height: 0;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .spotlight-list-row {
