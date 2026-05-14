@@ -963,8 +963,14 @@ function renderBatchTaskPages(tasks) {
   const root = ensureBatchExportRoot();
   root.innerHTML = `<div class="list-preview-grid batch-export-grid">${tasks.map((task) =>
     renderPageMarkupForExport(task.list, task.page, task.pageIndex)).join('')}</div>`;
-  const pageNodes = prepareExportStoryPages(Array.from(root.querySelectorAll('.story-page')));
-  return tasks.map((task, index) => ({ ...task, pageNode: pageNodes[index] || null }));
+  prepareExportStoryPages(Array.from(root.querySelectorAll('.story-page')));
+  // Match each task to its rendered node by list-id + page-index to avoid
+  // index mismatch when multiple lists share the same chunk.
+  return tasks.map((task) => {
+    const selector = `.story-page[data-list-id="${CSS.escape(task.list.id)}"][data-page-index="${task.pageIndex}"]`;
+    const pageNode = root.querySelector(selector) || null;
+    return { ...task, pageNode };
+  });
 }
 
 export async function renderPageBlob(pageNode, options = {}) {
@@ -1356,7 +1362,8 @@ export async function exportBatch(context, callbacks = {}) {
     allLists.forEach((item, listIndex) => {
       const pages = item.list.pages || [];
       if (pages.length === 0) {
-        throw new Error(`List "${item.list.id}" not found in grid.`);
+        console.warn(`[export] Bỏ qua list "${item.list.id}" vì không có trang.`);
+        return;
       }
       pages.forEach((page, pageIndex) => {
         pageTasks.push({
@@ -1381,10 +1388,15 @@ export async function exportBatch(context, callbacks = {}) {
       cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang chuẩn bị ảnh ${qualityProfile.label} ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
       const renderedChunk = renderBatchTaskPages(chunk);
       await waitForExportLayout();
-      if (renderedChunk.some((task) => !task.pageNode)) {
-        throw new Error('Không dựng được một số trang để xuất.');
+      const validChunk = renderedChunk.filter((task) => task.pageNode);
+      if (validChunk.length === 0) {
+        console.warn('[export] Chunk không có trang nào render được, bỏ qua.');
+        continue;
       }
-      const preparedImages = await inlineImagesForNodes(renderedChunk.map((task) => task.pageNode), {
+      if (validChunk.length < renderedChunk.length) {
+        console.warn(`[export] ${renderedChunk.length - validChunk.length} trang không render được, bỏ qua.`);
+      }
+      const preparedImages = await inlineImagesForNodes(validChunk.map((task) => task.pageNode), {
         waitForReady: true,
         concurrency: qualityProfile.imagePrepareConcurrency,
         maxImageDimension: qualityProfile.sourceImageMaxDimension,
@@ -1396,7 +1408,7 @@ export async function exportBatch(context, callbacks = {}) {
       });
 
       try {
-        await mapWithConcurrency(renderedChunk, batchCaptureConcurrencyForProfile(qualityProfile), async (task, chunkIdx) => {
+        await mapWithConcurrency(validChunk, batchCaptureConcurrencyForProfile(qualityProfile), async (task, chunkIdx) => {
           const globalIdx = i + chunkIdx;
           const blob = await renderPageBlobWithRetry(task.pageNode, {
             imagesReady: true,
