@@ -20,14 +20,14 @@ import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
 const DEFAULT_PARTNER_TARGET_PER_PAGE = 3;
-export const ITINERARY_3N2D_TEMPLATE_VERSION = 16;
-export const ITINERARY_4N3D_TEMPLATE_VERSION = 12;
-export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 14;
-export const POV_3_DAY_TEMPLATE_VERSION = 11;
-export const GRID_4_TEMPLATE_VERSION = 16;
-export const GRID_6_TEMPLATE_VERSION = 15;
-export const GRID_8_TEMPLATE_VERSION = 14;
-export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 3;
+export const ITINERARY_3N2D_TEMPLATE_VERSION = 17;
+export const ITINERARY_4N3D_TEMPLATE_VERSION = 13;
+export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 15;
+export const POV_3_DAY_TEMPLATE_VERSION = 12;
+export const GRID_4_TEMPLATE_VERSION = 17;
+export const GRID_6_TEMPLATE_VERSION = 16;
+export const GRID_8_TEMPLATE_VERSION = 15;
+export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 4;
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -849,7 +849,7 @@ export function buildListPage(
   subtitle: string,
   items: PageItem[],
   backgroundImage: string,
-  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' = 'standard',
+  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' = 'standard',
 ): ListPage {
   return { type: 'list', chipText, chipTone, title, subtitle, items, backgroundImage, layoutVariant };
 }
@@ -1417,7 +1417,7 @@ function buildItineraryPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -1617,7 +1617,7 @@ function buildItinerary4N2DGrid8Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -1769,7 +1769,7 @@ function buildItinerary4N3DPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -1932,7 +1932,7 @@ function buildMustGoPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -1971,7 +1971,7 @@ function buildFirstTimePages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2446,7 +2446,135 @@ function buildSpotlightGuidePages(
 
 // ─── Spotlight Partner: one partner, all their images as spotlight pages ──────
 
-export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 1;
+export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 5;
+
+type PartnerSpotlightCopy = {
+  title: string;
+  description: string;
+};
+
+const PARTNER_SPOTLIGHT_COPY: Record<string, PartnerSpotlightCopy[]> = {
+  food: [
+    { title: 'Món chính nhìn phát muốn ghé', description: 'Trang này ưu tiên cảm giác món ăn và lý do đáng lưu quán vào lịch.' },
+    { title: 'Không gian ăn tối ấm hơn', description: 'Một góc giúp người xem hình dung vibe ngồi lại cùng nhóm bạn.' },
+    { title: 'Bàn ăn hợp đi cùng nhau', description: 'Gợi ý nhanh cho lúc cần một điểm ăn no, dễ rủ thêm người.' },
+    { title: 'Góc lên hình của quán', description: 'Chi tiết để người xem nhớ quán, không chỉ nhớ mỗi địa chỉ.' },
+    { title: 'Buổi tối ghé sẽ hợp mood', description: 'Một lựa chọn dành cho lịch Đà Lạt sau khi trời bắt đầu lạnh.' },
+    { title: 'Lưu lại cho bữa sau', description: 'Trang chốt giúp người xem quyết nhanh khi cần tìm chỗ ăn.' },
+  ],
+  cafe: [
+    { title: 'View ngồi chill dễ chịu', description: 'Trang này nói về không khí và cảm giác dừng chân của quán.' },
+    { title: 'Góc check-in của quán', description: 'Một góc lên hình rõ vibe, hợp để lưu trước khi chọn điểm ghé.' },
+    { title: 'Không gian hợp ngồi lâu', description: 'Gợi ý cho lúc muốn nghỉ chân, uống nước và đi chậm lại.' },
+    { title: 'Một góc rất Đà Lạt', description: 'Chi tiết nhỏ giúp quán có cảm giác riêng trong bộ ảnh.' },
+    { title: 'Buổi chiều ghé sẽ đẹp', description: 'Trang này dành cho mood ánh sáng mềm và không khí thư thả.' },
+    { title: 'Lưu lại cho buổi cafe', description: 'Một điểm dễ mở ra xem lại khi cần chọn quán trong lịch.' },
+  ],
+  stay: [
+    { title: 'Không gian nghỉ nhìn là muốn ở', description: 'Trang này giới thiệu cảm giác tổng thể của chỗ lưu trú.' },
+    { title: 'Góc phòng đáng lưu ý', description: 'Một chi tiết giúp người xem so nhanh vibe phòng trước khi đặt.' },
+    { title: 'View nghỉ chân nhẹ nhàng', description: 'Gợi ý cho ai muốn nơi ở có cảm giác thư giãn hơn.' },
+    { title: 'Chi tiết làm phòng có gu', description: 'Trang này nhấn vào những điểm nhỏ giúp chỗ ở dễ nhớ.' },
+    { title: 'Hợp cho chuyến đi chậm', description: 'Một lựa chọn dành cho lịch Đà Lạt cần nghỉ ngơi tử tế.' },
+    { title: 'Lưu lại trước khi đặt phòng', description: 'Trang chốt để người xem quay lại khi cần so chỗ ở.' },
+  ],
+  scenery: [
+    { title: 'Khung cảnh đáng dừng lại', description: 'Trang này giới thiệu phần phong cảnh chính, hợp để lưu vào lịch.' },
+    { title: 'Góc lên hình rộng và thoáng', description: 'Một điểm nhìn giúp người xem hiểu vì sao nơi này đáng ghé.' },
+    { title: 'Một mảng xanh rất Đà Lạt', description: 'Trang này nhấn vào cảm giác thiên nhiên, nhẹ và dễ chịu.' },
+    { title: 'Lối đi có chiều sâu ảnh', description: 'Gợi ý góc chụp giúp khung hình có câu chuyện hơn.' },
+    { title: 'View hợp để đi chậm', description: 'Một khung cảnh dành cho lịch không vội, ghé và ngắm lâu hơn.' },
+    { title: 'Lưu lại cho ngày trời đẹp', description: 'Trang chốt cho những lúc cần chọn một điểm có cảnh ổn.' },
+  ],
+  service: [
+    { title: 'Dịch vụ nên lưu trước', description: 'Trang này giới thiệu nhanh lý do nên giữ liên hệ khi đi Đà Lạt.' },
+    { title: 'Chi tiết giúp chuyến đi gọn hơn', description: 'Một lựa chọn hậu cần để người xem đỡ mất thời gian tìm lại.' },
+    { title: 'Thông tin cần khi phát sinh', description: 'Gợi ý cho lúc cần xử lý xe, đồ, quà hoặc hỗ trợ tại chỗ.' },
+    { title: 'Lưu lại để liên hệ nhanh', description: 'Trang này ưu tiên tính thực dụng, mở ra là biết cần gọi ai.' },
+    { title: 'Một lựa chọn hỗ trợ lịch đi', description: 'Dành cho các nhu cầu nhỏ nhưng dễ ảnh hưởng cả chuyến.' },
+    { title: 'Ghim sẵn cho yên tâm', description: 'Trang chốt giúp người xem có phương án dự phòng khi cần.' },
+  ],
+  generic: [
+    { title: 'Góc đáng lưu của nơi này', description: 'Trang này giới thiệu nhanh điểm đáng chú ý nhất trong ảnh.' },
+    { title: 'Một chi tiết dễ nhớ', description: 'Gợi ý để người xem phân biệt nơi này với các điểm khác.' },
+    { title: 'Không gian nên xem trước', description: 'Trang này giúp hình dung vibe trước khi quyết định ghé.' },
+    { title: 'Góc lên hình hợp lưu lại', description: 'Một khung hình dùng để nhớ nơi này trong cả list.' },
+    { title: 'Điểm nhấn của địa điểm', description: 'Trang này gom lại lý do nên cân nhắc thêm vào lịch.' },
+    { title: 'Lưu lại khi cần chọn nhanh', description: 'Một trang chốt để quay lại xem khi cần ra quyết định.' },
+  ],
+};
+
+function partnerSpotlightTone(sectionKey: SectionKey): AccentTone {
+  if (sectionKey === 'cafe') return 'gold';
+  if (sectionKey === 'quan_an') return 'berry';
+  if (sectionKey === 'homestay') return 'pine';
+  if (sectionKey === 'check_in') return 'terracotta';
+  return 'slate';
+}
+
+function partnerSpotlightChip(item: GuideItem): string {
+  return item.type || SECTION_CONFIG[item.sectionKey]?.title || 'Đối tác';
+}
+
+function partnerSpotlightCopyKind(item: GuideItem): keyof typeof PARTNER_SPOTLIGHT_COPY {
+  const normalized = normalizeText([item.sectionKey, item.type, item.style, item.highlight, item.name].join(' '));
+  if (item.sectionKey === 'quan_an' || textMatchesAny(normalized, ['an', 'nuong', 'lau', 'mon', 'quan_an', 'nha_hang'])) return 'food';
+  if (item.sectionKey === 'cafe' || textMatchesAny(normalized, ['cafe', 'ca_phe', 'coffee'])) return 'cafe';
+  if (item.sectionKey === 'homestay' || textMatchesAny(normalized, ['homestay', 'hotel', 'villa', 'luu_tru', 'phong'])) return 'stay';
+  if (item.sectionKey === 'dich_vu' || textMatchesAny(normalized, ['dich_vu', 'thue', 'spa', 'goi_dau', 'dac_san'])) return 'service';
+  if (['check_in', 'hoat_dong', 'dia_diem_lich_su', 'khu_du_lich', 'choi_dem'].includes(item.sectionKey)) return 'scenery';
+  return 'generic';
+}
+
+function partnerSpotlightCopy(item: GuideItem, index: number): PartnerSpotlightCopy {
+  const copies = PARTNER_SPOTLIGHT_COPY[partnerSpotlightCopyKind(item)] || PARTNER_SPOTLIGHT_COPY.generic;
+  return copies[index % copies.length] || PARTNER_SPOTLIGHT_COPY.generic[0];
+}
+
+function partnerInfoItems(item: GuideItem, imageUrl: string, candidateImageUrls: string[]): PageItem[] {
+  const rows: Array<{ label: string; name: string; value: string }> = [
+    { label: 'ĐỊA CHỈ', name: 'Địa chỉ', value: item.address },
+    { label: 'KHUNG GIỜ', name: 'Khung giờ', value: item.openHours },
+    { label: 'GIÁ', name: 'Giá tham khảo', value: item.price },
+    { label: 'LIÊN HỆ', name: 'Số điện thoại', value: item.phone },
+  ].filter((row) => hasDisplayText(row.value));
+
+  if (rows.length === 0) {
+    rows.push({ label: 'GHI CHÚ', name: 'Thông tin', value: 'Lưu lại để xem khi cần.' });
+  }
+
+  return rows.map((row, index) => ({
+    label: row.label,
+    id: `${item.id}-info-${index}`,
+    sourceKey: itemUsageKey(item),
+    sourceSectionKey: item.sectionKey,
+    name: row.name,
+    metaPrimary: row.value,
+    metaSecondary: '',
+    imageUrl,
+    imageMapped: true,
+    imageSource: 'manual',
+    imageNote: 'Thông tin đối tác từ Google Sheet',
+    candidateImageUrls,
+    isPartner: true,
+    rawName: row.name,
+  }));
+}
+
+function partnerBackgroundImage(
+  coverImageUrls: string[],
+  mappedImageUrls: string[],
+  imageUrls: string[],
+  seed: string,
+  partnerImageUrls: string[],
+  usedImageUrls?: Set<string>,
+): string {
+  const localUsed = new Set(usedImageUrls ?? []);
+  partnerImageUrls.filter(Boolean).forEach((url) => localUsed.add(url));
+  const picked = coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, localUsed);
+  if (picked) usedImageUrls?.add(picked);
+  return picked || partnerImageUrls[0] || '';
+}
 
 export function buildSpotlightPartnerPages(
   partnerItem: GuideItem,
@@ -2464,33 +2592,20 @@ export function buildSpotlightPartnerPages(
   }
 
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(
-    imageUrls,
-    libraryEntries,
-    `${seedPrefix}:spotlight-partner:${partnerItem.id}`,
-    mappedImageUrls,
-    globalUsedImageUrls || [],
-    { orientation: 'portrait' },
-  );
-  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
-  const pick = createListPicker(globalUsedItemIds);
+  const background = (seed: string) => partnerBackgroundImage(coverImageUrls, mappedImageUrls, imageUrls, seed, candidateUrls, globalUsedImageUrls);
+  const chipText = partnerSpotlightChip(partnerItem);
+  const chipTone = partnerSpotlightTone(partnerItem.sectionKey);
 
-  // Build spotlight pages from partner's candidate images
   const spotlightPages: ListPage[] = candidateUrls.map((imageUrl, index) => {
-    const chipText = partnerItem.type || SECTION_CONFIG[partnerItem.sectionKey]?.title || 'Đối tác';
-    const chipTone: AccentTone = partnerItem.sectionKey === 'cafe' ? 'gold'
-      : partnerItem.sectionKey === 'quan_an' ? 'berry'
-      : partnerItem.sectionKey === 'homestay' ? 'pine'
-      : partnerItem.sectionKey === 'check_in' ? 'terracotta'
-      : 'slate';
+    const pageCopy = partnerSpotlightCopy(partnerItem, index);
     const pageItem: PageItem = {
       label: chipText,
       id: `${partnerItem.id}-img-${index}`,
       sourceKey: itemUsageKey(partnerItem),
       sourceSectionKey: partnerItem.sectionKey,
-      name: partnerItem.name,
-      metaPrimary: partnerItem.address || 'Đang cập nhật',
-      metaSecondary: partnerItem.phone ? `SĐT: ${partnerItem.phone}` : '',
+      name: pageCopy.title,
+      metaPrimary: partnerItem.name,
+      metaSecondary: pageCopy.description,
       imageUrl,
       imageMapped: true,
       imageSource: 'manual',
@@ -2502,63 +2617,37 @@ export function buildSpotlightPartnerPages(
     return buildListPage(
       chipText,
       chipTone,
-      partnerItem.name,
+      pageCopy.title,
       partnerItem.address || '',
       [pageItem],
       imageUrl,
-      'spotlight',
+      'spotlight-partner',
     );
   });
 
-  // Build list pages with other partners in same/related sections
-  const relatedSections: SectionKey[] = ['homestay', 'choi_dem', 'hoat_dong', 'dich_vu'];
-  const relatedPartnerItems = Object.values(pools)
-    .flat()
-    .filter((item): item is GuideItem =>
-      item && typeof item === 'object' && 'isPartner' in item &&
-      (item as GuideItem).isPartner &&
-      (item as GuideItem).id !== partnerItem.id &&
-      relatedSections.includes((item as GuideItem).sectionKey),
-    );
-  const uniqueRelatedPartners = dedupeItems(relatedPartnerItems);
-
-  const listPages: ListPage[] = [];
-  if (uniqueRelatedPartners.length > 0) {
-    const listItems = buildSpotlightListItems(
-      uniqueRelatedPartners,
-      Math.min(7, uniqueRelatedPartners.length),
-      `${seedPrefix}-partner-list`,
-      pick,
-      imageResolver,
-      'Đối tác',
-    );
-    if (listItems.length > 0) {
-      listPages.push(buildListPage(
-        'Đối tác khác',
-        'slate',
-        'Đối tác nên xem thêm',
-        '',
-        listItems,
-        background(`${seedPrefix}-partner-list-bg`),
-        'spotlight-list',
-      ));
-    }
-  }
-
-  // Cover page uses first partner image
-  const coverImage = candidateUrls[0] || background(`${seedPrefix}-cover`);
+  const coverImage = background(`${seedPrefix}-cover`) || candidateUrls[0] || '';
+  const infoImage = background(`${seedPrefix}-info`) || coverImage;
+  const infoPage = buildListPage(
+    'Thông tin',
+    chipTone,
+    'Thông tin cần lưu',
+    partnerItem.name,
+    partnerInfoItems(partnerItem, infoImage, candidateUrls),
+    infoImage,
+    'spotlight-partner-info',
+  );
 
   return [
     {
       ...buildCoverPage(
         partnerItem.name.toUpperCase(),
-        partnerItem.address || partnerItem.type || '',
+        partnerItem.type || partnerItem.address || 'Lưu lại khi cần một địa điểm ở Đà Lạt.',
         coverImage,
       ),
-      layoutVariant: 'spotlight' as const,
+      layoutVariant: 'spotlight-partner' as const,
     },
     ...spotlightPages,
-    ...listPages,
+    infoPage,
   ];
 }
 
@@ -2572,7 +2661,7 @@ function buildGrid6Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2664,7 +2753,7 @@ function buildGrid8Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2759,7 +2848,7 @@ function buildGrid4Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || []);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
