@@ -816,8 +816,11 @@ export class GuideService {
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
     if (page.type === 'cover') {
       // Use page's own subtitle if available, otherwise use the list description (body).
-      // Limit to a short version so it doesn't overflow the cover.
-      const coverSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
+      // Truncate to ~120 chars so it fits in 2-3 lines on the cover.
+      const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
+      const coverSubtitle = rawSubtitle.length > 120
+        ? rawSubtitle.slice(0, 117).replace(/\s+\S*$/, '') + '...'
+        : rawSubtitle;
       return {
         ...page,
         title: sanitizeDeckHeadline(list.title || page.title),
