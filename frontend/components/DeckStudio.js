@@ -23,6 +23,7 @@ import Sidebar from './Sidebar';
 import TemplateGalleryPanel from './TemplateGalleryPanel';
 
 const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
+const SPOTLIGHT_PARTNER_DECK_ID = 'spotlight-partner';
 
 async function readApiPayload(response) {
   const text = await response.text();
@@ -105,6 +106,11 @@ function sanitizeCaptionBody(body, list) {
   return bodyListsStops(clean, forbiddenPlaceNames) ? GENERIC_CAPTION_BODY : clean;
 }
 
+function hasEmptySpotlightPartnerDeck(dataset) {
+  const deck = (dataset?.decks || []).find((item) => item.id === SPOTLIGHT_PARTNER_DECK_ID);
+  return Boolean(deck && (deck.lists || []).length === 0);
+}
+
 export default function DeckStudio({ initialDataset = null }) {
   const initialDeck = initialDataset?.decks?.[0] || null;
   const initialList = initialDeck?.lists?.[0] || null;
@@ -130,6 +136,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const [savingCoverText, setSavingCoverText] = useState(false);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const selectionHistoryRef = useRef([]);
+  const spotlightPartnerRefreshRef = useRef(false);
 
   const activeDeck = useMemo(
     () => dataset?.decks?.find((deck) => deck.id === activeDeckId) || null,
@@ -223,7 +230,13 @@ export default function DeckStudio({ initialDataset = null }) {
     if (cached?.dataset) {
       applyDataset(cached.dataset, stored);
       setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm).`);
-      if (shouldCheckDatasetInBackground()) {
+      if (hasEmptySpotlightPartnerDeck(cached.dataset)) {
+        clearCachedDataset();
+        loadDataset('Đang nạp lại mẫu Spotlight Đối tác...', stored, true, { silent: true }).catch((error) => {
+          console.error(error);
+          setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được mẫu Spotlight Đối tác: ${error.message}`);
+        });
+      } else if (shouldCheckDatasetInBackground()) {
         markDatasetBackgroundChecked();
         loadDataset('Đang kiểm tra dữ liệu mới...', {}, false, { silent: true }).catch((error) => {
           console.error(error);
@@ -257,6 +270,22 @@ export default function DeckStudio({ initialDataset = null }) {
       // Ignore storage failures.
     }
   }, [activeDeckId, activeListId, selectedPageIndex]);
+
+  useEffect(() => {
+    if (activeDeckId !== SPOTLIGHT_PARTNER_DECK_ID) return;
+    if (!activeDeck || (activeDeck.lists || []).length > 0) return;
+    if (spotlightPartnerRefreshRef.current) return;
+    spotlightPartnerRefreshRef.current = true;
+    clearCachedDataset();
+    loadDataset('Đang nạp lại mẫu Spotlight Đối tác...', {
+      activeDeckId: SPOTLIGHT_PARTNER_DECK_ID,
+      activeListId: null,
+      selectedPageIndex: 0,
+    }, true).catch((error) => {
+      console.error(error);
+      setStatus(error.message || 'Chưa tải được mẫu Spotlight Đối tác.');
+    });
+  }, [activeDeck, activeDeckId, loadDataset]);
 
   const pushSelectionSnapshot = useCallback(() => {
     if (!activeDeckId && !activeListId) return;
