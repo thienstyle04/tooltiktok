@@ -1534,3 +1534,136 @@ body {
   font-style: normal !important;
   letter-spacing: 0 !important;
 }
+
+/* Cover title line-clamp: limit all cover titles to 2-3 lines max */
+.story-page .cover-title,
+.story-page.has-inline-hashtags .cover-title {
+  font-size: 1.62rem;
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.story-page .journey-cover-title {
+  font-size: 1.72rem;
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.story-page .grid6-cover-title,
+.story-page.grid4-cover .grid6-cover-title,
+.story-page.grid8-cover .grid6-cover-title {
+  font-size: 1.48rem;
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.story-page .grid8-cover-title {
+  font-size: 1.36rem;
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+  white-space: normal;
+  text-wrap: balance;
+  line-height: 1.24;
+  padding-top: 0.16em;
+  padding-bottom: 0.12em;
+  margin-top: 8px;
+}
+
+.story-page .cover-title,
+.story-page.has-inline-hashtags .cover-title,
+.story-page .journey-cover-title,
+.story-page .photomode-cover-title,
+.story-page .grid6-cover-title {
+  line-height: 1.22;
+  padding-top: 0.14em;
+  padding-bottom: 0.1em;
+  overflow: visible;
+}
+
+.story-page .grid4-feature-title {
+  line-height: 1.2;
+  padding-top: 0.12em;
+  padding-bottom: 0.08em;
+}
+
+.story-page.photomode-cover .photomode-cover-title {
+  font-size: 2.2rem;
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+  white-space: pre-line;
+  text-wrap: balance;
+}
+
+.story-page .grid4-feature-title {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+/* Cover subtitle: limit to 3 lines max */
+.story-page .cover-subtitle {
+  font-size: 0.72rem;
+  line-height: 1.42;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  max-width: 92%;
+}
+
+.story-page .grid6-cover-subtitle,
+.story-page .grid8-cover-subtitle {
+  font-size: 0.65rem;
+  line-height: 1.36;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.story-page .journey-cover-subtitle {
+  font-size: 0.65rem;
+  line-height: 1.36;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.story-page .photomode-cover-subtitle {
+  font-size: 0.72rem;
+  line-height: 1.36;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.story-page .grid4-cover-subtitle {
+  font-size: 0.56rem;
+  line-height: 1.36;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}

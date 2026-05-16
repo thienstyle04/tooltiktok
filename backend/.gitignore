@@ -14,6 +14,13 @@ build/
 .tmp-*
 *.log
 
+# Runtime data files (generated at runtime, machine-specific)
+data/sheet-drive-images.json
+data/used-inventory.json
+data/generated-caption-lists.json
+# Keep backup file tracked so it can be restored if main file is lost
+# data/generated-caption-lists.backup.json
+
 # Local scratch artifacts
 scratch/
 

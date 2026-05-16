@@ -815,11 +815,30 @@ export class GuideService {
 
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
     if (page.type === 'cover') {
-      const coverSubtitle = String(page.subtitle ?? '').trim();
+      // Use page's own subtitle if available, otherwise use the list description (body).
+      // Truncate to ~150 chars, cutting at sentence boundary for natural reading.
+      const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
+      let coverSubtitle = rawSubtitle;
+      if (rawSubtitle.length > 150) {
+        // Try to cut at sentence end (. ! ?) within first 150 chars
+        const truncated = rawSubtitle.slice(0, 150);
+        const lastSentenceEnd = Math.max(
+          truncated.lastIndexOf('. '),
+          truncated.lastIndexOf('! '),
+          truncated.lastIndexOf('? '),
+          truncated.lastIndexOf('.\n'),
+        );
+        if (lastSentenceEnd > 60) {
+          coverSubtitle = rawSubtitle.slice(0, lastSentenceEnd + 1).trim();
+        } else {
+          // Fall back to word boundary
+          coverSubtitle = truncated.replace(/\s+\S*$/, '') + '...';
+        }
+      }
       return {
         ...page,
         title: sanitizeDeckHeadline(list.title || page.title),
-        subtitle: coverSubtitle || safeDescription,
+        subtitle: coverSubtitle,
       };
     }
 

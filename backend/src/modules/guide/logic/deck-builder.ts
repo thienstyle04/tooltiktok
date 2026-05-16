@@ -2657,6 +2657,56 @@ export function buildSpotlightPartnerPages(
   ];
 }
 
+function partnerImageCount(item: GuideItem): number {
+  const urls = new Set<string>();
+  (item.candidateImageUrls || []).filter(Boolean).forEach((url) => urls.add(url));
+  if (item.imageUrl) urls.add(item.imageUrl);
+  return urls.size;
+}
+
+function pickSpotlightPartnerSample(itemsBySection: WorkbookItemsBySection): GuideItem | null {
+  const partners = dedupeItems(Object.values(itemsBySection).flat())
+    .filter((item) => item.isPartner && hasUsableImage(item));
+  if (partners.length === 0) return null;
+  return [...partners].sort((a, b) => {
+    const imageDiff = partnerImageCount(b) - partnerImageCount(a);
+    if (imageDiff !== 0) return imageDiff;
+    return a.name.localeCompare(b.name, 'vi');
+  })[0] || null;
+}
+
+function buildSpotlightPartnerSampleLists(
+  itemsBySection: WorkbookItemsBySection,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  coverImageUrls: string[] = [],
+): GuideDeckList[] {
+  const partnerItem = pickSpotlightPartnerSample(itemsBySection);
+  if (!partnerItem) return [];
+
+  const pages = buildSpotlightPartnerPages(
+    partnerItem,
+    createDeckBuildPools(itemsBySection),
+    imageUrls,
+    libraryEntries,
+    `spotlight-partner:sample:${partnerItem.id}`,
+    new Set<string>(),
+    new Set<string>(),
+    coverImageUrls,
+  );
+  const list = buildDeckList(
+    'spotlight-partner',
+    'main',
+    'List mẫu',
+    partnerItem.name.toUpperCase(),
+    partnerItem.address || partnerItem.type || 'Mẫu xem trước cho spotlight đối tác.',
+    pages,
+  );
+  list.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
+  list.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
+  return [list];
+}
+
 function buildGrid6Pages(
   pools: DeckBuildPools,
   imageUrls: string[],
@@ -3050,7 +3100,7 @@ export function buildDecks(
       navTitle: 'Spotlight Đối tác',
       title: 'Bộ trang spotlight cho 1 đối tác',
       description: 'Mẫu dành riêng cho đối tác: cover + mỗi ảnh Drive của đối tác là 1 trang spotlight + trang list đối tác liên quan. Chọn đối tác từ danh sách để sinh mẫu.',
-      lists: [],
+      lists: buildSpotlightPartnerSampleLists(common.itemsBySection, common.imageUrls, common.libraryEntries, common.coverImageUrls),
     },
   ];
 }
