@@ -1672,7 +1672,7 @@ function buildItinerary4N2DGrid8Pages(
     {
       ...buildCoverPage(
         '4N2Đ ĐÀ LẠT\n8 ĐIỂM MỖI TRANG',
-        'Lịch trình dạng lưới: ảnh bao quanh, tiêu đề ở giữa, mỗi điểm có thời gian rõ ràng.',
+        'Lịch trình dạng lưới: ảnh bao quanh, tiêu đề ở giữa, mỗi điểm có thời gian rõ ràng. Lưu liền tay nhé.',
         coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'journey-4n2d-grid8',
@@ -1681,7 +1681,7 @@ function buildItinerary4N2DGrid8Pages(
       'Day 01',
       'terracotta',
       'Vào phố nhẹ nhàng',
-      'Một nhịp mở đầu dễ đi, đủ ăn uống, cafe và check-in trong ngày đầu.',
+      'Một nhịp mở đầu dễ đi, đủ bữa ăn, cafe và check-in trong ngày đầu.',
       [
         breakfastItems,
         cafeDayItems,
@@ -1732,7 +1732,7 @@ function buildItinerary4N2DGrid8Pages(
       'Day 04',
       'slate',
       'Sáng chậm rồi rời phố',
-      'Một ngày cuối gọn nhịp, vẫn đủ điểm ghé và chốt bữa tối.',
+      'Một ngày cuối gọn nhịp, vẫn đủ điểm ghé và chốt bữa tối. Lưu lại ngay nhé.',
       [
         breakfastItems,
         cafeDayItems,

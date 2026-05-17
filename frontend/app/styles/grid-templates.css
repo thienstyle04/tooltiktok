@@ -778,17 +778,19 @@
 .grid8-center-title {
   display: -webkit-box;
   margin: 0;
-  padding: 3px 0 2px;
+  padding: 3px 0 4px;
   color: var(--journey-title-color, #fffaf0);
   font-size: 0.62rem;
   font-weight: 900;
-  line-height: 1.22;
+  line-height: 1.26;
   text-transform: uppercase;
   text-shadow: 0 1px 4px rgba(0,0,0,0.72);
   -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .grid8-center-intro {
