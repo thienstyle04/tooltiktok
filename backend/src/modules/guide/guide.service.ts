@@ -57,6 +57,7 @@ import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-sou
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
 
 const GENERATED_CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
+const RECENT_LIST_IMAGE_WINDOW = 1;
 
 @Injectable()
 export class GuideService {
@@ -350,8 +351,8 @@ export class GuideService {
     const listIndex = existing.findIndex((list) => list.id === listId);
     if (listIndex < 0) throw new NotFoundException(`Khong tim thay list: ${listId}`);
 
-    const coverTitle = sanitizeDeckHeadline(String(request.coverTitle ?? '').trim()).slice(0, 60);
-    const coverSubtitle = String(request.coverSubtitle ?? '').replace(/\s+/g, ' ').trim().slice(0, 220);
+    const coverTitle = this.sanitizeContentText(sanitizeDeckHeadline(String(request.coverTitle ?? '').trim())).slice(0, 60);
+    const coverSubtitle = this.sanitizeContentText(String(request.coverSubtitle ?? '').replace(/\s+/g, ' ').trim()).slice(0, 220);
     const list = this.cloneJson(existing[listIndex]);
     const pages = (list.pages || []).map((page, index) => {
       if (index !== 0 || page.type !== 'cover') return page;
@@ -368,18 +369,19 @@ export class GuideService {
       coverTitle: coverTitle || list.coverTitle || list.title,
       pages,
     };
+    const sanitizedNextList = this.sanitizeGeneratedListText(nextList);
 
     const nextLists = [...existing];
-    nextLists[listIndex] = nextList;
+    nextLists[listIndex] = sanitizedNextList;
     this.generatedListsByDeckId.set(deckId, nextLists);
     this.persistGeneratedLists();
     this.invalidateDatasetCache();
 
-    const coverPage = nextList.pages[0]?.type === 'cover' ? nextList.pages[0] : null;
+    const coverPage = sanitizedNextList.pages[0]?.type === 'cover' ? sanitizedNextList.pages[0] : null;
     return {
       deckId,
       listId,
-      coverTitle: nextList.coverTitle || nextList.title,
+      coverTitle: sanitizedNextList.coverTitle || sanitizedNextList.title,
       coverSubtitle: coverPage?.subtitle || '',
     };
   }
@@ -445,7 +447,12 @@ export class GuideService {
       deckUsage.imageUrls,
       context.coverImageUrls,
     );
-    const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
+    const safeCaption = {
+      ...caption,
+      coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(caption.coverTitle)),
+      headline: this.sanitizeContentText(caption.headline),
+      body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
+    };
     const generatedPages = applyCaptionToPages(basePages, safeCaption);
 
     const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, safeCaption.coverTitle, safeCaption.body, generatedPages);
@@ -453,15 +460,16 @@ export class GuideService {
     generatedList.postCaption = safeCaption.headline;
     generatedList.captionHashtags = safeCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
+    const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList);
 
-    this.markUsedInDeck(generatedPages);
+    this.markUsedInDeck(sanitizedGeneratedList.pages);
     this.persistInventory();
 
-    this.generatedListsByDeckId.set(deckId, [...existing, generatedList]);
+    this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
     this.persistGeneratedLists();
     this.invalidateDatasetCache();
 
-    return { deckId, listId: generatedList.id, navTitle: generatedList.navTitle, title: generatedList.title };
+    return { deckId, listId: sanitizedGeneratedList.id, navTitle: sanitizedGeneratedList.navTitle, title: sanitizedGeneratedList.title };
   }
 
   // ─── Batch list generation ────────────────────────────────────────────────
@@ -724,10 +732,86 @@ export class GuideService {
   private mergeGeneratedLists(decks: GuideDeck[], coverImageUrls: string[] = []): GuideDeck[] {
     return decks.map((deck) => {
       const baseLists = deck.lists.map((list) => this.sanitizeBaseListForDisplay(list));
-      const generatedLists = this.generatedListsByDeckId.get(deck.id) ?? [];
-      if (generatedLists.length === 0) return { ...deck, lists: baseLists };
-      return { ...deck, lists: [...baseLists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list, coverImageUrls))] };
+      const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => this.sanitizeGeneratedListText(list));
+      const displayLists = generatedLists.length === 0
+        ? baseLists
+        : [...baseLists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list, coverImageUrls))];
+      return { ...deck, lists: this.applyRecentImageReuseGuard(displayLists) };
     });
+  }
+
+  private applyRecentImageReuseGuard(lists: GuideDeckList[]): GuideDeckList[] {
+    const recentListImageSets: Array<Set<string>> = [];
+
+    return lists.map((list) => {
+      const recentImageUrls = this.mergeRecentImageSets(recentListImageSets);
+      const currentListVisualImageUrls = new Set<string>();
+      const currentListItemImageUrls = new Set<string>();
+      const guardedList: GuideDeckList = {
+        ...list,
+        pages: list.pages.map((page) => {
+          if (page.backgroundImage) currentListVisualImageUrls.add(page.backgroundImage);
+          if (page.type !== 'list') return page;
+
+          const currentPageImageUrls = new Set<string>();
+          return {
+            ...page,
+            items: page.items.map((item) => {
+              const nextImageUrl = this.pickFreshCandidateImage(
+                item.imageUrl,
+                item.candidateImageUrls,
+                recentImageUrls,
+                currentListItemImageUrls,
+                currentPageImageUrls,
+              );
+              if (nextImageUrl) currentListVisualImageUrls.add(nextImageUrl);
+              return nextImageUrl && nextImageUrl !== item.imageUrl
+                ? { ...item, imageUrl: nextImageUrl }
+                : item;
+            }),
+          };
+        }),
+      };
+
+      recentListImageSets.push(currentListVisualImageUrls);
+      while (recentListImageSets.length > RECENT_LIST_IMAGE_WINDOW) recentListImageSets.shift();
+      return guardedList;
+    });
+  }
+
+  private mergeRecentImageSets(imageSets: Array<Set<string>>): Set<string> {
+    const merged = new Set<string>();
+    for (const imageSet of imageSets) {
+      imageSet.forEach((url) => merged.add(url));
+    }
+    return merged;
+  }
+
+  private pickFreshCandidateImage(
+    currentUrl: string | undefined,
+    candidateUrls: string[] | undefined,
+    recentImageUrls: Set<string>,
+    currentListImageUrls: Set<string>,
+    currentPageImageUrls: Set<string>,
+  ): string {
+    const current = String(currentUrl ?? '').trim();
+    const candidates = [...new Set([...(candidateUrls ?? []), current].map((url) => String(url ?? '').trim()).filter(Boolean))];
+    if (current && !recentImageUrls.has(current) && !currentListImageUrls.has(current) && !currentPageImageUrls.has(current)) {
+      currentListImageUrls.add(current);
+      currentPageImageUrls.add(current);
+      return current;
+    }
+
+    const freshCandidate = candidates.find((url) => !recentImageUrls.has(url) && !currentListImageUrls.has(url) && !currentPageImageUrls.has(url));
+    const pageFreshCandidate = candidates.find((url) => !recentImageUrls.has(url) && !currentPageImageUrls.has(url));
+    const pageUniqueCandidate = candidates.find((url) => !currentPageImageUrls.has(url));
+    const currentPageUnique = current && !currentPageImageUrls.has(current) ? current : '';
+    const picked = freshCandidate || pageFreshCandidate || pageUniqueCandidate || currentPageUnique || current;
+    if (picked) {
+      currentListImageUrls.add(picked);
+      currentPageImageUrls.add(picked);
+    }
+    return picked;
   }
 
   private templateVersionForDeck(deckId: string): number | undefined {
@@ -753,13 +837,14 @@ export class GuideService {
   }
 
   private sanitizeGeneratedListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
-    if (!/caption-/i.test(list.id)) return list;
+    const cleanList = this.sanitizeGeneratedListText(list);
+    if (!/caption-/i.test(cleanList.id)) return cleanList;
 
-    const safeDescription = sanitizeCaptionBodyForPages(list.description, list.pages);
-    const pages = list.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, list, safeDescription));
-    const portableCoverImage = this.coverImageForList(list, coverImageUrls) || this.firstPortableImageForPages(pages);
+    const safeDescription = this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanList.description, cleanList.pages));
+    const pages = cleanList.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, cleanList, safeDescription));
+    const portableCoverImage = this.coverImageForList(cleanList, coverImageUrls) || this.firstPortableImageForPages(pages);
     return {
-      ...list,
+      ...cleanList,
       description: safeDescription,
       pages: pages.map((page) => page.type === 'cover' && portableCoverImage
         ? { ...page, backgroundImage: portableCoverImage }
@@ -773,18 +858,19 @@ export class GuideService {
   }
 
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
-    if (page.type !== 'list' || page.layoutVariant !== 'journey-4n3d') return page;
+    const cleanPage = this.sanitizeDeckPageText(page);
+    if (cleanPage.type !== 'list' || cleanPage.layoutVariant !== 'journey-4n3d') return cleanPage;
 
-    const rawSubtitle = String(page.subtitle ?? '').trim();
-    const pageSubtitle = rawSubtitle ? sanitizeCaptionBodyForPages(page.subtitle, [page]) : '';
+    const rawSubtitle = String(cleanPage.subtitle ?? '').trim();
+    const pageSubtitle = rawSubtitle ? this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanPage.subtitle, [cleanPage])) : '';
     const shouldUseContextualSubtitle =
       !rawSubtitle ||
       this.samePlainText(pageSubtitle, GENERATED_CAPTION_BODY_FALLBACK);
 
     return {
-      ...page,
+      ...cleanPage,
       subtitle: shouldUseContextualSubtitle
-        ? this.contextualGeneratedPageSubtitle(page, list)
+        ? this.sanitizeContentText(this.contextualGeneratedPageSubtitle(cleanPage, list))
         : pageSubtitle,
     };
   }
@@ -837,13 +923,13 @@ export class GuideService {
       }
       return {
         ...page,
-        title: sanitizeDeckHeadline(list.title || page.title),
-        subtitle: coverSubtitle,
+        title: this.sanitizeContentText(sanitizeDeckHeadline(list.title || page.title)),
+        subtitle: this.sanitizeContentText(coverSubtitle),
       };
     }
 
     const rawSubtitle = String(page.subtitle ?? '').trim();
-    const pageSubtitle = sanitizeCaptionBodyForPages(page.subtitle, [page]);
+    const pageSubtitle = this.sanitizeContentText(sanitizeCaptionBodyForPages(page.subtitle, [page]));
     const shouldUseContextualSubtitle =
       !rawSubtitle ||
       page.layoutVariant === 'grid-8' ||
@@ -851,8 +937,11 @@ export class GuideService {
       this.samePlainText(pageSubtitle, GENERATED_CAPTION_BODY_FALLBACK);
     return {
       ...page,
+      title: this.sanitizeContentText(sanitizeDeckHeadline(page.title)),
+      chipText: this.sanitizeContentText(page.chipText),
+      items: page.items.map((item) => this.sanitizePageItemText(item)),
       subtitle: shouldUseContextualSubtitle
-        ? this.contextualGeneratedPageSubtitle(page, list)
+        ? this.sanitizeContentText(this.contextualGeneratedPageSubtitle(page, list))
         : pageSubtitle,
     };
   }
@@ -1042,7 +1131,7 @@ export class GuideService {
             list.templateVersion !== templateVersion ||
             JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)
           ) changed = true;
-          return {
+          const nextList = {
             ...list,
             navTitle: partnerItem.name,
             title: partnerItem.name.toUpperCase(),
@@ -1051,12 +1140,13 @@ export class GuideService {
             templateVersion,
             pages: regeneratedPages,
           };
+          return this.sanitizeGeneratedListText(nextList);
         }
 
         const caption: CaptionBlocks = {
-          coverTitle: sanitizeDeckHeadline(list.coverTitle || list.title),
-          headline: String(list.postCaption ?? '').trim(),
-          body: list.description,
+          coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title)),
+          headline: this.sanitizeContentText(String(list.postCaption ?? '').trim()),
+          body: this.sanitizeContentText(list.description),
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
         const basePages = buildPagesForDeck(
@@ -1069,7 +1159,12 @@ export class GuideService {
           deckUsage.imageUrls,
           coverImageUrls,
         );
-        const safeCaption = { ...caption, body: sanitizeCaptionBodyForPages(caption.body, basePages) };
+        const safeCaption = {
+          ...caption,
+          coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(caption.coverTitle)),
+          headline: this.sanitizeContentText(caption.headline),
+          body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
+        };
         const regeneratedPages = applyCaptionToPages(basePages, safeCaption);
         this.markUsedInDeck(regeneratedPages, deckUsage);
         this.markUsedInDeck(regeneratedPages, renderUsage);
@@ -1081,7 +1176,7 @@ export class GuideService {
           list.templateVersion !== templateVersion ||
           JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)
         ) changed = true;
-        return {
+        const nextList = {
           ...list,
           title: safeCaption.coverTitle,
           coverTitle: safeCaption.coverTitle,
@@ -1090,8 +1185,14 @@ export class GuideService {
           templateVersion,
           pages: regeneratedPages,
         };
+        return this.sanitizeGeneratedListText(nextList);
       });
-      this.generatedListsByDeckId.set(deckId, refreshedLists);
+      const sanitizedLists = refreshedLists.map((list) => {
+        const sanitizedList = this.sanitizeGeneratedListText(list);
+        if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
+        return sanitizedList;
+      });
+      this.generatedListsByDeckId.set(deckId, sanitizedLists);
     }
 
     if (changed) this.persistGeneratedLists();
@@ -1247,7 +1348,12 @@ export class GuideService {
           };
         }),
       }));
-      this.generatedListsByDeckId.set(deckId, refreshedLists);
+      const sanitizedLists = refreshedLists.map((list) => {
+        const sanitizedList = this.sanitizeGeneratedListText(list);
+        if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
+        return sanitizedList;
+      });
+      this.generatedListsByDeckId.set(deckId, sanitizedLists);
     }
 
     if (changed) this.persistGeneratedLists();
@@ -1271,6 +1377,7 @@ export class GuideService {
           .filter((item) => item.id && Array.isArray(item.pages));
         if (normalizedLists.length > 0) this.generatedListsByDeckId.set(deckId, normalizedLists);
       });
+      this.migrateGeneratedListTextStore();
     } catch {
       this.generatedListsByDeckId.clear();
     }
@@ -1285,6 +1392,22 @@ export class GuideService {
     this.ensureDataRoot();
     fs.writeFileSync(this.generatedListsPath, JSON.stringify(payload, null, 2), 'utf-8');
     this.invalidateDatasetCache();
+  }
+
+  private migrateGeneratedListTextStore(): void {
+    if (this.generatedListsByDeckId.size === 0) return;
+
+    let changed = false;
+    for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
+      const sanitizedLists = lists.map((list) => {
+        const sanitizedList = this.sanitizeGeneratedListText(list);
+        if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
+        return sanitizedList;
+      });
+      this.generatedListsByDeckId.set(deckId, sanitizedLists);
+    }
+
+    if (changed) this.persistGeneratedLists();
   }
 
   // ─── Private: workbook loading ────────────────────────────────────────────
@@ -1739,6 +1862,99 @@ export class GuideService {
       .replace(/Đ/g, 'D');
   }
 
+  /**
+   * Post-processing sanitizer applied to ALL text content (both new AI output and old data).
+   * Fixes: wrong words, dangling chars, internal jargon, typos.
+   */
+  private sanitizeContentText(value: string): string {
+    return String(value || '').normalize('NFC')
+      // Fix typos from feedback
+      .replace(/(^|[^\p{L}\p{N}])đông\s*đúng(?=$|[^\p{L}\p{N}])/giu, '$1đông đúc')
+      .replace(/(^|[^\p{L}\p{N}])nơi\s*đẹp\s*thẳng\s*thừng(?=$|[^\p{L}\p{N}])/giu, '$1nơi đẹp mê ly')
+      .replace(/(^|[^\p{L}\p{N}])mở\s*to\s*mắt(?=$|[^\p{L}\p{N}])/giu, '$1mở mang tầm mắt')
+      .replace(/(^|[^\p{L}\p{N}])Săn\s*ảnh\s*và\s*bắt\s*sáng(?=$|[^\p{L}\p{N}])/giu, '$1Săn ảnh và ăn sáng')
+      .replace(/(^|[^\p{L}\p{N}])3\s*ngày\s*chẳng\s*cần\s*chỉnh\s*sửa\s*gì(?=$|[^\p{L}\p{N}])/giu, '$13 ngày chẳng cần nghĩ ngợi gì')
+      .replace(/(^|[^\p{L}\p{N}])đủ\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1đủ bữa ăn')
+      .replace(/(^|[^\p{L}\p{N}])điểm\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1điểm ăn')
+      .replace(/(^|[^\p{L}\p{N}])địa\s*chỉ\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1địa chỉ ăn ngon')
+      .replace(/(^|[^\p{L}\p{N}])không\s*chỉ\s*ăn\s*uống\s*và\s*chụp\s*ảnh(?=$|[^\p{L}\p{N}])/giu, '$1không chỉ chụp ảnh rồi đi tiếp')
+      .replace(/(^|[^\p{L}\p{N}])trước\s*khi\s*thêm\s*cafe\s*hay\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1trước khi thêm cafe hay điểm ăn')
+      .replace(/(^|[^\p{L}\p{N}])mấy\s*chỗ\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1mấy chỗ ăn ngon')
+      .replace(/(^|[^\p{L}\p{N}])chọn\s*điểm\s*đi,\s*ăn\s*uống\s*và\s*chụp\s*hình(?=$|[^\p{L}\p{N}])/giu, '$1chọn điểm đi, quán ăn và góc chụp')
+      .replace(/(^|[^\p{L}\p{N}])từ\s*ăn\s*uống,\s*check-?in(?=$|[^\p{L}\p{N}])/giu, '$1từ quán ăn, check-in')
+      .replace(/(^|[^\p{L}\p{N}])nhóm\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1nhóm quán ăn')
+      .replace(/(^|[^\p{L}\p{N}])Ăn\s*uống(?=$|[^\p{L}\p{N}])/gu, '$1Quán ăn')
+      .replace(/(^|[^\p{L}\p{N}])ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1quán ăn')
+      .replace(/(^|[^\p{L}\p{N}])Nhấn\s*lưu\s*liền\s*kẻo(?=$|[^\p{L}\p{N}])/giu, '$1Nhấn lưu liền kẻo quên nhé')
+      .replace(/(^|[^\p{L}\p{N}])lưu\s*lại(?=\s*$)/giu, '$1lưu lại ngay nhé')
+      .replace(/(^|[^\p{L}\p{N}])Đà\s*Lạt\s*ẩn\s*mình\s*sau\s*vách\s*núi(?=$|[^\p{L}\p{N}])/giu, '$1Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
+      .replace(/(^|[^\p{L}\p{N}])Đà\s*Lạt\s*đủ\s*để\s*đi\s*ngay(?=$|[^\p{L}\p{N}])/giu, '$1Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
+      // Remove dangling chars at end of sentence (ng, c, ghim, g alone)
+      .replace(/\s+\b(ng|ghim|c|g)\b\s*([.!?…]*)$/gi, '$2')
+      // Remove internal jargon
+      .replace(/(^|[^\p{L}\p{N}])bộ\s*ảnh\s*này(?=$|[^\p{L}\p{N}])/giu, '$1list này')
+      .replace(/(^|[^\p{L}\p{N}])bộ\s*ảnh(?=$|[^\p{L}\p{N}])/giu, '$1list')
+      .replace(/(^|[^\p{L}\p{N}])ảnh\s*đã\s*chọn(?=$|[^\p{L}\p{N}])/giu, '$1các điểm đã chọn')
+      .replace(/(^|[^\p{L}\p{N}])ghim\s*ảnh(?=$|[^\p{L}\p{N}])/giu, '$1lưu lại')
+      .replace(/(^|[^\p{L}\p{N}])lưu\s*ảnh(?=$|[^\p{L}\p{N}])/giu, '$1lưu list')
+      .replace(/(^|[^\p{L}\p{N}])các\s*ảnh\s*đã\s*chọn(?=$|[^\p{L}\p{N}])/giu, '$1các điểm đã chọn')
+      // Clean up extra spaces
+      .replace(/\.{4,}/g, '...')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+([,.!?])/g, '$1')
+      .trim();
+  }
+
+  private sanitizeGeneratedListText(list: GuideDeckList): GuideDeckList {
+    const pages = Array.isArray(list.pages)
+      ? list.pages.map((page) => this.sanitizeDeckPageText(page))
+      : [];
+    return {
+      ...list,
+      navTitle: this.sanitizeContentText(list.navTitle || ''),
+      title: this.sanitizeContentText(sanitizeDeckHeadline(list.title || '')),
+      description: this.sanitizeContentText(list.description || ''),
+      coverTitle: list.coverTitle ? this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle)) : list.coverTitle,
+      postCaption: list.postCaption ? this.sanitizeContentText(list.postCaption) : list.postCaption,
+      captionHashtags: Array.isArray(list.captionHashtags)
+        ? list.captionHashtags.map((tag) => String(tag || '').trim()).filter(Boolean)
+        : list.captionHashtags,
+      pages,
+    };
+  }
+
+  private sanitizeDeckPageText(page: DeckPage): DeckPage {
+    if (page.type === 'cover') {
+      return {
+        ...page,
+        title: this.sanitizeContentText(sanitizeDeckHeadline(page.title || '')),
+        subtitle: this.sanitizeContentText(page.subtitle || ''),
+      };
+    }
+
+    return {
+      ...page,
+      chipText: this.sanitizeContentText(page.chipText || ''),
+      title: this.sanitizeContentText(sanitizeDeckHeadline(page.title || '')),
+      subtitle: this.sanitizeContentText(page.subtitle || ''),
+      items: Array.isArray(page.items)
+        ? page.items.map((item) => this.sanitizePageItemText(item))
+        : [],
+    };
+  }
+
+  private sanitizePageItemText(item: PageItem): PageItem {
+    return {
+      ...item,
+      label: this.sanitizeContentText(item.label || ''),
+      name: this.sanitizeContentText(item.name || ''),
+      rawName: item.rawName ? this.sanitizeContentText(item.rawName) : item.rawName,
+      metaPrimary: this.sanitizeContentText(item.metaPrimary || ''),
+      metaSecondary: this.sanitizeContentText(item.metaSecondary || ''),
+      imageNote: this.sanitizeContentText(item.imageNote || ''),
+    };
+  }
+
   private bodyListsStops(value: string, forbiddenPlaceNames: string[]): boolean {
     if (this.hasForbiddenPlaceName(value, forbiddenPlaceNames)) return true;
 
@@ -1796,23 +2012,23 @@ export class GuideService {
       .trim();
     const normalizeCoverTitle = (v: string) => {
       const fallback = 'ĐI ĐÀ LẠT THÌ LƯU NGAY LIST NÀY';
-      const withoutLayout = removeLayoutTerms(sanitizeDeckHeadline(v || fallback));
+      const withoutLayout = removeLayoutTerms(this.sanitizeContentText(sanitizeDeckHeadline(v || fallback)));
       const clean = withoutLayout.replace(/\s+/g, ' ').trim();
       return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 35);
     };
     const normalizeHeadline = (v: string) => {
       const fallback = 'Lưu list này rồi đi Đà Lạt cho đỡ mò từng nơi nhé.';
-      const withoutLayout = removeLayoutTerms(v || fallback);
+      const withoutLayout = removeLayoutTerms(this.sanitizeContentText(v || fallback));
       const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
-      const clean = withoutPlaces.replace(/\s+/g, ' ').trim();
+      const clean = this.sanitizeContentText(withoutPlaces).replace(/\s+/g, ' ').trim();
       return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 80);
     };
     const normalizeBody = (v: string) => {
       const fallback = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
-      const withoutLayout = removeLayoutTerms(v || fallback);
+      const withoutLayout = removeLayoutTerms(this.sanitizeContentText(v || fallback));
       if (this.bodyListsStops(withoutLayout, forbiddenPlaceNames)) return fallback;
       const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
-      const clean = withoutPlaces.replace(/\s+/g, ' ').trim();
+      const clean = this.sanitizeContentText(withoutPlaces).replace(/\s+/g, ' ').trim();
       return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 250);
     };
     const normalizeHashtags = (values: string[]): string[] => {
