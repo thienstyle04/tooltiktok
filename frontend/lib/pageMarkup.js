@@ -165,6 +165,28 @@ function sameGridText(left, right) {
   return gridContextKey(left) === gridContextKey(right);
 }
 
+function polishShortVietnameseCopy(value) {
+  let text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+
+  text = text
+    .replace(/\bĐà\s*Lạt\s*ẩn\s*mình\s*sau\s*vách\s*núi\b/giu, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
+    .replace(/\bĐà\s*Lạt\s*đủ\s*để\s*đi\s*ngay\b/giu, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
+    .replace(/\bmở\s+to\s+mắt\b/giu, 'mở mang tầm mắt')
+    .replace(/\bnhấn\s+lưu\s+liền\s+kẻo\b[^.!?]*[.!?]?$/giu, 'Nhấn lưu liền tay để khỏi quên list này nhé.')
+    .replace(/\blưu\s+liền\s+kẻo\b[^.!?]*[.!?]?$/giu, 'lưu liền tay để khỏi quên list này nhé.')
+    .replace(/\blưu\s+lại\s*[.!?]*$/giu, 'lưu lại ngay nhé.')
+    .replace(/\blưu\s+liền\s*[.!?]*$/giu, 'lưu liền tay nhé.')
+    .replace(/\bmấy\s+chỗ\s+ăn\s+uống\b/giu, 'mấy chỗ ăn ngon')
+    .replace(/\bchọn\s+điểm\s+đi,\s*ăn\s+uống\s+và\s+chụp\s+hình\b/giu, 'chọn điểm đi, quán ăn và góc chụp')
+    .replace(/\btừ\s+ăn\s+uống,\s*check-?in\b/giu, 'từ quán ăn, check-in')
+    .replace(/\bnhóm\s+ăn\s+uống\b/giu, 'nhóm quán ăn')
+    .replace(/[,\-–:;]\s*ăn\s+uống\s*$/giu, ', có điểm ăn hợp lịch.')
+    .replace(/(^|[^\p{L}\p{N}])ăn\s+uống\s*[.!?]*$/giu, '$1điểm ăn hợp lịch.');
+
+  return text.replace(/\s+([,.!?;:])/g, '$1').replace(/\s+/g, ' ').trim();
+}
+
 function gridPageKind(page) {
   const key = gridContextKey(`${page?.chipText || ''} ${page?.title || ''}`);
   if (key.includes('quan_an') || key.includes('mon_ngon')) return 'food';
@@ -201,9 +223,9 @@ const GRID8_INTRO_VARIANTS = {
     'Nhóm quán ăn được gom riêng để người xem chọn bữa nhanh, dễ scan trước khi đi.',
     'Một trang chỉ dành cho đồ ăn, ưu tiên chỗ dễ gọi món và tiện ghé theo lịch.',
     'Ghim sẵn các quán ăn để lúc đói chỉ cần mở list, chọn nhanh, khỏi lướt lại.',
-    'Các điểm ăn uống được lọc riêng để dễ đổi bữa mà không làm rối lịch di chuyển.',
+    'Các quán được lọc riêng để dễ đổi bữa mà không làm rối lịch di chuyển.',
     'Trang này gom các quán đáng thử, hợp để chốt bữa chính hoặc bữa phụ trong ngày.',
-    'Một cụm địa chỉ ăn uống gọn mắt, dành cho lúc cần quyết nhanh trong chuyến đi.',
+    'Một cụm địa chỉ ăn ngon, gọn mắt, dành cho lúc cần quyết nhanh trong chuyến đi.',
   ],
   cafe: [
     'Các quán cafe nên lưu riêng để chọn điểm ngồi chill, nghỉ chân hoặc chụp ảnh.',
@@ -249,7 +271,7 @@ const GRID8_INTRO_VARIANTS = {
     'Các hoạt động và điểm ghé được gom riêng để đổi nhịp cho lịch đi.',
     'Trang hoạt động này thêm lựa chọn trải nghiệm, hợp khi muốn chuyến đi bớt chỉ check-in.',
     'Ghim các hoạt động riêng để dễ chen vào lịch khi còn dư thời gian hoặc muốn đổi mood.',
-    'Một cụm trải nghiệm để ngày đi có thêm việc đáng làm, không chỉ ăn uống và chụp ảnh.',
+    'Một cụm trải nghiệm để ngày đi có thêm việc đáng làm, không chỉ chụp ảnh rồi đi tiếp.',
     'Các hoạt động được tách riêng để bạn chọn nhịp vui hơn cho từng buổi.',
     'Trang này dành cho những lúc muốn làm gì đó khác hơn: ghé, thử, chơi, rồi đi tiếp.',
   ],
@@ -259,7 +281,7 @@ const GRID8_INTRO_VARIANTS = {
     'Ghim riêng các khu du lịch để dễ quyết nơi nào đáng dành hẳn một buổi.',
     'Một cụm điểm lớn hơn, phù hợp khi muốn có lịch rõ thay vì chỉ ghé chụp nhanh.',
     'Các khu du lịch được gom riêng để bạn xem trước độ xa, độ rộng và thời gian cần dành.',
-    'Trang này giúp chọn các điểm đi chính trong ngày, trước khi thêm cafe hay ăn uống.',
+    'Trang này giúp chọn các điểm đi chính trong ngày, trước khi thêm cafe hay điểm ăn.',
   ],
   generic: [
     'Trang này gom riêng các mục cùng nhóm để scan nhanh và lưu trước khi đi.',
@@ -287,7 +309,7 @@ function contextualGrid8Title(page) {
 function contextualGrid8Intro(page, list) {
   const kind = gridPageKind(page);
   const variants = GRID8_INTRO_VARIANTS[kind] || GRID8_INTRO_VARIANTS.generic;
-  return pickListVariant(list, variants, kind);
+  return polishShortVietnameseCopy(pickListVariant(list, variants, kind));
 }
 
 function grid8IntroForPage(page, pageSubtitle, list) {
@@ -298,10 +320,10 @@ function grid8IntroForPage(page, pageSubtitle, list) {
 }
 
 function gridFeatureSubtitle(page, pageSubtitle, list) {
-  if (pageSubtitle && !sameGridText(pageSubtitle, list?.description)) return pageSubtitle;
+  if (pageSubtitle && !sameGridText(pageSubtitle, list?.description)) return polishShortVietnameseCopy(pageSubtitle);
   const kind = gridPageKind(page);
   const variants = GRID8_INTRO_VARIANTS[kind] || GRID8_INTRO_VARIANTS.generic;
-  return pickListVariant(list, variants, kind);
+  return polishShortVietnameseCopy(pickListVariant(list, variants, kind));
 }
 
 function renderGrid4FeaturePage(page, index, listId, list, pageSubtitle) {
@@ -406,22 +428,23 @@ function sanitizeSubtitleForDisplay(value, pages) {
     return GENERIC_CAPTION_BODY;
   }
 
-  return clean;
+  return polishShortVietnameseCopy(clean);
 }
 
 export function renderCoverPage(page, index, total, listId, hashtags = [], list = null) {
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
+  const coverTitle = polishShortVietnameseCopy(page.title);
   const backgroundImage = coverBackgroundImage(page, list);
   if (isSpotlightLayout(page) || isSpotlightPartnerCover(page)) {
     const coverClass = isSpotlightPartnerCover(page) ? 'spotlight-cover spotlight-partner-cover' : 'spotlight-cover';
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid4-feature-cover', coverClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid4-feature-bg">
-          ${renderPreviewImage(backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, coverTitle)}
         </div>
         <div class="grid4-feature-shade"></div>
         <div class="grid4-feature-copy">
-          ${isSpotlightPartnerCover(page) ? `<h1 class="grid4-feature-title">${escapeHtml(page.title || '')}</h1>` : ''}
+          ${isSpotlightPartnerCover(page) ? `<h1 class="grid4-feature-title">${escapeHtml(coverTitle || '')}</h1>` : ''}
           ${coverSubtitle ? `<p class="grid4-feature-subtitle spotlight-cover-caption">${escapeHtml(coverSubtitle)}</p>` : ''}
         </div>
       </article>
@@ -432,11 +455,11 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-cover-page', 'journey-grid8-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid8-cover-photo">
-          ${renderPreviewImage(backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, coverTitle)}
         </div>
         <div class="grid8-cover-shade"></div>
         <div class="grid8-cover-copy">
-          <h1 class="grid8-cover-title">${escapeHtml(page.title)}</h1>
+          <h1 class="grid8-cover-title">${escapeHtml(coverTitle)}</h1>
           <p class="grid8-cover-subtitle">${escapeHtml(coverSubtitle)}</p>
         </div>
       </article>
@@ -447,11 +470,11 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-cover-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid8-cover-photo">
-          ${renderPreviewImage(backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, coverTitle)}
         </div>
         <div class="grid8-cover-shade"></div>
         <div class="grid8-cover-copy">
-          <h1 class="grid8-cover-title">${escapeHtml(page.title)}</h1>
+          <h1 class="grid8-cover-title">${escapeHtml(coverTitle)}</h1>
           <p class="grid8-cover-subtitle">${escapeHtml(coverSubtitle)}</p>
         </div>
       </article>
@@ -467,11 +490,11 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid6-cover', gridVariantClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="grid6-cover-bg">
-          ${renderPreviewImage(backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, coverTitle)}
         </div>
         <div class="grid6-cover-overlay">
            <div class="grid6-cover-header">ĐÀ LẠT</div>
-           <h1 class="grid6-cover-title">${escapeHtml(page.title)}</h1>
+           <h1 class="grid6-cover-title">${escapeHtml(coverTitle)}</h1>
             <div class="grid6-cover-subtitle">${escapeHtml(coverSubtitle)}</div>
         </div>
       </article>
@@ -482,11 +505,11 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'journey-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="journey-cover-photo">
-          ${renderPreviewImage(backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, coverTitle)}
         </div>
         <div class="journey-cover-panel">
           <div class="journey-cover-kicker">LỊCH TRÌNH 4N3Đ</div>
-          <h1 class="journey-cover-title">${escapeHtml(page.title)}</h1>
+          <h1 class="journey-cover-title">${escapeHtml(coverTitle)}</h1>
           <p class="journey-cover-subtitle">${escapeHtml(coverSubtitle)}</p>
           <div class="journey-route-pills">
             <span>Day 01</span>
@@ -503,10 +526,10 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'photomode', 'photomode-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="photomode-cover-bg">
-          ${renderPreviewImage(backgroundImage, page.title)}
+          ${renderPreviewImage(backgroundImage, coverTitle)}
         </div>
         <div class="photomode-cover-copy">
-          <h3 class="photomode-cover-title">${escapeHtml(page.title)}</h3>
+          <h3 class="photomode-cover-title">${escapeHtml(coverTitle)}</h3>
           <p class="photomode-cover-subtitle">${escapeHtml(coverSubtitle)}</p>
         </div>
       </article>
@@ -518,11 +541,11 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
   return `
     <article class="${escapeHtml(storyPageClass(listId, hashtagClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       <div class="page-cover">
-        ${renderPreviewImage(backgroundImage, page.title)}
+        ${renderPreviewImage(backgroundImage, coverTitle)}
       </div>
       <div class="cover-copy">
         <div class="cover-script">Da Lat</div>
-        <h3 class="cover-title">${escapeHtml(page.title)}</h3>
+        <h3 class="cover-title">${escapeHtml(coverTitle)}</h3>
         <p class="cover-subtitle">${escapeHtml(coverSubtitle)}</p>
       </div>
     </article>
@@ -823,25 +846,26 @@ function journeyGrid8Intro(page) {
   const chip = String(page?.chipText || '').trim().toLowerCase();
   const title = String(page?.title || '').trim().toLowerCase();
   const textKey = `${chip} ${title}`;
+  const pageSubtitle = polishShortVietnameseCopy(page?.subtitle || '');
   if (textKey.includes('day 01') || textKey.includes('ngày 1') || textKey.includes('vao pho') || textKey.includes('vào phố')) {
-    return 'Một nhịp mở đầu dễ đi, đủ ăn uống, cafe và check-in trong ngày đầu.';
+    return pageSubtitle || 'Một nhịp mở đầu dễ đi, đủ bữa ăn, cafe và check-in trong ngày đầu.';
   }
   if (textKey.includes('day 02') || textKey.includes('ngày 2') || textKey.includes('san anh') || textKey.includes('săn ảnh')) {
-    return 'Ưu tiên các điểm có ảnh đẹp, di chuyển theo nhịp sáng đến tối.';
+    return pageSubtitle || 'Ưu tiên các điểm có ảnh đẹp, di chuyển theo nhịp sáng đến tối.';
   }
   if (textKey.includes('day 03') || textKey.includes('ngày 3') || textKey.includes('di sau') || textKey.includes('đi sâu')) {
-    return 'Ngày giữa chuyến đi dành cho điểm xa hơn, trải nghiệm rõ chất Đà Lạt.';
+    return pageSubtitle || 'Ngày giữa chuyến đi dành cho điểm xa hơn, trải nghiệm rõ chất Đà Lạt.';
   }
   if (textKey.includes('day 04') || textKey.includes('ngày 4') || textKey.includes('sang cham') || textKey.includes('sáng chậm')) {
-    return 'Một ngày cuối gọn nhịp, vẫn đủ điểm ghé và chốt bữa tối.';
+    return pageSubtitle || 'Một ngày cuối gọn nhịp, vẫn đủ điểm ghé và chốt bữa tối. Lưu lại ngay nhé.';
   }
   if (textKey.includes('lưu trú') || textKey.includes('luu tru')) {
-    return 'Các lựa chọn nên xem trước để chốt nơi nghỉ phù hợp lịch trình.';
+    return pageSubtitle || 'Các lựa chọn nên xem trước để chốt nơi nghỉ phù hợp lịch trình.';
   }
   if (textKey.includes('dịch vụ') || textKey.includes('dich vu')) {
-    return 'Các dịch vụ hỗ trợ chuyến đi, ưu tiên mục có thông tin rõ để liên hệ nhanh.';
+    return pageSubtitle || 'Các dịch vụ hỗ trợ chuyến đi, ưu tiên mục có thông tin rõ để liên hệ nhanh.';
   }
-  return sanitizeSubtitleForDisplay(page?.subtitle, [page]);
+  return polishShortVietnameseCopy(sanitizeSubtitleForDisplay(page?.subtitle, [page]));
 }
 
 export function renderGrid8Items(items, title, chipText, backgroundImage, introText = '', options = {}) {

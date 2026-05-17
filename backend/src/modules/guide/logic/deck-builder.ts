@@ -839,6 +839,8 @@ export function sanitizeDeckHeadline(value: string): string {
     .replace(/\bFree\b/g, 'Đẹp')
     .replace(/\bfree\b/g, 'đẹp')
     .replace(/miễn\s*phí/gi, 'dễ đi')
+    .replace(/\bĐà\s*Lạt\s*ẩn\s*mình\s*sau\s*vách\s*núi\b/gi, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
+    .replace(/\bĐà\s*Lạt\s*đủ\s*để\s*đi\s*ngay\b/gi, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -1672,7 +1674,7 @@ function buildItinerary4N2DGrid8Pages(
     {
       ...buildCoverPage(
         '4N2Đ ĐÀ LẠT\n8 ĐIỂM MỖI TRANG',
-        'Lịch trình dạng lưới: ảnh bao quanh, tiêu đề ở giữa, mỗi điểm có thời gian rõ ràng.',
+        'Lịch trình dạng lưới: ảnh bao quanh, tiêu đề ở giữa, mỗi điểm có thời gian rõ ràng. Lưu liền tay nhé.',
         coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'journey-4n2d-grid8',
@@ -1681,7 +1683,7 @@ function buildItinerary4N2DGrid8Pages(
       'Day 01',
       'terracotta',
       'Vào phố nhẹ nhàng',
-      'Một nhịp mở đầu dễ đi, đủ ăn uống, cafe và check-in trong ngày đầu.',
+      'Một nhịp mở đầu dễ đi, đủ bữa ăn, cafe và check-in trong ngày đầu.',
       [
         breakfastItems,
         cafeDayItems,
@@ -1697,7 +1699,7 @@ function buildItinerary4N2DGrid8Pages(
     dayPage(
       'Day 02',
       'gold',
-      'Săn ảnh và bắt sáng',
+      'Săn ảnh và ăn sáng',
       'Ưu tiên các điểm có ảnh đẹp, di chuyển theo nhịp sáng đến tối.',
       [
         breakfastItems,
@@ -1732,7 +1734,7 @@ function buildItinerary4N2DGrid8Pages(
       'Day 04',
       'slate',
       'Sáng chậm rồi rời phố',
-      'Một ngày cuối gọn nhịp, vẫn đủ điểm ghé và chốt bữa tối.',
+      'Một ngày cuối gọn nhịp, vẫn đủ điểm ghé và chốt bữa tối. Lưu lại ngay nhé.',
       [
         breakfastItems,
         cafeDayItems,
@@ -1876,7 +1878,7 @@ function buildItinerary4N3DPages(
     buildListPage(
       'Day 02',
       'gold',
-      'Săn ảnh và bắt sáng',
+      'Săn ảnh và ăn sáng',
       '',
       day2Items,
       background(`${seedPrefix}-journey-day2-bg`),
@@ -2397,7 +2399,7 @@ function buildSpotlightGuidePages(
       'Quán ăn',
       'berry',
       'Quán ăn Đà Lạt',
-      'Một điểm ăn uống được tách riêng để hình, tên và thông tin không bị chen lẫn.',
+      'Một quán ăn được tách riêng để hình, tên và thông tin không bị chen lẫn.',
       pools.daytimeFoodItems.length > 0 ? pools.daytimeFoodItems : pools.foodItems,
       2,
       `${seedPrefix}-food`,
@@ -2452,7 +2454,41 @@ function buildSpotlightGuidePages(
 
 // ─── Spotlight Partner: one partner, all their images as spotlight pages ──────
 
-export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 5;
+export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 9;
+
+const LOW_RES_FULL_BLEED_DRIVE_FILE_IDS = new Set([
+  // These Drive files are valid images, but Google Drive returns only 206x206 originals.
+  // Keep them available for small info rows, but never stretch them onto full spotlight pages.
+  '1PsjiCIYmv5fCfDOPvdq1p-gE_NRG2E3C',
+  '1DU8MzPat5gC8bVem-TgTxpMk622vst0L',
+  '1yyLV70vp9OohQlylWscnYizeASL4TVrz',
+  '1I2UqrhZ9MRl8DSiGC3N0MM-iL7NdOrTw',
+  '1-XVpIi6Uz3BrKG7ZLZX37P0clVsksiUs',
+]);
+
+function driveFileIdFromAssetUrl(url: string): string {
+  const text = String(url ?? '').trim();
+  if (!text) return '';
+  const queryMatch = text.match(/[?&]id=([^&]+)/);
+  if (queryMatch) return decodeURIComponent(queryMatch[1] || '');
+  const drivePathMatch = text.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (drivePathMatch) return drivePathMatch[1] || '';
+  return '';
+}
+
+function isLowResFullBleedImage(url: string): boolean {
+  const fileId = driveFileIdFromAssetUrl(url);
+  return Boolean(fileId && LOW_RES_FULL_BLEED_DRIVE_FILE_IDS.has(fileId));
+}
+
+function fullBleedPartnerImageUrls(candidateUrls: string[]): string[] {
+  const seen = new Set<string>();
+  return candidateUrls.filter((url) => {
+    if (!url || isLowResFullBleedImage(url) || seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+}
 
 type PartnerSpotlightCopy = {
   title: string;
@@ -2596,13 +2632,14 @@ export function buildSpotlightPartnerPages(
   if (candidateUrls.length === 0 && partnerItem.imageUrl) {
     candidateUrls.push(partnerItem.imageUrl);
   }
+  const fullBleedUrls = fullBleedPartnerImageUrls(candidateUrls);
 
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const background = (seed: string) => partnerBackgroundImage(coverImageUrls, mappedImageUrls, imageUrls, seed, candidateUrls, globalUsedImageUrls);
+  const background = (seed: string) => partnerBackgroundImage(coverImageUrls, mappedImageUrls, imageUrls, seed, fullBleedUrls, globalUsedImageUrls);
   const chipText = partnerSpotlightChip(partnerItem);
   const chipTone = partnerSpotlightTone(partnerItem.sectionKey);
 
-  const spotlightPages: ListPage[] = candidateUrls.map((imageUrl, index) => {
+  const spotlightPages: ListPage[] = fullBleedUrls.map((imageUrl, index) => {
     const pageCopy = partnerSpotlightCopy(partnerItem, index);
     const pageItem: PageItem = {
       label: chipText,
@@ -2616,7 +2653,7 @@ export function buildSpotlightPartnerPages(
       imageMapped: true,
       imageSource: 'manual',
       imageNote: 'Ảnh đối tác từ Drive',
-      candidateImageUrls: candidateUrls,
+      candidateImageUrls: fullBleedUrls,
       isPartner: true,
       rawName: partnerItem.name,
     };
@@ -2631,14 +2668,14 @@ export function buildSpotlightPartnerPages(
     );
   });
 
-  const coverImage = background(`${seedPrefix}-cover`) || candidateUrls[0] || '';
+  const coverImage = background(`${seedPrefix}-cover`) || fullBleedUrls[0] || candidateUrls[0] || '';
   const infoImage = background(`${seedPrefix}-info`) || coverImage;
   const infoPage = buildListPage(
     'Thông tin',
     chipTone,
     'Thông tin cần lưu',
     partnerItem.name,
-    partnerInfoItems(partnerItem, infoImage, candidateUrls),
+    partnerInfoItems(partnerItem, infoImage, fullBleedUrls),
     infoImage,
     'spotlight-partner-info',
   );
@@ -2728,7 +2765,7 @@ function buildGrid6Pages(
     {
       ...buildCoverPage(
         'TOP 6 ĐỊA ĐIỂM ĐÀ LẠT',
-        'Một bộ gợi ý ngắn, dễ quét nhanh để chọn điểm đi, ăn uống và chụp hình trong ngày.',
+        'Một bộ gợi ý ngắn, dễ quét nhanh để chọn điểm đi, quán ăn và góc chụp trong ngày.',
         coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'grid-6',
@@ -2924,7 +2961,7 @@ function buildGrid4Pages(
       'Cà phê',
       'gold',
       'QUÁN CAFE ĐÀ LẠT',
-      '4 quán cafe được tách riêng khỏi nhóm ăn uống.',
+      '4 quán cafe được tách riêng khỏi nhóm quán ăn.',
       buildGridPageItems(pools.cafeItems, pools.cafeItems, 4, `${seedPrefix}-cafe`, pick, imageResolver, (item) => item.type),
       background(`${seedPrefix}-cafe-cover-bg`),
       'grid-4',
@@ -3050,7 +3087,7 @@ export function buildDecks(
       id: 'pov-3-day',
       navTitle: 'POV 3 ngày',
       title: 'Bộ trang POV 3 ngày vi vu khắp Đà Lạt',
-      description: 'Format này bám sát photomode TikTok: cover mạnh, rồi chia theo nhóm điểm local như check-in free, cafe, ăn uống và dịch vụ cần lưu ý.',
+      description: 'Format này bám sát photomode TikTok: cover mạnh, rồi chia theo nhóm điểm local như check-in free, cafe, quán ăn và dịch vụ cần lưu ý.',
       lists: [buildDeckList('pov-3-day', 'main', 'List chính', 'List POV 3 ngày', 'Danh sách ảnh chính cho bộ POV 3 ngày vi vu khắp Đà Lạt.', buildPagesForDeck('pov-3-day', common.itemsBySection, common.imageUrls, common.libraryEntries, 'pov-3-day-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {

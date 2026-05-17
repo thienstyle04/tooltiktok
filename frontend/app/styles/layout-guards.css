@@ -140,13 +140,17 @@
 }
 
 .story-page[data-list-id^="itinerary-3n2d"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
-.story-page[data-list-id^="itinerary-4n3d"] { --deck-title-font: "Baloo 2", "Be Vietnam Pro", sans-serif; }
+.story-page[data-list-id^="itinerary-4n3d"] {
+  --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
+  --deck-title-weight: 850;
+}
 .story-page[data-list-id^="pov-3-day"] { --deck-title-font: "Trebuchet MS", "Be Vietnam Pro", sans-serif; }
 .story-page[data-list-id^="must-go"] { --deck-title-font: "Segoe UI", "Be Vietnam Pro", sans-serif; }
 .story-page[data-list-id^="first-time"] { --deck-title-font: Verdana, "Be Vietnam Pro", sans-serif; }
 .story-page[data-list-id^="grid-6"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="grid-8"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="grid-4"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
+.story-page[data-list-id^="itinerary-4n2d-grid8"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="spotlight-guide"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 
 .story-page.title-font-1 {
@@ -730,6 +734,93 @@ body {
   --story-image-title-line-height: 1.1;
   --story-image-meta-size: 0.36rem;
   --story-image-meta-line-height: 1.08;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"],
+.story-page[data-list-id^="itinerary-4n2d-grid8"].title-font-1,
+.story-page[data-list-id^="itinerary-4n2d-grid8"].title-font-2,
+.story-page[data-list-id^="itinerary-4n2d-grid8"].title-font-3,
+.story-page[data-list-id^="itinerary-4n2d-grid8"].title-font-4,
+.story-page[data-list-id^="itinerary-4n2d-grid8"].title-font-5,
+.story-page[data-list-id^="itinerary-4n2d-grid8"].title-font-6,
+.story-page[data-list-id^="itinerary-4n2d-grid8"].title-font-7,
+.story-page[data-list-id^="itinerary-4n2d-grid8"].title-font-8 {
+  --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
+  --deck-title-weight: 850;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] :is(.grid8-cover-title, .grid8-center-title, .story-image-title) {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-style: normal !important;
+  font-feature-settings: "kern" 1, "liga" 1;
+  letter-spacing: 0 !important;
+}
+
+.story-page[data-list-id^="itinerary-4n3d"] :is(.journey-cover-title, .page-title, .journey-title-block h3, .story-image-title) {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-style: normal !important;
+  font-weight: 850 !important;
+  font-feature-settings: "kern" 1, "liga" 1;
+  letter-spacing: 0 !important;
+}
+
+.story-page[data-list-id^="itinerary-4n3d"] .journey-cover-title {
+  font-size: 1.54rem;
+  line-height: 1.34;
+  padding-top: 0.24em;
+  padding-bottom: 0.2em;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] .grid8-cover-copy {
+  bottom: 30px;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] .grid8-cover-title {
+  font-size: 1.24rem;
+  font-weight: 850 !important;
+  line-height: 1.38;
+  padding-top: 0.28em;
+  padding-bottom: 0.24em;
+  margin-top: 6px;
+  text-shadow: 0 3px 12px rgba(0,0,0,0.48);
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] .grid8-cover-subtitle {
+  font-size: 0.64rem;
+  line-height: 1.38;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] .grid8-center {
+  gap: 5px;
+  padding: 12px 10px;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] .grid8-center-title {
+  font-size: 0.48rem;
+  font-weight: 850 !important;
+  line-height: 1.44;
+  padding-top: 0.24em;
+  padding-bottom: 0.22em;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] .grid8-center-intro {
+  font-size: 0.35rem;
+  font-weight: 740;
+  line-height: 1.34;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] .grid8-cell strong {
+  line-height: 1.3;
+  padding-top: 0.08em;
+  padding-bottom: 0.08em;
+}
+
+.story-page[data-list-id^="itinerary-4n2d-grid8"] .grid8-cell .grid8-meta {
+  line-height: 1.18;
 }
 
 .story-page :is(.grid6-address-pin, .grid8-pin) {

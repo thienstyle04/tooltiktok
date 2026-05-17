@@ -111,6 +111,12 @@ function hasEmptySpotlightPartnerDeck(dataset) {
   return Boolean(deck && (deck.lists || []).length === 0);
 }
 
+function listCountSignature(dataset) {
+  return (dataset?.decks || [])
+    .map((deck) => `${deck.id}:${(deck.lists || []).length}`)
+    .join('|');
+}
+
 export default function DeckStudio({ initialDataset = null }) {
   const initialDeck = initialDataset?.decks?.[0] || null;
   const initialList = initialDeck?.lists?.[0] || null;
@@ -137,6 +143,8 @@ export default function DeckStudio({ initialDataset = null }) {
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const selectionHistoryRef = useRef([]);
   const spotlightPartnerRefreshRef = useRef(false);
+  const datasetRef = useRef(initialDataset);
+  const focusRefreshRef = useRef(0);
 
   const activeDeck = useMemo(
     () => dataset?.decks?.find((deck) => deck.id === activeDeckId) || null,
@@ -199,6 +207,7 @@ export default function DeckStudio({ initialDataset = null }) {
       ...currentSelectionRef.current,
       ...preferredSelection,
     });
+    datasetRef.current = nextDataset;
     setDataset(nextDataset);
     setActiveDeckId(normalized.activeDeckId);
     setActiveListId(normalized.activeListId);
@@ -261,6 +270,36 @@ export default function DeckStudio({ initialDataset = null }) {
       if (res.ok) setPartners(await res.json());
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const refreshIfServerChanged = async () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - focusRefreshRef.current < 5000) return;
+      focusRefreshRef.current = now;
+
+      try {
+        const response = await apiFetch('/api/guide-data?refresh=1', { cache: 'no-store' });
+        if (!response.ok) return;
+        const nextDataset = await response.json();
+        if (listCountSignature(nextDataset) === listCountSignature(datasetRef.current)) return;
+        writeCachedDataset(nextDataset);
+        applyDataset(nextDataset, currentSelectionRef.current);
+        setStatus(`Đã cập nhật dữ liệu mới (${nextDataset.source?.totalItems || 0} địa điểm).`);
+      } catch (error) {
+        console.warn(error);
+      }
+    };
+
+    const onFocus = () => { refreshIfServerChanged(); };
+    const onVisibilityChange = () => { refreshIfServerChanged(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [applyDataset]);
 
   useEffect(() => {
     currentSelectionRef.current = { activeDeckId, activeListId, selectedPageIndex };
