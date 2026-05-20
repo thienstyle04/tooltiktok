@@ -158,7 +158,12 @@ export class GuideController {
     const asset = await this.guideService.getDriveFileAsset(fileId);
     response.setHeader('Content-Type', asset.contentType);
     response.setHeader('Content-Length', asset.contentLength);
-    response.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800, immutable');
+    response.setHeader('Cache-Control', asset.isFallback
+      ? 'no-store'
+      : 'public, max-age=86400, stale-while-revalidate=604800, immutable');
+    if (asset.isFallback) {
+      response.setHeader('X-Drive-Image-Fallback', '1');
+    }
     response.send(asset.body);
   }
 }

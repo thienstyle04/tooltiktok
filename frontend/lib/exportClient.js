@@ -53,8 +53,8 @@ const BATCH_IMAGE_PREPARE_CONCURRENCY = 24;
 const IMAGE_FETCH_TIMEOUT_MS = 25000;
 const IMAGE_READY_TIMEOUT_MS = 5000;
 const PAGE_RENDER_TIMEOUT_MS = 45000;
-const BATCH_PAGE_RENDER_TIMEOUT_MS = 60000;
-const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 120000;
+const BATCH_PAGE_RENDER_TIMEOUT_MS = 90000;
+const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 150000;
 const DEFAULT_EXPORT_CORNER_RADIUS = 0;
 const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
   cacheBust: false,
@@ -334,6 +334,9 @@ async function fetchImageBlob(src) {
         return { blob: null, timedOut };
       }
       if (timer) clearTimeout(timer);
+      if (response.headers?.get?.('x-drive-image-fallback') === '1') {
+        return { blob: null, timedOut: false, fallback: true };
+      }
       return { blob: await response.blob(), timedOut: false };
     } catch {
       if (timer) clearTimeout(timer);
@@ -342,6 +345,17 @@ async function fetchImageBlob(src) {
     }
   }
   return { blob: null, timedOut: false };
+}
+
+async function blobLooksLikeDriveFallback(blob) {
+  if (!blob) return false;
+  if (!String(blob.type || '').toLowerCase().includes('svg')) return false;
+  try {
+    const text = await blob.text();
+    return text.includes('Drive image unavailable') || text.includes('File needs public access or sign-in');
+  } catch {
+    return false;
+  }
 }
 
 function imageCacheKey(src, options = {}) {
@@ -501,6 +515,9 @@ async function getCachedImageBlobUrl(src, options = {}) {
 
   const blobPromise = fetchImageBlob(src).then(async (result) => {
     if (!result?.blob) return result;
+    if (await blobLooksLikeDriveFallback(result.blob)) {
+      return { ...result, blob: null, fallback: true };
+    }
     return {
       ...result,
       blob: await resizeImageBlobForExport(result.blob, options),
@@ -603,6 +620,32 @@ function collectImageTargets(node, options = {}) {
   return imageTargets.concat(backgroundTargets);
 }
 
+function candidateSourcesForTarget(target) {
+  const sources = [target.originalSrc];
+  if (target.kind === 'img') {
+    const rawCandidates = target.img?.dataset?.candidateSrcs;
+    if (rawCandidates) {
+      try {
+        const parsed = JSON.parse(rawCandidates);
+        if (Array.isArray(parsed)) sources.push(...parsed);
+      } catch {
+        rawCandidates.split('|').forEach((url) => sources.push(url));
+      }
+    }
+  }
+  return [...new Set(sources.map((url) => String(url || '').trim()).filter(Boolean))];
+}
+
+async function firstAvailableImageBlobUrl(sources, options = {}) {
+  let fallback = { blob: null, blobUrl: null, timedOut: false, source: sources[0] || '' };
+  for (const source of sources) {
+    const result = await getCachedImageBlobUrl(source, options);
+    fallback = { ...result, source };
+    if (result.blob && result.blobUrl) return fallback;
+  }
+  return fallback;
+}
+
 async function prepareImageTarget(target, options = {}) {
   const shouldWaitForReady = options.waitForReady !== false;
   const shouldUseUniqueObjectUrl = options.uniqueObjectUrl === true;
@@ -614,7 +657,8 @@ async function prepareImageTarget(target, options = {}) {
 
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
-    const { blob, blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+    const sources = candidateSourcesForTarget(target);
+    const { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);
     const displayBlob = await fitImageBlobToElement(blob, img, {
       ...blobOptions,
       fitImagesToElement: options.fitImagesToElement,
@@ -631,6 +675,9 @@ async function prepareImageTarget(target, options = {}) {
 
     img.dataset.originalSrc = originalSrc;
     img.src = preparedBlobUrl;
+    if (source && source !== originalSrc) {
+      img.dataset.exportFallbackSrc = source;
+    }
     if (shouldWaitForReady) {
       await waitForImageReady(img);
     }
@@ -675,6 +722,7 @@ function restoreImagesFromBlobs(handles) {
     if (handle.img) {
       handle.img.src = handle.originalSrc;
       handle.img.removeAttribute('data-original-src');
+      handle.img.removeAttribute('data-export-fallback-src');
     } else if (handle.element) {
       handle.element.style.backgroundImage = handle.originalBackgroundImage;
       handle.element.removeAttribute('data-original-background-image');
@@ -861,15 +909,15 @@ function renderConcurrencyLimit() {
 
 function batchRenderConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 12;
-  if (cores >= 8) return 8;
-  return 6;
+  if (cores >= 12) return 8;
+  if (cores >= 8) return 6;
+  return 4;
 }
 
 function batchCaptureConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 3;
-  if (cores >= 8) return 3;
+  if (cores >= 12) return 2;
+  if (cores >= 8) return 2;
   return 2;
 }
 
@@ -1004,6 +1052,7 @@ export async function renderPageBlob(pageNode, options = {}) {
   const preferHtml2Canvas = options.preferHtml2Canvas === true;
   const shouldEmbedFonts = options.embedFonts !== false;
   const allowFallback = options.allowFallback !== false;
+  const allowEngineFallbacks = options.allowEngineFallbacks !== false;
   let cornersAlreadyClipped = false;
   const finalizeCanvasBlob = (canvas) => canvasToBlob(
     clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor),
@@ -1040,12 +1089,13 @@ export async function renderPageBlob(pageNode, options = {}) {
           return blob;
         }
       } catch (error) {
+        if (!allowEngineFallbacks) throw error;
         console.warn(`html2canvas export failed, trying fallback: ${error?.message || error}`);
       }
     }
     // html-to-image SVG path: only used for single-page PNG exports in foreground.
     // Avoid in background tabs — foreignObject → Image pipeline freezes.
-    if (document.visibilityState !== 'hidden') {
+    if (allowEngineFallbacks && document.visibilityState !== 'hidden') {
       if (imageFormat === 'image/png' && htmlToImage && typeof htmlToImage.toBlob === 'function') {
         try {
           const blob = await rejectAfter(htmlToImage.toBlob(pageNode, {
@@ -1082,7 +1132,7 @@ export async function renderPageBlob(pageNode, options = {}) {
       }
     }
     // Final html2canvas attempt (if we haven't tried it already)
-    if (!preferHtml2Canvas && document.visibilityState !== 'hidden') {
+    if (allowEngineFallbacks && !preferHtml2Canvas && document.visibilityState !== 'hidden') {
       try {
         const canvas = await rejectAfter(html2canvas(pageNode, {
           scale: pixelRatio,
@@ -1112,13 +1162,20 @@ export async function renderPageBlob(pageNode, options = {}) {
 }
 
 async function renderPageBlobWithRetry(pageNode, options = {}) {
+  const isBatchRender = options.batchRender === true;
   try {
     return await renderPageBlob(pageNode, {
       ...options,
       allowFallback: false,
+      allowEngineFallbacks: !isBatchRender,
     });
   } catch (error) {
-    console.warn(`Page render failed, retrying with a longer timeout: ${error?.message || error}`);
+    const message = error?.message || error;
+    if (isBatchRender) {
+      console.debug?.(`Batch page render retry with a longer timeout: ${message}`);
+    } else {
+      console.warn(`Page render failed, retrying with a longer timeout: ${message}`);
+    }
     // Use synchronous layout flush + short delay instead of rAF-based wait.
     forceLayoutSync();
     await new Promise((resolve) => setTimeout(resolve, 80));
@@ -1126,6 +1183,7 @@ async function renderPageBlobWithRetry(pageNode, options = {}) {
       ...options,
       allowFallback: options.allowFallbackOnRetry !== false,
       waitForImageReady: true,
+      allowEngineFallbacks: !isBatchRender,
       // In background tabs, always use html2canvas for reliable rendering.
       preferHtml2Canvas: options.preferHtml2Canvas || document.visibilityState === 'hidden',
       renderTimeoutMs: Math.max(
@@ -1411,6 +1469,7 @@ export async function exportBatch(context, callbacks = {}) {
         await mapWithConcurrency(validChunk, batchCaptureConcurrencyForProfile(qualityProfile), async (task, chunkIdx) => {
           const globalIdx = i + chunkIdx;
           const blob = await renderPageBlobWithRetry(task.pageNode, {
+            batchRender: true,
             imagesReady: true,
             pixelRatio: qualityProfile.pixelRatio,
             imageFormat: qualityProfile.imageFormat,

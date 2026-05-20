@@ -36,7 +36,10 @@ export async function proxyBackendRequest(request, options = {}) {
       const headers = new Headers(response.headers);
       headers.delete('content-encoding');
       headers.delete('content-length');
-      if (options.cacheControl) headers.set('Cache-Control', options.cacheControl);
+      const isDriveFallbackImage = headers.get('x-drive-image-fallback') === '1';
+      if (options.cacheControl && !isDriveFallbackImage) {
+        headers.set('Cache-Control', options.cacheControl);
+      }
 
       const body = method === 'HEAD' || BODYLESS_RESPONSE_STATUSES.has(response.status)
         ? null

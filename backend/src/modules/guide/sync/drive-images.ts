@@ -21,6 +21,7 @@ export interface DriveFileAsset {
   body: Buffer;
   contentLength: number;
   contentType: string;
+  isFallback?: boolean;
 }
 
 function normalizeText(value: unknown): string {
@@ -150,6 +151,7 @@ function createDriveFallbackAsset(fileId: string): DriveFileAsset {
     body,
     contentLength: body.byteLength,
     contentType: 'image/svg+xml',
+    isFallback: true,
   };
 }
 
@@ -349,6 +351,7 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
       body,
       contentLength: body.byteLength,
       contentType,
+      isFallback: false,
     };
     driveFileAssetCache.set(fileId, {
       expiresAt: now + DRIVE_FILE_CACHE_TTL_MS,

@@ -59,7 +59,7 @@ export interface CoverPage {
   title: string;
   subtitle: string;
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-partner';
+  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-partner' | 'budget-3n2d';
 }
 
 export interface ListPage {
@@ -70,7 +70,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info';
+  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery';
 }
 
 export type DeckPage = CoverPage | ListPage;

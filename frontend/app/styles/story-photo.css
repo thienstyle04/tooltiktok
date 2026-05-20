@@ -117,11 +117,11 @@
 .photomode-name {
   min-width: 0;
   margin: 0;
-  font-family: "Baloo 2", "Be Vietnam Pro", sans-serif;
-  font-size: 1.8rem;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: 1.42rem;
+  line-height: 1.18;
+  font-weight: 850;
+  letter-spacing: 0;
   color: var(--journey-title-color, #fff7c7);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -176,10 +176,11 @@
 .photomode-cover-title {
   margin: 0;
   max-width: 86%;
-  font-family: "Baloo 2", "Be Vietnam Pro", sans-serif;
-  font-size: 3.2rem;
-  line-height: 1;
-  font-weight: 700;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: 2.5rem;
+  line-height: 1.16;
+  font-weight: 850;
+  letter-spacing: 0;
   color: #fff7c7;
   text-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
   white-space: pre-line;

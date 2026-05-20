@@ -42,10 +42,20 @@ function storyPageClass(listId, ...classNames) {
   return ['story-page', titleFontClass(listId), ...classNames.filter(Boolean)].join(' ');
 }
 
-function renderPreviewImage(src, alt, className = '') {
+function previewImageCandidateAttr(src, candidates = []) {
+  const urls = [src, ...(Array.isArray(candidates) ? candidates : [])]
+    .map((url) => String(url || '').trim())
+    .filter((url) => isPortableImageUrl(url));
+  const uniqueUrls = [...new Set(urls)];
+  if (uniqueUrls.length <= 1) return '';
+  return ` data-candidate-srcs="${escapeHtml(JSON.stringify(uniqueUrls))}"`;
+}
+
+function renderPreviewImage(src, alt, className = '', candidates = []) {
   if (!src) return '';
   const classAttr = className ? ` class="${escapeHtml(className)}"` : '';
-  return `<img${classAttr} src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" ${previewImageAttrs()}>`;
+  const candidateAttr = previewImageCandidateAttr(src, candidates);
+  return `<img${classAttr} src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"${candidateAttr} ${previewImageAttrs()}>`;
 }
 
 function isPortableImageUrl(src) {
@@ -110,6 +120,10 @@ function isSpotlightLayout(page) {
 
 function isSpotlightPartnerCover(page) {
   return page.layoutVariant === 'spotlight-partner' && page.type === 'cover';
+}
+
+function isBudget3N2DCover(page) {
+  return page.layoutVariant === 'budget-3n2d' && page.type === 'cover';
 }
 
 function spotlightPositionClass(page, index, item) {
@@ -435,6 +449,23 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
   const coverTitle = polishShortVietnameseCopy(page.title);
   const backgroundImage = coverBackgroundImage(page, list);
+  if (isBudget3N2DCover(page)) {
+    const title = coverTitle || '"72H" Ở ĐÀ LẠT VỚI 3TR';
+    return `
+      <article class="${escapeHtml(storyPageClass(listId, 'budget72-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+        <div class="budget72-cover-bg">
+          ${renderPreviewImage(backgroundImage, title)}
+        </div>
+        <div class="budget72-cover-shade"></div>
+        <div class="budget72-cover-copy">
+          <div class="budget72-script">dalat.</div>
+          <h1 class="budget72-title">${escapeHtml(title)}</h1>
+          <p class="budget72-subtitle">${escapeHtml(coverSubtitle || '/Gợi ý lịch trình du hí 3N2Đ/')}</p>
+        </div>
+      </article>
+    `;
+  }
+
   if (isSpotlightLayout(page) || isSpotlightPartnerCover(page)) {
     const coverClass = isSpotlightPartnerCover(page) ? 'spotlight-cover spotlight-partner-cover' : 'spotlight-cover';
     return `
@@ -556,7 +587,7 @@ export function renderListItems(items) {
   return items.map((item) => `
     <div class="item-row">
       <div class="thumb-block ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
-        ${renderPreviewImage(item.imageUrl, item.name)}
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       </div>
       <div class="item-copy">
         ${item.label ? `<div class="item-label">${escapeHtml(item.label)}</div>` : ''}
@@ -690,7 +721,7 @@ function renderSpotlightListItems(items, options = {}) {
     return `
     <article class="spotlight-list-row ${escapeHtml(imageSourceClass(item))}">
       <div class="spotlight-list-thumb">
-        ${renderPreviewImage(item.imageUrl, item.name)}
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       </div>
       <div class="spotlight-list-copy">
         ${showLabels && item.label ? `<span class="spotlight-list-label">${escapeHtml(item.label)}</span>` : ''}
@@ -753,6 +784,199 @@ function renderSpotlightPartnerInfoPage(page, index, listId, list) {
   `;
 }
 
+function budgetTableParts(item) {
+  const parts = String(item?.label || '').split('|');
+  return {
+    day: parts[0] || '',
+    time: parts[1] || '',
+  };
+}
+
+function renderBudget3N2DTableRows(items) {
+  let lastDay = '';
+  return (items || [])
+    .filter((item) => !String(item.label || '').startsWith('Tổng|'))
+    .map((item) => {
+      const { day, time } = budgetTableParts(item);
+      const showDay = day && day !== lastDay;
+      lastDay = day || lastDay;
+      return `
+        <tr>
+          <td class="budget72-day">${showDay ? escapeHtml(day) : ''}</td>
+          <td class="budget72-time">${escapeHtml(time)}</td>
+          <td class="budget72-activity">${escapeHtml(item.name || '')}</td>
+          <td class="budget72-address">${escapeHtml(item.metaPrimary || '')}</td>
+          <td class="budget72-cost">${escapeHtml(item.metaSecondary || '')}</td>
+        </tr>
+      `;
+    }).join('');
+}
+
+function renderBudget3N2DSummaryRows(items) {
+  return (items || [])
+    .filter((item) => String(item.label || '').startsWith('Tổng|'))
+    .filter((item) => item.id !== 'budget-3n2d-main-summary-total')
+    .map((item) => `
+      <tr>
+        <td>${escapeHtml(item.name || '')}</td>
+        <td>${escapeHtml(item.metaSecondary || '')}</td>
+        <td>${escapeHtml(item.metaPrimary || '')}</td>
+      </tr>
+    `).join('');
+}
+
+function budget3N2DTotalItem(items) {
+  return (items || []).find((item) => String(item.label || '').startsWith('Tổng|') && /tong|total/i.test(String(item.id || '')))
+    || (items || []).filter((item) => String(item.label || '').startsWith('Tổng|')).slice(-1)[0]
+    || null;
+}
+
+function renderBudget3N2DTablePage(page, index, listId) {
+  const totalItem = budget3N2DTotalItem(page.items);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget72-table-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-bang-chi-phi.png">
+      <div class="budget72-table-shell">
+        <h2>${escapeHtml(page.title || 'ĐÀ LẠT 3 NGÀY 2 ĐÊM')}</h2>
+        <table class="budget72-schedule-table">
+          <thead>
+            <tr>
+              <th>Ngày</th>
+              <th>Thời gian</th>
+              <th>Hoạt động</th>
+              <th>Địa chỉ</th>
+              <th>Chi phí</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderBudget3N2DTableRows(page.items)}
+          </tbody>
+        </table>
+        <table class="budget72-summary-table">
+          <thead>
+            <tr>
+              <th>Tên mục</th>
+              <th>Chi phí</th>
+              <th>Chi tiết</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderBudget3N2DSummaryRows(page.items)}
+          </tbody>
+        </table>
+        ${totalItem ? `
+          <div class="budget72-total-bar">
+            <span>Tổng thanh toán dự kiến</span>
+            <strong>${escapeHtml(totalItem.metaSecondary || '')}</strong>
+          </div>
+        ` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderBudget3N2DGalleryRow(item, rowIndex) {
+  const secondary = String(item?.metaSecondary || '').replace(/^GiÃ¡:\s*/i, '').trim();
+  return `
+    <article class="budget72-gallery-row ${escapeHtml(imageSourceClass(item))}">
+      <div class="budget72-gallery-row-index">${String(rowIndex + 2).padStart(2, '0')}</div>
+      <div class="budget72-gallery-row-thumb">
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+      </div>
+      <div class="budget72-gallery-row-copy">
+        ${item.label ? `<span class="budget72-gallery-label">${escapeHtml(item.label)}</span>` : ''}
+        <strong class="story-image-title">${escapeHtml(item.rawName || item.name || '')}</strong>
+        ${renderGridAddress(item.metaPrimary)}
+        ${secondary ? `<div class="budget72-gallery-price">${escapeHtml(secondary)}</div>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderBudget3N2DGalleryPage(page, index, listId, list) {
+  const items = Array.isArray(page.items) ? page.items.slice(0, 4) : [];
+  const hero = items[0] || {};
+  const heroPrice = String(hero.metaSecondary || '').replace(/^GiÃ¡:\s*/i, '').trim();
+  const backgroundImage = page.backgroundImage || hero.imageUrl || coverBackgroundImage(page, list);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget72-gallery-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || page.title || 'gallery')}.png">
+      <div class="budget72-gallery-backdrop">
+        ${renderPreviewImage(backgroundImage, page.title)}
+      </div>
+      <div class="budget72-gallery-shell">
+        <header class="budget72-gallery-head">
+          <span>72H Đà Lạt</span>
+          <h2>${escapeHtml(page.title || '')}</h2>
+        </header>
+        <section class="budget72-gallery-hero ${escapeHtml(imageSourceClass(hero))}">
+          ${renderPreviewImage(hero.imageUrl || backgroundImage, hero.name || page.title, '', hero.candidateImageUrls)}
+          <div class="budget72-gallery-hero-copy">
+            <div class="budget72-gallery-hero-top">
+              <span class="budget72-gallery-index">01</span>
+              ${hero.label ? `<span class="budget72-gallery-label">${escapeHtml(hero.label)}</span>` : ''}
+              ${hero.isPartner ? '<span class="budget72-gallery-partner">Đối tác</span>' : ''}
+            </div>
+            <h3 class="story-image-title">${escapeHtml(hero.rawName || hero.name || '')}</h3>
+            ${renderGridAddress(hero.metaPrimary)}
+            ${heroPrice ? `<div class="budget72-gallery-price">${escapeHtml(heroPrice)}</div>` : ''}
+          </div>
+        </section>
+        <section class="budget72-gallery-stack">
+          ${items.slice(1).map((item, rowIndex) => renderBudget3N2DGalleryRow(item, rowIndex)).join('')}
+        </section>
+      </div>
+    </article>
+  `;
+}
+
+function budgetGalleryPriceText(item) {
+  return String(item?.metaSecondary || '')
+    .replace(/^Gi(?:ÃƒÂ¡|á):\s*/i, '')
+    .trim();
+}
+
+function renderBudget3N2DGalleryCorner(item, cornerIndex) {
+  const secondary = budgetGalleryPriceText(item);
+  return `
+    <article class="budget72-corner-card budget72-corner-${cornerIndex + 1} ${escapeHtml(imageSourceClass(item))}">
+      ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+      <div class="budget72-corner-copy">
+        <div class="budget72-corner-topline">
+          <span class="budget72-gallery-index">${String(cornerIndex + 1).padStart(2, '0')}</span>
+          ${item.label ? `<span class="budget72-gallery-label">${escapeHtml(item.label)}</span>` : ''}
+          ${item.isPartner ? '<span class="budget72-gallery-partner">Đối tác</span>' : ''}
+        </div>
+        <strong class="story-image-title">${escapeHtml(item.rawName || item.name || '')}</strong>
+        <div class="budget72-corner-meta">
+          ${renderGridAddress(item.metaPrimary)}
+          ${secondary ? `<div class="budget72-gallery-price">${escapeHtml(secondary)}</div>` : ''}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderBudget3N2DGalleryCornerPage(page, index, listId, list) {
+  const items = Array.isArray(page.items) ? page.items.slice(0, 4) : [];
+  const backgroundImage = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget72-gallery-page budget72-corner-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || page.title || 'gallery')}.png">
+      <div class="budget72-gallery-backdrop">
+        ${renderPreviewImage(backgroundImage, page.title)}
+      </div>
+      <div class="budget72-gallery-shell">
+        <div class="budget72-corner-grid">
+          ${items.map((item, cornerIndex) => renderBudget3N2DGalleryCorner(item, cornerIndex)).join('')}
+        </div>
+        <section class="budget72-gallery-center">
+          <span>dalat.</span>
+          <h2>${escapeHtml(page.title || '')}</h2>
+          <p>${escapeHtml(page.subtitle || 'Gợi ý nhanh để lưu lại và chọn điểm ghé hợp lịch.')}</p>
+        </section>
+      </div>
+    </article>
+  `;
+}
+
 function normalizeGridText(value) {
   return String(value || '')
     .normalize('NFD')
@@ -788,7 +1012,7 @@ function gridDisplayName(item) {
 export function renderPhotomodeItems(items) {
   return items.map((item) => `
     <section class="photomode-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
-      ${renderPreviewImage(item.imageUrl, item.name)}
+      ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       <div class="photomode-copy">
         <div class="photomode-name-row">
           <span class="photomode-pin">${renderPhotomodePin()}</span>
@@ -810,7 +1034,7 @@ export function renderGrid6Items(items, { numbered = false, twoDigitNumber = fal
     const itemName = numbered ? `${itemNumber}. ${displayName}` : displayName;
     return `
     <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
-      ${renderPreviewImage(item.imageUrl, item.name)}
+      ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       <div class="grid6-overlay">
         ${showLabel && item.label ? `<div class="grid6-service-label">${escapeHtml(item.label)}</div>` : ''}
         <div class="grid6-name story-image-title">${escapeHtml(itemName)}</div>
@@ -885,7 +1109,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
       const displayName = gridDisplayName(item);
       return `
         <article class="grid8-cell ${escapeHtml(imageSourceClass(item))}">
-          ${renderPreviewImage(item.imageUrl, item.name)}
+          ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
           <div class="grid8-cell-copy">
             ${showTime && item.label ? `<span class="grid8-cell-time">${escapeHtml(item.label)}</span>` : ''}
             ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
@@ -906,7 +1130,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
         const displayName = gridDisplayName(item);
         return `
           <article class="grid8-cell ${escapeHtml(imageSourceClass(item))}">
-            ${renderPreviewImage(item.imageUrl, item.name)}
+            ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
             <div class="grid8-cell-copy">
               ${showTime && item.label ? `<span class="grid8-cell-time">${escapeHtml(item.label)}</span>` : ''}
               ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
@@ -924,7 +1148,7 @@ export function renderItineraryItems(items) {
   return items.map((item) => `
     <div class="item-row itinerary-row">
       <div class="thumb-block itinerary-thumb ${item.imageSource || (item.imageMapped ? 'manual' : 'fallback')}">
-        ${renderPreviewImage(item.imageUrl, item.name)}
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       </div>
       <div class="item-copy itinerary-copy">
         <div class="itinerary-topline">
@@ -949,7 +1173,7 @@ export function renderJourney4N3DItems(items) {
       ${items.map((item) => `
         <article class="journey-time-row ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
           <div class="journey-stop-thumb">
-            ${renderPreviewImage(item.imageUrl, item.name)}
+            ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
           </div>
           <div class="journey-time-copy">
             <strong class="story-image-title">${escapeHtml(item.name)}</strong>
@@ -989,6 +1213,14 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
 
   if (page.layoutVariant === 'spotlight-list') {
     return renderSpotlightListPage(page, index, listId, list, pageSubtitle);
+  }
+
+  if (page.layoutVariant === 'budget-3n2d-table') {
+    return renderBudget3N2DTablePage(page, index, listId);
+  }
+
+  if (page.layoutVariant === 'budget-3n2d-gallery') {
+    return renderBudget3N2DGalleryCornerPage(page, index, listId, list);
   }
 
   if (page.layoutVariant === 'photomode') {
