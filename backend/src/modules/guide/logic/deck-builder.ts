@@ -28,6 +28,7 @@ export const GRID_4_TEMPLATE_VERSION = 17;
 export const GRID_6_TEMPLATE_VERSION = 16;
 export const GRID_8_TEMPLATE_VERSION = 15;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
+export const BUDGET_3N2D_TEMPLATE_VERSION = 2;
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -857,7 +858,7 @@ export function buildListPage(
   subtitle: string,
   items: PageItem[],
   backgroundImage: string,
-  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' = 'standard',
+  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' = 'standard',
 ): ListPage {
   return { type: 'list', chipText, chipTone, title, subtitle, items, backgroundImage, layoutVariant };
 }
@@ -1414,6 +1415,276 @@ export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: s
 }
 
 // ─── Individual deck page builders ───────────────────────────────────────────
+
+function lowBudgetPriceForItem(item: GuideItem): string {
+  if (item.sectionKey === 'cafe') return '~30k';
+  if (item.sectionKey === 'quan_an') return isMorningFoodItem(item) ? '~30k' : '~50k';
+  if (item.sectionKey === 'check_in') return '~20k';
+  if (item.sectionKey === 'choi_dem') return '~40k';
+  if (item.sectionKey === 'hoat_dong' || item.sectionKey === 'khu_du_lich' || item.sectionKey === 'dia_diem_lich_su') return '~50k';
+  if (item.sectionKey === 'homestay') return '~500k';
+  if (item.sectionKey === 'dich_vu') return '~80k';
+  return '~30k';
+}
+
+function budgetDisplayPrice(item: GuideItem, fallbackPrice?: string): string {
+  const cleanPrice = String(item.price || '').replace(/\s+/g, ' ').trim();
+  if (item.isPartner && cleanPrice) return cleanPrice;
+  if (!cleanPrice || isFreePrice(cleanPrice)) return fallbackPrice || lowBudgetPriceForItem(item);
+  return cleanPrice;
+}
+
+type BudgetScheduleRow = {
+  day: string;
+  time: string;
+  activity: string;
+  address: string;
+  cost: string;
+  item?: GuideItem;
+  id: string;
+};
+
+function budgetActivityName(prefix: string, item: GuideItem): string {
+  return `${prefix}: ${item.name}`.replace(/\s+/g, ' ').trim();
+}
+
+function createBudgetStaticRow(day: string, time: string, activity: string, address: string, cost: string, id: string): BudgetScheduleRow {
+  return { day, time, activity, address, cost, id };
+}
+
+function budgetRowPageItem(
+  row: BudgetScheduleRow,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  fallbackImageUrl = '',
+): PageItem {
+  const resolvedImage = row.item
+    ? resolveImage(row.item)
+    : { imageUrl: fallbackImageUrl, imageMapped: false, imageSource: 'fallback' as const, imageNote: '', candidateImageUrls: fallbackImageUrl ? [fallbackImageUrl] : [] };
+  return {
+    label: `${row.day}|${row.time}`,
+    id: row.item?.id || row.id,
+    sourceKey: row.item ? itemUsageKey(row.item) : row.id,
+    sourceSectionKey: row.item?.sectionKey,
+    name: row.activity,
+    metaPrimary: row.address,
+    metaSecondary: row.cost,
+    imageUrl: resolvedImage.imageUrl,
+    imageMapped: resolvedImage.imageMapped,
+    imageSource: resolvedImage.imageSource,
+    imageNote: resolvedImage.imageNote,
+    candidateImageUrls: resolvedImage.candidateImageUrls,
+    isPartner: row.item?.isPartner,
+    rawName: row.item?.name || row.activity,
+  };
+}
+
+function budgetSummaryPageItem(label: string, amount: string, detail: string, id: string, fallbackImageUrl = ''): PageItem {
+  return {
+    label: `Tổng|${label}`,
+    id,
+    sourceKey: id,
+    name: label,
+    metaPrimary: detail,
+    metaSecondary: amount,
+    imageUrl: fallbackImageUrl,
+    imageMapped: false,
+    imageSource: 'fallback',
+    imageNote: '',
+    candidateImageUrls: fallbackImageUrl ? [fallbackImageUrl] : [],
+    rawName: label,
+  };
+}
+
+function budgetGalleryPageItemWithResolver(
+  item: GuideItem,
+  label: string,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+): PageItem {
+  const resolvedImage = resolveImage(item);
+  return {
+    label,
+    id: item.id,
+    sourceKey: itemUsageKey(item),
+    sourceSectionKey: item.sectionKey,
+    name: item.name,
+    metaPrimary: item.address || 'Đang cập nhật địa chỉ',
+    metaSecondary: `Giá: ${budgetDisplayPrice(item)}`,
+    imageUrl: resolvedImage.imageUrl,
+    imageMapped: resolvedImage.imageMapped,
+    imageSource: resolvedImage.imageSource,
+    imageNote: resolvedImage.imageNote,
+    candidateImageUrls: resolvedImage.candidateImageUrls,
+    isPartner: item.isPartner,
+    rawName: item.name,
+  };
+}
+
+function pickBudgetSlotItem(
+  preferredItems: GuideItem[],
+  fallbackItems: GuideItem[],
+  seed: string,
+  pick: PickFn,
+  selectedKeys: Set<string>,
+  preferPartner = true,
+): GuideItem | undefined {
+  const pool = dedupeItems([...preferredItems, ...fallbackItems]).filter((item) => !hasItemKey(selectedKeys, item));
+  if (pool.length === 0) return undefined;
+  const partnerPool = preferPartner ? pool.filter((item) => item.isPartner) : [];
+  const selected = partnerPool.length > 0
+    ? pickWithUsedFallback(partnerPool, 1, `${seed}-partner`, pick)[0]
+    : pickWithUsedFallback(pool, 1, `${seed}-any`, pick)[0];
+  if (selected) markItemKey(selectedKeys, selected);
+  return selected;
+}
+
+function buildBudgetGalleryItems(
+  selectedItems: GuideItem[],
+  fallbackItems: GuideItem[],
+  count: number,
+  seed: string,
+  pick: PickFn,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  labelForItem: (item: GuideItem) => string,
+): PageItem[] {
+  const selectedKeys = new Set<string>();
+  const chosen: GuideItem[] = [];
+  const add = (item?: GuideItem) => {
+    if (!item || chosen.length >= count || hasItemKey(selectedKeys, item)) return;
+    chosen.push(item);
+    markItemKey(selectedKeys, item);
+  };
+
+  sortCandidates(dedupeItems(selectedItems), `${seed}-selected`).forEach(add);
+  pickWithUsedFallback(
+    sortCandidates(dedupeItems(fallbackItems).filter((item) => item.isPartner), `${seed}-partners`),
+    count - chosen.length,
+    `${seed}-partner-fill`,
+    pick,
+  ).forEach(add);
+  pickWithUsedFallback(
+    sortCandidates(dedupeItems(fallbackItems).filter((item) => !item.isPartner), `${seed}-regular`),
+    count - chosen.length,
+    `${seed}-regular-fill`,
+    pick,
+  ).forEach(add);
+
+  return chosen.slice(0, count).map((item) => budgetGalleryPageItemWithResolver(item, labelForItem(item), resolveImage));
+}
+
+function buildBudget3N2DPages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:budget-3n2d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const pick = createListPicker(globalUsedItemIds);
+  const selectedKeys = new Set<string>();
+  const selectedGuideItems: GuideItem[] = [];
+  const rows: BudgetScheduleRow[] = [];
+  const activitySlot = itineraryActivitySlotPool(pools, seedPrefix);
+  const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.breakfastItems;
+  const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
+  const dinnerItems = pools.eveningScheduleItems.length > 0 ? pools.eveningScheduleItems : pools.dinnerItems;
+  const checkinItems = balancedCheckinPool(pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems, 16, `${seedPrefix}-budget-checkin-pool`);
+
+  const addPickedRow = (day: string, time: string, prefix: string, preferredItems: GuideItem[], fallbackItems: GuideItem[], seed: string, fallbackPrice?: string) => {
+    const item = pickBudgetSlotItem(preferredItems, fallbackItems, seed, pick, selectedKeys);
+    if (!item) return;
+    selectedGuideItems.push(item);
+    rows.push({
+      day,
+      time,
+      activity: budgetActivityName(prefix, item),
+      address: item.address || 'Đang cập nhật',
+      cost: budgetDisplayPrice(item, fallbackPrice),
+      item,
+      id: `${seed}-${item.id}`,
+    });
+  };
+
+  rows.push(createBudgetStaticRow('Ngày 01', '05:00', 'Di chuyển bằng xe Phương Trang SG - ĐL', 'Bến xe liên tỉnh Đà Lạt', '~540k/khứ hồi', `${seedPrefix}-bus-in`));
+  addPickedRow('Ngày 01', '07:00', 'Ăn sáng', breakfastItems, breakfastItems, `${seedPrefix}-d1-breakfast`, '~30k');
+  addPickedRow('Ngày 01', '09:00', 'Cà phê', pools.dayCafeItems, pools.cafeItems, `${seedPrefix}-d1-cafe`, '~30k');
+  addPickedRow('Ngày 01', '10:30', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d1-checkin`, '~20k');
+  addPickedRow('Ngày 01', '12:00', 'Ăn trưa', lunchItems, pools.foodItems, `${seedPrefix}-d1-lunch`, '~50k');
+  addPickedRow('Ngày 01', '15:00', activitySlot.label, activitySlot.items, pools.dayFamousItems, `${seedPrefix}-d1-activity`, '~50k');
+  addPickedRow('Ngày 01', '18:30', 'Ăn tối', dinnerItems, pools.foodItems, `${seedPrefix}-d1-dinner`, '~120k');
+  addPickedRow('Ngày 01', '20:00', 'Chơi đêm', pools.nightlifeItems, pools.nightlifeImageItems, `${seedPrefix}-d1-night`, '~40k');
+  addPickedRow('Ngày 02', '07:30', 'Ăn sáng', breakfastItems, breakfastItems, `${seedPrefix}-d2-breakfast`, '~30k');
+  addPickedRow('Ngày 02', '09:00', 'Cà phê', pools.dayCafeItems, pools.cafeItems, `${seedPrefix}-d2-cafe`, '~30k');
+  addPickedRow('Ngày 02', '10:30', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d2-checkin`, '~20k');
+  addPickedRow('Ngày 02', '12:00', 'Ăn trưa', lunchItems, pools.foodItems, `${seedPrefix}-d2-lunch`, '~60k');
+  addPickedRow('Ngày 02', '15:00', activitySlot.label, activitySlot.items, pools.dayFamousItems, `${seedPrefix}-d2-activity`, '~70k');
+  addPickedRow('Ngày 02', '17:00', 'Cà phê chiều', pools.dayCafeItems, pools.cafeItems, `${seedPrefix}-d2-cafe-2`, '~35k');
+  addPickedRow('Ngày 02', '18:30', 'Ăn tối', dinnerItems, pools.foodItems, `${seedPrefix}-d2-dinner`, '~120k');
+  addPickedRow('Ngày 02', '20:30', 'Chơi đêm', pools.nightlifeItems, pools.nightlifeImageItems, `${seedPrefix}-d2-night`, '~40k');
+  addPickedRow('Ngày 03', '07:00', 'Ăn sáng', breakfastItems, breakfastItems, `${seedPrefix}-d3-breakfast`, '~30k');
+  addPickedRow('Ngày 03', '08:30', 'Cà phê', pools.dayCafeItems, pools.cafeItems, `${seedPrefix}-d3-cafe`, '~30k');
+  addPickedRow('Ngày 03', '10:00', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d3-checkin`, '~20k');
+  addPickedRow('Ngày 03', '11:30', 'Ăn trưa', lunchItems, pools.foodItems, `${seedPrefix}-d3-lunch`, '~70k');
+  addPickedRow('Ngày 03', '13:00', 'Mua quà', pools.serviceItems, pools.serviceItems, `${seedPrefix}-d3-service`, '~80k');
+  rows.push(createBudgetStaticRow('Ngày 03', '14:30', 'Check out, lên xe về lại SG', 'Bến xe liên tỉnh Đà Lạt', 'Đã tính vé xe', `${seedPrefix}-bus-out`));
+
+  const tableFallbackImage = background(`${seedPrefix}-table-fallback`);
+  const tableItems = [
+    ...rows.map((row) => budgetRowPageItem(row, imageResolver, tableFallbackImage)),
+    budgetSummaryPageItem('Khách sạn', '~500k', '1 đêm phòng đôi/nhóm nhỏ', `${seedPrefix}-summary-stay`, tableFallbackImage),
+    budgetSummaryPageItem('Thuê xe', '~150k', 'Xe máy 1 ngày rưỡi', `${seedPrefix}-summary-bike`, tableFallbackImage),
+    budgetSummaryPageItem('Ăn uống', '~1.270k', 'Các bữa chính, cafe, ăn vặt', `${seedPrefix}-summary-food`, tableFallbackImage),
+    budgetSummaryPageItem('Di chuyển', '~540k', 'Xe khách khứ hồi', `${seedPrefix}-summary-bus`, tableFallbackImage),
+    budgetSummaryPageItem('Tổng cộng', '~2.5tr - 3tr', 'Tùy nhóm và mức chi tại từng điểm', `${seedPrefix}-summary-total`, tableFallbackImage),
+  ];
+
+  const selectedFood = selectedGuideItems.filter((item) => item.sectionKey === 'quan_an' || item.sectionKey === 'choi_dem');
+  const selectedCafe = selectedGuideItems.filter((item) => item.sectionKey === 'cafe');
+  const selectedSupport = selectedGuideItems.filter((item) => item.sectionKey === 'dich_vu');
+  const supportPlaces = dedupeItems([...selectedSupport, ...pools.serviceItems, ...pools.stayItems]);
+  const partnerPlaces = supportPlaces;
+
+  const pages: DeckPage[] = [
+    {
+      ...buildCoverPage('"72H" Ở ĐÀ LẠT VỚI 3TR', '/Gợi ý lịch trình du hí 3N2Đ/', background(`${seedPrefix}-cover`)),
+      layoutVariant: 'budget-3n2d' as const,
+    },
+    buildListPage('Bảng chi phí', 'gold', 'ĐÀ LẠT 3 NGÀY 2 ĐÊM', 'Bảng lịch trình dày thông tin: giờ đi, điểm ghé, địa chỉ và chi phí dự kiến.', tableItems, '', 'budget-3n2d-table'),
+    buildListPage('Quán ăn', 'berry', 'QUÁN ĂN ĐÃ ĐI', '4 quán trong lịch trình, ưu tiên quán là đối tác để người xem dễ lưu và ghé đúng chỗ.', buildBudgetGalleryItems(selectedFood, pools.foodItems, 4, `${seedPrefix}-gallery-food`, pick, imageResolver, mealLabelForItem), background(`${seedPrefix}-gallery-food-bg`), 'grid-4'),
+    buildListPage('Cà phê', 'gold', 'QUÁN CAFE ĐÃ GHÉ', '4 điểm cafe trong lịch trình, ưu tiên đối tác và điểm có đủ ảnh, địa chỉ, giá.', buildBudgetGalleryItems(selectedCafe, pools.cafeItems, 4, `${seedPrefix}-gallery-cafe`, pick, imageResolver, (item) => item.type || 'Cafe'), background(`${seedPrefix}-gallery-cafe-bg`), 'grid-4'),
+    buildListPage('Đối tác', 'pine', 'ĐỐI TÁC NÊN LƯU', '4 địa điểm ưu tiên đối tác trong chuyến đi, giữ đúng giá nếu dữ liệu đối tác đã có giá.', buildBudgetGalleryItems(selectedSupport, partnerPlaces, 4, `${seedPrefix}-gallery-partners`, pick, imageResolver, photomodeServiceLabel), background(`${seedPrefix}-gallery-partners-bg`), 'grid-4'),
+  ];
+
+  const foodPage = pages[2];
+  if (foodPage?.type === 'list') {
+    foodPage.title = 'QUÁN ĂN NÈ';
+    foodPage.subtitle = 'Một vài quán ăn dễ ghé trong lịch trình, ưu tiên điểm có giá rõ để lưu nhanh.';
+  }
+
+  const cafePage = pages[3];
+  if (cafePage?.type === 'list') {
+    cafePage.title = 'QUÁN CÀ PHÊ VIEW ĐẸP';
+    cafePage.subtitle = 'Một vài quán cà phê có view ổn, hợp nghỉ chân và chụp vài tấm xinh.';
+  }
+
+  const supportPage = pages[4];
+  if (supportPage?.type === 'list') {
+    supportPage.chipText = 'Dịch vụ';
+    supportPage.title = 'DỊCH VỤ NÊN LƯU';
+    supportPage.subtitle = 'Một số dịch vụ hỗ trợ chuyến đi, ưu tiên đối tác và giữ đúng giá nếu dữ liệu đã có giá.';
+    supportPage.items = buildBudgetGalleryItems(selectedSupport, supportPlaces, 4, `${seedPrefix}-gallery-services`, pick, imageResolver, photomodeServiceLabel);
+    supportPage.backgroundImage = background(`${seedPrefix}-gallery-services-bg`);
+  }
+
+  return pages.map((page, pageIndex) => (
+    page.type === 'list' && pageIndex >= 2
+      ? { ...page, layoutVariant: 'budget-3n2d-gallery' as const }
+      : page
+  ));
+}
 
 function buildItineraryPages(
   pools: DeckBuildPools,
@@ -2454,7 +2725,7 @@ function buildSpotlightGuidePages(
 
 // ─── Spotlight Partner: one partner, all their images as spotlight pages ──────
 
-export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 9;
+export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 11;
 
 const LOW_RES_FULL_BLEED_DRIVE_FILE_IDS = new Set([
   // These Drive files are valid images, but Google Drive returns only 206x206 originals.
@@ -2464,6 +2735,13 @@ const LOW_RES_FULL_BLEED_DRIVE_FILE_IDS = new Set([
   '1yyLV70vp9OohQlylWscnYizeASL4TVrz',
   '1I2UqrhZ9MRl8DSiGC3N0MM-iL7NdOrTw',
   '1-XVpIi6Uz3BrKG7ZLZX37P0clVsksiUs',
+  // Tiệm nướng Hoàng Hôn Drive images are public, but current Drive originals are only ~243px wide.
+  '1Fzq5CPCKrmYpPBdtKOzL9Y2lMouHf-Ce',
+  '1nLFtj19vJbH09CxXQ-GuLO4NYGAz4yE1',
+  '1N3TiUG-IXLF3wnkeZUpuOUfC18o823ql',
+  '12w7LB0-QEZAo-cJMvd9QNtfFTsy5359i',
+  '1to9Lh5NGEzYR8yQkhwM0I88HZQLd5lH9',
+  '1FQmMeUmnLpd8NIqnP3OuUIYvHV9P-DAX',
 ]);
 
 function driveFileIdFromAssetUrl(url: string): string {
@@ -2684,7 +2962,7 @@ export function buildSpotlightPartnerPages(
     {
       ...buildCoverPage(
         partnerItem.name.toUpperCase(),
-        partnerItem.type || partnerItem.address || 'Lưu lại khi cần một địa điểm ở Đà Lạt.',
+        '',
         coverImage,
       ),
       layoutVariant: 'spotlight-partner' as const,
@@ -3040,6 +3318,7 @@ export function buildPagesForDeck(
 ): DeckPage[] {
   const pools = createDeckBuildPools(itemsBySection);
   if (deckId === 'itinerary-3n2d') return buildItineraryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'budget-3n2d') return buildBudget3N2DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'itinerary-4n3d') return buildItinerary4N3DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'itinerary-4n2d-grid8') return buildItinerary4N2DGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'pov-3-day') return buildPov3DayPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
@@ -3068,6 +3347,13 @@ export function buildDecks(
       title: 'Bộ trang gợi ý lịch trình 3N2Đ',
       description: 'Format này nghiêng về kiểu kể theo ngày: có cover riêng, mỗi ngày là một trang, rồi chốt thêm trang ăn sáng và dịch vụ.',
       lists: [buildDeckList('itinerary-3n2d', 'main', 'List chính', 'List lịch trình 3N2Đ', 'Danh sách ảnh chính cho bộ lịch trình 3N2Đ.', buildPagesForDeck('itinerary-3n2d', common.itemsBySection, common.imageUrls, common.libraryEntries, 'itinerary-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
+    },
+    {
+      id: 'budget-3n2d',
+      navTitle: '72H 3N2Đ',
+      title: 'Bộ trang 72H ở Đà Lạt với 3tr',
+      description: 'Mẫu đang làm trước: cover theo style TikTok tham chiếu, 1 trang bảng lịch trình chi phí, 3 trang lưới 4 ảnh phía sau tập trung quán/đối tác.',
+      lists: [buildDeckList('budget-3n2d', 'main', 'List chính', 'List 72H 3N2Đ', 'Danh sách ảnh chính cho mẫu 72H ngân sách 3N2Đ.', buildPagesForDeck('budget-3n2d', common.itemsBySection, common.imageUrls, common.libraryEntries, 'budget-3n2d-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'itinerary-4n3d',

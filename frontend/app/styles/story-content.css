@@ -50,7 +50,7 @@
 }
 
 .cover-script {
-  font-family: "Baloo 2", sans-serif;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
   font-size: 3.2rem;
   line-height: 1;
 }
@@ -163,9 +163,9 @@
 
 .page-title {
   margin: 14px 0 6px;
-  font-family: "Baloo 2", "Be Vietnam Pro", sans-serif;
-  font-size: 2rem;
-  line-height: 1.05;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: 1.72rem;
+  line-height: 1.2;
   color: #201c18;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -218,9 +218,9 @@
 
 .item-name {
   margin: 6px 0 4px;
-  font-family: "Baloo 2", "Be Vietnam Pro", sans-serif;
-  font-size: 1.3rem;
-  line-height: 1.05;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.2;
 }
 
 .item-meta {

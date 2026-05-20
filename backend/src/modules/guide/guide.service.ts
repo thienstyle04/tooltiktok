@@ -50,8 +50,8 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION } from './logic/deck-builder';
-import { fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
+import { applyCaptionToPages, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION } from './logic/deck-builder';
+import { DriveFileAsset, fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
@@ -186,7 +186,7 @@ export class GuideService {
     return readAssetFromBase(libraryRoot, relativePath);
   }
 
-  async getDriveFileAsset(fileId: string): Promise<{ body: Buffer; contentType: string; contentLength: number }> {
+  async getDriveFileAsset(fileId: string): Promise<DriveFileAsset> {
     const normalizedFileId = String(fileId ?? '').trim();
     if (!normalizedFileId) {
       throw new NotFoundException('Drive file id is required.');
@@ -816,6 +816,7 @@ export class GuideService {
 
   private templateVersionForDeck(deckId: string): number | undefined {
     if (deckId === 'itinerary-3n2d') return ITINERARY_3N2D_TEMPLATE_VERSION;
+    if (deckId === 'budget-3n2d') return BUDGET_3N2D_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n3d') return ITINERARY_4N3D_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n2d-grid8') return ITINERARY_4N2D_GRID8_TEMPLATE_VERSION;
     if (deckId === 'pov-3-day') return POV_3_DAY_TEMPLATE_VERSION;
@@ -1521,14 +1522,21 @@ export class GuideService {
     };
     
     const directImageUrls = imageHint ? imageHint.split(/[\n,;]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s)) : [];
+    const mappedFallbackImage = fallbackResolvedImage();
+    const mappedCandidateImageUrls = mappedFallbackImage.imageSource === 'fallback' && !mappedFallbackImage.imageMapped
+      ? []
+      : Array.from(new Set([
+          mappedFallbackImage.imageUrl,
+          ...(mappedFallbackImage.candidateImageUrls ?? []),
+        ].filter(Boolean)));
 
     const resolvedImage = sheetDriveEntry
       ? {
-          imageUrl: sheetDriveCandidateUrls[0] || getDriveImageProxyUrl(sheetDriveEntry.fileId),
+          imageUrl: sheetDriveCandidateUrls[0] || mappedFallbackImage.imageUrl || getDriveImageProxyUrl(sheetDriveEntry.fileId),
           imageMapped: true,
           imageMappingKey: mappingKey,
           imageSource: 'manual' as const,
-          candidateImageUrls: sheetDriveCandidateUrls,
+          candidateImageUrls: Array.from(new Set([...sheetDriveCandidateUrls, ...mappedCandidateImageUrls])),
         }
       : (directImageUrls.length > 0
           ? {
@@ -1538,7 +1546,7 @@ export class GuideService {
               imageSource: 'manual' as const,
               candidateImageUrls: directImageUrls,
             }
-          : fallbackResolvedImage());
+          : mappedFallbackImage);
 
     return {
       id: `${sectionKey}-${sequence}`,

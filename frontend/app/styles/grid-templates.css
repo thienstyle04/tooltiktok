@@ -839,8 +839,8 @@
 }
 
 .grid6-cover-header {
-  font-family: "Baloo 2", cursive;
-  font-size: 2rem;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: 1.55rem;
   color: #ffdb88;
   font-weight: 800;
   margin-bottom: 10px;
@@ -944,6 +944,712 @@
   display: -webkit-box;
   -webkit-line-clamp: 4;
   line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Budget 72H: reference-style cover plus compact schedule table. */
+.story-page.budget72-cover {
+  position: relative;
+  overflow: hidden;
+  background: #0f1718;
+  color: #fffaf0;
+}
+
+.budget72-cover-bg,
+.budget72-cover-shade,
+.budget72-cover-copy {
+  position: absolute;
+  inset: 0;
+}
+
+.budget72-cover-bg img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.budget72-cover-shade {
+  background:
+    linear-gradient(180deg, rgba(5, 10, 10, 0.36) 0%, rgba(5, 10, 10, 0.2) 42%, rgba(5, 10, 10, 0.62) 100%),
+    radial-gradient(circle at 42% 18%, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.52) 78%);
+}
+
+.budget72-cover-copy {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 74px 30px 46px;
+  text-align: center;
+}
+
+.budget72-script {
+  color: rgba(255, 255, 255, 0.9);
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.18;
+  margin-bottom: 12px;
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+.budget72-title {
+  margin: 0;
+  max-width: 94%;
+  color: #ffd42a;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: 1.82rem;
+  font-weight: 950;
+  line-height: 1.08;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.58);
+}
+
+.budget72-subtitle {
+  margin: 14px 0 0;
+  max-width: 92%;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1.24;
+  text-transform: uppercase;
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.58);
+}
+
+.story-page.budget72-table-page {
+  background: #f2eee1;
+  color: #17201d;
+  overflow: hidden;
+}
+
+.budget72-table-shell {
+  position: absolute;
+  inset: 9px 9px 4px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 0;
+  border: 2px solid #17201d;
+  background: #fff9df;
+  box-shadow: inset 0 0 0 1px rgba(23, 32, 29, 0.32);
+}
+
+.budget72-table-shell h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 6px 10px 5px;
+  background: #138c96;
+  color: #081414;
+  font-size: 0.7rem;
+  font-weight: 950;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.budget72-schedule-table,
+.budget72-summary-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+}
+
+.budget72-schedule-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.budget72-schedule-table th,
+.budget72-schedule-table td,
+.budget72-summary-table th,
+.budget72-summary-table td {
+  border: 1px solid #17201d;
+  padding: 2.5px 4px;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.budget72-schedule-table th {
+  background: #a9bd3d;
+  color: #7a1f17;
+  font-size: 0.38rem;
+  font-weight: 950;
+  line-height: 1.12;
+  text-transform: uppercase;
+}
+
+.budget72-schedule-table td {
+  color: #232724;
+  font-size: 0.36rem;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.budget72-schedule-table tr td {
+  background: #fff5d9;
+}
+
+.budget72-schedule-table tr:nth-child(n+9):nth-child(-n+16) td {
+  background: #def8f5;
+}
+
+.budget72-schedule-table tr:nth-child(n+17) td {
+  background: #fde3e3;
+}
+
+.budget72-day {
+  width: 13%;
+  text-align: center;
+  font-weight: 850 !important;
+}
+
+.budget72-time {
+  width: 12%;
+  text-align: center;
+}
+
+.budget72-activity {
+  width: 33%;
+}
+
+.budget72-address {
+  width: 29%;
+}
+
+.budget72-cost {
+  width: 13%;
+  text-align: center;
+  font-weight: 850 !important;
+}
+
+.budget72-summary-table {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+
+.budget72-summary-table th {
+  background: #1594a4;
+  color: #081414;
+  font-size: 0.35rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.budget72-summary-table td {
+  background: #d5d7d5;
+  font-size: 0.34rem;
+  font-weight: 700;
+  line-height: 1.16;
+  text-align: center;
+}
+
+.budget72-summary-table tr:last-child td {
+  background: #e2d60d;
+  font-weight: 950;
+}
+
+.budget72-total-bar {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+  padding: 6px 9px;
+  background: #ffe600;
+  border-top: 2px solid #17201d;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  color: #151a16;
+}
+
+.budget72-total-bar span {
+  font-size: 0.46rem;
+  font-weight: 950;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.budget72-total-bar strong {
+  font-size: 0.62rem;
+  font-weight: 1000;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.story-page.budget72-gallery-page {
+  position: relative;
+  overflow: hidden;
+  background: #101711;
+  color: #fffaf0;
+}
+
+.budget72-gallery-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.budget72-gallery-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 32%;
+  filter: blur(12px) saturate(0.88) brightness(0.58);
+  transform: scale(1.08);
+}
+
+.budget72-gallery-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(9, 14, 11, 0.62), rgba(9, 14, 11, 0.24) 40%, rgba(9, 14, 11, 0.78)),
+    radial-gradient(circle at 50% 22%, rgba(255, 210, 94, 0.16), transparent 46%);
+}
+
+.budget72-gallery-shell {
+  position: absolute;
+  inset: 22px 20px 20px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: 10px;
+  z-index: 1;
+}
+
+.budget72-gallery-head {
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 2px;
+}
+
+.budget72-gallery-head span {
+  color: #ffd66b;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.budget72-gallery-head h2 {
+  margin: 0;
+  color: #fffaf0;
+  font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
+  font-size: 1.32rem;
+  font-weight: 950;
+  line-height: 1.16;
+  text-transform: uppercase;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.55);
+}
+
+.budget72-gallery-hero {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 28px;
+  background: #1a211c;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+}
+
+.budget72-gallery-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 34%;
+  display: block;
+}
+
+.budget72-gallery-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.18) 38%, rgba(0, 0, 0, 0.78)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.38), transparent 55%);
+}
+
+.budget72-gallery-hero-copy {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 15px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.budget72-gallery-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+}
+
+.budget72-gallery-index {
+  display: inline-grid;
+  place-items: center;
+  min-width: 27px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #ff7a55;
+  color: #15110b;
+  font-size: 0.62rem;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.budget72-gallery-label,
+.budget72-gallery-partner {
+  display: inline-flex;
+  align-items: center;
+  max-width: 120px;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.92);
+  color: #173326;
+  font-size: 0.48rem;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget72-gallery-partner {
+  background: #ffd66b;
+  color: #251c0a;
+}
+
+.budget72-gallery-hero-copy h3 {
+  width: 100%;
+  margin: 0;
+  color: #fffaf0;
+  font-size: 1.16rem;
+  font-weight: 1000;
+  line-height: 1.02;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.68);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.budget72-gallery-page .grid6-address {
+  width: 100%;
+  color: rgba(255, 250, 240, 0.94);
+  font-size: 0.54rem;
+  font-weight: 800;
+  line-height: 1.08;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.68);
+}
+
+.budget72-gallery-page .grid6-address-pin {
+  flex-basis: 8px;
+  width: 8px;
+  height: 8px;
+}
+
+.budget72-gallery-price {
+  color: #ffe08a;
+  font-size: 0.55rem;
+  font-weight: 900;
+  line-height: 1.08;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.62);
+}
+
+.budget72-gallery-stack {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.budget72-gallery-row {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 28px 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid rgba(255, 250, 240, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 250, 240, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.budget72-gallery-row-index {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  background: rgba(255, 214, 107, 0.96);
+  color: #22180a;
+  font-size: 0.62rem;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.budget72-gallery-row-thumb {
+  width: 72px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(255, 250, 240, 0.16);
+}
+
+.budget72-gallery-row-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 34%;
+}
+
+.budget72-gallery-row-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.budget72-gallery-row-copy .budget72-gallery-label {
+  max-width: 100%;
+  width: fit-content;
+  min-height: 15px;
+  padding: 0 6px;
+  font-size: 0.42rem;
+}
+
+.budget72-gallery-row-copy strong {
+  color: #fffaf0;
+  font-size: 0.72rem;
+  font-weight: 1000;
+  line-height: 1.02;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.budget72-gallery-row-copy .grid6-address {
+  font-size: 0.46rem;
+  line-height: 1.06;
+}
+
+.budget72-gallery-row-copy .budget72-gallery-price {
+  font-size: 0.46rem;
+}
+
+.story-page.budget72-corner-page {
+  background: #090d0b;
+}
+
+.story-page.budget72-corner-page .budget72-gallery-backdrop img {
+  filter: blur(16px) saturate(0.72) brightness(0.34);
+  transform: scale(1.12);
+}
+
+.story-page.budget72-corner-page .budget72-gallery-backdrop::after {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(5, 8, 6, 0.2), rgba(5, 8, 6, 0.72) 58%, rgba(5, 8, 6, 0.92)),
+    linear-gradient(180deg, rgba(5, 8, 6, 0.52), rgba(5, 8, 6, 0.88));
+}
+
+.story-page.budget72-corner-page .budget72-gallery-shell {
+  inset: 18px;
+  display: block;
+}
+
+.budget72-corner-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 106px 20px;
+}
+
+.budget72-corner-card {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 28px;
+  background: #18221c;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+}
+
+.budget72-corner-card img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 34%;
+}
+
+.budget72-corner-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.08) 36%, rgba(0, 0, 0, 0.78)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.34), transparent 48%);
+}
+
+.budget72-corner-copy {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  bottom: 10px;
+  z-index: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.budget72-corner-topline {
+  display: none;
+}
+
+.budget72-corner-card .budget72-gallery-index {
+  min-width: 23px;
+  height: 17px;
+  padding: 0 5px;
+  background: #ff7a55;
+  color: #15110b;
+  font-size: 0.5rem;
+}
+
+.budget72-corner-card .budget72-gallery-label,
+.budget72-corner-card .budget72-gallery-partner {
+  max-width: 78px;
+  min-height: 16px;
+  padding: 0 6px;
+  font-size: 0.39rem;
+}
+
+.budget72-corner-card strong {
+  width: 100%;
+  color: #fffaf0;
+  font-size: 0.68rem;
+  font-weight: 1000;
+  line-height: 1.04;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.72);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.budget72-corner-meta {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.budget72-corner-card .grid6-address {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  color: rgba(255, 250, 240, 0.92);
+  font-size: 0.44rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.budget72-corner-card .grid6-address-pin {
+  flex-basis: 7px;
+  width: 7px;
+  height: 7px;
+}
+
+.budget72-corner-card .budget72-gallery-price {
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  padding-left: 0;
+  color: #ffdc72;
+  font-size: 0.44rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.budget72-gallery-center {
+  position: absolute;
+  left: 44px;
+  right: 44px;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateY(-50%);
+  padding: 17px 14px 16px;
+  border: 1px solid rgba(255, 250, 240, 0.14);
+  border-radius: 26px;
+  background: rgba(5, 8, 6, 0.58);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.38);
+  text-align: center;
+  backdrop-filter: blur(2px);
+}
+
+.budget72-gallery-center span {
+  color: rgba(255, 250, 240, 0.92);
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.18;
+  text-transform: lowercase;
+}
+
+.budget72-gallery-center h2 {
+  margin: 5px 0 0;
+  color: #ffd733;
+  font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
+  font-size: 1.08rem;
+  font-weight: 1000;
+  line-height: 1.16;
+  text-transform: uppercase;
+  text-shadow: 0 3px 9px rgba(0, 0, 0, 0.64);
+}
+
+.budget72-gallery-center p {
+  margin: 7px 0 0;
+  max-width: 92%;
+  color: rgba(255, 250, 240, 0.94);
+  font-size: 0.45rem;
+  font-weight: 800;
+  line-height: 1.22;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
