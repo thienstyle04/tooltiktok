@@ -55,6 +55,7 @@ const IMAGE_READY_TIMEOUT_MS = 5000;
 const PAGE_RENDER_TIMEOUT_MS = 45000;
 const BATCH_PAGE_RENDER_TIMEOUT_MS = 90000;
 const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 150000;
+const EXPORT_FALLBACK_SOURCE_LIMIT = 48;
 const DEFAULT_EXPORT_CORNER_RADIUS = 0;
 const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
   cacheBust: false,
@@ -75,8 +76,8 @@ const EXPORT_QUALITY_PROFILES = Object.freeze({
     sourceImageFormat: 'image/jpeg',
     sourceImageQuality: 0.86,
     imagePrepareConcurrency: 24,
-    renderChunkSize: null,
-    captureConcurrency: null,
+    renderChunkSize: 12,
+    captureConcurrency: 3,
     preferHtml2Canvas: true,
     renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
   },
@@ -566,6 +567,25 @@ function extractCssUrl(value) {
   return match ? match[2] : '';
 }
 
+function neutralImageDataUrl(target, variant = 'default') {
+  const element = target?.img || target?.element;
+  const rect = element?.getBoundingClientRect?.();
+  const width = Math.max(80, Math.round(rect?.width || element?.clientWidth || 320));
+  const height = Math.max(80, Math.round(rect?.height || element?.clientHeight || 320));
+  const id = `g${Math.abs(Math.round(width * 31 + height * 17 + (variant === 'background' ? 7 : 3)))}`;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <defs>
+        <linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#eef4ee"/>
+          <stop offset="1" stop-color="#d6e0d7"/>
+        </linearGradient>
+      </defs>
+      <rect width="${width}" height="${height}" fill="url(#${id})"/>
+    </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.replace(/\s+/g, ' ').trim())}`;
+}
+
 async function waitForBackgroundReady(url) {
   if (!url) return;
   const image = new Image();
@@ -606,6 +626,7 @@ function collectImageTargets(node, options = {}) {
       kind: 'img',
       img,
       originalSrc: img.getAttribute('src'),
+      root: node,
     }))
     .filter((target) => shouldInlineImageSource(target.originalSrc, options));
   const backgroundTargets = Array.from(node.querySelectorAll('[style*="background-image"]')).map((element) => {
@@ -615,6 +636,7 @@ function collectImageTargets(node, options = {}) {
       element,
       originalBackgroundImage,
       originalSrc: extractCssUrl(originalBackgroundImage),
+      root: node,
     };
   }).filter((target) => shouldInlineImageSource(target.originalSrc, options));
   return imageTargets.concat(backgroundTargets);
@@ -633,7 +655,68 @@ function candidateSourcesForTarget(target) {
       }
     }
   }
-  return [...new Set(sources.map((url) => String(url || '').trim()).filter(Boolean))];
+  const uniqueSources = [...new Set(sources.map((url) => String(url || '').trim()).filter(Boolean))];
+  if (uniqueSources.length <= 2) return uniqueSources;
+  return [uniqueSources[0], ...sortFallbackSources(uniqueSources.slice(1))];
+}
+
+function imageSourceRank(source) {
+  const value = String(source || '').trim();
+  if (!value) return 5;
+  if (value.startsWith('/assets/library') || value.startsWith('/assets/dalat')) return 0;
+  if (value.startsWith('/assets/') && !value.startsWith('/assets/drive-file')) return 1;
+  if (/^https?:\/\//i.test(value) && !/drive\.google\.com|googleusercontent\.com/i.test(value)) return 2;
+  if (value.startsWith('/assets/drive-file') || /drive\.google\.com|googleusercontent\.com/i.test(value)) return 3;
+  return 4;
+}
+
+function sortFallbackSources(sources) {
+  return [...sources].sort((a, b) => imageSourceRank(a) - imageSourceRank(b));
+}
+
+function buildImageFallbackContext(targets) {
+  const globalSources = [];
+  const sourcesByRoot = new Map();
+
+  targets.forEach((target) => {
+    const root = target.root || null;
+    const rootSources = root
+      ? (sourcesByRoot.get(root) || [])
+      : null;
+    candidateSourcesForTarget(target).forEach((source) => {
+      if (!source) return;
+      globalSources.push(source);
+      if (rootSources) rootSources.push(source);
+    });
+    if (root && rootSources && !sourcesByRoot.has(root)) {
+      sourcesByRoot.set(root, rootSources);
+    }
+  });
+
+  return {
+    globalSources: sortFallbackSources([...new Set(globalSources)]),
+    sourcesByRoot,
+    fallbackSourceLimit: EXPORT_FALLBACK_SOURCE_LIMIT,
+  };
+}
+
+function fallbackSourcesForTarget(target, context, ownSources) {
+  if (!context) return [];
+  const ownSourceSet = new Set(ownSources);
+  const limit = Math.max(0, Number(context.fallbackSourceLimit || EXPORT_FALLBACK_SOURCE_LIMIT));
+  const sources = [];
+  const addSources = (items) => {
+    for (const source of items || []) {
+      if (!source || ownSourceSet.has(source) || sources.includes(source)) continue;
+      sources.push(source);
+      if (sources.length >= limit) return;
+    }
+  };
+  addSources(sortFallbackSources(context.sourcesByRoot?.get?.(target.root || null) || []));
+  if (sources.length < limit) {
+    addSources(context.globalSources);
+  }
+  return sources;
 }
 
 async function firstAvailableImageBlobUrl(sources, options = {}) {
@@ -658,25 +741,38 @@ async function prepareImageTarget(target, options = {}) {
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
     const sources = candidateSourcesForTarget(target);
+    const fallbackSources = fallbackSourcesForTarget(target, options.fallbackContext, sources);
     const { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);
-    const displayBlob = await fitImageBlobToElement(blob, img, {
+    let selectedBlob = blob;
+    let selectedBlobUrl = blobUrl;
+    let selectedSource = source;
+    if (!selectedBlob || !selectedBlobUrl) {
+      const fallbackResult = await firstAvailableImageBlobUrl(fallbackSources, blobOptions);
+      selectedBlob = fallbackResult.blob;
+      selectedBlobUrl = fallbackResult.blobUrl;
+      selectedSource = fallbackResult.source;
+    }
+    const displayBlob = await fitImageBlobToElement(selectedBlob, img, {
       ...blobOptions,
       fitImagesToElement: options.fitImagesToElement,
       fitPixelRatio: options.fitPixelRatio,
     });
-    const shouldUseTargetObjectUrl = Boolean(displayBlob && (shouldUseUniqueObjectUrl || displayBlob !== blob));
-    const preparedBlobUrl = shouldUseTargetObjectUrl ? URL.createObjectURL(displayBlob) : blobUrl;
+    const shouldUseTargetObjectUrl = Boolean(displayBlob && (shouldUseUniqueObjectUrl || displayBlob !== selectedBlob));
+    const preparedBlobUrl = shouldUseTargetObjectUrl ? URL.createObjectURL(displayBlob) : selectedBlobUrl;
     if (!preparedBlobUrl) {
+      img.dataset.originalSrc = originalSrc;
+      img.dataset.exportFallbackSrc = 'neutral-placeholder';
+      img.src = neutralImageDataUrl(target);
       if (shouldWaitForReady) {
         await waitForImageReady(img);
       }
-      return null;
+      return { img, originalSrc, objectUrl: null };
     }
 
     img.dataset.originalSrc = originalSrc;
     img.src = preparedBlobUrl;
-    if (source && source !== originalSrc) {
-      img.dataset.exportFallbackSrc = source;
+    if (selectedSource && selectedSource !== originalSrc) {
+      img.dataset.exportFallbackSrc = selectedSource;
     }
     if (shouldWaitForReady) {
       await waitForImageReady(img);
@@ -685,13 +781,23 @@ async function prepareImageTarget(target, options = {}) {
   }
 
   const { element, originalBackgroundImage, originalSrc } = target;
-  const { blob, blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+  const sources = candidateSourcesForTarget(target);
+  const fallbackSources = fallbackSourcesForTarget(target, options.fallbackContext, sources);
+  let { blob, blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+  if (!blob || !blobUrl) {
+    const fallbackResult = await firstAvailableImageBlobUrl(fallbackSources, blobOptions);
+    blob = fallbackResult.blob;
+    blobUrl = fallbackResult.blobUrl;
+  }
   const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
   if (!preparedBlobUrl) {
+    const neutralUrl = neutralImageDataUrl(target, 'background');
+    element.dataset.originalBackgroundImage = originalBackgroundImage;
+    element.style.backgroundImage = originalBackgroundImage.replace(/url\((['"]?)(.*?)\1\)/i, `url("${neutralUrl}")`);
     if (shouldWaitForReady) {
-      await waitForBackgroundReady(originalSrc);
+      await waitForBackgroundReady(neutralUrl);
     }
-    return null;
+    return { element, originalBackgroundImage, objectUrl: null };
   }
 
   element.dataset.originalBackgroundImage = originalBackgroundImage;
@@ -704,7 +810,11 @@ async function prepareImageTarget(target, options = {}) {
 
 async function prepareImageTargets(targets, options = {}) {
   const concurrency = Number(options.concurrency || 10);
-  const handles = await mapWithConcurrency(targets, concurrency, (target) => prepareImageTarget(target, options));
+  const fallbackContext = options.fallbackContext || buildImageFallbackContext(targets);
+  const handles = await mapWithConcurrency(targets, concurrency, (target) => prepareImageTarget(target, {
+    ...options,
+    fallbackContext,
+  }));
   return handles.filter(Boolean);
 }
 
@@ -909,15 +1019,15 @@ function renderConcurrencyLimit() {
 
 function batchRenderConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 8;
-  if (cores >= 8) return 6;
-  return 4;
+  if (cores >= 12) return 12;
+  if (cores >= 8) return 8;
+  return 6;
 }
 
 function batchCaptureConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 2;
-  if (cores >= 8) return 2;
+  if (cores >= 12) return 3;
+  if (cores >= 8) return 3;
   return 2;
 }
 
@@ -1389,7 +1499,7 @@ export async function exportBatch(context, callbacks = {}) {
   if (allLists.length === 0) {
     cb.setStatus('Chưa có list AI để xuất. List gốc/mẫu đã được bỏ qua.');
     cb.completeProgress('Không có list AI được chọn để xuất.');
-    return;
+    return { success: false, exportedLists: [] };
   }
 
   cb.setBusy(true);
@@ -1522,11 +1632,19 @@ export async function exportBatch(context, callbacks = {}) {
     }
     cb.completeProgress(`Đã xuất xong ${allLists.length} list.`);
     cb.setStatus(`Đã xuất xong ${allLists.length} list.`);
+    return {
+      success: true,
+      exportedLists: allLists.map(({ deck, list }) => ({
+        deckId: deck.id,
+        listId: list.id,
+      })),
+    };
   } catch (error) {
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`Batch export failed: ${message}`);
     cb.failProgress(`Xuất hàng loạt thất bại: ${message}`);
     cb.setStatus(`Lỗi: ${message}`);
+    return { success: false, exportedLists: [], error: message };
   } finally {
     await releaseExportWakeLock();
     cb.setBusy(false);

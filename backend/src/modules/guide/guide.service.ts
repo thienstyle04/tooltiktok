@@ -1523,12 +1523,10 @@ export class GuideService {
     
     const directImageUrls = imageHint ? imageHint.split(/[\n,;]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s)) : [];
     const mappedFallbackImage = fallbackResolvedImage();
-    const mappedCandidateImageUrls = mappedFallbackImage.imageSource === 'fallback' && !mappedFallbackImage.imageMapped
-      ? []
-      : Array.from(new Set([
-          mappedFallbackImage.imageUrl,
-          ...(mappedFallbackImage.candidateImageUrls ?? []),
-        ].filter(Boolean)));
+    const mappedCandidateImageUrls = Array.from(new Set([
+      mappedFallbackImage.imageUrl,
+      ...(mappedFallbackImage.candidateImageUrls ?? []),
+    ].filter(Boolean)));
 
     const resolvedImage = sheetDriveEntry
       ? {
