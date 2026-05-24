@@ -538,6 +538,7 @@ export default function DeckStudio({ initialDataset = null }) {
         body: JSON.stringify({
           deckId: activeDeck.id,
           listId: captionSourceList?.id || activeListId,
+          tone: captionTone,
           caption: {
             coverTitle: coverTitle.slice(0, 35),
             headline: caption.headline.trim(),

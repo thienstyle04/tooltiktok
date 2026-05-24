@@ -62,6 +62,9 @@ const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
   // Drive proxy images are differentiated by ?id=..., so every template export must keep query params.
   includeQueryParams: true,
 });
+const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
+const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
+const SPOTLIGHT_PARTNER_CAPTION_HASHTAGS = ['#riviudalat', '#dalat', '#dalatreview', '#72hdalat', '#dulich31'];
 const BATCH_CACHE_TRIM_INTERVAL = 50;
 const EXPORT_QUALITY_PROFILES = Object.freeze({
   optimized: {
@@ -1109,9 +1112,14 @@ function todayDateTag() {
 
 async function addListMetadataFiles(folder, list) {
   const coverTitle = String(list.coverTitle || list.title || list.navTitle || '').trim();
-  const postCaption = String(list.postCaption || list.title || '').trim();
-  const body = String(list.description || '').trim();
-  const hashtags = Array.isArray(list.captionHashtags) ? list.captionHashtags.join(' ') : '';
+  const isSpotlightPartnerList = Array.isArray(list?.pages)
+    && list.pages.some((page) => page?.layoutVariant === 'spotlight-partner' || page?.layoutVariant === 'spotlight-partner-info');
+  const usePartnerCaptionFallback = isSpotlightPartnerList && !String(list.postCaption || '').trim();
+  const postCaption = String(usePartnerCaptionFallback ? SPOTLIGHT_PARTNER_POST_CAPTION : (list.postCaption || list.title || '')).trim();
+  const body = String(usePartnerCaptionFallback ? SPOTLIGHT_PARTNER_CAPTION_BODY : (list.description || '')).trim();
+  const hashtags = Array.isArray(list.captionHashtags) && list.captionHashtags.length > 0
+    ? list.captionHashtags.join(' ')
+    : (isSpotlightPartnerList ? SPOTLIGHT_PARTNER_CAPTION_HASHTAGS.join(' ') : '');
   const captionParts = [postCaption, body, hashtags].filter(Boolean);
   folder.file('caption.txt', captionParts.join('\n\n').trim() || coverTitle);
   folder.file('partners.xlsx', await createHorizontalXlsx(collectPartnerNames(list)));

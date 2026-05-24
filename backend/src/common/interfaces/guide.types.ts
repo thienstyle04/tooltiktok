@@ -198,6 +198,7 @@ export interface CaptionBlocks {
 export interface GenerateCaptionDeckRequest {
   deckId?: string;
   listId?: string;
+  tone?: DeepSeekCaptionResponse['tone'];
   caption?: Partial<CaptionBlocks>;
 }
 
