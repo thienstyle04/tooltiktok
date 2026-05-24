@@ -940,7 +940,7 @@ export class GuideService {
       ...page,
       title: this.sanitizeContentText(sanitizeDeckHeadline(page.title)),
       chipText: this.sanitizeContentText(page.chipText),
-      items: page.items.map((item) => this.sanitizePageItemText(item)),
+      items: page.items.map((item) => this.sanitizePageItemText(item, page)),
       subtitle: shouldUseContextualSubtitle
         ? this.sanitizeContentText(this.contextualGeneratedPageSubtitle(page, list))
         : pageSubtitle,
@@ -1269,6 +1269,11 @@ export class GuideService {
     return metaText(item);
   }
 
+  private budgetGalleryItemMetaFromSource(item: GuideItem): [string, string] {
+    const openHours = String(item.openHours || '').replace(/\s+/g, ' ').trim();
+    return ['', openHours ? `Khung giờ: ${openHours}` : ''];
+  }
+
   private refreshGeneratedListImages(itemsBySection: WorkbookItemsBySection): void {
     if (this.generatedListsByDeckId.size === 0) return;
 
@@ -1317,7 +1322,9 @@ export class GuideService {
               const sourceItem = findSourceItem(pageItem);
               if (!sourceItem) return pageItem;
 
-              const [metaPrimary, metaSecondary] = this.pageItemMetaFromSource(sourceItem);
+              const [metaPrimary, metaSecondary] = page.layoutVariant === 'budget-3n2d-gallery'
+                ? this.budgetGalleryItemMetaFromSource(sourceItem)
+                : this.pageItemMetaFromSource(sourceItem);
               const nextPageItem = {
                 ...pageItem,
                 id: sourceItem.id,
@@ -1938,18 +1945,60 @@ export class GuideService {
       };
     }
 
-    return {
+    const cleanPage: DeckPage = {
       ...page,
       chipText: this.sanitizeContentText(page.chipText || ''),
       title: this.sanitizeContentText(sanitizeDeckHeadline(page.title || '')),
       subtitle: this.sanitizeContentText(page.subtitle || ''),
       items: Array.isArray(page.items)
-        ? page.items.map((item) => this.sanitizePageItemText(item))
+        ? page.items.map((item) => this.sanitizePageItemText(item, page))
         : [],
     };
+
+    return this.ensureBudgetTableTotalItem(cleanPage);
   }
 
-  private sanitizePageItemText(item: PageItem): PageItem {
+  private ensureBudgetTableTotalItem(page: DeckPage): DeckPage {
+    if (page.type !== 'list' || page.layoutVariant !== 'budget-3n2d-table') return page;
+
+    const items = Array.isArray(page.items) ? page.items : [];
+    const totalIndex = items.findIndex((item) => {
+      const key = normalizeText(`${item.id || ''} ${item.label || ''} ${item.name || ''}`);
+      return key.includes('summary_total') || key.includes('tong_cong') || key.includes('tong_thanh_toan');
+    });
+
+    if (totalIndex >= 0) {
+      const currentTotal = items[totalIndex];
+      if (currentTotal.metaSecondary) return page;
+      const nextItems = [...items];
+      nextItems[totalIndex] = {
+        ...currentTotal,
+        label: currentTotal.label || 'Tổng|Tổng cộng',
+        name: currentTotal.name || 'Tổng cộng',
+        metaPrimary: currentTotal.metaPrimary || 'Tùy nhóm và mức chi tại từng điểm',
+        metaSecondary: '~2.5tr - 3tr',
+      };
+      return { ...page, items: nextItems };
+    }
+
+    const totalItem: PageItem = {
+      id: 'budget-3n2d-summary-total',
+      label: 'Tổng|Tổng cộng',
+      name: 'Tổng cộng',
+      metaPrimary: 'Tùy nhóm và mức chi tại từng điểm',
+      metaSecondary: '~2.5tr - 3tr',
+      imageUrl: '',
+      imageMapped: false,
+      imageNote: '',
+      imageSource: 'fallback',
+      candidateImageUrls: [],
+    };
+
+    return { ...page, items: [...items, totalItem] };
+  }
+
+  private sanitizePageItemText(item: PageItem, page?: DeckPage): PageItem {
+    const isBudgetTableItem = page?.type === 'list' && page.layoutVariant === 'budget-3n2d-table';
     return {
       ...item,
       label: this.sanitizeContentText(item.label || ''),
@@ -1958,6 +2007,13 @@ export class GuideService {
       metaPrimary: this.sanitizeContentText(item.metaPrimary || ''),
       metaSecondary: this.sanitizeContentText(item.metaSecondary || ''),
       imageNote: this.sanitizeContentText(item.imageNote || ''),
+      ...(isBudgetTableItem ? {
+        imageUrl: '',
+        imageMapped: false,
+        imageSource: 'fallback' as const,
+        imageNote: '',
+        candidateImageUrls: [],
+      } : {}),
     };
   }
 

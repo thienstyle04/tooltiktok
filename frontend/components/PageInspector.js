@@ -32,13 +32,14 @@ export default function PageInspector({
 
   const items = Array.isArray(page.items) ? page.items : [];
   const hasItems = items.length > 0;
-  const mappedCount = items.filter((item) => item.imageSource === 'manual' || item.imageSource === 'auto' || item.imageMapped).length;
-  const fallbackCount = items.filter((item) => imageSourceClass(item) === 'fallback').length;
+  const itemsWithImages = items.filter((item) => item.imageUrl);
+  const mappedCount = itemsWithImages.filter((item) => item.imageSource === 'manual' || item.imageSource === 'auto' || item.imageMapped).length;
+  const fallbackCount = itemsWithImages.filter((item) => imageSourceClass(item) === 'fallback').length;
   const partnerCount = items.filter((item) => item.isPartner).length;
   const pageBackground = isPortableImageUrl(page.backgroundImage)
     ? page.backgroundImage
     : firstPortableListImage(list) || page.backgroundImage || '';
-  const coverImage = hasItems ? (items[0]?.imageUrl || pageBackground) : pageBackground;
+  const coverImage = hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
   const canEditCover = !hasItems && page.type === 'cover' && typeof onCoverTextChange === 'function';
   const canSaveCover = canEditCover && typeof onCoverTextSave === 'function';
 
@@ -63,14 +64,20 @@ export default function PageInspector({
           </div>
           <ul className="inspector-list">
             {items.map((item, index) => (
-              <li key={`${item.id || item.name}-${index}`} className="inspector-item rich">
-                <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" />
+              <li key={`${item.id || item.name}-${index}`} className={`inspector-item ${item.imageUrl ? 'rich' : ''}`}>
+                {item.imageUrl ? (
+                  <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" />
+                ) : null}
                 <span className="inspector-item-copy">
                   <span className="inspector-item-label">{item.label || ''}</span>
                   <span className="inspector-item-name">{item.name}</span>
                   <span className="inspector-item-meta">{item.metaPrimary || ''}</span>
                 </span>
-                <span className={`inspector-item-source ${imageSourceClass(item)}`}>{sourceLabel(item)}</span>
+                {item.imageUrl ? (
+                  <span className={`inspector-item-source ${imageSourceClass(item)}`}>{sourceLabel(item)}</span>
+                ) : (
+                  <span className="inspector-item-source text-only">Bảng</span>
+                )}
               </li>
             ))}
           </ul>

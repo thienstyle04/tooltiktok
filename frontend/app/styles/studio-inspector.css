@@ -262,3 +262,8 @@
   color: var(--studio-clay);
 }
 
+.inspector-item-source.text-only {
+  background: rgba(148, 154, 143, 0.14);
+  color: var(--studio-muted);
+}
+
