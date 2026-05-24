@@ -1434,6 +1434,11 @@ function budgetDisplayPrice(item: GuideItem, fallbackPrice?: string): string {
   return cleanPrice;
 }
 
+function budgetDisplayHours(item: GuideItem): string {
+  const cleanHours = String(item.openHours || '').replace(/\s+/g, ' ').trim();
+  return cleanHours ? `Khung giờ: ${cleanHours}` : '';
+}
+
 type BudgetScheduleRow = {
   day: string;
   time: string;
@@ -1495,6 +1500,17 @@ function budgetSummaryPageItem(label: string, amount: string, detail: string, id
   };
 }
 
+function withoutBudgetTableImages(items: PageItem[]): PageItem[] {
+  return items.map((item) => ({
+    ...item,
+    imageUrl: '',
+    imageMapped: false,
+    imageSource: 'fallback',
+    imageNote: '',
+    candidateImageUrls: [],
+  }));
+}
+
 function budgetGalleryPageItemWithResolver(
   item: GuideItem,
   label: string,
@@ -1508,7 +1524,7 @@ function budgetGalleryPageItemWithResolver(
     sourceSectionKey: item.sectionKey,
     name: item.name,
     metaPrimary: item.address || 'Đang cập nhật địa chỉ',
-    metaSecondary: `Giá: ${budgetDisplayPrice(item)}`,
+    metaSecondary: budgetDisplayHours(item),
     imageUrl: resolvedImage.imageUrl,
     imageMapped: resolvedImage.imageMapped,
     imageSource: resolvedImage.imageSource,
@@ -1632,14 +1648,14 @@ function buildBudget3N2DPages(
   rows.push(createBudgetStaticRow('Ngày 03', '14:30', 'Check out, lên xe về lại SG', 'Bến xe liên tỉnh Đà Lạt', 'Đã tính vé xe', `${seedPrefix}-bus-out`));
 
   const tableFallbackImage = background(`${seedPrefix}-table-fallback`);
-  const tableItems = [
+  const tableItems = withoutBudgetTableImages([
     ...rows.map((row) => budgetRowPageItem(row, imageResolver, tableFallbackImage)),
     budgetSummaryPageItem('Khách sạn', '~500k', '1 đêm phòng đôi/nhóm nhỏ', `${seedPrefix}-summary-stay`, tableFallbackImage),
     budgetSummaryPageItem('Thuê xe', '~150k', 'Xe máy 1 ngày rưỡi', `${seedPrefix}-summary-bike`, tableFallbackImage),
     budgetSummaryPageItem('Ăn uống', '~1.270k', 'Các bữa chính, cafe, ăn vặt', `${seedPrefix}-summary-food`, tableFallbackImage),
     budgetSummaryPageItem('Di chuyển', '~540k', 'Xe khách khứ hồi', `${seedPrefix}-summary-bus`, tableFallbackImage),
     budgetSummaryPageItem('Tổng cộng', '~2.5tr - 3tr', 'Tùy nhóm và mức chi tại từng điểm', `${seedPrefix}-summary-total`, tableFallbackImage),
-  ];
+  ]);
 
   const selectedFood = selectedGuideItems.filter((item) => item.sectionKey === 'quan_an' || item.sectionKey === 'choi_dem');
   const selectedCafe = selectedGuideItems.filter((item) => item.sectionKey === 'cafe');

@@ -817,6 +817,11 @@ body {
   color: var(--studio-clay-strong);
 }
 
+.inspector-item-source.text-only {
+  background: rgba(148, 154, 143, 0.16);
+  color: var(--studio-muted);
+}
+
 .ai-panel-head {
   flex: 0 0 auto;
 }

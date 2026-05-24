@@ -833,6 +833,7 @@ function budget3N2DTotalItem(items) {
 
 function renderBudget3N2DTablePage(page, index, listId) {
   const totalItem = budget3N2DTotalItem(page.items);
+  const totalValue = String(totalItem?.metaSecondary || '').trim() || '~2.5tr - 3tr';
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'budget72-table-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-bang-chi-phi.png">
       <div class="budget72-table-shell">
@@ -863,19 +864,17 @@ function renderBudget3N2DTablePage(page, index, listId) {
             ${renderBudget3N2DSummaryRows(page.items)}
           </tbody>
         </table>
-        ${totalItem ? `
-          <div class="budget72-total-bar">
-            <span>Tổng thanh toán dự kiến</span>
-            <strong>${escapeHtml(totalItem.metaSecondary || '')}</strong>
-          </div>
-        ` : ''}
+        <div class="budget72-total-bar">
+          <span>Tổng thanh toán dự kiến</span>
+          <strong>${escapeHtml(totalValue)}</strong>
+        </div>
       </div>
     </article>
   `;
 }
 
 function renderBudget3N2DGalleryRow(item, rowIndex) {
-  const secondary = String(item?.metaSecondary || '').replace(/^GiÃ¡:\s*/i, '').trim();
+  const secondary = budgetGalleryMetaText(item);
   return `
     <article class="budget72-gallery-row ${escapeHtml(imageSourceClass(item))}">
       <div class="budget72-gallery-row-index">${String(rowIndex + 2).padStart(2, '0')}</div>
@@ -885,7 +884,6 @@ function renderBudget3N2DGalleryRow(item, rowIndex) {
       <div class="budget72-gallery-row-copy">
         ${item.label ? `<span class="budget72-gallery-label">${escapeHtml(item.label)}</span>` : ''}
         <strong class="story-image-title">${escapeHtml(item.rawName || item.name || '')}</strong>
-        ${renderGridAddress(item.metaPrimary)}
         ${secondary ? `<div class="budget72-gallery-price">${escapeHtml(secondary)}</div>` : ''}
       </div>
     </article>
@@ -895,7 +893,7 @@ function renderBudget3N2DGalleryRow(item, rowIndex) {
 function renderBudget3N2DGalleryPage(page, index, listId, list) {
   const items = Array.isArray(page.items) ? page.items.slice(0, 4) : [];
   const hero = items[0] || {};
-  const heroPrice = String(hero.metaSecondary || '').replace(/^GiÃ¡:\s*/i, '').trim();
+  const heroMeta = budgetGalleryMetaText(hero);
   const backgroundImage = page.backgroundImage || hero.imageUrl || coverBackgroundImage(page, list);
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'budget72-gallery-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || page.title || 'gallery')}.png">
@@ -916,8 +914,7 @@ function renderBudget3N2DGalleryPage(page, index, listId, list) {
               ${hero.isPartner ? '<span class="budget72-gallery-partner">Đối tác</span>' : ''}
             </div>
             <h3 class="story-image-title">${escapeHtml(hero.rawName || hero.name || '')}</h3>
-            ${renderGridAddress(hero.metaPrimary)}
-            ${heroPrice ? `<div class="budget72-gallery-price">${escapeHtml(heroPrice)}</div>` : ''}
+            ${heroMeta ? `<div class="budget72-gallery-price">${escapeHtml(heroMeta)}</div>` : ''}
           </div>
         </section>
         <section class="budget72-gallery-stack">
@@ -928,14 +925,22 @@ function renderBudget3N2DGalleryPage(page, index, listId, list) {
   `;
 }
 
-function budgetGalleryPriceText(item) {
-  return String(item?.metaSecondary || '')
-    .replace(/^Gi(?:ÃƒÂ¡|á):\s*/i, '')
-    .trim();
+function budgetGalleryMetaText(item) {
+  const primary = String(item?.metaPrimary || '').replace(/\s+/g, ' ').trim();
+  const secondary = String(item?.metaSecondary || '').replace(/\s+/g, ' ').trim();
+  const combined = `${primary} ${secondary}`.trim();
+  const hoursMatch = combined.match(/Khung gi(?:ờ|á»):\s*([^·]+)/i);
+  if (hoursMatch?.[1]) {
+    return `Khung giờ: ${hoursMatch[1].trim()}`;
+  }
+  if (/^Khung gi(?:ờ|á»):/i.test(secondary)) {
+    return secondary.replace(/\s*·.*$/, '').trim();
+  }
+  return '';
 }
 
 function renderBudget3N2DGalleryCorner(item, cornerIndex) {
-  const secondary = budgetGalleryPriceText(item);
+  const secondary = budgetGalleryMetaText(item);
   return `
     <article class="budget72-corner-card budget72-corner-${cornerIndex + 1} ${escapeHtml(imageSourceClass(item))}">
       ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
@@ -947,7 +952,6 @@ function renderBudget3N2DGalleryCorner(item, cornerIndex) {
         </div>
         <strong class="story-image-title">${escapeHtml(item.rawName || item.name || '')}</strong>
         <div class="budget72-corner-meta">
-          ${renderGridAddress(item.metaPrimary)}
           ${secondary ? `<div class="budget72-gallery-price">${escapeHtml(secondary)}</div>` : ''}
         </div>
       </div>
