@@ -724,12 +724,82 @@ export default function DeckStudio({ initialDataset = null }) {
     }
   }, [activeDeckId, activeListId, applyDataset, dataset, selectedListsForDelete]);
 
+  const removeExportedGeneratedLists = useCallback(async (exportedLists = []) => {
+    const groups = new Map();
+    for (const item of exportedLists) {
+      if (!item?.deckId || !item?.listId) continue;
+      const deck = dataset?.decks?.find((entry) => entry.id === item.deckId);
+      const list = deck?.lists?.find((entry) => entry.id === item.listId);
+      if (!list || listIsMain(list)) continue;
+      const listIds = groups.get(item.deckId) || [];
+      if (!listIds.includes(item.listId)) listIds.push(item.listId);
+      groups.set(item.deckId, listIds);
+    }
+
+    const cleanupGroups = Array.from(groups, ([deckId, listIds]) => ({ deckId, listIds }))
+      .filter((group) => group.listIds.length > 0);
+    const cleanupCount = cleanupGroups.reduce((total, group) => total + group.listIds.length, 0);
+    if (cleanupCount === 0) return;
+
+    setStatus(`Đã xuất xong. Đang xóa ${cleanupCount} list AI đã xuất...`);
+    const focusIndexByDeck = new Map();
+    for (const group of cleanupGroups) {
+      const deckBeforeDelete = dataset.decks.find((deck) => deck.id === group.deckId);
+      const deleteIndexes = group.listIds
+        .map((id) => deckBeforeDelete?.lists?.findIndex((list) => list.id === id) ?? -1)
+        .filter((index) => index >= 0);
+      focusIndexByDeck.set(group.deckId, deleteIndexes.length > 0 ? Math.min(...deleteIndexes) : 0);
+
+      for (const listId of group.listIds) {
+        const response = await apiFetch(`/api/decks/${encodeURIComponent(group.deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
+        if (!response.ok && response.status !== 204) {
+          const message = await response.text();
+          throw new Error(message || `Xóa list đã xuất thất bại: HTTP ${response.status}`);
+        }
+      }
+    }
+
+    const nextDataset = {
+      ...dataset,
+      decks: dataset.decks.map((deck) => {
+        const group = cleanupGroups.find((item) => item.deckId === deck.id);
+        return group ? { ...deck, lists: deck.lists.filter((list) => !group.listIds.includes(list.id)) } : deck;
+      }),
+    };
+    const activeDeckAfterDelete = nextDataset.decks.find((deck) => deck.id === activeDeckId) || nextDataset.decks[0] || null;
+    const focusIndex = focusIndexByDeck.get(activeDeckAfterDelete?.id) ?? 0;
+    const activeListStillExists = activeDeckAfterDelete?.lists?.some((list) => list.id === activeListId);
+    writeCachedDataset(nextDataset);
+    applyDataset(nextDataset, {
+      activeDeckId: activeDeckAfterDelete?.id,
+      activeListId: activeListStillExists
+        ? activeListId
+        : activeDeckAfterDelete?.lists?.[Math.max(0, Math.min(focusIndex, (activeDeckAfterDelete?.lists?.length || 1) - 1))]?.id,
+      selectedPageIndex: 0,
+    });
+    setSelectedListsForDelete((prev) => {
+      const removed = new Set(cleanupGroups.flatMap((group) => group.listIds));
+      return new Set(Array.from(prev).filter((id) => !removed.has(id)));
+    });
+    setStatus(`Đã xuất và xóa ${cleanupCount} list AI đã xuất.`);
+  }, [activeDeckId, activeListId, applyDataset, dataset]);
+
   const handleExportBatch = useCallback(async () => {
     setExportModalOpen(false);
     setActiveView('preview');
-    await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality }, exportCb);
+    const result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality }, exportCb);
     setSelectedListsForExport(new Set());
-  }, [dataset, exportCb, exportQuality, selectedListsForExport]);
+    if (result?.success) {
+      setBusy(true);
+      try {
+        await removeExportedGeneratedLists(result.exportedLists);
+      } catch (error) {
+        setStatus(error?.message || 'Đã xuất file nhưng chưa xóa được list AI đã xuất.');
+      } finally {
+        setBusy(false);
+      }
+    }
+  }, [dataset, exportCb, exportQuality, removeExportedGeneratedLists, selectedListsForExport]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
