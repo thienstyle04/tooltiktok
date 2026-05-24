@@ -31,6 +31,7 @@ export default function CaptionTools({
   const generatedLists = allLists.filter((list) => !listIsMain(list));
   const lists = mainLists.length ? mainLists : allLists.slice(0, 1);
   const selectedCaptionList = lists.find((list) => list.id === activeList?.id) || lists[0] || null;
+  const isSpotlightPartnerDeck = activeDeck?.id === 'spotlight-partner';
 
   const handleDeckChange = (event) => {
     const deck = decks.find((item) => item.id === event.target.value);
@@ -97,6 +98,7 @@ export default function CaptionTools({
         </div>
         <div className="ai-actions">
           <button id="generateCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={() => onRequestCaption('full')}>Tạo caption</button>
+          {!isSpotlightPartnerDeck ? (
           <div className="ai-batch-group" ref={batchDropdownRef}>
             <button
               id="createDeckFromCaptionBtn"
@@ -141,6 +143,7 @@ export default function CaptionTools({
               </div>
             )}
           </div>
+          ) : null}
           <button id="copyFullCaptionBtn" className="toolbar-button" type="button" onClick={() => onCopy([caption.headline, caption.body, caption.hashtags].filter(Boolean).join('\n\n'), 'Đã copy full caption.')}>Copy caption</button>
         </div>
       </div>
@@ -209,6 +212,7 @@ export default function CaptionTools({
           <textarea id="captionHashtags" className="ai-output compact" placeholder="Hashtags sẽ hiện ở đây..." value={caption.hashtags} onChange={(event) => setCaption((prev) => ({ ...prev, hashtags: event.target.value }))} />
         </section>
 
+        {isSpotlightPartnerDeck ? (
         <section className="ai-block generated-list-panel">
           <div className="ai-block-head generated-list-head">
             <div>
@@ -241,6 +245,7 @@ export default function CaptionTools({
             <p className="generated-list-empty">Chưa có đối tác nào trong dữ liệu.</p>
           )}
         </section>
+        ) : null}
 
         <section className="ai-block generated-list-panel">
           <div className="ai-block-head generated-list-head">

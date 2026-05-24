@@ -28,7 +28,7 @@ export const GRID_4_TEMPLATE_VERSION = 17;
 export const GRID_6_TEMPLATE_VERSION = 16;
 export const GRID_8_TEMPLATE_VERSION = 15;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
-export const BUDGET_3N2D_TEMPLATE_VERSION = 2;
+export const BUDGET_3N2D_TEMPLATE_VERSION = 3;
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -2741,7 +2741,7 @@ function buildSpotlightGuidePages(
 
 // ─── Spotlight Partner: one partner, all their images as spotlight pages ──────
 
-export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 11;
+export const SPOTLIGHT_PARTNER_TEMPLATE_VERSION = 17;
 
 const LOW_RES_FULL_BLEED_DRIVE_FILE_IDS = new Set([
   // These Drive files are valid images, but Google Drive returns only 206x206 originals.
@@ -2791,54 +2791,161 @@ type PartnerSpotlightCopy = {
 
 const PARTNER_SPOTLIGHT_COPY: Record<string, PartnerSpotlightCopy[]> = {
   food: [
-    { title: 'Món chính nhìn phát muốn ghé', description: 'Trang này ưu tiên cảm giác món ăn và lý do đáng lưu quán vào lịch.' },
-    { title: 'Không gian ăn tối ấm hơn', description: 'Một góc giúp người xem hình dung vibe ngồi lại cùng nhóm bạn.' },
-    { title: 'Bàn ăn hợp đi cùng nhau', description: 'Gợi ý nhanh cho lúc cần một điểm ăn no, dễ rủ thêm người.' },
-    { title: 'Góc lên hình của quán', description: 'Chi tiết để người xem nhớ quán, không chỉ nhớ mỗi địa chỉ.' },
-    { title: 'Buổi tối ghé sẽ hợp mood', description: 'Một lựa chọn dành cho lịch Đà Lạt sau khi trời bắt đầu lạnh.' },
-    { title: 'Lưu lại cho bữa sau', description: 'Trang chốt giúp người xem quyết nhanh khi cần tìm chỗ ăn.' },
+    { title: 'Món nhìn phát là muốn ghé', description: 'Hợp cho một bữa tối ấm, có món rõ ràng và không khí dễ ngồi lâu.' },
+    { title: 'Đi cùng nhau sẽ vui hơn', description: 'Không gian có cảm giác gần gũi, hợp nhóm bạn hoặc cặp đôi cần một bữa gọn.' },
+    { title: 'Trời se lạnh ghé là hợp', description: 'Một điểm ăn dễ thêm vào lịch khi muốn ngồi lại lâu hơn một chút.' },
+    { title: 'Góc quán cũng khá ăn ảnh', description: 'Không chỉ để ăn, vài góc của quán lên hình cũng có vibe riêng.' },
+    { title: 'Lưu lại cho bữa tối', description: 'Khi cần chốt nhanh một quán ăn ở Đà Lạt, mở lại trang này là đủ thông tin.' },
+    { title: 'Một chỗ ăn dễ nhớ', description: 'Tên quán, địa chỉ và khung giờ được giữ gọn để xem lại nhanh trước khi đi.' },
   ],
   cafe: [
-    { title: 'View ngồi chill dễ chịu', description: 'Trang này nói về không khí và cảm giác dừng chân của quán.' },
-    { title: 'Góc check-in của quán', description: 'Một góc lên hình rõ vibe, hợp để lưu trước khi chọn điểm ghé.' },
-    { title: 'Không gian hợp ngồi lâu', description: 'Gợi ý cho lúc muốn nghỉ chân, uống nước và đi chậm lại.' },
-    { title: 'Một góc rất Đà Lạt', description: 'Chi tiết nhỏ giúp quán có cảm giác riêng trong bộ ảnh.' },
-    { title: 'Buổi chiều ghé sẽ đẹp', description: 'Trang này dành cho mood ánh sáng mềm và không khí thư thả.' },
-    { title: 'Lưu lại cho buổi cafe', description: 'Một điểm dễ mở ra xem lại khi cần chọn quán trong lịch.' },
+    { title: 'View ngồi chill dễ chịu', description: 'Một góc đủ rõ vibe quán để biết có hợp dừng chân trong lịch không.' },
+    { title: 'Góc này lên hình khá xinh', description: 'Khung hình có cảm giác riêng, hợp lưu lại trước khi chọn điểm ghé.' },
+    { title: 'Ngồi chậm một chút ở đây', description: 'Hợp lúc muốn nghỉ chân, uống nước và để lịch Đà Lạt nhẹ hơn.' },
+    { title: 'Một góc rất Đà Lạt', description: 'Có những chi tiết nhỏ làm quán dễ nhớ hơn trong cả bộ ảnh.' },
+    { title: 'Buổi chiều ghé sẽ đẹp', description: 'Dành cho mood ánh sáng mềm, nhẹ và thong thả hơn.' },
+    { title: 'Lưu lại cho buổi cafe', description: 'Một điểm dễ mở lại khi cần chọn quán có view và không khí ổn.' },
   ],
   stay: [
-    { title: 'Không gian nghỉ nhìn là muốn ở', description: 'Trang này giới thiệu cảm giác tổng thể của chỗ lưu trú.' },
-    { title: 'Góc phòng đáng lưu ý', description: 'Một chi tiết giúp người xem so nhanh vibe phòng trước khi đặt.' },
-    { title: 'View nghỉ chân nhẹ nhàng', description: 'Gợi ý cho ai muốn nơi ở có cảm giác thư giãn hơn.' },
-    { title: 'Chi tiết làm phòng có gu', description: 'Trang này nhấn vào những điểm nhỏ giúp chỗ ở dễ nhớ.' },
-    { title: 'Hợp cho chuyến đi chậm', description: 'Một lựa chọn dành cho lịch Đà Lạt cần nghỉ ngơi tử tế.' },
-    { title: 'Lưu lại trước khi đặt phòng', description: 'Trang chốt để người xem quay lại khi cần so chỗ ở.' },
+    { title: 'Không gian nghỉ nhìn khá êm', description: 'Nhìn tổng thể là biết chỗ này hợp kiểu chuyến đi nào.' },
+    { title: 'Góc phòng đáng xem trước', description: 'Một chi tiết giúp so nhanh vibe phòng trước khi đặt.' },
+    { title: 'View nghỉ chân nhẹ nhàng', description: 'Hợp với ai muốn chỗ ở có cảm giác thư giãn hơn.' },
+    { title: 'Chi tiết làm phòng có gu', description: 'Những điểm nhỏ giúp nơi ở dễ nhớ và dễ phân biệt hơn.' },
+    { title: 'Hợp cho chuyến đi chậm', description: 'Một lựa chọn đáng lưu nếu lịch Đà Lạt ưu tiên nghỉ ngơi tử tế.' },
+    { title: 'Lưu lại trước khi đặt phòng', description: 'Khi cần so chỗ ở, mở lại trang này là có thông tin chính.' },
   ],
   scenery: [
-    { title: 'Khung cảnh đáng dừng lại', description: 'Trang này giới thiệu phần phong cảnh chính, hợp để lưu vào lịch.' },
-    { title: 'Góc lên hình rộng và thoáng', description: 'Một điểm nhìn giúp người xem hiểu vì sao nơi này đáng ghé.' },
-    { title: 'Một mảng xanh rất Đà Lạt', description: 'Trang này nhấn vào cảm giác thiên nhiên, nhẹ và dễ chịu.' },
-    { title: 'Lối đi có chiều sâu ảnh', description: 'Gợi ý góc chụp giúp khung hình có câu chuyện hơn.' },
-    { title: 'View hợp để đi chậm', description: 'Một khung cảnh dành cho lịch không vội, ghé và ngắm lâu hơn.' },
-    { title: 'Lưu lại cho ngày trời đẹp', description: 'Trang chốt cho những lúc cần chọn một điểm có cảnh ổn.' },
+    { title: 'Khung cảnh đáng dừng lại', description: 'Một góc đủ đẹp để cân nhắc thêm vào lịch đi Đà Lạt.' },
+    { title: 'Góc lên hình rộng và thoáng', description: 'Nhìn qua là hiểu vì sao nơi này đáng để ghé thử.' },
+    { title: 'Một mảng xanh rất Đà Lạt', description: 'Cảm giác thiên nhiên nhẹ, dễ chịu và hợp đi chậm.' },
+    { title: 'Lối đi có chiều sâu', description: 'Một khung hình có câu chuyện hơn, hợp cho bộ ảnh review.' },
+    { title: 'View hợp để đi chậm', description: 'Dành cho lịch không vội, ghé và ngắm lâu hơn một chút.' },
+    { title: 'Lưu lại cho ngày trời đẹp', description: 'Khi cần một điểm có cảnh ổn, trang này đủ để xem nhanh.' },
   ],
   service: [
-    { title: 'Dịch vụ nên lưu trước', description: 'Trang này giới thiệu nhanh lý do nên giữ liên hệ khi đi Đà Lạt.' },
-    { title: 'Chi tiết giúp chuyến đi gọn hơn', description: 'Một lựa chọn hậu cần để người xem đỡ mất thời gian tìm lại.' },
-    { title: 'Thông tin cần khi phát sinh', description: 'Gợi ý cho lúc cần xử lý xe, đồ, quà hoặc hỗ trợ tại chỗ.' },
-    { title: 'Lưu lại để liên hệ nhanh', description: 'Trang này ưu tiên tính thực dụng, mở ra là biết cần gọi ai.' },
-    { title: 'Một lựa chọn hỗ trợ lịch đi', description: 'Dành cho các nhu cầu nhỏ nhưng dễ ảnh hưởng cả chuyến.' },
-    { title: 'Ghim sẵn cho yên tâm', description: 'Trang chốt giúp người xem có phương án dự phòng khi cần.' },
+    { title: 'Dịch vụ nên lưu trước', description: 'Thông tin thực dụng để giữ liên hệ khi cần hỗ trợ ở Đà Lạt.' },
+    { title: 'Giúp chuyến đi gọn hơn', description: 'Một lựa chọn hậu cần để đỡ mất thời gian tìm lại lúc cần.' },
+    { title: 'Thông tin cần khi phát sinh', description: 'Hợp lúc cần xử lý xe, đồ, quà hoặc hỗ trợ tại chỗ.' },
+    { title: 'Lưu lại để liên hệ nhanh', description: 'Mở ra là biết cần gọi ai và dùng vào việc gì.' },
+    { title: 'Một lựa chọn hỗ trợ lịch đi', description: 'Nhu cầu nhỏ nhưng đôi khi quyết định cả độ mượt của chuyến.' },
+    { title: 'Ghim sẵn cho yên tâm', description: 'Có sẵn phương án dự phòng vẫn dễ chịu hơn khi đi xa.' },
   ],
   generic: [
-    { title: 'Góc đáng lưu của nơi này', description: 'Trang này giới thiệu nhanh điểm đáng chú ý nhất trong ảnh.' },
-    { title: 'Một chi tiết dễ nhớ', description: 'Gợi ý để người xem phân biệt nơi này với các điểm khác.' },
-    { title: 'Không gian nên xem trước', description: 'Trang này giúp hình dung vibe trước khi quyết định ghé.' },
+    { title: 'Góc đáng lưu của nơi này', description: 'Một điểm nhìn nhanh để biết có hợp thêm vào lịch không.' },
+    { title: 'Một chi tiết dễ nhớ', description: 'Giúp phân biệt nơi này với những điểm khác trong list.' },
+    { title: 'Không gian nên xem trước', description: 'Hình dung vibe trước khi quyết định ghé.' },
     { title: 'Góc lên hình hợp lưu lại', description: 'Một khung hình dùng để nhớ nơi này trong cả list.' },
-    { title: 'Điểm nhấn của địa điểm', description: 'Trang này gom lại lý do nên cân nhắc thêm vào lịch.' },
+    { title: 'Điểm nhấn của địa điểm', description: 'Gom lại lý do nên cân nhắc thêm vào lịch.' },
     { title: 'Lưu lại khi cần chọn nhanh', description: 'Một trang chốt để quay lại xem khi cần ra quyết định.' },
   ],
 };
+
+function partnerCoverVariantIndex(item: GuideItem, seedPrefix: string, salt: string, count: number): number {
+  if (count <= 0) return 0;
+  const variantMatch = seedPrefix.match(/variant:(\d+)/i);
+  if (variantMatch) {
+    const offset = stableHash(`${item.id}:${salt}`) % count;
+    return (Number(variantMatch[1]) + offset) % count;
+  }
+  return stableHash(`${seedPrefix}:${item.id}:${item.name}:${salt}`) % count;
+}
+
+function partnerCoverHook(item: GuideItem, seedPrefix = ''): string {
+  const kind = partnerSpotlightCopyKind(item);
+  const placeLine = item.address ? `${item.name} · ${item.address}` : item.name;
+  const hooksByKind: Record<string, string[]> = {
+    food: [
+      'Gom nhanh món, không gian và thông tin cần lưu trước khi ghé.',
+      'Một trang để xem nhanh vibe quán, giá và lý do nên ghé.',
+      'Lưu trước nếu cần một điểm ăn dễ chốt trong lịch Đà Lạt.',
+      'Tóm gọn món nên thử, khung giờ và cảm giác quán.',
+    ],
+    cafe: [
+      'Gom nhanh vibe, góc ngồi và thời điểm hợp để ghé.',
+      'Một trang để xem nhanh view, không gian và lý do nên lưu.',
+      'Lưu lại khi cần một quán cafe dễ ghé trong lịch Đà Lạt.',
+      'Tóm gọn góc đẹp, địa chỉ và cảm giác ngồi tại quán.',
+    ],
+    stay: [
+      'Xem nhanh không gian, vibe nghỉ và thông tin nên lưu trước.',
+      'Tóm gọn cảm giác phòng, vị trí và lý do nên cân nhắc.',
+      'Lưu lại nếu cần một điểm nghỉ dễ so trước chuyến đi.',
+      'Một trang để nhìn nhanh nơi ở trước khi đặt phòng.',
+    ],
+    service: [
+      'Lưu trước để chuyến đi gọn hơn khi cần dùng dịch vụ hoặc mua quà.',
+      'Tóm gọn thông tin cần lưu và lý do nên giữ sẵn.',
+      'Một lựa chọn tiện để đỡ mất thời gian tìm lại lúc cần.',
+      'Ghim sẵn thông tin cần thiết cho chuyến Đà Lạt nhẹ hơn.',
+    ],
+    scenery: [
+      'Gom nhanh vibe, góc đẹp và thông tin cần lưu trước khi ghé.',
+      'Một trang để xem nhanh cảnh, địa chỉ và lý do nên thêm vào lịch.',
+      'Lưu lại nếu cần một góc Đà Lạt dễ đi và dễ nhớ.',
+      'Tóm gọn khung cảnh, cảm giác và điểm đáng dừng lại.',
+    ],
+    generic: [
+      'Gom nhanh vibe, góc đẹp và thông tin cần lưu trước khi ghé.',
+      'Một trang để xem nhanh nơi này có hợp thêm vào lịch không.',
+      'Lưu lại khi cần chọn nhanh một điểm đáng ghé.',
+      'Tóm gọn điểm đáng nhớ và thông tin chính của địa điểm.',
+    ],
+  };
+  const hooks = hooksByKind[kind] || hooksByKind.generic;
+  const hook = hooks[partnerCoverVariantIndex(item, seedPrefix, 'cover-hook', hooks.length)] || hooks[0];
+  return `${placeLine}. ${hook}`;
+}
+
+function partnerCoverTitle(item: GuideItem, seedPrefix = ''): string {
+  const kind = partnerSpotlightCopyKind(item);
+  const name = item.name;
+  const titlesByKind: Record<string, string[]> = {
+    food: [
+      `${name} có đáng ghé?`,
+      `Ghé ${name} ăn gì?`,
+      `${name} hợp đi nhóm không?`,
+      `${name} có gì ngon?`,
+      `${name} nên lưu cho bữa tối?`,
+    ],
+    cafe: [
+      `${name} có chill như lời đồn?`,
+      `${name} có view ổn không?`,
+      `Ghé ${name} ngồi gì?`,
+      `${name} hợp buổi nào?`,
+      `${name} có đáng lưu?`,
+    ],
+    stay: [
+      `${name} có hợp để ở?`,
+      `${name} có gì nên xem?`,
+      `Ở ${name} có ổn không?`,
+      `${name} hợp kiểu chuyến nào?`,
+      `${name} có đáng đặt trước?`,
+    ],
+    service: [
+      `${name} có gì nên lưu?`,
+      `Lưu ${name} trước chuyến đi`,
+      `${name} giúp chuyến đi gọn hơn`,
+      `Có nên lưu ${name} không?`,
+      `${name} dùng lúc nào?`,
+    ],
+    scenery: [
+      `${name} có đáng ghé?`,
+      `${name} có gì đáng xem?`,
+      `Ghé ${name} mùa nào đẹp?`,
+      `${name} hợp đi chậm không?`,
+      `${name} có đáng lưu?`,
+    ],
+    generic: [
+      `${name} có gì đáng lưu?`,
+      `${name} có đáng ghé?`,
+      `${name} hợp lịch nào?`,
+      `Có nên lưu ${name} không?`,
+      `${name} có gì nổi bật?`,
+    ],
+  };
+  const titles = titlesByKind[kind] || titlesByKind.generic;
+  return titles[partnerCoverVariantIndex(item, seedPrefix, 'cover-title', titles.length)] || titles[0];
+}
 
 function partnerSpotlightTone(sectionKey: SectionKey): AccentTone {
   if (sectionKey === 'cafe') return 'gold';
@@ -2854,10 +2961,11 @@ function partnerSpotlightChip(item: GuideItem): string {
 
 function partnerSpotlightCopyKind(item: GuideItem): keyof typeof PARTNER_SPOTLIGHT_COPY {
   const normalized = normalizeText([item.sectionKey, item.type, item.style, item.highlight, item.name].join(' '));
-  if (item.sectionKey === 'quan_an' || textMatchesAny(normalized, ['an', 'nuong', 'lau', 'mon', 'quan_an', 'nha_hang'])) return 'food';
   if (item.sectionKey === 'cafe' || textMatchesAny(normalized, ['cafe', 'ca_phe', 'coffee'])) return 'cafe';
   if (item.sectionKey === 'homestay' || textMatchesAny(normalized, ['homestay', 'hotel', 'villa', 'luu_tru', 'phong'])) return 'stay';
-  if (item.sectionKey === 'dich_vu' || textMatchesAny(normalized, ['dich_vu', 'thue', 'spa', 'goi_dau', 'dac_san'])) return 'service';
+  if (item.sectionKey === 'quan_an' || textMatchesAny(normalized, ['quan_an', 'nha_hang', 'an_toi', 'an_sang', 'mon_an', 'do_an', 'nuong', 'lau', 'com', 'bun', 'banh', 'pho', 'mi', 'ramen', 'chao', 'oc'])) return 'food';
+  if (textMatchesAny(normalized, ['dac_san', 'thue', 'spa', 'goi_dau', 'chup_anh', 'camera', 'limousine', 'xe_may', 'xe_dien', 'qua'])) return 'service';
+  if (item.sectionKey === 'dich_vu') return 'service';
   if (['check_in', 'hoat_dong', 'dia_diem_lich_su', 'khu_du_lich', 'choi_dem'].includes(item.sectionKey)) return 'scenery';
   return 'generic';
 }
@@ -2933,7 +3041,7 @@ export function buildSpotlightPartnerPages(
   const chipText = partnerSpotlightChip(partnerItem);
   const chipTone = partnerSpotlightTone(partnerItem.sectionKey);
 
-  const spotlightPages: ListPage[] = fullBleedUrls.map((imageUrl, index) => {
+  const spotlightPages: ListPage[] = fullBleedUrls.slice(0, 6).map((imageUrl, index) => {
     const pageCopy = partnerSpotlightCopy(partnerItem, index);
     const pageItem: PageItem = {
       label: chipText,
@@ -2955,7 +3063,7 @@ export function buildSpotlightPartnerPages(
       chipText,
       chipTone,
       pageCopy.title,
-      partnerItem.address || '',
+      partnerItem.address || partnerItem.openHours || '',
       [pageItem],
       imageUrl,
       'spotlight-partner',
@@ -2967,7 +3075,7 @@ export function buildSpotlightPartnerPages(
   const infoPage = buildListPage(
     'Thông tin',
     chipTone,
-    'Thông tin cần lưu',
+    'Lưu thông tin trước khi ghé',
     partnerItem.name,
     partnerInfoItems(partnerItem, infoImage, fullBleedUrls),
     infoImage,
@@ -2977,8 +3085,8 @@ export function buildSpotlightPartnerPages(
   return [
     {
       ...buildCoverPage(
-        partnerItem.name.toUpperCase(),
-        '',
+        partnerCoverTitle(partnerItem, seedPrefix),
+        partnerCoverHook(partnerItem, seedPrefix),
         coverImage,
       ),
       layoutVariant: 'spotlight-partner' as const,
@@ -3034,6 +3142,9 @@ function buildSpotlightPartnerSampleLists(
     pages,
   );
   list.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
+  list.postCaption = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
+  list.description = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
+  list.captionHashtags = ['#riviudalat', '#dalat', '#dalatreview', '#72hdalat', '#dulich31'];
   list.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
   return [list];
 }

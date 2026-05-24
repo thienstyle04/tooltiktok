@@ -437,6 +437,10 @@ function sanitizeSubtitleForDisplay(value, pages) {
   const clean = String(value || '').replace(/\s+/g, ' ').trim();
   if (!clean) return '';
 
+  if ((pages || []).some((page) => page?.layoutVariant === 'spotlight-partner')) {
+    return polishShortVietnameseCopy(clean);
+  }
+
   const placeNames = collectPagePlaceNames(pages);
   if (hasPagePlaceName(clean, placeNames) || looksLikeStopList(clean) || looksLocationSpecific(clean)) {
     return GENERIC_CAPTION_BODY;
@@ -475,6 +479,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         </div>
         <div class="grid4-feature-shade"></div>
         <div class="grid4-feature-copy">
+          ${isSpotlightPartnerCover(page) ? `<div class="spotlight-partner-cover-script">dalat.</div>` : ''}
           ${isSpotlightPartnerCover(page) ? `<h1 class="grid4-feature-title">${escapeHtml(coverTitle || '')}</h1>` : ''}
           ${coverSubtitle ? `<p class="grid4-feature-subtitle spotlight-cover-caption">${escapeHtml(coverSubtitle)}</p>` : ''}
         </div>
@@ -690,24 +695,13 @@ function renderSpotlightPage(page, index, listId, list, pageSubtitle) {
 function renderSpotlightPartnerPage(page, index, listId, list) {
   const item = page.items?.[0] || {};
   const backgroundImage = page.backgroundImage || item.imageUrl || coverBackgroundImage(page, list);
-  const positionClass = spotlightPositionClass(page, index, item);
-  const titleText = page.title || item.name || '';
-  const titleFitClass = spotlightTitleFitClass(titleText);
-  const descriptionText = item.metaSecondary || '';
+  const exportLabel = item.rawName || item.name || page.title || 'partner';
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-page spotlight-partner-page', positionClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(titleText || item.rawName || 'partner')}.png">
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-page spotlight-partner-page spotlight-partner-photo-only'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(exportLabel)}.png">
       <div class="spotlight-bg">
         ${renderPreviewImage(backgroundImage, item.rawName || page.title)}
       </div>
       <div class="spotlight-shade"></div>
-      <div class="spotlight-copy">
-        <span class="spotlight-partner-brand">${escapeHtml(item.metaPrimary || item.rawName || '')}</span>
-        <h2 class="spotlight-title story-image-title ${escapeHtml(titleFitClass)}">${escapeHtml(titleText)}</h2>
-        <div class="spotlight-info">
-          ${descriptionText ? `<p class="spotlight-partner-desc">${escapeHtml(descriptionText)}</p>` : ''}
-          ${renderSpotlightMetaLine(page.subtitle)}
-        </div>
-      </div>
     </article>
   `;
 }
@@ -772,9 +766,6 @@ function renderSpotlightPartnerInfoPage(page, index, listId, list) {
       </div>
       <div class="spotlight-list-shade"></div>
       <div class="spotlight-partner-info-panel">
-        <span class="spotlight-partner-info-kicker">${escapeHtml(page.chipText || '')}</span>
-        <h2>${escapeHtml(page.title || 'Thông tin cần lưu')}</h2>
-        <p>${escapeHtml(page.subtitle || '')}</p>
         <div class="spotlight-partner-info-stack">
           ${itemRows}
         </div>

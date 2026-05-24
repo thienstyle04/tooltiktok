@@ -58,6 +58,10 @@ import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from 
 
 const GENERATED_CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 const RECENT_LIST_IMAGE_WINDOW = 1;
+const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
+const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
+const SPOTLIGHT_PARTNER_CAPTION_HASHTAGS = ['#riviudalat', '#dalat', '#dalatreview', '#72hdalat', '#dulich31'];
+type CaptionTone = DeepSeekCaptionResponse['tone'];
 
 @Injectable()
 export class GuideService {
@@ -389,6 +393,9 @@ export class GuideService {
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     this.ensureGeneratedListsLoaded();
     const deckId = String(request.deckId ?? '').trim();
+    if (deckId === 'spotlight-partner') {
+      throw new BadRequestException('Mau Spotlight Doi tac tao list bang cach chon doi tac, khong tao tu caption chung.');
+    }
     if (!deckId) throw new BadRequestException('Thiếu deckId để tạo list mới từ caption.');
 
     const caption = this.normalizeCaptionPayload(
@@ -419,7 +426,8 @@ export class GuideService {
     const generatedNumber = existing.length + 1;
     const generatedSuffix = `${String(generatedNumber).padStart(2, '0')}-${timestamp}`;
 
-    const seed = [deckId, generatedSuffix, String(existing.length), caption.coverTitle, caption.headline, caption.body, caption.hashtags.join(' '), timestamp].join('|');
+    const requestedTone = this.normalizeCaptionTone(request.tone);
+    const seed = [deckId, generatedSuffix, String(existing.length), requestedTone, caption.coverTitle, caption.headline, caption.body, caption.hashtags.join(' '), timestamp].join('|');
 
     this.ensureInventoryLoaded();
     const deckUsage = this.createUsageScope();
@@ -453,12 +461,15 @@ export class GuideService {
       headline: this.sanitizeContentText(caption.headline),
       body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
     };
-    const generatedPages = applyCaptionToPages(basePages, safeCaption);
+    const finalCaption = deckId === 'budget-3n2d'
+      ? this.budget3N2DCoverCaption(safeCaption, requestedTone, seed, generatedNumber)
+      : safeCaption;
+    const generatedPages = applyCaptionToPages(basePages, finalCaption);
 
-    const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, safeCaption.coverTitle, safeCaption.body, generatedPages);
-    generatedList.coverTitle = safeCaption.coverTitle;
-    generatedList.postCaption = safeCaption.headline;
-    generatedList.captionHashtags = safeCaption.hashtags;
+    const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, finalCaption.coverTitle, finalCaption.body, generatedPages);
+    generatedList.coverTitle = finalCaption.coverTitle;
+    generatedList.postCaption = finalCaption.headline;
+    generatedList.captionHashtags = finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
     const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList);
 
@@ -476,6 +487,9 @@ export class GuideService {
 
   async generateBatchLists(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
     const deckId = String(request.deckId ?? '').trim();
+    if (deckId === 'spotlight-partner') {
+      throw new BadRequestException('Mau Spotlight Doi tac tao list bang cach chon doi tac, khong tao batch tu caption chung.');
+    }
     if (!deckId) throw new BadRequestException('Thiếu deckId để tạo batch list.');
 
     const count = Math.min(Math.max(Number(request.count ?? 5), 1), 10);
@@ -566,6 +580,7 @@ export class GuideService {
 
         const generated = await this.generateDeckFromCaption({
           deckId,
+          tone,
           caption: {
             coverTitle: caption.coverTitle,
             headline: caption.headline,
@@ -638,6 +653,17 @@ export class GuideService {
     this.ensureGeneratedListsLoaded();
     this.ensureInventoryLoaded();
     const deckUsage = this.createUsageScope();
+    const existing = this.generatedListsByDeckId.get(deckId) ?? [];
+    const normalizedPartnerName = normalizeText(partnerItem.name);
+    const partnerVariantIndex = existing.filter((list) => {
+      const coverPage = list.pages?.[0];
+      const coverDescription = coverPage && 'description' in coverPage ? coverPage.description : '';
+      return normalizeText(list.navTitle) === normalizedPartnerName
+        || normalizeText(list.title).includes(normalizedPartnerName)
+        || normalizeText(list.coverTitle).includes(normalizedPartnerName)
+        || normalizeText(coverPage?.subtitle).includes(normalizedPartnerName)
+        || normalizeText(coverDescription).includes(normalizedPartnerName);
+    }).length;
 
     const pools = this.createDeckBuildPoolsFromSection(context.itemsBySection);
     const pages = buildSpotlightPartnerPages(
@@ -645,7 +671,7 @@ export class GuideService {
       pools,
       context.imageUrls,
       context.imageLibraryEntries,
-      `spotlight-partner:${partnerItem.id}:${timestamp}`,
+      `spotlight-partner:${partnerItem.id}:${timestamp}:variant:${partnerVariantIndex}`,
       deckUsage.itemIds,
       deckUsage.imageUrls,
       context.coverImageUrls,
@@ -660,9 +686,11 @@ export class GuideService {
       pages,
     );
     generatedList.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
+    generatedList.postCaption = SPOTLIGHT_PARTNER_POST_CAPTION;
+    generatedList.description = SPOTLIGHT_PARTNER_CAPTION_BODY;
+    generatedList.captionHashtags = [...SPOTLIGHT_PARTNER_CAPTION_HASHTAGS];
     generatedList.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
 
-    const existing = this.generatedListsByDeckId.get(deckId) ?? [];
     this.generatedListsByDeckId.set(deckId, [...existing, generatedList]);
     this.persistGeneratedLists();
     this.markUsedInDeck(pages);
@@ -826,6 +854,81 @@ export class GuideService {
     if (deckId === 'spotlight-guide') return SPOTLIGHT_GUIDE_TEMPLATE_VERSION;
     if (deckId === 'spotlight-partner') return SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
     return undefined;
+  }
+
+  private normalizeCaptionTone(value?: string): CaptionTone {
+    const allowed: CaptionTone[] = ['gen_z', 'tinh_te', 'review_chan_that', 'ban_hang_nhe', 'lich_trinh_huu_ich'];
+    return allowed.includes(value as CaptionTone) ? value as CaptionTone : 'lich_trinh_huu_ich';
+  }
+
+  private budget3N2DCoverCaption(
+    caption: CaptionBlocks,
+    tone: CaptionTone,
+    seed: string,
+    ordinal: number,
+  ): CaptionBlocks {
+    const toneTitles: Record<CaptionTone, string[]> = {
+      gen_z: ['72H ĐÀ LẠT GỌN VÍ', '3 NGÀY ĐI ĐÀ LẠT CỰC GỌN', 'ĐÀ LẠT 3TR ĐI SAO CHO ĐÃ'],
+      tinh_te: ['72H ĐÀ LẠT THẬT CHẬM', 'MỘT CHUYẾN ĐÀ LẠT GỌN GHẼ', '3 NGÀY Ở ĐÀ LẠT THẬT ÊM'],
+      review_chan_that: ['72H ĐÀ LẠT DỄ ĐI', '3 NGÀY ĐÀ LẠT KHỎI RỐI', 'LỊCH ĐÀ LẠT GỌN CHO NGƯỜI MỚI'],
+      ban_hang_nhe: ['LỊCH ĐÀ LẠT 3TR NÊN LƯU', '72H ĐÀ LẠT ĐI GỌN HƠN', 'ĐÀ LẠT 3 NGÀY CÓ SẴN LIST'],
+      lich_trinh_huu_ich: ['72H ĐÀ LẠT TỐI ƯU', '3N2Đ ĐÀ LẠT GỌN LỊCH', 'LỊCH 72H ĐÀ LẠT DỄ THEO'],
+    };
+
+    const toneBodies: Record<CaptionTone, string[]> = {
+      gen_z: [
+        'Một list gọn để lên Đà Lạt mà không phải loay hoay chọn chỗ. Có giờ đi, điểm ghé và chi phí dự kiến để lưu liền tay.',
+        'Đi Đà Lạt 3 ngày mà muốn gọn ví thì lưu lại ngay. Lịch đã chia sẵn theo buổi, dễ nhìn và dễ đi theo.',
+        'Dành cho ai muốn xách balo lên Đà Lạt mà vẫn kiểm soát chi phí. Mở list ra là biết nên ghé đâu trước.',
+      ],
+      tinh_te: [
+        'Một lịch trình vừa đủ chậm để tận hưởng Đà Lạt, vừa đủ rõ để không mất thời gian tìm từng điểm. Lưu lại cho chuyến đi nhẹ nhàng hơn.',
+        'Ba ngày ở Đà Lạt sẽ dễ thở hơn khi có sẵn điểm ghé, giờ đi và khoản chi. Hợp cho một chuyến đi nhẹ, gọn và có nhịp.',
+        'Gợi ý này gom lại những điểm cần thiết cho 72 giờ ở Đà Lạt. Không quá dày, không quá rối, chỉ đủ để đi thật thoải mái.',
+      ],
+      review_chan_that: [
+        'List này hợp cho người muốn đi Đà Lạt tự túc nhưng không muốn ngồi dò từng quán. Có lịch, có địa chỉ và chi phí để kiểm nhanh.',
+        'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.',
+        'Một bản gợi ý thực tế cho chuyến 3N2Đ: ăn gì, ghé đâu, chi khoảng bao nhiêu đều có sẵn để dễ so lại.',
+      ],
+      ban_hang_nhe: [
+        'Lưu lại trước khi lên Đà Lạt để chọn điểm nhanh hơn. List có sẵn lịch trình, quán nên ghé và chi phí dự kiến cho cả chuyến.',
+        'Một gợi ý 72H giúp chuyến đi gọn hơn từ lúc lên lịch đến lúc chọn quán. Phù hợp cho nhóm nhỏ muốn đi vui mà vẫn canh ngân sách.',
+        'Để chuyến Đà Lạt đỡ mất công chuẩn bị, list này gom sẵn điểm ghé và mức chi tham khảo. Lưu ngay để mở ra dùng khi cần.',
+      ],
+      lich_trinh_huu_ich: [
+        'Lịch trình 3N2Đ được chia theo từng buổi, kèm địa chỉ và chi phí dự kiến. Phù hợp để lưu lại rồi điều chỉnh theo nhóm đi.',
+        'Một bản gợi ý gọn cho 72 giờ ở Đà Lạt: đi đâu, ăn gì, dự trù bao nhiêu đều được xếp sẵn để dễ theo dõi.',
+        'List này giúp bạn có khung lịch rõ trước khi đi Đà Lạt. Chỉ cần lưu lại, xem từng mốc giờ và thay đổi nhẹ theo nhu cầu.',
+      ],
+    };
+
+    const titlePool = toneTitles[tone] || toneTitles.lich_trinh_huu_ich;
+    const bodyPool = toneBodies[tone] || toneBodies.lich_trinh_huu_ich;
+    const title = titlePool[(stableHash(`${seed}:title:${ordinal}`) + ordinal) % titlePool.length];
+    const body = bodyPool[(stableHash(`${seed}:body:${ordinal}`) + Math.floor(ordinal / titlePool.length)) % bodyPool.length];
+
+    return {
+      ...caption,
+      coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(title)),
+      body: this.sanitizeContentText(body),
+    };
+  }
+
+  private generatedListOrdinal(list: GuideDeckList, fallbackIndex: number): number {
+    const match = String(list.id || '').match(/caption-(\d+)/i);
+    const parsed = match ? Number(match[1]) : Number.NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackIndex + 1;
+  }
+
+  private toneForGeneratedList(list: GuideDeckList, fallbackIndex: number): CaptionTone {
+    const toneRotation: CaptionTone[] = ['gen_z', 'tinh_te', 'review_chan_that', 'ban_hang_nhe', 'lich_trinh_huu_ich'];
+    const titleAndBody = normalizeText(`${list.coverTitle || list.title || ''} ${list.description || ''} ${list.postCaption || ''}`);
+    if (titleAndBody.includes('gon_vi') || titleAndBody.includes('cuc_gon') || titleAndBody.includes('di_sao_cho_da')) return 'gen_z';
+    if (titleAndBody.includes('that_cham') || titleAndBody.includes('gon_ghe') || titleAndBody.includes('that_em')) return 'tinh_te';
+    if (titleAndBody.includes('de_di') || titleAndBody.includes('khoi_roi') || titleAndBody.includes('nguoi_moi')) return 'review_chan_that';
+    if (titleAndBody.includes('nen_luu') || titleAndBody.includes('di_gon_hon') || titleAndBody.includes('co_san_list')) return 'ban_hang_nhe';
+    return toneRotation[(this.generatedListOrdinal(list, fallbackIndex) - 1) % toneRotation.length];
   }
 
   private hasGeneratedListsNeedingTemplateRefresh(): boolean {
@@ -1124,11 +1227,14 @@ export class GuideService {
           );
           this.markUsedInDeck(regeneratedPages, deckUsage);
           this.markUsedInDeck(regeneratedPages, renderUsage);
+          const partnerCaptionHashtags = [...SPOTLIGHT_PARTNER_CAPTION_HASHTAGS];
           if (
             list.navTitle !== partnerItem.name ||
             list.title !== partnerItem.name.toUpperCase() ||
             list.coverTitle !== partnerItem.name.toUpperCase().slice(0, 35) ||
-            list.description !== (partnerItem.address || partnerItem.type || '') ||
+            list.postCaption !== SPOTLIGHT_PARTNER_POST_CAPTION ||
+            list.description !== SPOTLIGHT_PARTNER_CAPTION_BODY ||
+            JSON.stringify(list.captionHashtags || []) !== JSON.stringify(partnerCaptionHashtags) ||
             list.templateVersion !== templateVersion ||
             JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)
           ) changed = true;
@@ -1137,7 +1243,9 @@ export class GuideService {
             navTitle: partnerItem.name,
             title: partnerItem.name.toUpperCase(),
             coverTitle: partnerItem.name.toUpperCase().slice(0, 35),
-            description: partnerItem.address || partnerItem.type || '',
+            postCaption: SPOTLIGHT_PARTNER_POST_CAPTION,
+            description: SPOTLIGHT_PARTNER_CAPTION_BODY,
+            captionHashtags: partnerCaptionHashtags,
             templateVersion,
             pages: regeneratedPages,
           };
@@ -1150,12 +1258,13 @@ export class GuideService {
           body: this.sanitizeContentText(list.description),
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
+        const refreshSeed = `refresh:${deckId}:${list.id}:${listIndex}:${caption.coverTitle}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`;
         const basePages = buildPagesForDeck(
           deckId,
           itemsBySection,
           imageUrls,
           libraryEntries,
-          `refresh:${deckId}:${list.id}:${listIndex}:${caption.coverTitle}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`,
+          refreshSeed,
           deckUsage.itemIds,
           deckUsage.imageUrls,
           coverImageUrls,
@@ -1166,23 +1275,26 @@ export class GuideService {
           headline: this.sanitizeContentText(caption.headline),
           body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
         };
-        const regeneratedPages = applyCaptionToPages(basePages, safeCaption);
+        const finalCaption = deckId === 'budget-3n2d'
+          ? this.budget3N2DCoverCaption(safeCaption, this.toneForGeneratedList(list, listIndex), refreshSeed, this.generatedListOrdinal(list, listIndex))
+          : safeCaption;
+        const regeneratedPages = applyCaptionToPages(basePages, finalCaption);
         this.markUsedInDeck(regeneratedPages, deckUsage);
         this.markUsedInDeck(regeneratedPages, renderUsage);
         if (
-          list.title !== safeCaption.coverTitle ||
-          list.coverTitle !== safeCaption.coverTitle ||
-          list.postCaption !== safeCaption.headline ||
-          list.description !== safeCaption.body ||
+          list.title !== finalCaption.coverTitle ||
+          list.coverTitle !== finalCaption.coverTitle ||
+          list.postCaption !== finalCaption.headline ||
+          list.description !== finalCaption.body ||
           list.templateVersion !== templateVersion ||
           JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)
         ) changed = true;
         const nextList = {
           ...list,
-          title: safeCaption.coverTitle,
-          coverTitle: safeCaption.coverTitle,
-          postCaption: safeCaption.headline,
-          description: safeCaption.body,
+          title: finalCaption.coverTitle,
+          coverTitle: finalCaption.coverTitle,
+          postCaption: finalCaption.headline,
+          description: finalCaption.body,
           templateVersion,
           pages: regeneratedPages,
         };
