@@ -1656,6 +1656,322 @@
   overflow: hidden;
 }
 
+/* Budget 72H story: version 2 focused on mobile-readable day cards. */
+.story-page.budget72-story-cover,
+.story-page.budget72-story-day,
+.story-page.budget72-story-total {
+  position: relative;
+  overflow: hidden;
+  background: #20382f;
+  color: #fffaf0;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+}
+
+.budget72-story-bg,
+.budget72-story-bg img,
+.budget72-story-cover-shade,
+.budget72-story-day-shade,
+.budget72-story-total-shade {
+  position: absolute;
+  inset: 0;
+}
+
+.budget72-story-bg img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 34%;
+}
+
+.budget72-story-cover-shade {
+  background:
+    linear-gradient(180deg, rgba(20, 67, 69, 0.26), rgba(30, 77, 65, 0.18) 42%, rgba(89, 72, 45, 0.72)),
+    radial-gradient(circle at 48% 26%, rgba(255, 219, 90, 0.13), rgba(27, 58, 51, 0.46) 72%);
+}
+
+.budget72-story-cover-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 56px 34px;
+  text-align: center;
+}
+
+.budget72-story-script {
+  margin-bottom: 14px;
+  color: rgba(255, 250, 240, 0.94);
+  font-size: 1.04rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-transform: lowercase;
+  text-shadow: 0 2px 8px rgba(25, 51, 45, 0.62);
+}
+
+.budget72-story-cover-copy h1 {
+  margin: 0;
+  max-width: 94%;
+  color: #ffd935;
+  font-size: 1.9rem;
+  font-weight: 1000;
+  line-height: 1.14;
+  text-transform: uppercase;
+  text-shadow: 0 4px 14px rgba(25, 51, 45, 0.68);
+}
+
+.budget72-story-cover-copy p {
+  margin: 20px 0 0;
+  max-width: 82%;
+  color: rgba(255, 250, 240, 0.96);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.34;
+  text-shadow: 0 2px 8px rgba(25, 51, 45, 0.66);
+}
+
+.budget72-story-day-shade {
+  background:
+    linear-gradient(180deg, rgba(39, 82, 71, 0.24), rgba(35, 76, 66, 0.52)),
+    linear-gradient(90deg, rgba(249, 241, 217, 0.9) 0%, rgba(249, 241, 217, 0.78) 54%, rgba(30, 66, 57, 0.48) 100%);
+}
+
+.budget72-story-panel {
+  position: absolute;
+  inset: 26px 24px;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 18px;
+  padding: 28px 24px 24px;
+  border: 1px solid rgba(47, 86, 72, 0.22);
+  border-radius: 34px;
+  background: rgba(255, 249, 231, 0.88);
+  color: #1d332d;
+  box-shadow: 0 20px 42px rgba(28, 57, 50, 0.28);
+}
+
+.budget72-story-head span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #2c8b73;
+  color: #fffaf0;
+  font-size: 0.6rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.budget72-story-head h2 {
+  margin: 11px 0 0;
+  color: #194136;
+  font-size: 1.34rem;
+  font-weight: 1000;
+  line-height: 1.12;
+}
+
+.budget72-story-head p {
+  margin: 8px 0 0;
+  color: rgba(29, 51, 45, 0.76);
+  font-size: 0.58rem;
+  font-weight: 760;
+  line-height: 1.34;
+}
+
+.budget72-story-timeline {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.budget72-story-stop {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 48px 12px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.budget72-story-time {
+  color: #bc5a3d;
+  font-size: 0.62rem;
+  font-weight: 1000;
+  line-height: 1;
+  text-align: right;
+}
+
+.budget72-story-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #fff4c9;
+  border-radius: 50%;
+  background: #2c8b73;
+  box-shadow: 0 0 0 2px rgba(44, 139, 115, 0.24);
+}
+
+.budget72-story-copy {
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.budget72-story-copy span {
+  display: block;
+  color: #2c8b73;
+  font-size: 0.42rem;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.budget72-story-copy strong {
+  display: block;
+  margin-top: 2px;
+  color: #1b2c27;
+  font-size: 0.62rem;
+  font-weight: 1000;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.budget72-story-copy p,
+.budget72-story-copy em {
+  display: block;
+  margin: 2px 0 0;
+  color: rgba(29, 51, 45, 0.78);
+  font-size: 0.43rem;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1.08;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.budget72-story-copy em {
+  color: #b35d1d;
+  font-weight: 950;
+}
+
+.budget72-story-total-shade {
+  background:
+    linear-gradient(180deg, rgba(46, 95, 82, 0.32), rgba(245, 235, 202, 0.82)),
+    radial-gradient(circle at 48% 16%, rgba(255, 221, 82, 0.2), rgba(41, 84, 72, 0.56) 72%);
+}
+
+.budget72-total-card {
+  position: absolute;
+  inset: 34px 28px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 24px 24px;
+  border-radius: 36px;
+  background: rgba(255, 249, 231, 0.91);
+  color: #1d332d;
+  box-shadow: 0 24px 48px rgba(28, 57, 50, 0.32);
+}
+
+.budget72-total-card > span {
+  color: #2c8b73;
+  font-size: 0.66rem;
+  font-weight: 1000;
+  text-transform: lowercase;
+}
+
+.budget72-total-card h2 {
+  margin: 8px 0 0;
+  color: #194136;
+  font-size: 1.5rem;
+  font-weight: 1000;
+  line-height: 1.1;
+}
+
+.budget72-total-card > p {
+  margin: 9px 0 18px;
+  color: rgba(29, 51, 45, 0.76);
+  font-size: 0.58rem;
+  font-weight: 780;
+  line-height: 1.32;
+}
+
+.budget72-total-list {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.budget72-total-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.budget72-total-list strong,
+.budget72-total-list span {
+  font-size: 0.66rem;
+  font-weight: 1000;
+  line-height: 1.05;
+}
+
+.budget72-total-list span {
+  color: #bc5a3d;
+  white-space: nowrap;
+}
+
+.budget72-total-list p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: rgba(29, 51, 45, 0.72);
+  font-size: 0.44rem;
+  font-weight: 740;
+  line-height: 1.08;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.budget72-total-final {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 16px;
+  border-radius: 20px;
+  background: #ffd935;
+  color: #1b2c27;
+}
+
+.budget72-total-final span {
+  font-size: 0.58rem;
+  font-weight: 1000;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.budget72-total-final strong {
+  font-size: 1.08rem;
+  font-weight: 1000;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /* Spotlight Guide: one record per saveable page. */
 .story-page.spotlight-cover .grid4-feature-shade {
   background:
@@ -2335,4 +2651,290 @@
 .batch-export-root .story-page * {
   animation: none !important;
   transition: none !important;
+}
+
+/* ─── Grid 4 Mutant Layout ────────────────────────────────────────────────── */
+
+/* Content page: shared base */
+.story-page.grid4-mutant {
+  background: var(--story-card-bg, #f7f3ed);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Style A: Strip — title bar between row 1 and row 2 */
+.grid4-mutant.mutant-strip .grid4-mutant-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  box-sizing: border-box;
+  background: var(--story-card-border, #fff);
+}
+
+.grid4-mutant.mutant-strip .grid4-mutant-item.mutant-item-top { grid-row: 1; }
+.grid4-mutant.mutant-strip .grid4-mutant-item.mutant-item-bottom { grid-row: 3; }
+
+/* Strip layout: top row items have overlay at top */
+.grid4-mutant.mutant-strip .grid4-mutant-item.mutant-item-top .grid4-mutant-overlay {
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
+  justify-content: flex-start;
+}
+
+/* Strip layout: bottom row items keep overlay at bottom */
+.grid4-mutant.mutant-strip .grid4-mutant-item.mutant-item-bottom .grid4-mutant-overlay {
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
+  justify-content: flex-end;
+}
+
+/* Center-card layout: same overlay rules so title card doesn't cover any text */
+.grid4-mutant.mutant-center-card .grid4-mutant-item.mutant-item-top .grid4-mutant-overlay {
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
+  justify-content: flex-start;
+}
+
+.grid4-mutant.mutant-center-card .grid4-mutant-item.mutant-item-bottom .grid4-mutant-overlay {
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
+  justify-content: flex-end;
+}
+
+.grid4-mutant.mutant-strip .grid4-mutant-title-strip {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  background: #16372c;
+  color: #fffaf0;
+  font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
+  font-weight: 900;
+  font-size: 0.52rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 0.02em;
+  min-height: 20px;
+  max-height: 24px;
+}
+
+/* Style B: Center card — title card overlaid at center of 2x2 grid */
+.grid4-mutant.mutant-center-card .grid4-mutant-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  box-sizing: border-box;
+  background: var(--story-card-border, #fff);
+  position: relative;
+}
+
+.grid4-mutant.mutant-center-card .grid4-mutant-title-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  min-width: 120px;
+  max-width: 72%;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #16372c;
+  color: #fffaf0;
+  font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
+  font-weight: 900;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Shared item styles */
+.grid4-mutant-item {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.grid4-mutant-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+.grid4-mutant-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 10px;
+  text-align: left;
+}
+
+.grid4-mutant-name {
+  color: var(--journey-title-color, #ffcc00);
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-weight: 900;
+  font-size: 0.64rem;
+  line-height: 1.04;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  margin-bottom: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.grid4-mutant-service-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 15px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--journey-badge-bg, #16372c);
+  font-size: 0.43rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+  margin-bottom: 2px;
+}
+
+.grid4-mutant-address {
+  color: #fff;
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1.06;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.grid4-mutant-address-pin {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  color: currentColor;
+}
+
+.grid4-mutant-address-pin .photomode-pin-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.grid4-mutant-address-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cover: random title placement */
+.story-page.grid4-mutant-cover {
+  background: #1f1c17;
+  overflow: hidden;
+}
+
+.grid4-mutant-cover-bg,
+.grid4-mutant-cover-shade,
+.grid4-mutant-cover-copy {
+  position: absolute;
+  inset: 0;
+}
+
+.grid4-mutant-cover-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.grid4-mutant-cover-shade {
+  background:
+    linear-gradient(180deg, rgba(16, 14, 11, 0.28) 0%, rgba(16, 14, 11, 0.38) 48%, rgba(16, 14, 11, 0.56) 100%),
+    radial-gradient(circle at 50% 42%, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.28) 100%);
+}
+
+.grid4-mutant-cover-copy {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 48px 34px;
+  color: #fffaf0;
+}
+
+/* Title placement positions */
+.grid4-mutant-cover-copy.placement-top-left { justify-content: flex-start; align-items: flex-start; text-align: left; }
+.grid4-mutant-cover-copy.placement-top-center { justify-content: flex-start; align-items: center; text-align: center; }
+.grid4-mutant-cover-copy.placement-top-right { justify-content: flex-start; align-items: flex-end; text-align: right; }
+.grid4-mutant-cover-copy.placement-mid-left { justify-content: center; align-items: flex-start; text-align: left; }
+.grid4-mutant-cover-copy.placement-mid-right { justify-content: center; align-items: flex-end; text-align: right; }
+.grid4-mutant-cover-copy.placement-center { justify-content: center; align-items: center; text-align: center; }
+.grid4-mutant-cover-copy.placement-bottom-left { justify-content: flex-end; align-items: flex-start; text-align: left; }
+.grid4-mutant-cover-copy.placement-bottom-center { justify-content: flex-end; align-items: center; text-align: center; }
+.grid4-mutant-cover-copy.placement-bottom-right { justify-content: flex-end; align-items: flex-end; text-align: right; }
+
+.grid4-mutant-cover-kicker {
+  color: #ffdb88;
+  font-size: 2.35rem;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.48);
+}
+
+.grid4-mutant-cover-title {
+  max-width: 94%;
+  color: #fffaf0;
+  font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
+  font-size: 2.05rem;
+  font-weight: 950;
+  line-height: 1.08;
+  text-transform: uppercase;
+  text-shadow: 0 5px 12px rgba(0,0,0,0.58);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.grid4-mutant-cover-subtitle {
+  max-width: 86%;
+  color: rgba(255,250,240,0.94);
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.26;
+  text-shadow: 0 3px 10px rgba(0,0,0,0.62);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

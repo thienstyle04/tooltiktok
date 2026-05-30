@@ -1561,6 +1561,19 @@ body {
   --deck-title-weight: 850;
 }
 
+.story-page.budget72-story-cover,
+.story-page.budget72-story-day,
+.story-page.budget72-story-total {
+  --deck-title-font: "Be Vietnam Pro", Arial, sans-serif;
+  --deck-title-weight: 850;
+}
+
+.story-page.budget72-story-cover *,
+.story-page.budget72-story-day *,
+.story-page.budget72-story-total * {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+}
+
 .story-page.spotlight-cover .grid4-feature-title {
   max-width: 88%;
   font-family: "Be Vietnam Pro", Arial, sans-serif !important;

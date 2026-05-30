@@ -9,8 +9,10 @@ import {
   GuideItem,
   ImageLibraryFolderEntry,
   ListPage,
+  MutantContentStyle,
   PageItem,
   SectionKey,
+  TitlePlacement,
   WorkbookItemsBySection,
 } from '../../../common/interfaces/guide.types';
 import { hasItemKey, itemUsageKey, markItemKey } from './data-allocator';
@@ -25,10 +27,33 @@ export const ITINERARY_4N3D_TEMPLATE_VERSION = 13;
 export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 15;
 export const POV_3_DAY_TEMPLATE_VERSION = 12;
 export const GRID_4_TEMPLATE_VERSION = 17;
+export const GRID_4_MUTANT_TEMPLATE_VERSION = 1;
 export const GRID_6_TEMPLATE_VERSION = 16;
 export const GRID_8_TEMPLATE_VERSION = 15;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
-export const BUDGET_3N2D_TEMPLATE_VERSION = 3;
+export const BUDGET_3N2D_TEMPLATE_VERSION = 4;
+export const BUDGET_3N2D_STORY_TEMPLATE_VERSION = 4;
+const budget72StoryText = {
+  coverTitle: '\u002272H\u0022 \u1ede \u0110\u00c0 L\u1ea0T V\u1edaI 3TR',
+  coverSubtitle: 'L\u1ecbch tr\u00ecnh 3 ng\u00e0y 2 \u0111\u00eam g\u1ecdn h\u01a1n: xem theo t\u1eebng ng\u00e0y, c\u00f3 chi ph\u00ed v\u00e0 c\u00e1c \u0111i\u1ec3m n\u00ean l\u01b0u.',
+  day1Chip: 'Ng\u00e0y 01',
+  day1Title: 'Ng\u00e0y \u0111\u1ea7u v\u00e0o ph\u1ed1',
+  day1Subtitle: '\u0102n s\u00e1ng, cafe, check-in v\u00e0 m\u1ed9t bu\u1ed5i t\u1ed1i v\u1eeba \u0111\u1ee7 nh\u1ecbp \u0111\u1ec3 l\u00e0m quen \u0110\u00e0 L\u1ea1t.',
+  day2Chip: 'Ng\u00e0y 02',
+  day2Title: 'M\u1ed9t ng\u00e0y \u0111i tr\u1ecdn h\u01a1n',
+  day2Subtitle: 'D\u00e0nh ng\u00e0y gi\u1eefa chuy\u1ebfn cho c\u00e1c \u0111i\u1ec3m ch\u00ednh, qu\u00e1n \u0111\u1eb9p v\u00e0 ho\u1ea1t \u0111\u1ed9ng \u0111\u00e1ng gh\u00e9.',
+  day3Chip: 'Ng\u00e0y 03',
+  day3Title: 'Ng\u00e0y cu\u1ed1i nh\u1eb9 nh\u00e0ng',
+  day3Subtitle: 'Gi\u1eef l\u1ecbch g\u1ecdn \u0111\u1ec3 k\u1ecbp \u0103n, mua qu\u00e0, check-out v\u00e0 quay v\u1ec1 kh\u00f4ng b\u1ecb g\u1ea5p.',
+  totalChip: 'Chi ph\u00ed',
+  totalTitle: 'T\u1ed5ng chi ph\u00ed d\u1ef1 ki\u1ebfn',
+  totalSubtitle: 'C\u00e1c kho\u1ea3n ch\u00ednh \u0111\u01b0\u1ee3c gom l\u1ea1i \u0111\u1ec3 d\u1ec5 c\u00e2n ng\u00e2n s\u00e1ch tr\u01b0\u1edbc khi \u0111i.',
+  deckTitle: 'B\u1ed9 trang 72H 3N2\u0110 b\u1ea3n story',
+  deckDescription: 'Phi\u00ean b\u1ea3n 2 t\u1eadp trung xem nhanh: cover, t\u1eebng ng\u00e0y ri\u00eang, trang t\u1ed5ng chi ph\u00ed v\u00e0 3 trang g\u1ee3i \u00fd \u0111\u1ecba \u0111i\u1ec3m ph\u00eda sau.',
+  listLabel: 'List ch\u00ednh',
+  listName: 'List 72H 3N2\u0110 Story',
+  listDescription: 'Danh s\u00e1ch \u1ea3nh ch\u00ednh cho m\u1eabu 72H b\u1ea3n story d\u1ec5 xem tr\u00ean TikTok.',
+};
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
@@ -858,7 +883,7 @@ export function buildListPage(
   subtitle: string,
   items: PageItem[],
   backgroundImage: string,
-  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' = 'standard',
+  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'grid-4-mutant' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' = 'standard',
 ): ListPage {
   return { type: 'list', chipText, chipTone, title, subtitle, items, backgroundImage, layoutVariant };
 }
@@ -1657,7 +1682,7 @@ function buildBudget3N2DPages(
     budgetSummaryPageItem('Tổng cộng', '~2.5tr - 3tr', 'Tùy nhóm và mức chi tại từng điểm', `${seedPrefix}-summary-total`, tableFallbackImage),
   ]);
 
-  const selectedFood = selectedGuideItems.filter((item) => item.sectionKey === 'quan_an' || item.sectionKey === 'choi_dem');
+  const selectedFood = selectedGuideItems.filter((item) => item.sectionKey === 'quan_an');
   const selectedCafe = selectedGuideItems.filter((item) => item.sectionKey === 'cafe');
   const selectedSupport = selectedGuideItems.filter((item) => item.sectionKey === 'dich_vu');
   const supportPlaces = dedupeItems([...selectedSupport, ...pools.serviceItems, ...pools.stayItems]);
@@ -1700,6 +1725,118 @@ function buildBudget3N2DPages(
       ? { ...page, layoutVariant: 'budget-3n2d-gallery' as const }
       : page
   ));
+}
+
+const BUDGET_STORY_FILLER_TIMES = ['15:30', '16:30', '17:30', '19:00'];
+
+function budgetStoryItemKey(item: PageItem): string {
+  return normalizeText(item.sourceKey || item.rawName || item.name || item.id || '');
+}
+
+function budgetStoryFillerLabel(page: ListPage, item?: PageItem): string {
+  if (item?.sourceSectionKey === 'cafe') return 'Cafe';
+  if (item?.sourceSectionKey === 'dich_vu') return 'D\u1ecbch v\u1ee5';
+  if (item?.sourceSectionKey === 'homestay') return 'L\u01b0u tr\u00fa';
+  if (item?.sourceSectionKey === 'quan_an') return '\u0102n nh\u1eb9';
+  if (item?.sourceSectionKey === 'check_in') return 'Check-in';
+  const pageText = normalizeText(`${page.chipText || ''} ${page.title || ''}`);
+  if (pageText.includes('cafe') || pageText.includes('ca_phe')) return 'Cafe';
+  if (pageText.includes('dich_vu') || pageText.includes('doi_tac')) return 'Mua qu\u00e0';
+  if (pageText.includes('quan_an') || pageText.includes('an')) return '\u0102n nh\u1eb9';
+  return '\u0110i\u1ec3m gh\u00e9';
+}
+
+function budgetStoryFillerRows(galleryPages: ListPage[], dayLabel: string): PageItem[] {
+  return galleryPages.flatMap((page, pageIndex) => {
+    return (page.items || [])
+      .filter((item) => item.sourceSectionKey !== 'choi_dem')
+      .map((item, itemIndex) => ({
+      ...item,
+      id: `${item.id || item.sourceKey || item.rawName || item.name}-story-fill-${pageIndex}-${itemIndex}`,
+      label: `${dayLabel}|${BUDGET_STORY_FILLER_TIMES[itemIndex % BUDGET_STORY_FILLER_TIMES.length]}`,
+      name: `${budgetStoryFillerLabel(page, item)}: ${item.rawName || item.name}`,
+    }));
+  });
+}
+
+function budgetStoryRowsForDay(items: PageItem[], dayLabel: string, fillerItems: PageItem[] = [], blockedItems: PageItem[] = []): PageItem[] {
+  const dayNumber = dayLabel.match(/\d{2}/)?.[0] || '';
+  const rows = (items || [])
+    .filter((item) => {
+      const label = String(item.label || '');
+      return label.startsWith(`${dayLabel}|`) || Boolean(dayNumber && label.includes(`${dayNumber}|`));
+    })
+    .slice(0, 8);
+  if (rows.length >= 8) return rows;
+
+  const usedKeys = new Set([...rows, ...blockedItems].map(budgetStoryItemKey).filter(Boolean));
+  const additions: PageItem[] = [];
+  for (const item of fillerItems) {
+    const key = budgetStoryItemKey(item);
+    if (!key || usedKeys.has(key)) continue;
+    usedKeys.add(key);
+    additions.push({
+      ...item,
+      label: `${dayLabel}|${BUDGET_STORY_FILLER_TIMES[additions.length % BUDGET_STORY_FILLER_TIMES.length]}`,
+    });
+    if (rows.length + additions.length >= 8) break;
+  }
+
+  return [...rows, ...additions].slice(0, 8);
+}
+
+function budgetStoryTotalItems(items: PageItem[]): PageItem[] {
+  const summaryItems = (items || []).filter((item) => String(item.id || '').includes('-summary-'));
+  if (summaryItems.length) return summaryItems.slice(0, 5);
+
+  return (items || [])
+    .filter((item) => String(item.label || '').includes('|') && !/^Ng/.test(String(item.label || '')))
+    .slice(0, 5);
+}
+
+function cloneBudgetStoryPage(page: DeckPage): DeckPage {
+  return {
+    ...page,
+    ...(page.type === 'list' ? { items: page.items.map((item) => ({ ...item })) } : {}),
+  } as DeckPage;
+}
+
+function buildBudget3N2DStoryPages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const basePages = buildBudget3N2DPages(pools, imageUrls, libraryEntries, `${seedPrefix}-story-source`, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  const coverPage = cloneBudgetStoryPage(basePages[0]) as CoverPage;
+  const tablePage = basePages.find((page) => page.type === 'list' && page.layoutVariant === 'budget-3n2d-table') as ListPage | undefined;
+  const galleryPages = basePages
+    .filter((page) => page.type === 'list' && page.layoutVariant === 'budget-3n2d-gallery')
+    .map((page) => cloneBudgetStoryPage(page)) as ListPage[];
+
+  if (coverPage.type === 'cover') {
+    coverPage.layoutVariant = 'budget-3n2d-story';
+    coverPage.title = budget72StoryText.coverTitle;
+    coverPage.subtitle = budget72StoryText.coverSubtitle;
+  }
+
+  const scheduleItems = tablePage?.items || [];
+  const storyFillerItems = budgetStoryFillerRows(galleryPages, budget72StoryText.day3Chip);
+  const dayPages: DeckPage[] = [
+    buildListPage(budget72StoryText.day1Chip, 'gold', budget72StoryText.day1Title, budget72StoryText.day1Subtitle, budgetStoryRowsForDay(scheduleItems, budget72StoryText.day1Chip, storyFillerItems, scheduleItems), '', 'budget-3n2d-day'),
+    buildListPage(budget72StoryText.day2Chip, 'pine', budget72StoryText.day2Title, budget72StoryText.day2Subtitle, budgetStoryRowsForDay(scheduleItems, budget72StoryText.day2Chip, storyFillerItems, scheduleItems), '', 'budget-3n2d-day'),
+    buildListPage(budget72StoryText.day3Chip, 'berry', budget72StoryText.day3Title, budget72StoryText.day3Subtitle, budgetStoryRowsForDay(scheduleItems, budget72StoryText.day3Chip, storyFillerItems, scheduleItems), '', 'budget-3n2d-day'),
+    buildListPage(budget72StoryText.totalChip, 'gold', budget72StoryText.totalTitle, budget72StoryText.totalSubtitle, budgetStoryTotalItems(scheduleItems), '', 'budget-3n2d-total'),
+  ];
+
+  return [
+    coverPage,
+    ...dayPages,
+    ...galleryPages,
+  ];
 }
 
 function buildItineraryPages(
@@ -3336,6 +3473,103 @@ function buildGrid8Pages(
   ];
 }
 
+// ─── Grid 4 Mutant ──────────────────────────────────────────────────────────────
+
+const MUTANT_COVER_PLACEMENTS: TitlePlacement[] = [
+  'top-left', 'top-right', 'bottom-left', 'bottom-right',
+  'mid-left', 'mid-right', 'top-center', 'bottom-center',
+];
+
+const MUTANT_CONTENT_STYLES: MutantContentStyle[] = ['strip', 'center-card'];
+
+function randomMutantCoverPlacement(): TitlePlacement {
+  return MUTANT_COVER_PLACEMENTS[Math.floor(Math.random() * MUTANT_COVER_PLACEMENTS.length)];
+}
+
+function randomMutantContentStyle(): MutantContentStyle {
+  return MUTANT_CONTENT_STYLES[Math.floor(Math.random() * MUTANT_CONTENT_STYLES.length)];
+}
+
+function buildGrid4MutantPages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4-mutant`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const pick = createListPicker(globalUsedItemIds);
+  const activityPage = finalActivityPagePool(pools, seedPrefix);
+  const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
+
+  const contentPages: ListPage[] = [
+    buildListPage(
+      'Quán ăn', 'berry', 'MÓN NGON ĐÀ LẠT',
+      '4 quán ăn được gom riêng để người xem chọn bữa nhanh.',
+      buildGridPageItems(pools.foodItems, pools.foodItems, 4, `${seedPrefix}-food`, pick, imageResolver, mealLabelForItem),
+      background(`${seedPrefix}-food-cover-bg`), 'grid-4-mutant',
+    ),
+    buildListPage(
+      'Cà phê', 'gold', 'QUÁN CAFE ĐÀ LẠT',
+      '4 quán cafe được tách riêng khỏi nhóm quán ăn.',
+      buildGridPageItems(pools.cafeItems, pools.cafeItems, 4, `${seedPrefix}-cafe`, pick, imageResolver, (item) => item.type),
+      background(`${seedPrefix}-cafe-cover-bg`), 'grid-4-mutant',
+    ),
+    buildListPage(
+      'Check-in', 'terracotta', 'ĐỊA ĐIỂM CHECK-IN',
+      '4 địa điểm check-in rõ nhóm, không trộn khu du lịch.',
+      buildBalancedCheckinGridItems(pools.checkinItems, 4, `${seedPrefix}-checkin`, pick, imageResolver),
+      background(`${seedPrefix}-checkin-cover-bg`), 'grid-4-mutant',
+    ),
+    buildListPage(
+      'Chơi đêm', 'slate', 'CHƠI ĐÊM ĐÀ LẠT',
+      'Các điểm đi buổi tối, nghe nhạc, ăn đêm và lên kế hoạch sau 20h.',
+      buildGridPageItems(nightlifeItems, nightlifeItems, 4, `${seedPrefix}-nightlife`, pick, imageResolver, photomodeServiceLabel),
+      background(`${seedPrefix}-nightlife-cover-bg`), 'grid-4-mutant',
+    ),
+    buildListPage(
+      'Dịch vụ', 'pine', 'DỊCH VỤ CẦN CHÚ Ý',
+      'Lưu trú, thuê xe & quà tặng',
+      buildGridPageItems(pools.serviceItems, pools.serviceItems, 4, `${seedPrefix}-services`, pick, imageResolver, photomodeServiceLabel),
+      background(`${seedPrefix}-services-cover-bg`), 'grid-4-mutant',
+    ),
+    buildListPage(
+      'Homestay', 'pine', 'HOMESTAY ĐÀ LẠT',
+      'Các chỗ nghỉ nên xem riêng để dễ chốt phòng, không trộn với dịch vụ khác.',
+      buildGridPageItems(pools.stayItems, pools.stayItems, 4, `${seedPrefix}-homestay`, pick, imageResolver, photomodeServiceLabel),
+      background(`${seedPrefix}-homestay-cover-bg`), 'grid-4-mutant',
+    ),
+    buildListPage(
+      activityPage.chip, 'slate', activityPage.title,
+      activityPage.isActivity ? 'Các hoạt động và điểm ghé được luân phiên với trang khu du lịch giữa các list.' : 'Các khu du lịch được tách riêng khỏi check-in.',
+      buildGridPageItems(activityPage.items, activityPage.items, 4, `${seedPrefix}-activity`, pick, imageResolver, (item) => item.type),
+      background(`${seedPrefix}-activity-cover-bg`), 'grid-4-mutant',
+    ),
+  ];
+
+  // Assign random content style to each page
+  for (const page of contentPages) {
+    page.contentStyle = randomMutantContentStyle();
+  }
+
+  const coverPage: CoverPage = {
+    ...buildCoverPage(
+      'TOP 4 ĐỊA ĐIỂM ĐÀ LẠT',
+      'Mẫu đột biến — title xuất hiện ngẫu nhiên, mỗi trang một phong cách riêng.',
+      coverBackground(`${seedPrefix}-cover`),
+    ),
+    layoutVariant: 'grid-4-mutant',
+    titlePlacement: randomMutantCoverPlacement(),
+  };
+
+  return [coverPage, ...contentPages];
+}
+
 function buildGrid4Pages(
   pools: DeckBuildPools,
   imageUrls: string[],
@@ -3446,6 +3680,7 @@ export function buildPagesForDeck(
   const pools = createDeckBuildPools(itemsBySection);
   if (deckId === 'itinerary-3n2d') return buildItineraryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'budget-3n2d') return buildBudget3N2DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'budget-3n2d-story') return buildBudget3N2DStoryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'itinerary-4n3d') return buildItinerary4N3DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'itinerary-4n2d-grid8') return buildItinerary4N2DGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'pov-3-day') return buildPov3DayPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
@@ -3454,6 +3689,7 @@ export function buildPagesForDeck(
   if (deckId === 'grid-6') return buildGrid6Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-8') return buildGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-4') return buildGrid4Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'grid-4-mutant') return buildGrid4MutantPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'spotlight-guide') return buildSpotlightGuidePages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   throw new Error(`Không hỗ trợ deck: ${deckId}`);
 }
@@ -3481,6 +3717,13 @@ export function buildDecks(
       title: 'Bộ trang 72H ở Đà Lạt với 3tr',
       description: 'Mẫu đang làm trước: cover theo style TikTok tham chiếu, 1 trang bảng lịch trình chi phí, 3 trang lưới 4 ảnh phía sau tập trung quán/đối tác.',
       lists: [buildDeckList('budget-3n2d', 'main', 'List chính', 'List 72H 3N2Đ', 'Danh sách ảnh chính cho mẫu 72H ngân sách 3N2Đ.', buildPagesForDeck('budget-3n2d', common.itemsBySection, common.imageUrls, common.libraryEntries, 'budget-3n2d-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
+    },
+    {
+      id: 'budget-3n2d-story',
+      navTitle: '72H Story',
+      title: budget72StoryText.deckTitle,
+      description: budget72StoryText.deckDescription,
+      lists: [buildDeckList('budget-3n2d-story', 'main', budget72StoryText.listLabel, budget72StoryText.listName, budget72StoryText.listDescription, buildPagesForDeck('budget-3n2d-story', common.itemsBySection, common.imageUrls, common.libraryEntries, 'budget-3n2d-story-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'itinerary-4n3d',
@@ -3537,6 +3780,13 @@ export function buildDecks(
       title: 'Bộ trang bố cục lưới 2x2 (4 địa điểm)',
       description: 'Biến thể từ mẫu lưới 6 ô, giữ cùng phong cách hiển thị nhưng mỗi trang chỉ còn 4 hình và cân bằng đối tác/không đối tác.',
       lists: [buildDeckList('grid-4', 'main', 'List chính', 'List lưới 4 ô', 'Danh sách ảnh chính cho mẫu lưới 2x2.', buildPagesForDeck('grid-4', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-4-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
+    },
+    {
+      id: 'grid-4-mutant',
+      navTitle: 'Lưới 4 Đột Biến',
+      title: 'Bộ trang lưới 4 ô — bản đột biến',
+      description: 'Biến thể từ mẫu lưới 4 ô: bỏ header cố định, title xuất hiện ngẫu nhiên giữa trang (strip hoặc card tâm), cover title đặt ở vị trí random mỗi lần sinh.',
+      lists: [buildDeckList('grid-4-mutant', 'main', 'List chính', 'List lưới 4 đột biến', 'Danh sách ảnh chính cho mẫu lưới 2x2 đột biến.', buildPagesForDeck('grid-4-mutant', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-4-mutant-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'spotlight-guide',

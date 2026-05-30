@@ -126,6 +126,75 @@ function isBudget3N2DCover(page) {
   return page.layoutVariant === 'budget-3n2d' && page.type === 'cover';
 }
 
+function isBudget3N2DStoryCover(page) {
+  return page.layoutVariant === 'budget-3n2d-story' && page.type === 'cover';
+}
+
+const MOJIBAKE_TEXT_RE = /(?:Ã|Â|Ä|Å|Æ|áÂ|â€|ï¿½)/;
+
+const BUDGET72_STORY_TEXT = {
+  coverTitle: '"72H" \u1ede \u0110\u00c0 L\u1ea0T V\u1edaI 3TR',
+  coverSubtitle: 'L\u1ecbch tr\u00ecnh 3 ng\u00e0y 2 \u0111\u00eam g\u1ecdn h\u01a1n: xem theo t\u1eebng ng\u00e0y, c\u00f3 chi ph\u00ed v\u00e0 c\u00e1c \u0111i\u1ec3m n\u00ean l\u01b0u.',
+  day1: {
+    chip: 'Ng\u00e0y 01',
+    title: 'Ng\u00e0y \u0111\u1ea7u v\u00e0o ph\u1ed1',
+    subtitle: '\u0102n s\u00e1ng, cafe, check-in v\u00e0 m\u1ed9t bu\u1ed5i t\u1ed1i v\u1eeba \u0111\u1ee7 nh\u1ecbp \u0111\u1ec3 l\u00e0m quen \u0110\u00e0 L\u1ea1t.',
+  },
+  day2: {
+    chip: 'Ng\u00e0y 02',
+    title: 'M\u1ed9t ng\u00e0y \u0111i tr\u1ecdn h\u01a1n',
+    subtitle: 'D\u00e0nh ng\u00e0y gi\u1eefa chuy\u1ebfn cho c\u00e1c \u0111i\u1ec3m ch\u00ednh, qu\u00e1n \u0111\u1eb9p v\u00e0 ho\u1ea1t \u0111\u1ed9ng \u0111\u00e1ng gh\u00e9.',
+  },
+  day3: {
+    chip: 'Ng\u00e0y 03',
+    title: 'Ng\u00e0y cu\u1ed1i nh\u1eb9 nh\u00e0ng',
+    subtitle: 'Gi\u1eef l\u1ecbch g\u1ecdn \u0111\u1ec3 k\u1ecbp \u0103n, mua qu\u00e0, check-out v\u00e0 quay v\u1ec1 kh\u00f4ng b\u1ecb g\u1ea5p.',
+  },
+  total: {
+    chip: 'Chi ph\u00ed',
+    title: 'T\u1ed5ng chi ph\u00ed d\u1ef1 ki\u1ebfn',
+    subtitle: 'C\u00e1c kho\u1ea3n ch\u00ednh \u0111\u01b0\u1ee3c gom l\u1ea1i \u0111\u1ec3 d\u1ec5 c\u00e2n ng\u00e2n s\u00e1ch tr\u01b0\u1edbc khi \u0111i.',
+    label: '72H \u0110\u00e0 L\u1ea1t',
+    finalLabel: 'T\u1ed5ng thanh to\u00e1n d\u1ef1 ki\u1ebfn',
+  },
+};
+
+function hasMojibakeText(value) {
+  return MOJIBAKE_TEXT_RE.test(String(value || ''));
+}
+
+function cleanStoryText(value, fallback = '') {
+  const text = String(value || '').trim();
+  if (!text || hasMojibakeText(text)) return fallback;
+  return text;
+}
+
+function budgetStoryDayNumber(page, index) {
+  const raw = `${page?.chipText || ''} ${page?.title || ''} ${index + 1}`.toLowerCase();
+  const numberMatch = raw.match(/\b0?([123])\b/);
+  if (numberMatch) return Number(numberMatch[1]);
+  const pageOffset = index - 1;
+  if (pageOffset >= 1 && pageOffset <= 3) return pageOffset;
+  return 1;
+}
+
+function cleanBudgetStoryDayCopy(page, index) {
+  const defaults = BUDGET72_STORY_TEXT[`day${budgetStoryDayNumber(page, index)}`] || BUDGET72_STORY_TEXT.day1;
+  return {
+    chip: cleanStoryText(page?.chipText, defaults.chip),
+    title: cleanStoryText(page?.title, defaults.title),
+    subtitle: cleanStoryText(page?.subtitle, defaults.subtitle),
+  };
+}
+
+function cleanBudgetStoryTotalCopy(page) {
+  return {
+    chip: cleanStoryText(page?.chipText, BUDGET72_STORY_TEXT.total.chip),
+    title: cleanStoryText(page?.title, BUDGET72_STORY_TEXT.total.title),
+    subtitle: cleanStoryText(page?.subtitle, BUDGET72_STORY_TEXT.total.subtitle),
+  };
+}
+
 function spotlightPositionClass(page, index, item) {
   const variants = [
     'spotlight-pos-lower-left',
@@ -358,6 +427,86 @@ function renderGrid4FeaturePage(page, index, listId, list, pageSubtitle) {
   `;
 }
 
+// ─── Grid 4 Mutant render helpers ────────────────────────────────────────────
+
+function renderGrid4MutantCover(page, index, listId) {
+  const placement = page.titlePlacement || 'bottom-left';
+  const placementClass = `placement-${placement}`;
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid4-mutant-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="grid4-mutant-cover-bg">
+        ${renderPreviewImage(page.backgroundImage, page.title)}
+      </div>
+      <div class="grid4-mutant-cover-shade"></div>
+      <div class="grid4-mutant-cover-copy ${escapeHtml(placementClass)}">
+        <div class="grid4-mutant-cover-kicker">ĐÀ LẠT</div>
+        <h1 class="grid4-mutant-cover-title">${escapeHtml(page.title || '')}</h1>
+        ${page.subtitle ? `<p class="grid4-mutant-cover-subtitle">${escapeHtml(page.subtitle)}</p>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderGrid4MutantItems(items, position = 'bottom') {
+  return items.map((item) => {
+    const displayName = compactGridItemName(item?.rawName || item?.name);
+    const cleanAddress = cleanGridAddress(item?.metaPrimary);
+    const addressHtml = cleanAddress ? `
+      <div class="grid4-mutant-address">
+        <span class="grid4-mutant-address-pin">${renderPhotomodePin()}</span>
+        <span class="grid4-mutant-address-text">${escapeHtml(cleanAddress)}</span>
+      </div>
+    ` : '';
+    const labelHtml = item.label ? `<div class="grid4-mutant-service-label">${escapeHtml(item.label)}</div>` : '';
+    const posClass = position === 'top' ? 'mutant-item-top' : 'mutant-item-bottom';
+    return `
+      <div class="grid4-mutant-item ${posClass} ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+        <div class="grid4-mutant-overlay">
+          ${labelHtml}
+          <div class="grid4-mutant-name story-image-title">${escapeHtml(displayName)}</div>
+          ${addressHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderGrid4MutantContentPage(page, index, listId) {
+  const contentStyle = page.contentStyle || 'strip';
+  const styleClass = `mutant-${contentStyle}`;
+  const showServiceLabel = isServiceOrStayListPage(page);
+  const itemsToRender = (page.items || []).slice(0, 4);
+  // Filter labels if not service/stay page
+  const processedItems = showServiceLabel ? itemsToRender : itemsToRender.map(item => ({ ...item, label: '' }));
+
+  if (contentStyle === 'strip') {
+    return `
+      <article class="${escapeHtml(storyPageClass(listId, 'grid4-mutant', styleClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        <div class="grid4-mutant-body">
+          ${renderGrid4MutantItems(processedItems.slice(0, 2), 'top')}
+          <div class="grid4-mutant-title-strip">${escapeHtml(page.title)}</div>
+          ${renderGrid4MutantItems(processedItems.slice(2, 4), 'bottom')}
+        </div>
+      </article>
+    `;
+  }
+
+  // center-card: top row items have overlay at top, bottom row at bottom
+  // (so center title card doesn't cover any item text)
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid4-mutant', styleClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <div class="grid4-mutant-body">
+        ${renderGrid4MutantItems(processedItems.slice(0, 2), 'top')}
+        ${renderGrid4MutantItems(processedItems.slice(2, 4), 'bottom')}
+        <div class="grid4-mutant-title-card">${escapeHtml(page.title)}</div>
+      </div>
+    </article>
+  `;
+}
+
+// ─── End Grid 4 Mutant ───────────────────────────────────────────────────────
+
 export function renderInlineHashtags(hashtags) {
   if (!Array.isArray(hashtags) || hashtags.length === 0) {
     return '';
@@ -465,6 +614,24 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
           <div class="budget72-script">dalat.</div>
           <h1 class="budget72-title">${escapeHtml(title)}</h1>
           <p class="budget72-subtitle">${escapeHtml(coverSubtitle || '/Gợi ý lịch trình du hí 3N2Đ/')}</p>
+        </div>
+      </article>
+    `;
+  }
+
+  if (isBudget3N2DStoryCover(page)) {
+    const title = cleanStoryText(coverTitle, BUDGET72_STORY_TEXT.coverTitle);
+    const subtitle = cleanStoryText(coverSubtitle, BUDGET72_STORY_TEXT.coverSubtitle);
+    return `
+      <article class="${escapeHtml(storyPageClass(listId, 'budget72-story-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+        <div class="budget72-story-bg">
+          ${renderPreviewImage(backgroundImage, title)}
+        </div>
+        <div class="budget72-story-cover-shade"></div>
+        <div class="budget72-story-cover-copy">
+          <div class="budget72-story-script">dalat.</div>
+          <h1>${escapeHtml(title)}</h1>
+          <p>${escapeHtml(subtitle)}</p>
         </div>
       </article>
     `;
@@ -972,6 +1139,123 @@ function renderBudget3N2DGalleryCornerPage(page, index, listId, list) {
   `;
 }
 
+function budgetStoryParts(item) {
+  const parts = String(item?.label || '').split('|');
+  return {
+    day: parts[0] || '',
+    time: parts[1] || '',
+  };
+}
+
+function budgetStoryActivityTitle(value) {
+  return String(value || '')
+    .replace(/^\s*(Ăn sáng|Ăn trưa|Ăn tối|Cà phê chiều|Cà phê|Check-in|Chơi đêm|Mua quà|Hoạt động)\s*:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function budgetStoryActivityType(value) {
+  const clean = String(value || '').trim();
+  const match = clean.match(/^\s*([^:]{2,24})\s*:/);
+  return match?.[1]?.trim() || 'Điểm ghé';
+}
+
+function budgetStoryDisplayTitle(value) {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  if (/di chuy[eể]n b[aằ]ng xe/i.test(clean) || /ph[uươ]ng trang/i.test(clean)) {
+    return 'Xe SG - \u0110\u00e0 L\u1ea1t';
+  }
+  if (/check\s*out|l[eê]n xe|v[eề]\s+l[aạ]i\s+sg/i.test(clean)) {
+    return 'V\u1ec1 l\u1ea1i SG';
+  }
+  return budgetStoryActivityTitle(clean)
+    .replace(/^\s*(\u0102n s\u00e1ng|\u0102n tr\u01b0a|\u0102n t\u1ed1i|C\u00e0 ph\u00ea chi\u1ec1u|C\u00e0 ph\u00ea|Check-in|Ch\u01a1i \u0111\u00eam|Mua qu\u00e0|Ho\u1ea1t \u0111\u1ed9ng|D\u1ecbch v\u1ee5|L\u01b0u tr\u00fa|Cafe|\u0102n nh\u1eb9)\s*:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function budgetStoryDisplayType(value) {
+  const clean = String(value || '').trim();
+  if (/di chuy[eể]n b[aằ]ng xe/i.test(clean) || /ph[uươ]ng trang/i.test(clean) || /check\s*out|l[eê]n xe|v[eề]\s+l[aạ]i\s+sg/i.test(clean)) {
+    return 'Di chuy\u1ec3n';
+  }
+  const type = budgetStoryActivityType(clean);
+  return hasMojibakeText(type) ? '\u0110i\u1ec3m gh\u00e9' : type;
+}
+
+function renderBudget3N2DDayPage(page, index, listId, list) {
+  const items = Array.isArray(page.items) ? page.items.slice(0, 8) : [];
+  const hero = items.find((item) => item.imageUrl) || items[0] || {};
+  const backgroundImage = hero.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
+  const copy = cleanBudgetStoryDayCopy(page, index);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget72-story-day'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(copy.chip || copy.title || 'ngay')}.png">
+      <div class="budget72-story-bg">
+        ${renderPreviewImage(backgroundImage, copy.title)}
+      </div>
+      <div class="budget72-story-day-shade"></div>
+      <section class="budget72-story-panel">
+        <header class="budget72-story-head">
+          <span>${escapeHtml(copy.chip)}</span>
+          <h2>${escapeHtml(copy.title)}</h2>
+          <p>${escapeHtml(copy.subtitle)}</p>
+        </header>
+        <div class="budget72-story-timeline">
+          ${items.map((item) => {
+            const { time } = budgetStoryParts(item);
+            const secondary = String(item.metaSecondary || '').trim();
+            return `
+              <article class="budget72-story-stop">
+                <div class="budget72-story-time">${escapeHtml(time)}</div>
+                <div class="budget72-story-dot"></div>
+                <div class="budget72-story-copy">
+                  <span>${escapeHtml(budgetStoryDisplayType(item.name))}</span>
+                  <strong>${escapeHtml(budgetStoryDisplayTitle(item.name))}</strong>
+                  <p>${escapeHtml(item.metaPrimary || '')}</p>
+                  ${secondary ? `<em>${escapeHtml(secondary)}</em>` : ''}
+                </div>
+              </article>
+            `;
+          }).join('')}
+        </div>
+      </section>
+    </article>
+  `;
+}
+
+function renderBudget3N2DTotalPage(page, index, listId, list) {
+  const items = Array.isArray(page.items) ? page.items : [];
+  const total = items.find((item) => /tong|total/i.test(String(item.id || ''))) || items[items.length - 1] || {};
+  const backgroundImage = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
+  const copy = cleanBudgetStoryTotalCopy(page);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget72-story-total'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-tong-chi-phi.png">
+      <div class="budget72-story-bg">
+        ${renderPreviewImage(backgroundImage, copy.title)}
+      </div>
+      <div class="budget72-story-total-shade"></div>
+      <section class="budget72-total-card">
+        <span>${escapeHtml(BUDGET72_STORY_TEXT.total.label)}</span>
+        <h2>${escapeHtml(copy.title)}</h2>
+        <p>${escapeHtml(copy.subtitle)}</p>
+        <div class="budget72-total-list">
+          ${items.filter((item) => !/tong|total/i.test(String(item.id || ''))).map((item) => `
+            <article>
+              <strong>${escapeHtml(item.name || '')}</strong>
+              <span>${escapeHtml(item.metaSecondary || '')}</span>
+              <p>${escapeHtml(item.metaPrimary || '')}</p>
+            </article>
+          `).join('')}
+        </div>
+        <div class="budget72-total-final">
+          <span>${escapeHtml(BUDGET72_STORY_TEXT.total.finalLabel)}</span>
+          <strong>${escapeHtml(total.metaSecondary || '~2.5tr - 3tr')}</strong>
+        </div>
+      </section>
+    </article>
+  `;
+}
+
 function normalizeGridText(value) {
   return String(value || '')
     .normalize('NFD')
@@ -1218,6 +1502,14 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     return renderBudget3N2DGalleryCornerPage(page, index, listId, list);
   }
 
+  if (page.layoutVariant === 'budget-3n2d-day') {
+    return renderBudget3N2DDayPage(page, index, listId, list);
+  }
+
+  if (page.layoutVariant === 'budget-3n2d-total') {
+    return renderBudget3N2DTotalPage(page, index, listId, list);
+  }
+
   if (page.layoutVariant === 'photomode') {
     const photomodeTitleHtml = /^pov-3-day/i.test(String(listId || '')) && page.title
       ? `
@@ -1259,6 +1551,13 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
         </div>
       </article>
     `;
+  }
+
+  if (page.layoutVariant === 'grid-4-mutant') {
+    if (page.type === 'cover') {
+      return renderGrid4MutantCover(page, index, listId);
+    }
+    return renderGrid4MutantContentPage(page, index, listId);
   }
 
   if (isGridLayout(page)) {
