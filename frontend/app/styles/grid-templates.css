@@ -2915,14 +2915,11 @@
   font-family: var(--deck-title-font, "Be Vietnam Pro", sans-serif);
   font-size: 2.05rem;
   font-weight: 950;
-  line-height: 1.08;
+  line-height: 1.22;
+  padding-top: 0.18em;
   text-transform: uppercase;
-  text-shadow: 0 5px 12px rgba(0,0,0,0.58);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  text-shadow: 0 3px 8px rgba(0,0,0,0.5);
+  word-wrap: break-word;
 }
 
 .grid4-mutant-cover-subtitle {
@@ -2937,4 +2934,263 @@
   line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ─── Grid 6 Zigzag Layout ────────────────────────────────────────────────── */
+
+.story-page.zigzag-page {
+  background: #f9f5ef;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.zigzag-page-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.zigzag-page-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  filter: blur(1px) brightness(0.96) saturate(0.95);
+}
+
+.zigzag-page-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(249, 245, 239, 0.72) 0%, rgba(249, 245, 239, 0.5) 38%, rgba(249, 245, 239, 0.5) 62%, rgba(249, 245, 239, 0.74) 100%);
+}
+
+.story-page.zigzag-page > .zigzag-header,
+.story-page.zigzag-page > .zigzag-body {
+  position: relative;
+  z-index: 1;
+}
+
+.zigzag-header {
+  flex: 0 0 52px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: rgba(249, 245, 239, 0.7);
+  border-bottom: 1.5px solid rgba(22, 55, 44, 0.1);
+  box-sizing: border-box;
+  backdrop-filter: blur(1px);
+}
+
+.zigzag-header-title {
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #8b2e1c;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.zigzag-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 14px 10px;
+  overflow: hidden;
+}
+
+.zigzag-item {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 4px;
+  border-bottom: 1px solid rgba(22, 55, 44, 0.06);
+  box-sizing: border-box;
+}
+
+.zigzag-item:last-child {
+  border-bottom: none;
+}
+
+/* Zigzag alternation: odd items image-left, even items image-right */
+.zigzag-item:nth-child(odd) {
+  grid-template-columns: 86px minmax(0, 1fr);
+}
+
+.zigzag-item:nth-child(even) {
+  grid-template-columns: minmax(0, 1fr) 86px;
+}
+
+.zigzag-item:nth-child(even) .zigzag-thumb {
+  order: 2;
+}
+
+.zigzag-item:nth-child(even) .zigzag-copy {
+  order: 1;
+  text-align: right;
+  align-items: flex-end;
+}
+
+.zigzag-thumb {
+  width: 86px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #e8e2d8;
+  flex-shrink: 0;
+}
+
+.zigzag-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+.zigzag-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.zigzag-name {
+  font-family: "Quicksand", sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: #1a1a1a;
+  line-height: 1.14;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.zigzag-address {
+  font-family: "Quicksand", sans-serif;
+  font-weight: 500;
+  font-size: 0.52rem;
+  color: #555;
+  line-height: 1.12;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zigzag-price {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #e8940e;
+  color: #fff;
+  font-family: "Quicksand", sans-serif;
+  font-weight: 700;
+  font-size: 0.48rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.zigzag-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 3px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(22, 55, 44, 0.1);
+  color: #16372c;
+  font-family: "Quicksand", sans-serif;
+  font-weight: 700;
+  font-size: 0.44rem;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* Zigzag cover */
+.story-page.zigzag-cover {
+  background: #1f1c17;
+  overflow: hidden;
+}
+
+.zigzag-cover-bg,
+.zigzag-cover-shade,
+.zigzag-cover-copy {
+  position: absolute;
+  inset: 0;
+}
+
+.zigzag-cover-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.zigzag-cover-shade {
+  background:
+    linear-gradient(180deg, rgba(16, 14, 11, 0.22) 0%, rgba(16, 14, 11, 0.42) 50%, rgba(16, 14, 11, 0.62) 100%),
+    radial-gradient(circle at 50% 42%, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.24) 100%);
+}
+
+.zigzag-cover-copy {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 48px 34px;
+  color: #fffaf0;
+}
+
+.zigzag-cover-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #8b2e1c;
+  color: #fffaf0;
+  font-family: "Quicksand", sans-serif;
+  font-weight: 700;
+  font-size: 0.56rem;
+  margin-bottom: 10px;
+}
+
+.zigzag-cover-title {
+  max-width: 94%;
+  color: #fffaf0;
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1.22;
+  padding-top: 0.18em;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  word-wrap: break-word;
+}
+
+.zigzag-cover-subtitle {
+  margin-top: 12px;
+  max-width: 86%;
+  color: rgba(255,250,240,0.92);
+  font-family: "Quicksand", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.26;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.55);
 }

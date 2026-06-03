@@ -507,6 +507,64 @@ function renderGrid4MutantContentPage(page, index, listId) {
 
 // ─── End Grid 4 Mutant ───────────────────────────────────────────────────────
 
+// ─── Grid 6 Zigzag render helpers ────────────────────────────────────────────
+
+function renderZigzagCover(page, index, listId) {
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'zigzag-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="zigzag-cover-bg">
+        ${renderPreviewImage(page.backgroundImage, page.title)}
+      </div>
+      <div class="zigzag-cover-shade"></div>
+      <div class="zigzag-cover-copy">
+        <div class="zigzag-cover-badge">Đà Lạt</div>
+        <h1 class="zigzag-cover-title">${escapeHtml(page.title || '')}</h1>
+        ${page.subtitle ? `<p class="zigzag-cover-subtitle">${escapeHtml(page.subtitle)}</p>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderZigzagItems(items) {
+  return items.map((item) => {
+    const displayName = compactGridItemName(item?.rawName || item?.name);
+    const address = String(item?.metaPrimary || '').replace(/\s+/g, ' ').trim();
+    const price = String(item?.metaSecondary || '').trim();
+    const label = String(item?.label || '').trim();
+    const addressHtml = address ? `<div class="zigzag-address">${escapeHtml(address)}</div>` : '';
+    const priceHtml = price ? `<span class="zigzag-price">${escapeHtml(price)}</span>` : '';
+    const labelHtml = (!price && label) ? `<span class="zigzag-label">${escapeHtml(label)}</span>` : '';
+    return `
+      <div class="zigzag-item">
+        <div class="zigzag-thumb ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
+          ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+        </div>
+        <div class="zigzag-copy">
+          <div class="zigzag-name story-image-title">${escapeHtml(displayName)}</div>
+          ${addressHtml}
+          ${priceHtml}${labelHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderZigzagContentPage(page, index, listId) {
+  const itemsToRender = (page.items || []).slice(0, 6);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'zigzag-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <div class="zigzag-header">
+        <div class="zigzag-header-title">${escapeHtml(page.title)}</div>
+      </div>
+      <div class="zigzag-body">
+        ${renderZigzagItems(itemsToRender)}
+      </div>
+    </article>
+  `;
+}
+
+// ─── End Grid 6 Zigzag ───────────────────────────────────────────────────────
+
 export function renderInlineHashtags(hashtags) {
   if (!Array.isArray(hashtags) || hashtags.length === 0) {
     return '';
@@ -602,6 +660,12 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
   const coverTitle = polishShortVietnameseCopy(page.title);
   const backgroundImage = coverBackgroundImage(page, list);
+  if (page.layoutVariant === 'grid-6-zigzag') {
+    return renderZigzagCover(page, index, listId);
+  }
+  if (page.layoutVariant === 'grid-4-mutant') {
+    return renderGrid4MutantCover(page, index, listId);
+  }
   if (isBudget3N2DCover(page)) {
     const title = coverTitle || '"72H" Ở ĐÀ LẠT VỚI 3TR';
     return `
@@ -1551,6 +1615,13 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
         </div>
       </article>
     `;
+  }
+
+  if (page.layoutVariant === 'grid-6-zigzag') {
+    if (page.type === 'cover') {
+      return renderZigzagCover(page, index, listId);
+    }
+    return renderZigzagContentPage(page, index, listId);
   }
 
   if (page.layoutVariant === 'grid-4-mutant') {

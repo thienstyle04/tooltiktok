@@ -67,7 +67,7 @@ export interface CoverPage {
   title: string;
   subtitle: string;
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'grid-4-mutant' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-partner' | 'budget-3n2d' | 'budget-3n2d-story';
+  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-8' | 'grid-4' | 'grid-4-mutant' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-partner' | 'budget-3n2d' | 'budget-3n2d-story';
   titlePlacement?: TitlePlacement;
 }
 
@@ -79,7 +79,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'grid-4-mutant' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total';
+  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-8' | 'grid-4' | 'grid-4-mutant' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total';
   titlePlacement?: TitlePlacement;
   contentStyle?: MutantContentStyle;
 }

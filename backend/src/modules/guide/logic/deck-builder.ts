@@ -29,6 +29,7 @@ export const POV_3_DAY_TEMPLATE_VERSION = 12;
 export const GRID_4_TEMPLATE_VERSION = 17;
 export const GRID_4_MUTANT_TEMPLATE_VERSION = 1;
 export const GRID_6_TEMPLATE_VERSION = 16;
+export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 1;
 export const GRID_8_TEMPLATE_VERSION = 15;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
 export const BUDGET_3N2D_TEMPLATE_VERSION = 4;
@@ -883,7 +884,7 @@ export function buildListPage(
   subtitle: string,
   items: PageItem[],
   backgroundImage: string,
-  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-8' | 'grid-4' | 'grid-4-mutant' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' = 'standard',
+  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-8' | 'grid-4' | 'grid-4-mutant' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' = 'standard',
 ): ListPage {
   return { type: 'list', chipText, chipTone, title, subtitle, items, backgroundImage, layoutVariant };
 }
@@ -3286,6 +3287,79 @@ function buildSpotlightPartnerSampleLists(
   return [list];
 }
 
+// ─── Grid 6 Zigzag ──────────────────────────────────────────────────────────────
+
+function buildGrid6ZigzagPages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6-zigzag`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const pick = createListPicker(globalUsedItemIds);
+  const activityPage = finalActivityPagePool(pools, seedPrefix);
+  const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
+
+  return [
+    {
+      ...buildCoverPage(
+        'TOP 6 ĐỊA ĐIỂM ĐÀ LẠT',
+        'Mỗi trang 6 gợi ý, ảnh và thông tin xen kẽ để lướt nhanh và lưu dễ.',
+        coverBackground(`${seedPrefix}-cover`),
+      ),
+      layoutVariant: 'grid-6-zigzag',
+    },
+    buildListPage(
+      'Quán ăn', 'berry', 'MÓN NGON ĐÀ LẠT',
+      '6 quán ăn xếp zigzag để dễ lướt và lưu nhanh.',
+      buildGridPageItems(pools.foodItems, pools.foodItems, 6, `${seedPrefix}-food`, pick, imageResolver, mealLabelForItem),
+      '', 'grid-6-zigzag',
+    ),
+    buildListPage(
+      'Cà phê', 'gold', 'QUÁN CAFE ĐÀ LẠT',
+      '6 quán cafe view đẹp, sương mây đỉnh.',
+      buildGridPageItems(pools.cafeItems, pools.cafeItems, 6, `${seedPrefix}-cafe`, pick, imageResolver, (item) => item.type),
+      '', 'grid-6-zigzag',
+    ),
+    buildListPage(
+      'Check-in', 'terracotta', 'ĐỊA ĐIỂM CHECK-IN',
+      '6 địa điểm check-in được tách riêng để lưu nhanh.',
+      buildBalancedCheckinGridItems(pools.checkinItems, 6, `${seedPrefix}-checkin`, pick, imageResolver),
+      '', 'grid-6-zigzag',
+    ),
+    buildListPage(
+      'Chơi đêm', 'slate', 'CHƠI ĐÊM ĐÀ LẠT',
+      'Các điểm đi buổi tối, ăn đêm và nghe nhạc.',
+      buildGridPageItems(nightlifeItems, nightlifeItems, 6, `${seedPrefix}-nightlife`, pick, imageResolver, photomodeServiceLabel),
+      '', 'grid-6-zigzag',
+    ),
+    buildListPage(
+      'Dịch vụ', 'pine', 'DỊCH VỤ CẦN CHÚ Ý',
+      'Thuê xe, đặc sản, spa và nhà xe cần lưu trước chuyến đi.',
+      buildGridPageItems(pools.serviceItems, pools.serviceItems, 6, `${seedPrefix}-services`, pick, imageResolver, photomodeServiceLabel),
+      '', 'grid-6-zigzag',
+    ),
+    buildListPage(
+      'Homestay', 'pine', 'HOMESTAY ĐÀ LẠT',
+      'Các chỗ nghỉ nên xem riêng để dễ chốt phòng.',
+      buildGridPageItems(pools.stayItems, pools.stayItems, 6, `${seedPrefix}-homestay`, pick, imageResolver, photomodeServiceLabel),
+      '', 'grid-6-zigzag',
+    ),
+    buildListPage(
+      activityPage.chip, 'slate', activityPage.title,
+      activityPage.isActivity ? 'Các hoạt động và điểm ghé được luân phiên giữa các list.' : 'Các khu du lịch nên ghim riêng khỏi nhóm check-in.',
+      buildGridPageItems(activityPage.items, activityPage.items, 6, `${seedPrefix}-activity`, pick, imageResolver, (item) => item.type),
+      '', 'grid-6-zigzag',
+    ),
+  ];
+}
+
 function buildGrid6Pages(
   pools: DeckBuildPools,
   imageUrls: string[],
@@ -3687,6 +3761,7 @@ export function buildPagesForDeck(
   if (deckId === 'must-go') return buildMustGoPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'first-time') return buildFirstTimePages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-6') return buildGrid6Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'grid-6-zigzag') return buildGrid6ZigzagPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-8') return buildGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-4') return buildGrid4Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-4-mutant') return buildGrid4MutantPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
@@ -3766,6 +3841,13 @@ export function buildDecks(
       title: 'Bộ trang bố cục lưới 2x3 (6 địa điểm)',
       description: 'Mẫu thiết kế mật độ thông tin cao, mỗi trang hiển thị 6 địa điểm theo dạng lưới 2 cột x 3 hàng.',
       lists: [buildDeckList('grid-6', 'main', 'List chính', 'List lưới 6 ô', 'Danh sách ảnh chính cho mẫu lưới 2x3.', buildPagesForDeck('grid-6', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-6-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
+    },
+    {
+      id: 'grid-6-zigzag',
+      navTitle: 'Mẫu Zigzag 6',
+      title: 'Bộ trang zigzag 6 địa điểm',
+      description: 'Biến thể từ mẫu lưới 6 ô: ảnh và text xen kẽ trái/phải kiểu scrapbook, nền sáng, có chip giá nếu có dữ liệu.',
+      lists: [buildDeckList('grid-6-zigzag', 'main', 'List chính', 'List zigzag 6', 'Danh sách ảnh chính cho mẫu zigzag 6 địa điểm.', buildPagesForDeck('grid-6-zigzag', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-6-zigzag-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'grid-8',
