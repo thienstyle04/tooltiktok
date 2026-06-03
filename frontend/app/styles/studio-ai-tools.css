@@ -31,14 +31,87 @@
 
 .ai-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
+  align-items: stretch;
 }
 
-.ai-actions .toolbar-button {
+.ai-actions > .toolbar-button {
   width: 100%;
   padding-inline: 8px;
 }
+
+/* Split-button: [Tạo N list][▾] */
+.ai-batch-group {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-radius: 8px;
+  overflow: visible;
+}
+
+.ai-batch-main {
+  flex: 1 1 auto;
+  border-radius: 8px 0 0 8px !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.22) !important;
+  margin: 0 !important;
+}
+
+.ai-batch-arrow {
+  flex: 0 0 32px;
+  width: 32px;
+  padding: 0 !important;
+  border-radius: 0 8px 8px 0 !important;
+  margin: 0 !important;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.ai-batch-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--studio-panel, #1a1f1c);
+  border: 1px solid var(--studio-line, rgba(255,255,255,0.14));
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  min-width: 160px;
+}
+
+.ai-batch-option {
+  display: block;
+  width: 100%;
+  padding: 11px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--studio-line, rgba(255,255,255,0.08));
+  color: var(--studio-soft, rgba(255,255,255,0.82));
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.ai-batch-option:last-child {
+  border-bottom: none;
+}
+
+.ai-batch-option:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.ai-batch-option.active {
+  background: rgba(240, 127, 90, 0.18);
+  color: var(--studio-clay, #f07f5a);
+}
+
+/* Remove old number input styles */
+.ai-batch-count { display: none; }
 
 .ai-grid {
   flex: 1 1 auto;

@@ -1,6 +1,30 @@
-﻿import { currentPageLabel, imageSourceClass, sourceLabel } from '../lib/utils';
+import { currentPageLabel, imageSourceClass, sourceLabel } from '../lib/utils';
 
-export default function PageInspector({ deck, list, selectedPageIndex }) {
+function isPortableImageUrl(value) {
+  const url = String(value || '').trim();
+  return /^https?:\/\//i.test(url) || url.startsWith('/assets/drive-file');
+}
+
+function firstPortableListImage(list) {
+  for (const page of list?.pages || []) {
+    if (isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
+    for (const item of page.items || []) {
+      if (isPortableImageUrl(item.imageUrl)) return item.imageUrl;
+      const candidate = item.candidateImageUrls?.find(isPortableImageUrl);
+      if (candidate) return candidate;
+    }
+  }
+  return '';
+}
+
+export default function PageInspector({
+  deck,
+  list,
+  selectedPageIndex,
+  onCoverTextChange,
+  onCoverTextSave,
+  savingCoverText = false,
+}) {
   const page = list?.pages?.[selectedPageIndex];
   if (!deck || !list || !page) {
     return <p className="empty-inspector">Chọn một trang trong preview để xem dữ liệu và ảnh đang dùng.</p>;
@@ -8,10 +32,16 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
 
   const items = Array.isArray(page.items) ? page.items : [];
   const hasItems = items.length > 0;
-  const mappedCount = items.filter((item) => item.imageSource === 'manual' || item.imageSource === 'auto' || item.imageMapped).length;
-  const fallbackCount = items.filter((item) => imageSourceClass(item) === 'fallback').length;
+  const itemsWithImages = items.filter((item) => item.imageUrl);
+  const mappedCount = itemsWithImages.filter((item) => item.imageSource === 'manual' || item.imageSource === 'auto' || item.imageMapped).length;
+  const fallbackCount = itemsWithImages.filter((item) => imageSourceClass(item) === 'fallback').length;
   const partnerCount = items.filter((item) => item.isPartner).length;
-  const coverImage = hasItems ? (items[0]?.imageUrl || page.backgroundImage || '') : (page.backgroundImage || '');
+  const pageBackground = isPortableImageUrl(page.backgroundImage)
+    ? page.backgroundImage
+    : firstPortableListImage(list) || page.backgroundImage || '';
+  const coverImage = hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
+  const canEditCover = !hasItems && page.type === 'cover' && typeof onCoverTextChange === 'function';
+  const canSaveCover = canEditCover && typeof onCoverTextSave === 'function';
 
   return (
     <>
@@ -23,6 +53,7 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
           <p>{hasItems ? 'Trang dữ liệu' : 'Trang bìa'} · {page.chipText || 'Cover'} · Trang {currentPageLabel(selectedPageIndex, list)}</p>
         </div>
       </div>
+
       {hasItems ? (
         <>
           <div className="inspector-stats">
@@ -33,23 +64,53 @@ export default function PageInspector({ deck, list, selectedPageIndex }) {
           </div>
           <ul className="inspector-list">
             {items.map((item, index) => (
-              <li key={`${item.id || item.name}-${index}`} className="inspector-item rich">
-                <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" />
+              <li key={`${item.id || item.name}-${index}`} className={`inspector-item ${item.imageUrl ? 'rich' : ''}`}>
+                {item.imageUrl ? (
+                  <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" />
+                ) : null}
                 <span className="inspector-item-copy">
                   <span className="inspector-item-label">{item.label || ''}</span>
                   <span className="inspector-item-name">{item.name}</span>
                   <span className="inspector-item-meta">{item.metaPrimary || ''}</span>
                 </span>
-                <span className={`inspector-item-source ${imageSourceClass(item)}`}>{sourceLabel(item)}</span>
+                {item.imageUrl ? (
+                  <span className={`inspector-item-source ${imageSourceClass(item)}`}>{sourceLabel(item)}</span>
+                ) : (
+                  <span className="inspector-item-source text-only">Bảng</span>
+                )}
               </li>
             ))}
           </ul>
         </>
       ) : (
-        <div className="inspector-cover-note">
-          <strong>Trang này là cover</strong>
-          <span>Cover chỉ dùng ảnh nền và tiêu đề. Dữ liệu địa điểm/dịch vụ sẽ hiện khi chọn các trang nội dung phía sau.</span>
-        </div>
+        <>
+          {canEditCover ? (
+            <div className="inspector-cover-editor">
+              <label className="inspector-field">
+                <span>Chữ cover</span>
+                <textarea
+                  value={page.subtitle || ''}
+                  placeholder="Nhập chữ muốn hiện trên cover..."
+                  rows={4}
+                  maxLength={220}
+                  onChange={(event) => onCoverTextChange({ coverSubtitle: event.target.value })}
+                />
+              </label>
+              <div className="inspector-editor-actions">
+                <span>{list.id?.includes('caption-') ? 'List AI: lưu để lần sau mở lại vẫn còn.' : 'List gốc: sửa tạm trong phiên hiện tại.'}</span>
+                {canSaveCover ? (
+                  <button className="toolbar-button secondary" type="button" disabled={savingCoverText} onClick={onCoverTextSave}>
+                    {savingCoverText ? 'Đang lưu...' : 'Lưu chữ cover'}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          <div className="inspector-cover-note">
+            <strong>Trang này là cover</strong>
+            <span>Cover dùng ảnh nền và chữ phụ. Sửa nội dung ở ô trên rồi xuất lại, không cần sinh caption AI.</span>
+          </div>
+        </>
       )}
     </>
   );

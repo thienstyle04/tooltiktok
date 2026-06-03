@@ -10,7 +10,8 @@
   "instructions": [
     "Điền imagePath bằng đường dẫn tương đối bên trong libraryRoot hoặc đường dẫn tương đối từ workspace.",
     "Match ưu tiên theo sectionKey + name + address, vì vậy nên giữ nguyên name/address đúng như trong Excel.",
-    "Nếu chưa có ảnh đúng địa điểm, để imagePath rỗng hoặc bỏ entry đó đi. Tool sẽ dùng ảnh minh họa và gắn nhãn fallback."
+    "Nếu chưa có ảnh đúng địa điểm, để imagePath rỗng hoặc bỏ entry đó đi. Tool sẽ dùng ảnh minh họa và gắn nhãn fallback.",
+    "Khi copy sang máy khác (USB, Github), có thể bỏ các thư mục vào data/images/library/, tool sẽ tự động tìm thay cho ổ C:"
   ],
   "mappings": [
     {
@@ -29,7 +30,7 @@
       "sectionKey": "quan_an",
       "name": "Tiệm nướng Hoàng Hôn",
       "address": "Hẻm 118 Đồi Dã Chiến",
-      "imagePath": "Quán ăn tối/Tiệm Nướng Hoàng Hôn/100.png"
+      "imagePath": "Quán ăn tối/Tiệm Nướng Hoàng Hôn"
     },
     {
       "sectionKey": "quan_an",

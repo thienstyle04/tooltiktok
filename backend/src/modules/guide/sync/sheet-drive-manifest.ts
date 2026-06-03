@@ -4,11 +4,12 @@ import * as XLSX from 'xlsx';
 
 import { DriveFolderEntry, resolveDriveLinkToEntries } from './drive-images';
 import { firstValue, itemMappingKey, normalizeText } from '../logic/image-resolver';
-import { PREFERRED_WORKBOOK_NAME } from './workbook-source';
+import { PREFERRED_WORKBOOK_NAME, SheetWorkbookSource } from './workbook-source';
 import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 import { SectionKey } from '../../../common/interfaces/guide.types';
 
 export const SHEET_DRIVE_MANIFEST_FILE = 'sheet-drive-images.json';
+const DRIVE_MANIFEST_CONCURRENCY = 6;
 
 export interface SheetDriveImageManifestEntry {
   key: string;
@@ -27,6 +28,7 @@ export interface SheetDriveImageManifest {
   workbookName: string;
   workbookMtimeMs: number;
   items: Record<string, SheetDriveImageManifestEntry>;
+  coverImages: DriveFolderEntry[];
 }
 
 function isLikelyLinkHeader(header: string): boolean {
@@ -70,9 +72,37 @@ function preferredImageLink(row: Record<string, string>): string {
     'link_hinh_anh',
     'hinh_anh__hyperlink',
     'hinh_anh',
+    'anh__hyperlink',
+    'anh',
     'image_link__hyperlink',
     'image_link',
   );
+}
+
+function firstLinkValue(row: Record<string, string>): string {
+  const preferred = preferredImageLink(row);
+  if (preferred) return preferred;
+
+  const linkEntry = Object.entries(row).find(([header, value]) =>
+    isLikelyLinkHeader(header) && /^https?:\/\//i.test(String(value ?? '').trim()),
+  );
+  return String(linkEntry?.[1] ?? '').trim();
+}
+
+async function runLimited<T>(tasks: Array<() => Promise<T>>, concurrency: number): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  let nextIndex = 0;
+
+  const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
+    while (nextIndex < tasks.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await tasks[currentIndex]();
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
 }
 
 export function getSheetDriveManifestPath(dataRoot: string): string {
@@ -86,10 +116,11 @@ export function emptySheetDriveManifest(): SheetDriveImageManifest {
     workbookName: PREFERRED_WORKBOOK_NAME,
     workbookMtimeMs: 0,
     items: {},
+    coverImages: [],
   };
 }
 
-export function readSheetDriveManifest(dataRoot: string, workbookPath?: string): SheetDriveImageManifest {
+export function readSheetDriveManifest(dataRoot: string, workbookName?: string): SheetDriveImageManifest {
   const manifestPath = getSheetDriveManifestPath(dataRoot);
   if (!fs.existsSync(manifestPath)) return emptySheetDriveManifest();
 
@@ -102,14 +133,8 @@ export function readSheetDriveManifest(dataRoot: string, workbookPath?: string):
       workbookName: String(parsed.workbookName ?? PREFERRED_WORKBOOK_NAME),
       workbookMtimeMs: Number(parsed.workbookMtimeMs ?? 0),
       items: parsed.items && typeof parsed.items === 'object' ? parsed.items as Record<string, SheetDriveImageManifestEntry> : {},
+      coverImages: Array.isArray(parsed.coverImages) ? parsed.coverImages as DriveFolderEntry[] : [],
     };
-
-    if (workbookPath && fs.existsSync(workbookPath)) {
-      const workbookName = path.basename(workbookPath);
-      if (manifest.workbookName !== workbookName) {
-        return emptySheetDriveManifest();
-      }
-    }
 
     return manifest;
   } catch {
@@ -117,52 +142,88 @@ export function readSheetDriveManifest(dataRoot: string, workbookPath?: string):
   }
 }
 
-export async function buildSheetDriveManifest(workbookPath: string): Promise<SheetDriveImageManifest> {
-  const workbook = XLSX.readFile(workbookPath, { cellDates: false });
+export async function buildSheetDriveManifest(
+  source: SheetWorkbookSource,
+  previousManifest = emptySheetDriveManifest(),
+): Promise<SheetDriveImageManifest> {
+  const workbook = source.workbook;
   const items: Record<string, SheetDriveImageManifestEntry> = {};
+  const coverImages = new Map<string, DriveFolderEntry>();
+  const itemTasks: Array<() => Promise<void>> = [];
+  const coverTasks: Array<() => Promise<void>> = [];
 
   for (const sheetName of workbook.SheetNames) {
     const sectionKey = normalizeText(sheetName) as SectionKey;
+    const sheet = workbook.Sheets[sheetName];
+
+    if (normalizeText(sheetName) === 'hinh_nen') {
+      for (const row of workbookRowsWithLinks(sheet)) {
+        const imageLink = firstLinkValue(row);
+        if (!imageLink) continue;
+
+        coverTasks.push(async () => {
+          const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', 50).catch((error) => {
+            console.warn(`[sync] Bo qua anh nen Drive loi: ${error instanceof Error ? error.message : String(error)}`);
+            return [];
+          });
+
+          for (const entry of candidateImages) {
+            if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
+          }
+        });
+      }
+      continue;
+    }
+
     if (!(sectionKey in SECTION_CONFIG)) continue;
 
-    const sheet = workbook.Sheets[sheetName];
     for (const row of workbookRowsWithLinks(sheet)) {
-      const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'ten');
+      const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
       if (!name) continue;
 
       const address = firstValue(row, 'dia_chi');
       const imageLink = preferredImageLink(row);
       if (!imageLink) continue;
-
-      const candidateImages = await resolveDriveLinkToEntries(imageLink, name, address).catch((error) => {
-        console.warn(`[sync] Bỏ qua ảnh Drive lỗi cho "${name}": ${error instanceof Error ? error.message : String(error)}`);
-        return [];
-      });
-      if (candidateImages.length === 0) continue;
-
-      const resolvedEntry = candidateImages[0];
-
       const key = itemMappingKey(sectionKey, name, address);
-      items[key] = {
-        key,
-        sectionKey,
-        name,
-        address,
-        sourceLink: imageLink,
-        fileId: resolvedEntry.fileId,
-        fileName: resolvedEntry.fileName,
-        candidateImages,
-      };
+
+      itemTasks.push(async () => {
+        const candidateImages = await resolveDriveLinkToEntries(imageLink, name, address).catch((error) => {
+          console.warn(`[sync] Skip Drive image for "${name}": ${error instanceof Error ? error.message : String(error)}`);
+          return [];
+        });
+        if (candidateImages.length === 0) {
+          const previousEntry = previousManifest.items[key];
+          if (previousEntry?.sourceLink === imageLink && previousEntry.fileId) {
+            items[key] = previousEntry;
+          }
+          return;
+        }
+
+        const resolvedEntry = candidateImages[0];
+
+        items[key] = {
+          key,
+          sectionKey,
+          name,
+          address,
+          sourceLink: imageLink,
+          fileId: resolvedEntry.fileId,
+          fileName: resolvedEntry.fileName,
+          candidateImages,
+        };
+      });
     }
   }
 
-  const workbookStats = fs.statSync(workbookPath);
+  await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY);
+
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
-    workbookName: path.basename(workbookPath),
-    workbookMtimeMs: workbookStats.mtimeMs,
+    workbookName: source.workbookName,
+    workbookMtimeMs: source.fetchedAt,
     items,
+    coverImages: [...coverImages.values()],
   };
 }
 

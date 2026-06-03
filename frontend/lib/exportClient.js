@@ -1,11 +1,46 @@
 'use client';
 
-import { saveAs } from 'file-saver';
 import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { listIsMain, sanitizeFilePart } from './utils';
+
+/**
+ * Download a blob as a file. More reliable than file-saver's saveAs because:
+ * 1. file-saver silently fails in background tabs (browser blocks <a> click)
+ * 2. We add retry logic and fallback to window.open for background tabs
+ */
+function downloadBlobFile(blob, filename) {
+  let url = null;
+  try {
+    url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    // Give the browser time to start the download before cleanup
+    setTimeout(() => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+      if (url) URL.revokeObjectURL(url);
+    }, 10000);
+    return true;
+  } catch (error) {
+    // Fallback: open in new tab (works even in background)
+    try {
+      if (url) {
+        window.open(url, '_blank');
+        return true;
+      }
+    } catch (fallbackError) {
+      console.warn(`Download fallback failed: ${fallbackError?.message || fallbackError}`);
+    }
+    console.warn(`Download failed: ${error?.message || error}${url ? ` Blob URL: ${url}` : ''}`);
+    return false;
+  }
+}
 
 const EXPORT_PIXEL_RATIO = 2;
 const BATCH_EXPORT_PIXEL_RATIO = EXPORT_PIXEL_RATIO;
@@ -15,15 +50,61 @@ const BATCH_IMAGE_QUALITY = 1;
 const BATCH_SOURCE_IMAGE_MAX_DIMENSION = 0;
 const BATCH_SOURCE_IMAGE_QUALITY = 1;
 const BATCH_IMAGE_PREPARE_CONCURRENCY = 24;
-const IMAGE_FETCH_TIMEOUT_MS = 5000;
-const IMAGE_READY_TIMEOUT_MS = 1200;
-const PAGE_RENDER_TIMEOUT_MS = 16000;
-const BATCH_PAGE_RENDER_TIMEOUT_MS = 30000;
-const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 60000;
+const IMAGE_FETCH_TIMEOUT_MS = 25000;
+const IMAGE_READY_TIMEOUT_MS = 5000;
+const PAGE_RENDER_TIMEOUT_MS = 45000;
+const BATCH_PAGE_RENDER_TIMEOUT_MS = 90000;
+const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 150000;
+const EXPORT_FALLBACK_SOURCE_LIMIT = 48;
+const DEFAULT_EXPORT_CORNER_RADIUS = 0;
+const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
+  cacheBust: false,
+  // Drive proxy images are differentiated by ?id=..., so every template export must keep query params.
+  includeQueryParams: true,
+});
+const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
+const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
+const SPOTLIGHT_PARTNER_CAPTION_HASHTAGS = ['#riviudalat', '#dalat', '#dalatreview', '#72hdalat', '#dulich31'];
+const BATCH_CACHE_TRIM_INTERVAL = 50;
+const EXPORT_QUALITY_PROFILES = Object.freeze({
+  optimized: {
+    id: 'optimized',
+    label: 'chất lượng cao tối ưu',
+    pixelRatio: 2,
+    imageFormat: 'image/png',
+    imageExtension: 'png',
+    imageQuality: 1,
+    backgroundColor: null,
+    sourceImageMaxDimension: 1800,
+    sourceImageFormat: 'image/jpeg',
+    sourceImageQuality: 0.86,
+    imagePrepareConcurrency: 24,
+    renderChunkSize: 12,
+    captureConcurrency: 3,
+    preferHtml2Canvas: true,
+    renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
+  },
+  original: {
+    id: 'original',
+    label: 'chất lượng gốc',
+    pixelRatio: BATCH_EXPORT_PIXEL_RATIO,
+    imageFormat: BATCH_IMAGE_FORMAT,
+    imageExtension: BATCH_IMAGE_EXTENSION,
+    imageQuality: BATCH_IMAGE_QUALITY,
+    sourceImageMaxDimension: BATCH_SOURCE_IMAGE_MAX_DIMENSION,
+    sourceImageFormat: BATCH_IMAGE_FORMAT,
+    sourceImageQuality: BATCH_SOURCE_IMAGE_QUALITY,
+    imagePrepareConcurrency: BATCH_IMAGE_PREPARE_CONCURRENCY,
+    renderChunkSize: null,
+    captureConcurrency: null,
+    renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
+  },
+});
 
 let fontEmbedCSS = null;
 let batchImageCache = new Map();
 let batchExportRoot = null;
+let activeWakeLock = null;
 
 function noop() {}
 
@@ -58,11 +139,136 @@ function exportCallbacks(callbacks = {}) {
   };
 }
 
+function exportQualityProfile(quality) {
+  return EXPORT_QUALITY_PROFILES[quality] || EXPORT_QUALITY_PROFILES.optimized;
+}
+
+async function requestExportWakeLock() {
+  if (activeWakeLock || typeof navigator === 'undefined' || !navigator.wakeLock?.request) return null;
+  try {
+    activeWakeLock = await navigator.wakeLock.request('screen');
+    activeWakeLock.addEventListener?.('release', () => {
+      activeWakeLock = null;
+    });
+  } catch {
+    activeWakeLock = null;
+  }
+  return activeWakeLock;
+}
+
+async function releaseExportWakeLock() {
+  const wakeLock = activeWakeLock;
+  activeWakeLock = null;
+  if (wakeLock && typeof wakeLock.release === 'function') {
+    try {
+      await wakeLock.release();
+    } catch {
+      // Ignore wake-lock release races; export cleanup must continue.
+    }
+  }
+}
+
+function parsePixelValue(value, fallback = 0) {
+  const parsed = Number.parseFloat(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function exportCornerRadiusFor(pageNode, outputWidth) {
+  const rect = pageNode.getBoundingClientRect();
+  const scale = rect.width > 0 ? outputWidth / rect.width : 1;
+  const styles = window.getComputedStyle?.(pageNode);
+  const cssRadius = styles
+    ? parsePixelValue(styles.borderTopLeftRadius, DEFAULT_EXPORT_CORNER_RADIUS)
+    : DEFAULT_EXPORT_CORNER_RADIUS;
+  return Math.max(0, Math.round(cssRadius * scale));
+}
+
+function roundedRectPath(ctx, width, height, radius) {
+  const safeRadius = Math.max(0, Math.min(radius, width / 2, height / 2));
+  ctx.beginPath();
+  ctx.moveTo(safeRadius, 0);
+  ctx.lineTo(width - safeRadius, 0);
+  ctx.quadraticCurveTo(width, 0, width, safeRadius);
+  ctx.lineTo(width, height - safeRadius);
+  ctx.quadraticCurveTo(width, height, width - safeRadius, height);
+  ctx.lineTo(safeRadius, height);
+  ctx.quadraticCurveTo(0, height, 0, height - safeRadius);
+  ctx.lineTo(0, safeRadius);
+  ctx.quadraticCurveTo(0, 0, safeRadius, 0);
+  ctx.closePath();
+}
+
+function clipCanvasToPageCorners(sourceCanvas, pageNode, imageFormat, backgroundColor) {
+  try {
+    const width = sourceCanvas.width || 0;
+    const height = sourceCanvas.height || 0;
+    if (!width || !height) return sourceCanvas;
+    const radius = exportCornerRadiusFor(pageNode, width);
+    if (!radius) return sourceCanvas;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return sourceCanvas;
+
+    if (imageFormat === 'image/jpeg') {
+      ctx.fillStyle = backgroundColor || '#11110f';
+      ctx.fillRect(0, 0, width, height);
+    } else if (backgroundColor) {
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    ctx.save();
+    roundedRectPath(ctx, width, height, radius);
+    ctx.clip();
+    ctx.drawImage(sourceCanvas, 0, 0, width, height);
+    ctx.restore();
+    return canvas;
+  } catch {
+    return sourceCanvas;
+  }
+}
+
+async function clipBlobToPageCorners(blob, pageNode, imageFormat, imageQuality, backgroundColor) {
+  if (!blob || typeof createImageBitmap !== 'function') return blob;
+
+  let bitmap = null;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    return blob;
+  }
+
+  try {
+    const width = bitmap.width || 0;
+    const height = bitmap.height || 0;
+    if (!width || !height) return blob;
+    const radius = exportCornerRadiusFor(pageNode, width);
+    if (!radius) return blob;
+
+    const sourceCanvas = document.createElement('canvas');
+    sourceCanvas.width = width;
+    sourceCanvas.height = height;
+    const sourceCtx = sourceCanvas.getContext('2d');
+    if (!sourceCtx) return blob;
+    sourceCtx.drawImage(bitmap, 0, 0, width, height);
+
+    const clippedCanvas = clipCanvasToPageCorners(sourceCanvas, pageNode, imageFormat, backgroundColor);
+    return await canvasToBlob(clippedCanvas, imageFormat, imageQuality) || blob;
+  } catch {
+    return blob;
+  } finally {
+    if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+  }
+}
+
 export async function ensureExportFontsReady(node, options = {}) {
   const shouldDecodeImages = options.decodeImages !== false;
   const shouldEmbedFonts = options.embedFonts !== false;
   if (document.fonts && document.fonts.ready) {
-    await document.fonts.ready;
+    await settleWithin(document.fonts.ready, 3000);
   }
 
   if (shouldDecodeImages) {
@@ -70,7 +276,8 @@ export async function ensureExportFontsReady(node, options = {}) {
     await Promise.all(images.map(async (image) => {
       if (typeof image.decode === 'function') {
         try {
-          await image.decode();
+          // Use settleWithin to avoid hanging in background tabs
+          await settleWithin(image.decode(), IMAGE_READY_TIMEOUT_MS);
         } catch {
           return;
         }
@@ -79,7 +286,10 @@ export async function ensureExportFontsReady(node, options = {}) {
   }
 
   if (shouldEmbedFonts && !fontEmbedCSS && htmlToImage && typeof htmlToImage.getFontEmbedCSS === 'function') {
-    fontEmbedCSS = await htmlToImage.getFontEmbedCSS(document.documentElement);
+    fontEmbedCSS = await settleWithin(
+      htmlToImage.getFontEmbedCSS(document.documentElement),
+      5000,
+    );
   }
 }
 
@@ -107,26 +317,48 @@ function resetBatchImageCache() {
 }
 
 async function fetchImageBlob(src) {
-  const controller = typeof AbortController === 'function' ? new AbortController() : null;
-  let timedOut = false;
-  const timer = controller
-    ? setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, IMAGE_FETCH_TIMEOUT_MS)
-    : null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    let timedOut = false;
+    const timer = controller
+      ? setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, IMAGE_FETCH_TIMEOUT_MS)
+      : null;
 
+    try {
+      const response = await fetch(src, {
+        cache: attempt === 0 ? 'force-cache' : 'reload',
+        ...(controller ? { signal: controller.signal } : {}),
+      });
+      if (!response.ok) {
+        if (timer) clearTimeout(timer);
+        if (attempt === 0) { await new Promise(r => setTimeout(r, 500)); continue; }
+        return { blob: null, timedOut };
+      }
+      if (timer) clearTimeout(timer);
+      if (response.headers?.get?.('x-drive-image-fallback') === '1') {
+        return { blob: null, timedOut: false, fallback: true };
+      }
+      return { blob: await response.blob(), timedOut: false };
+    } catch {
+      if (timer) clearTimeout(timer);
+      if (attempt === 0 && !timedOut) { await new Promise(r => setTimeout(r, 500)); continue; }
+      return { blob: null, timedOut };
+    }
+  }
+  return { blob: null, timedOut: false };
+}
+
+async function blobLooksLikeDriveFallback(blob) {
+  if (!blob) return false;
+  if (!String(blob.type || '').toLowerCase().includes('svg')) return false;
   try {
-    const response = await fetch(src, {
-      cache: 'force-cache',
-      ...(controller ? { signal: controller.signal } : {}),
-    });
-    if (!response.ok) return { blob: null, timedOut };
-    return { blob: await response.blob(), timedOut };
+    const text = await blob.text();
+    return text.includes('Drive image unavailable') || text.includes('File needs public access or sign-in');
   } catch {
-    return { blob: null, timedOut };
-  } finally {
-    if (timer) clearTimeout(timer);
+    return false;
   }
 }
 
@@ -181,6 +413,95 @@ async function resizeImageBlobForExport(blob, options = {}) {
   }
 }
 
+function parseObjectPositionAxis(token, fallback = 0.5) {
+  const value = String(token || '').trim().toLowerCase();
+  if (!value || value === 'center') return 0.5;
+  if (value === 'left' || value === 'top') return 0;
+  if (value === 'right' || value === 'bottom') return 1;
+  if (value.endsWith('%')) {
+    const percent = Number.parseFloat(value);
+    if (Number.isFinite(percent)) return Math.min(1, Math.max(0, percent / 100));
+  }
+  return fallback;
+}
+
+function imageObjectPosition(img) {
+  const styles = window.getComputedStyle?.(img);
+  const tokens = String(styles?.objectPosition || img.style.objectPosition || '50% 50%')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (tokens.length === 1) {
+    const token = tokens[0].toLowerCase();
+    if (token === 'left' || token === 'right') return { x: parseObjectPositionAxis(token), y: 0.5 };
+    if (token === 'top' || token === 'bottom') return { x: 0.5, y: parseObjectPositionAxis(token) };
+  }
+  return {
+    x: parseObjectPositionAxis(tokens[0], 0.5),
+    y: parseObjectPositionAxis(tokens[1], 0.5),
+  };
+}
+
+async function fitImageBlobToElement(blob, img, options = {}) {
+  if (!options.fitImagesToElement || !blob || typeof createImageBitmap !== 'function') return blob;
+  if (String(blob.type || '').includes('svg')) return blob;
+
+  const styles = window.getComputedStyle?.(img);
+  const objectFit = String(styles?.objectFit || img.style.objectFit || '').trim();
+  if (objectFit !== 'cover') return blob;
+
+  const rect = img.getBoundingClientRect?.();
+  const cssWidth = Number(rect?.width || img.clientWidth || 0);
+  const cssHeight = Number(rect?.height || img.clientHeight || 0);
+  if (cssWidth < 1 || cssHeight < 1) return blob;
+
+  let bitmap = null;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch {
+    return blob;
+  }
+
+  try {
+    const sourceWidth = bitmap.width || 0;
+    const sourceHeight = bitmap.height || 0;
+    if (!sourceWidth || !sourceHeight) return blob;
+
+    const fitPixelRatio = Math.max(1, Number(options.fitPixelRatio || 1));
+    const targetWidth = Math.max(1, Math.round(cssWidth * fitPixelRatio));
+    const targetHeight = Math.max(1, Math.round(cssHeight * fitPixelRatio));
+    const sourceRatio = sourceWidth / sourceHeight;
+    const targetRatio = targetWidth / targetHeight;
+    const position = imageObjectPosition(img);
+
+    let sx = 0;
+    let sy = 0;
+    let sw = sourceWidth;
+    let sh = sourceHeight;
+    if (sourceRatio > targetRatio) {
+      sw = Math.round(sourceHeight * targetRatio);
+      sx = Math.round((sourceWidth - sw) * position.x);
+    } else if (sourceRatio < targetRatio) {
+      sh = Math.round(sourceWidth / targetRatio);
+      sy = Math.round((sourceHeight - sh) * position.y);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return blob;
+    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+    return await canvasToBlob(
+      canvas,
+      options.imageFormat || blob.type || 'image/jpeg',
+      normalizeImageQuality(options.imageQuality, 0.86),
+    ) || blob;
+  } finally {
+    if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+  }
+}
+
 async function getCachedImageBlobUrl(src, options = {}) {
   if (!src || src.startsWith('blob:') || src.startsWith('data:')) {
     return { blobUrl: null, timedOut: false };
@@ -191,13 +512,16 @@ async function getCachedImageBlobUrl(src, options = {}) {
     const entry = batchImageCache.get(cacheKey);
     const result = await entry.blobPromise;
     const blob = result?.blob || null;
-    if (!blob) return { blobUrl: null, timedOut: Boolean(result?.timedOut) };
+    if (!blob) return { blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
     if (!entry.objectUrl) entry.objectUrl = URL.createObjectURL(blob);
-    return { blobUrl: entry.objectUrl, timedOut: false };
+    return { blob, blobUrl: entry.objectUrl, timedOut: false };
   }
 
   const blobPromise = fetchImageBlob(src).then(async (result) => {
     if (!result?.blob) return result;
+    if (await blobLooksLikeDriveFallback(result.blob)) {
+      return { ...result, blob: null, fallback: true };
+    }
     return {
       ...result,
       blob: await resizeImageBlobForExport(result.blob, options),
@@ -209,15 +533,16 @@ async function getCachedImageBlobUrl(src, options = {}) {
   const result = await blobPromise;
   const blob = result?.blob || null;
   if (!blob) {
-    return { blobUrl: null, timedOut: Boolean(result?.timedOut) };
+    return { blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
   }
   entry.objectUrl = URL.createObjectURL(blob);
-  return { blobUrl: entry.objectUrl, timedOut: false };
+  return { blob, blobUrl: entry.objectUrl, timedOut: false };
 }
 
 async function waitForImageReady(img) {
   if (img.complete && img.naturalWidth > 0) {
-    if (typeof img.decode === 'function') {
+    // Already loaded; skip decode in background tabs since it can stall.
+    if (typeof img.decode === 'function' && document.visibilityState !== 'hidden') {
       try {
         await settleWithin(img.decode(), IMAGE_READY_TIMEOUT_MS);
       } catch {
@@ -243,6 +568,25 @@ async function waitForImageReady(img) {
 function extractCssUrl(value) {
   const match = String(value || '').match(/url\((['"]?)(.*?)\1\)/i);
   return match ? match[2] : '';
+}
+
+function neutralImageDataUrl(target, variant = 'default') {
+  const element = target?.img || target?.element;
+  const rect = element?.getBoundingClientRect?.();
+  const width = Math.max(80, Math.round(rect?.width || element?.clientWidth || 320));
+  const height = Math.max(80, Math.round(rect?.height || element?.clientHeight || 320));
+  const id = `g${Math.abs(Math.round(width * 31 + height * 17 + (variant === 'background' ? 7 : 3)))}`;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <defs>
+        <linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#eef4ee"/>
+          <stop offset="1" stop-color="#d6e0d7"/>
+        </linearGradient>
+      </defs>
+      <rect width="${width}" height="${height}" fill="url(#${id})"/>
+    </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.replace(/\s+/g, ' ').trim())}`;
 }
 
 async function waitForBackgroundReady(url) {
@@ -285,6 +629,7 @@ function collectImageTargets(node, options = {}) {
       kind: 'img',
       img,
       originalSrc: img.getAttribute('src'),
+      root: node,
     }))
     .filter((target) => shouldInlineImageSource(target.originalSrc, options));
   const backgroundTargets = Array.from(node.querySelectorAll('[style*="background-image"]')).map((element) => {
@@ -294,13 +639,102 @@ function collectImageTargets(node, options = {}) {
       element,
       originalBackgroundImage,
       originalSrc: extractCssUrl(originalBackgroundImage),
+      root: node,
     };
   }).filter((target) => shouldInlineImageSource(target.originalSrc, options));
   return imageTargets.concat(backgroundTargets);
 }
 
+function candidateSourcesForTarget(target) {
+  const sources = [target.originalSrc];
+  if (target.kind === 'img') {
+    const rawCandidates = target.img?.dataset?.candidateSrcs;
+    if (rawCandidates) {
+      try {
+        const parsed = JSON.parse(rawCandidates);
+        if (Array.isArray(parsed)) sources.push(...parsed);
+      } catch {
+        rawCandidates.split('|').forEach((url) => sources.push(url));
+      }
+    }
+  }
+  const uniqueSources = [...new Set(sources.map((url) => String(url || '').trim()).filter(Boolean))];
+  if (uniqueSources.length <= 2) return uniqueSources;
+  return [uniqueSources[0], ...sortFallbackSources(uniqueSources.slice(1))];
+}
+
+function imageSourceRank(source) {
+  const value = String(source || '').trim();
+  if (!value) return 5;
+  if (value.startsWith('/assets/library') || value.startsWith('/assets/dalat')) return 0;
+  if (value.startsWith('/assets/') && !value.startsWith('/assets/drive-file')) return 1;
+  if (/^https?:\/\//i.test(value) && !/drive\.google\.com|googleusercontent\.com/i.test(value)) return 2;
+  if (value.startsWith('/assets/drive-file') || /drive\.google\.com|googleusercontent\.com/i.test(value)) return 3;
+  return 4;
+}
+
+function sortFallbackSources(sources) {
+  return [...sources].sort((a, b) => imageSourceRank(a) - imageSourceRank(b));
+}
+
+function buildImageFallbackContext(targets) {
+  const globalSources = [];
+  const sourcesByRoot = new Map();
+
+  targets.forEach((target) => {
+    const root = target.root || null;
+    const rootSources = root
+      ? (sourcesByRoot.get(root) || [])
+      : null;
+    candidateSourcesForTarget(target).forEach((source) => {
+      if (!source) return;
+      globalSources.push(source);
+      if (rootSources) rootSources.push(source);
+    });
+    if (root && rootSources && !sourcesByRoot.has(root)) {
+      sourcesByRoot.set(root, rootSources);
+    }
+  });
+
+  return {
+    globalSources: sortFallbackSources([...new Set(globalSources)]),
+    sourcesByRoot,
+    fallbackSourceLimit: EXPORT_FALLBACK_SOURCE_LIMIT,
+  };
+}
+
+function fallbackSourcesForTarget(target, context, ownSources) {
+  if (!context) return [];
+  const ownSourceSet = new Set(ownSources);
+  const limit = Math.max(0, Number(context.fallbackSourceLimit || EXPORT_FALLBACK_SOURCE_LIMIT));
+  const sources = [];
+  const addSources = (items) => {
+    for (const source of items || []) {
+      if (!source || ownSourceSet.has(source) || sources.includes(source)) continue;
+      sources.push(source);
+      if (sources.length >= limit) return;
+    }
+  };
+  addSources(sortFallbackSources(context.sourcesByRoot?.get?.(target.root || null) || []));
+  if (sources.length < limit) {
+    addSources(context.globalSources);
+  }
+  return sources;
+}
+
+async function firstAvailableImageBlobUrl(sources, options = {}) {
+  let fallback = { blob: null, blobUrl: null, timedOut: false, source: sources[0] || '' };
+  for (const source of sources) {
+    const result = await getCachedImageBlobUrl(source, options);
+    fallback = { ...result, source };
+    if (result.blob && result.blobUrl) return fallback;
+  }
+  return fallback;
+}
+
 async function prepareImageTarget(target, options = {}) {
   const shouldWaitForReady = options.waitForReady !== false;
+  const shouldUseUniqueObjectUrl = options.uniqueObjectUrl === true;
   const blobOptions = {
     maxDimension: options.maxImageDimension,
     imageFormat: options.sourceImageFormat,
@@ -309,42 +743,81 @@ async function prepareImageTarget(target, options = {}) {
 
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
-    const { blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
-    if (!blobUrl) {
+    const sources = candidateSourcesForTarget(target);
+    const fallbackSources = fallbackSourcesForTarget(target, options.fallbackContext, sources);
+    const { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);
+    let selectedBlob = blob;
+    let selectedBlobUrl = blobUrl;
+    let selectedSource = source;
+    if (!selectedBlob || !selectedBlobUrl) {
+      const fallbackResult = await firstAvailableImageBlobUrl(fallbackSources, blobOptions);
+      selectedBlob = fallbackResult.blob;
+      selectedBlobUrl = fallbackResult.blobUrl;
+      selectedSource = fallbackResult.source;
+    }
+    const displayBlob = await fitImageBlobToElement(selectedBlob, img, {
+      ...blobOptions,
+      fitImagesToElement: options.fitImagesToElement,
+      fitPixelRatio: options.fitPixelRatio,
+    });
+    const shouldUseTargetObjectUrl = Boolean(displayBlob && (shouldUseUniqueObjectUrl || displayBlob !== selectedBlob));
+    const preparedBlobUrl = shouldUseTargetObjectUrl ? URL.createObjectURL(displayBlob) : selectedBlobUrl;
+    if (!preparedBlobUrl) {
+      img.dataset.originalSrc = originalSrc;
+      img.dataset.exportFallbackSrc = 'neutral-placeholder';
+      img.src = neutralImageDataUrl(target);
       if (shouldWaitForReady) {
         await waitForImageReady(img);
       }
-      return null;
+      return { img, originalSrc, objectUrl: null };
     }
 
     img.dataset.originalSrc = originalSrc;
-    img.src = blobUrl;
+    img.src = preparedBlobUrl;
+    if (selectedSource && selectedSource !== originalSrc) {
+      img.dataset.exportFallbackSrc = selectedSource;
+    }
     if (shouldWaitForReady) {
       await waitForImageReady(img);
     }
-    return { img, originalSrc };
+    return { img, originalSrc, objectUrl: shouldUseTargetObjectUrl ? preparedBlobUrl : null };
   }
 
   const { element, originalBackgroundImage, originalSrc } = target;
-  const { blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
-  if (!blobUrl) {
+  const sources = candidateSourcesForTarget(target);
+  const fallbackSources = fallbackSourcesForTarget(target, options.fallbackContext, sources);
+  let { blob, blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+  if (!blob || !blobUrl) {
+    const fallbackResult = await firstAvailableImageBlobUrl(fallbackSources, blobOptions);
+    blob = fallbackResult.blob;
+    blobUrl = fallbackResult.blobUrl;
+  }
+  const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
+  if (!preparedBlobUrl) {
+    const neutralUrl = neutralImageDataUrl(target, 'background');
+    element.dataset.originalBackgroundImage = originalBackgroundImage;
+    element.style.backgroundImage = originalBackgroundImage.replace(/url\((['"]?)(.*?)\1\)/i, `url("${neutralUrl}")`);
     if (shouldWaitForReady) {
-      await waitForBackgroundReady(originalSrc);
+      await waitForBackgroundReady(neutralUrl);
     }
-    return null;
+    return { element, originalBackgroundImage, objectUrl: null };
   }
 
   element.dataset.originalBackgroundImage = originalBackgroundImage;
-  element.style.backgroundImage = originalBackgroundImage.replace(/url\((['"]?)(.*?)\1\)/i, `url("${blobUrl}")`);
+  element.style.backgroundImage = originalBackgroundImage.replace(/url\((['"]?)(.*?)\1\)/i, `url("${preparedBlobUrl}")`);
   if (shouldWaitForReady) {
-    await waitForBackgroundReady(blobUrl);
+    await waitForBackgroundReady(preparedBlobUrl);
   }
-  return { element, originalBackgroundImage };
+  return { element, originalBackgroundImage, objectUrl: shouldUseUniqueObjectUrl ? preparedBlobUrl : null };
 }
 
 async function prepareImageTargets(targets, options = {}) {
   const concurrency = Number(options.concurrency || 10);
-  const handles = await mapWithConcurrency(targets, concurrency, (target) => prepareImageTarget(target, options));
+  const fallbackContext = options.fallbackContext || buildImageFallbackContext(targets);
+  const handles = await mapWithConcurrency(targets, concurrency, (target) => prepareImageTarget(target, {
+    ...options,
+    fallbackContext,
+  }));
   return handles.filter(Boolean);
 }
 
@@ -362,10 +835,12 @@ function restoreImagesFromBlobs(handles) {
     if (handle.img) {
       handle.img.src = handle.originalSrc;
       handle.img.removeAttribute('data-original-src');
+      handle.img.removeAttribute('data-export-fallback-src');
     } else if (handle.element) {
       handle.element.style.backgroundImage = handle.originalBackgroundImage;
       handle.element.removeAttribute('data-original-background-image');
     }
+    if (handle.objectUrl) URL.revokeObjectURL(handle.objectUrl);
   }
 }
 
@@ -423,7 +898,7 @@ function findVisibleSelectedPageNode(list, selectedPageIndex) {
   if (!list?.id || !Number.isInteger(selectedPageIndex) || typeof CSS === 'undefined') return null;
   const selector = `.story-page[data-list-id="${CSS.escape(list.id)}"][data-page-index="${selectedPageIndex}"]`;
   return Array.from(document.querySelectorAll(selector)).find((node) =>
-    !node.closest('.batch-export-root') && node.classList.contains('is-selected'),
+    !node.closest('.batch-export-root') && Boolean(node.closest('.slide-card-frame.is-selected')),
   ) || null;
 }
 
@@ -441,8 +916,21 @@ function cloneVisiblePageForExport(sourceNode) {
   return prepareExportStoryPages([clone])[0];
 }
 
+function forceLayoutSync() {
+  // Force synchronous style recalculation + layout. Works in background tabs
+  // unlike requestAnimationFrame which pauses when the tab is hidden.
+  if (batchExportRoot) {
+    batchExportRoot.getBoundingClientRect();
+    // Force style flush: read a layout-dependent property.
+    void batchExportRoot.offsetHeight;
+  }
+}
+
 async function waitForExportLayout() {
-  await new Promise((resolve) => requestAnimationFrame(resolve));
+  forceLayoutSync();
+  // Use setTimeout only — never requestAnimationFrame — so exports
+  // keep running when the browser tab is in the background.
+  await new Promise((resolve) => setTimeout(resolve, 50));
 }
 
 function escapeXml(value) {
@@ -534,15 +1022,24 @@ function renderConcurrencyLimit() {
 
 function batchRenderConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 8;
-  if (cores >= 8) return 6;
-  return 4;
+  if (cores >= 12) return 12;
+  if (cores >= 8) return 8;
+  return 6;
 }
 
 function batchCaptureConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 8) return 2;
-  return 1;
+  if (cores >= 12) return 3;
+  if (cores >= 8) return 3;
+  return 2;
+}
+
+function batchRenderChunkSize(profile) {
+  return Number(profile?.renderChunkSize || batchRenderConcurrencyLimit());
+}
+
+function batchCaptureConcurrencyForProfile(profile) {
+  return Number(profile?.captureConcurrency || batchCaptureConcurrencyLimit());
 }
 
 function collectPartnerNames(list) {
@@ -579,9 +1076,52 @@ function createListFolder(zip, list, zipInstance, deckId) {
   return zip.folder(zipInstance ? sanitizeFilePart(list.id) : `${deckId}-${sanitizeFilePart(list.id)}`);
 }
 
+function deckShortName(deckId) {
+  const map = {
+    'itinerary-3n2d': '3n2d',
+    'itinerary-4n3d': '4n3d',
+    'itinerary-4n2d-grid8': '4n2d',
+    'pov-3-day': 'pov3',
+    'must-go': 'mustgo',
+    'first-time': 'firsttime',
+    'grid-6': 'grid6',
+    'grid-8': 'grid8',
+    'grid-4': 'grid4',
+    'spotlight-guide': 'spotlight',
+    'spotlight-partner': 'partner',
+  };
+  return map[String(deckId || '')] || sanitizeFilePart(deckId || 'mau');
+}
+
+function batchFolderName(deckId, listIndexInDeck) {
+  const short = deckShortName(deckId);
+  const num = String(listIndexInDeck + 1).padStart(2, '0');
+  return `${short} mau ${num}`;
+}
+
+function todayDateTag() {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${dd}-${mm}-${yyyy}_${hh}-${min}-${ss}`;
+}
+
 async function addListMetadataFiles(folder, list) {
-  const hashtags = Array.isArray(list.captionHashtags) ? list.captionHashtags.join(' ') : '';
-  folder.file('caption.txt', `${list.description || list.title}\n\n${hashtags}`.trim());
+  const coverTitle = String(list.coverTitle || list.title || list.navTitle || '').trim();
+  const isSpotlightPartnerList = Array.isArray(list?.pages)
+    && list.pages.some((page) => page?.layoutVariant === 'spotlight-partner' || page?.layoutVariant === 'spotlight-partner-info');
+  const usePartnerCaptionFallback = isSpotlightPartnerList && !String(list.postCaption || '').trim();
+  const postCaption = String(usePartnerCaptionFallback ? SPOTLIGHT_PARTNER_POST_CAPTION : (list.postCaption || list.title || '')).trim();
+  const body = String(usePartnerCaptionFallback ? SPOTLIGHT_PARTNER_CAPTION_BODY : (list.description || '')).trim();
+  const hashtags = Array.isArray(list.captionHashtags) && list.captionHashtags.length > 0
+    ? list.captionHashtags.join(' ')
+    : (isSpotlightPartnerList ? SPOTLIGHT_PARTNER_CAPTION_HASHTAGS.join(' ') : '');
+  const captionParts = [postCaption, body, hashtags].filter(Boolean);
+  folder.file('caption.txt', captionParts.join('\n\n').trim() || coverTitle);
   folder.file('partners.xlsx', await createHorizontalXlsx(collectPartnerNames(list)));
 }
 
@@ -589,8 +1129,14 @@ function renderBatchTaskPages(tasks) {
   const root = ensureBatchExportRoot();
   root.innerHTML = `<div class="list-preview-grid batch-export-grid">${tasks.map((task) =>
     renderPageMarkupForExport(task.list, task.page, task.pageIndex)).join('')}</div>`;
-  const pageNodes = prepareExportStoryPages(Array.from(root.querySelectorAll('.story-page')));
-  return tasks.map((task, index) => ({ ...task, pageNode: pageNodes[index] || null }));
+  prepareExportStoryPages(Array.from(root.querySelectorAll('.story-page')));
+  // Match each task to its rendered node by list-id + page-index to avoid
+  // index mismatch when multiple lists share the same chunk.
+  return tasks.map((task) => {
+    const selector = `.story-page[data-list-id="${CSS.escape(task.list.id)}"][data-page-index="${task.pageIndex}"]`;
+    const pageNode = root.querySelector(selector) || null;
+    return { ...task, pageNode };
+  });
 }
 
 export async function renderPageBlob(pageNode, options = {}) {
@@ -598,96 +1144,166 @@ export async function renderPageBlob(pageNode, options = {}) {
   const pixelRatio = Number(options.pixelRatio || EXPORT_PIXEL_RATIO);
   const renderTimeoutMs = Number(options.renderTimeoutMs || PAGE_RENDER_TIMEOUT_MS);
   const imageFormat = options.imageFormat || 'image/png';
+
+  // Workaround: html2canvas cannot parse oklch() color function (Next.js 16 injects it).
+  // Patch window.getComputedStyle to strip oklch() from any returned CSSStyleDeclaration.
+  const _originalGetComputedStyle = window.getComputedStyle;
+  const _oklchPattern = /oklch\([^)]*\)/gi;
+  const _oklchFallback = 'transparent';
+  window.getComputedStyle = function patchedGetComputedStyle(element, pseudoElt) {
+    const style = _originalGetComputedStyle.call(this, element, pseudoElt);
+    return new Proxy(style, {
+      get(target, prop) {
+        const value = target[prop];
+        if (typeof value === 'string' && _oklchPattern.test(value)) {
+          _oklchPattern.lastIndex = 0;
+          return value.replace(_oklchPattern, _oklchFallback);
+        }
+        _oklchPattern.lastIndex = 0;
+        if (typeof value === 'function') return value.bind(target);
+        return value;
+      },
+    });
+  };
   const imageQuality = Number(options.imageQuality || 1);
   const backgroundColor = options.backgroundColor ?? (imageFormat === 'image/jpeg' ? '#ffffff' : null);
   const preferHtml2Canvas = options.preferHtml2Canvas === true;
   const shouldEmbedFonts = options.embedFonts !== false;
   const allowFallback = options.allowFallback !== false;
+  const allowEngineFallbacks = options.allowEngineFallbacks !== false;
+  let cornersAlreadyClipped = false;
+  const finalizeCanvasBlob = (canvas) => canvasToBlob(
+    clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor),
+    imageFormat,
+    imageQuality,
+  );
+  const finalizeBlob = (blob) => cornersAlreadyClipped ? blob : clipBlobToPageCorners(
+    blob,
+    pageNode,
+    imageFormat,
+    imageQuality,
+    backgroundColor,
+  );
   await ensureExportFontsReady(pageNode, { decodeImages: !imagesReady, embedFonts: shouldEmbedFonts });
   const blobUrls = imagesReady ? [] : await inlineImagesAsBlobs(pageNode, { waitForReady: options.waitForImageReady });
 
   try {
-    if (preferHtml2Canvas) {
+    // html2canvas is the preferred engine for batch exports because:
+    // 1. It works reliably in background tabs (no rAF / foreignObject dependency)
+    // 2. It renders CSS layout more faithfully than html-to-image's SVG pipeline
+    // 3. It's faster: single-pass canvas draw vs SVG serialization + Image decode
+    if (preferHtml2Canvas || document.visibilityState === 'hidden') {
       try {
         const canvas = await rejectAfter(html2canvas(pageNode, {
           scale: pixelRatio,
           useCORS: true,
-          imageTimeout: IMAGE_FETCH_TIMEOUT_MS,
+          imageTimeout: 30000,
           backgroundColor,
           logging: false,
         }), renderTimeoutMs, 'Canvas render timed out');
-        const blob = await canvasToBlob(canvas, imageFormat, imageQuality);
-        if (blob) return blob;
+        const blob = await finalizeCanvasBlob(canvas);
+        if (blob) {
+          cornersAlreadyClipped = true;
+          return blob;
+        }
       } catch (error) {
-        console.warn('Fast canvas export failed, retrying with html-to-image.', error);
+        if (!allowEngineFallbacks) throw error;
+        console.warn(`html2canvas export failed, trying fallback: ${error?.message || error}`);
       }
     }
-    if (imageFormat === 'image/png' && htmlToImage && typeof htmlToImage.toBlob === 'function') {
-      try {
-        const blob = await rejectAfter(htmlToImage.toBlob(pageNode, {
-          pixelRatio,
-          cacheBust: false,
-          backgroundColor,
-          skipAutoScale: true,
-          skipFonts: !shouldEmbedFonts,
-          fontEmbedCSS: shouldEmbedFonts ? fontEmbedCSS || undefined : undefined,
-        }), renderTimeoutMs, 'Render timed out');
-        if (blob) return blob;
-      } catch (error) {
-        console.warn('html-to-image export failed, retrying with canvas.', error);
+    // html-to-image SVG path: only used for single-page PNG exports in foreground.
+    // Avoid in background tabs — foreignObject → Image pipeline freezes.
+    if (allowEngineFallbacks && document.visibilityState !== 'hidden') {
+      if (imageFormat === 'image/png' && htmlToImage && typeof htmlToImage.toBlob === 'function') {
+        try {
+          const blob = await rejectAfter(htmlToImage.toBlob(pageNode, {
+            pixelRatio,
+            ...HTML_TO_IMAGE_RENDER_OPTIONS,
+            backgroundColor,
+            skipAutoScale: true,
+            skipFonts: !shouldEmbedFonts,
+            fontEmbedCSS: shouldEmbedFonts ? fontEmbedCSS || undefined : undefined,
+          }), renderTimeoutMs, 'Render timed out');
+          if (blob) return await finalizeBlob(blob);
+        } catch (error) {
+          console.warn(`html-to-image export failed, retrying with canvas: ${error?.message || error}`);
+        }
+      }
+      if (htmlToImage && typeof htmlToImage.toCanvas === 'function') {
+        try {
+          const canvas = await rejectAfter(htmlToImage.toCanvas(pageNode, {
+            pixelRatio,
+            ...HTML_TO_IMAGE_RENDER_OPTIONS,
+            backgroundColor,
+            skipAutoScale: true,
+            skipFonts: !shouldEmbedFonts,
+            fontEmbedCSS: shouldEmbedFonts ? fontEmbedCSS || undefined : undefined,
+          }), renderTimeoutMs, 'Canvas render timed out');
+          const blob = await finalizeCanvasBlob(canvas);
+          if (blob) {
+            cornersAlreadyClipped = true;
+            return blob;
+          }
+        } catch (error) {
+          console.warn(`html-to-image canvas export failed, retrying with html2canvas: ${error?.message || error}`);
+        }
       }
     }
-    if (htmlToImage && typeof htmlToImage.toCanvas === 'function') {
+    // Final html2canvas attempt (if we haven't tried it already)
+    if (allowEngineFallbacks && !preferHtml2Canvas && document.visibilityState !== 'hidden') {
       try {
-        const canvas = await rejectAfter(htmlToImage.toCanvas(pageNode, {
-          pixelRatio,
-          cacheBust: false,
+        const canvas = await rejectAfter(html2canvas(pageNode, {
+          scale: pixelRatio,
+          useCORS: true,
+          imageTimeout: 30000,
           backgroundColor,
-          skipAutoScale: true,
-          skipFonts: !shouldEmbedFonts,
-          fontEmbedCSS: shouldEmbedFonts ? fontEmbedCSS || undefined : undefined,
+          logging: false,
         }), renderTimeoutMs, 'Canvas render timed out');
-        const blob = await canvasToBlob(canvas, imageFormat, imageQuality);
-        if (blob) return blob;
+        const blob = await finalizeCanvasBlob(canvas);
+        if (blob) {
+          cornersAlreadyClipped = true;
+          return blob;
+        }
       } catch (error) {
-        console.warn('html-to-image canvas export failed, retrying with html2canvas.', error);
+        console.warn(`Canvas export failed, writing a fallback page: ${error?.message || error}`);
       }
-    }
-    try {
-      const canvas = await rejectAfter(html2canvas(pageNode, {
-        scale: pixelRatio,
-        useCORS: true,
-        imageTimeout: IMAGE_FETCH_TIMEOUT_MS,
-        backgroundColor,
-        logging: false,
-      }), renderTimeoutMs, 'Canvas render timed out');
-      const blob = await canvasToBlob(canvas, imageFormat, imageQuality);
-      if (blob) return blob;
-    } catch (error) {
-      console.warn('Canvas export failed, writing a fallback page.', error);
     }
     if (!allowFallback) {
-      throw new Error('Render PNG quá thời gian, chưa tạo được ảnh hợp lệ.');
+      throw new Error('Render ảnh quá thời gian, chưa tạo được ảnh hợp lệ.');
     }
-    return createFallbackPageBlob(pageNode, pixelRatio, imageFormat, imageQuality);
+    const fallbackBlob = await createFallbackPageBlob(pageNode, pixelRatio, imageFormat, imageQuality);
+    return await finalizeBlob(fallbackBlob);
   } finally {
     restoreImagesFromBlobs(blobUrls);
+    window.getComputedStyle = _originalGetComputedStyle;
   }
 }
 
 async function renderPageBlobWithRetry(pageNode, options = {}) {
+  const isBatchRender = options.batchRender === true;
   try {
     return await renderPageBlob(pageNode, {
       ...options,
       allowFallback: false,
+      allowEngineFallbacks: !isBatchRender,
     });
   } catch (error) {
-    console.warn('Page render failed, retrying with a longer timeout.', error);
-    await waitForExportLayout();
+    const message = error?.message || error;
+    if (isBatchRender) {
+      console.debug?.(`Batch page render retry with a longer timeout: ${message}`);
+    } else {
+      console.warn(`Page render failed, retrying with a longer timeout: ${message}`);
+    }
+    // Use synchronous layout flush + short delay instead of rAF-based wait.
+    forceLayoutSync();
+    await new Promise((resolve) => setTimeout(resolve, 80));
     return renderPageBlob(pageNode, {
       ...options,
-      allowFallback: false,
+      allowFallback: options.allowFallbackOnRetry !== false,
       waitForImageReady: true,
+      allowEngineFallbacks: !isBatchRender,
+      // In background tabs, always use html2canvas for reliable rendering.
+      preferHtml2Canvas: options.preferHtml2Canvas || document.visibilityState === 'hidden',
       renderTimeoutMs: Math.max(
         Number(options.renderTimeoutMs || 0),
         BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS,
@@ -737,7 +1353,10 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
     const pageNode = pageNodes.find((node) => Number(node.dataset.pageIndex) === selectedPageIndex);
     if (!pageNode) throw new Error(`Không tìm thấy trang ${selectedPageIndex + 1}/${list.pages.length} để xuất.`);
     cb.updateProgress(36, 'Đang chuẩn bị ảnh cho trang...');
-    const preparedImages = await inlineImagesAsBlobs(pageNode);
+    const preparedImages = await inlineImagesAsBlobs(pageNode, {
+      fitImagesToElement: true,
+      fitPixelRatio: EXPORT_PIXEL_RATIO,
+    });
     let blob;
     try {
       cb.updateProgress(66, 'Đang render PNG...');
@@ -746,12 +1365,16 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
       restoreImagesFromBlobs(preparedImages);
     }
     cb.updateProgress(92, 'Đang lưu file PNG...');
-    saveAs(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${pageNode.dataset.exportName}`);
+    if (!downloadBlobFile(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${pageNode.dataset.exportName}`)) {
+      throw new Error('Trình duyệt chặn bước tải PNG. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    }
     cb.completeProgress('Đã xuất xong PNG.');
     cb.setStatus('Đã xuất PNG.');
   } catch (error) {
-    cb.failProgress('Xuất PNG thất bại.');
-    cb.setStatus(`Lỗi: ${error.message}`);
+    const message = error?.message || 'Không rõ lỗi.';
+    console.warn(`Page PNG export failed: ${message}`);
+    cb.failProgress(`Xuất PNG thất bại: ${message}`);
+    cb.setStatus(`Lỗi: ${message}`);
   } finally {
     clearBatchExportRoot();
     resetBatchImageCache();
@@ -779,6 +1402,8 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
     options.onChunkPreparing?.({ list, chunkStart, chunkEnd, pageCount: pageNodes.length });
     const preparedImages = (await Promise.all(chunk.map((pageNode) => inlineImagesAsBlobs(pageNode, {
       waitForReady: options.waitForImageReady,
+      fitImagesToElement: true,
+      fitPixelRatio: options.pixelRatio || EXPORT_PIXEL_RATIO,
     })))).flat();
     try {
       await Promise.all(chunk.map(async (pageNode, chunkIdx) => {
@@ -848,12 +1473,16 @@ export async function exportActiveList(context, callbacks = {}) {
       },
     }, cb);
     cb.updateProgress(99, 'Đang lưu file ZIP...');
-    saveAs(blob, `${deck.id}-${sanitizeFilePart(list.id)}.zip`);
+    if (!downloadBlobFile(blob, `${deck.id}-${sanitizeFilePart(list.id)}.zip`)) {
+      throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    }
     cb.completeProgress(`Đã xuất xong ZIP cho "${list.title}".`);
     cb.setStatus(`Đã xong ZIP cho list "${list.title}".`);
   } catch (error) {
-    cb.failProgress('Xuất ZIP thất bại.');
-    cb.setStatus(`Lỗi: ${error.message}`);
+    const message = error?.message || 'Không rõ lỗi.';
+    console.warn(`List ZIP export failed: ${message}`);
+    cb.failProgress(`Xuất ZIP thất bại: ${message}`);
+    cb.setStatus(`Lỗi: ${message}`);
   } finally {
     clearBatchExportRoot();
     resetBatchImageCache();
@@ -863,8 +1492,9 @@ export async function exportActiveList(context, callbacks = {}) {
 
 export async function exportBatch(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { dataset, selectedListIds } = context;
+  const { dataset, selectedListIds, quality = 'optimized' } = context;
   if (!dataset || selectedListIds.size === 0) return;
+  const qualityProfile = exportQualityProfile(quality);
 
   const listIds = Array.from(selectedListIds);
   const allLists = [];
@@ -877,29 +1507,39 @@ export async function exportBatch(context, callbacks = {}) {
   if (allLists.length === 0) {
     cb.setStatus('Chưa có list AI để xuất. List gốc/mẫu đã được bỏ qua.');
     cb.completeProgress('Không có list AI được chọn để xuất.');
-    return;
+    return { success: false, exportedLists: [] };
   }
 
   cb.setBusy(true);
-  cb.setStatus(`Đang chuẩn bị xuất ${allLists.length} list...`);
-  cb.showProgress(`Chuẩn bị xuất ${allLists.length} list...`, 2);
+  cb.setStatus(`Đang chuẩn bị xuất ${allLists.length} list (${qualityProfile.label})...`);
+  cb.showProgress(`Chuẩn bị xuất ${allLists.length} list (${qualityProfile.label})...`, 2);
   resetBatchImageCache();
 
   try {
     const mainZip = new JSZip();
+    await requestExportWakeLock();
     const totalPages = Math.max(allLists.reduce((total, item) => total + (item.list.pages?.length || 0), 0), 1);
     let renderedPages = 0;
-    cb.updateProgress(3, `Đang chuẩn bị ${allLists.length} folder chất lượng cao...`);
+    cb.updateProgress(3, `Đang chuẩn bị ${allLists.length} folder ${qualityProfile.label}...`);
     await ensureExportFontsReady(document.documentElement, { decodeImages: false, embedFonts: true });
 
-    const folders = allLists.map((item) => createListFolder(mainZip, item.list, true, item.deck.id));
+    // Build per-deck index counters for folder naming (e.g. "3n2d mau 01", "3n2d mau 02")
+    const deckListCounters = new Map();
+    const folders = allLists.map((item) => {
+      const deckId = item.deck.id;
+      const idx = deckListCounters.get(deckId) ?? 0;
+      deckListCounters.set(deckId, idx + 1);
+      const folderName = batchFolderName(deckId, idx);
+      return mainZip.folder(folderName);
+    });
     await mapWithConcurrency(allLists, 6, (item, index) => addListMetadataFiles(folders[index], item.list));
 
     const pageTasks = [];
     allLists.forEach((item, listIndex) => {
       const pages = item.list.pages || [];
       if (pages.length === 0) {
-        throw new Error(`List "${item.list.id}" not found in grid.`);
+        console.warn(`[export] Bỏ qua list "${item.list.id}" vì không có trang.`);
+        return;
       }
       pages.forEach((page, pageIndex) => {
         pageTasks.push({
@@ -914,49 +1554,67 @@ export async function exportBatch(context, callbacks = {}) {
     });
 
     const baseDate = Date.now();
-    const concurrencyLimit = batchRenderConcurrencyLimit();
+    const concurrencyLimit = batchRenderChunkSize(qualityProfile);
+    let pagesSinceLastTrim = 0;
     for (let i = 0; i < pageTasks.length; i += concurrencyLimit) {
       const chunk = pageTasks.slice(i, i + concurrencyLimit);
       const chunkStart = i + 1;
       const chunkEnd = i + chunk.length;
-      cb.setStatus(`Đang chuẩn bị ảnh chất lượng cao ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
-      cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang chuẩn bị ảnh chất lượng cao ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
+      cb.setStatus(`Đang chuẩn bị ảnh ${qualityProfile.label} ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
+      cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang chuẩn bị ảnh ${qualityProfile.label} ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
       const renderedChunk = renderBatchTaskPages(chunk);
       await waitForExportLayout();
-      if (renderedChunk.some((task) => !task.pageNode)) {
-        throw new Error('Không dựng được một số trang để xuất.');
+      const validChunk = renderedChunk.filter((task) => task.pageNode);
+      if (validChunk.length === 0) {
+        console.warn('[export] Chunk không có trang nào render được, bỏ qua.');
+        continue;
       }
-      const preparedImages = await inlineImagesForNodes(renderedChunk.map((task) => task.pageNode), {
+      if (validChunk.length < renderedChunk.length) {
+        console.warn(`[export] ${renderedChunk.length - validChunk.length} trang không render được, bỏ qua.`);
+      }
+      const preparedImages = await inlineImagesForNodes(validChunk.map((task) => task.pageNode), {
         waitForReady: true,
-        concurrency: BATCH_IMAGE_PREPARE_CONCURRENCY,
-        maxImageDimension: BATCH_SOURCE_IMAGE_MAX_DIMENSION,
-        sourceImageFormat: BATCH_IMAGE_FORMAT,
-        sourceImageQuality: BATCH_SOURCE_IMAGE_QUALITY,
+        concurrency: qualityProfile.imagePrepareConcurrency,
+        maxImageDimension: qualityProfile.sourceImageMaxDimension,
+        sourceImageFormat: qualityProfile.sourceImageFormat,
+        sourceImageQuality: qualityProfile.sourceImageQuality,
+        fitImagesToElement: true,
+        fitPixelRatio: qualityProfile.pixelRatio,
+        uniqueObjectUrl: true,
       });
 
       try {
-        await mapWithConcurrency(renderedChunk, batchCaptureConcurrencyLimit(), async (task, chunkIdx) => {
+        await mapWithConcurrency(validChunk, batchCaptureConcurrencyForProfile(qualityProfile), async (task, chunkIdx) => {
           const globalIdx = i + chunkIdx;
           const blob = await renderPageBlobWithRetry(task.pageNode, {
+            batchRender: true,
             imagesReady: true,
-            pixelRatio: BATCH_EXPORT_PIXEL_RATIO,
-            imageFormat: BATCH_IMAGE_FORMAT,
-            imageQuality: BATCH_IMAGE_QUALITY,
+            pixelRatio: qualityProfile.pixelRatio,
+            imageFormat: qualityProfile.imageFormat,
+            imageQuality: qualityProfile.imageQuality,
+            backgroundColor: qualityProfile.backgroundColor,
+            preferHtml2Canvas: qualityProfile.preferHtml2Canvas,
             embedFonts: true,
             waitForImageReady: false,
-            renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
+            renderTimeoutMs: qualityProfile.renderTimeoutMs,
           });
-          const exportName = exportNameWithExtension(task.pageNode, task.pageIndex, BATCH_IMAGE_EXTENSION);
+          const exportName = exportNameWithExtension(task.pageNode, task.pageIndex, qualityProfile.imageExtension);
           task.folder.file(exportName, blob, {
             date: new Date(baseDate + (pageTasks.length - globalIdx) * 4000),
             compression: 'STORE',
           });
           renderedPages += 1;
-          cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang render PNG chất lượng cao ${renderedPages}/${totalPages} trang...`);
+          cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang render ${qualityProfile.label} ${renderedPages}/${totalPages} trang...`);
         });
       } finally {
         restoreImagesFromBlobs(preparedImages);
         clearBatchExportRoot();
+      }
+      // Periodically trim image cache to prevent OOM on large batch exports (20-50 lists)
+      pagesSinceLastTrim += chunk.length;
+      if (pagesSinceLastTrim >= BATCH_CACHE_TRIM_INTERVAL) {
+        resetBatchImageCache();
+        pagesSinceLastTrim = 0;
       }
     }
 
@@ -966,16 +1624,37 @@ export async function exportBatch(context, callbacks = {}) {
       compression: 'STORE',
       streamFiles: true,
     }, (metadata) => {
-      cb.updateProgress(90 + (Number(metadata?.percent || 0) * 0.09), 'Đang đóng file ZIP hàng loạt...');
+      const zipPercent = Number(metadata?.percent || 0);
+      cb.updateProgress(
+        Math.min(98, 90 + (zipPercent * 0.08)),
+        `Đang đóng file ZIP hàng loạt... ${Math.round(zipPercent)}%`,
+      );
     });
     cb.updateProgress(99, 'Đang lưu file ZIP hàng loạt...');
-    saveAs(archive, `batch-export-${Date.now()}.zip`);
+    // Yield to event loop before download — lets the browser settle after
+    // heavy ZIP generation so the download trigger is more reliable.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const downloadStarted = downloadBlobFile(archive, `${todayDateTag()}.zip`);
+    if (!downloadStarted) {
+      throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    }
     cb.completeProgress(`Đã xuất xong ${allLists.length} list.`);
     cb.setStatus(`Đã xuất xong ${allLists.length} list.`);
+    return {
+      success: true,
+      exportedLists: allLists.map(({ deck, list }) => ({
+        deckId: deck.id,
+        listId: list.id,
+      })),
+    };
   } catch (error) {
-    cb.failProgress('Xuất hàng loạt thất bại.');
-    cb.setStatus(`Lỗi: ${error.message}`);
+    const message = error?.message || 'Không rõ lỗi.';
+    console.warn(`Batch export failed: ${message}`);
+    cb.failProgress(`Xuất hàng loạt thất bại: ${message}`);
+    cb.setStatus(`Lỗi: ${message}`);
+    return { success: false, exportedLists: [], error: message };
   } finally {
+    await releaseExportWakeLock();
     cb.setBusy(false);
     clearBatchExportRoot();
     resetBatchImageCache();

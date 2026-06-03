@@ -188,6 +188,11 @@
   background: #fff8f3;
 }
 
+.slide-card-frame.is-selected .story-page {
+  outline: 3px solid var(--studio-clay);
+  box-shadow: 0 22px 45px rgba(184, 95, 69, 0.23);
+}
+
 .slide-card-frame:focus-visible {
   outline: 3px solid rgba(56, 95, 133, 0.38);
   outline-offset: 2px;

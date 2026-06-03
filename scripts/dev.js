@@ -1,4 +1,4 @@
-const { spawn } = require('node:child_process');
+const { execFileSync, spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
@@ -7,7 +7,8 @@ const rootDir = path.resolve(__dirname, '..');
 const backendDir = path.join(rootDir, 'backend');
 const frontendDir = path.join(rootDir, 'frontend');
 const npmCliPath = resolveNpmCliPath();
-const defaultHost = '127.0.0.1';
+const defaultHost = '0.0.0.0';
+const displayHost = '127.0.0.1';
 const defaultBackendPort = 3000;
 const defaultFrontendPort = 3001;
 let shuttingDown = false;
@@ -29,15 +30,21 @@ async function main() {
     'FRONTEND_PORT',
   );
 
+  stopExistingWorkspaceDevProcesses();
+
   const backendPort = await findAvailablePort(requestedBackendPort, host);
   const frontendPort = await findAvailablePort(requestedFrontendPort, host, new Set([backendPort]));
-  const backendOrigin = `http://${host}:${backendPort}`;
-  const frontendOrigin = `http://${host}:${frontendPort}`;
+  const backendOrigin = `http://${backendOriginHost(host)}:${backendPort}`;
+  const frontendOrigin = `http://${backendOriginHost(host)}:${frontendPort}`;
+  const networkHost = firstNetworkHost();
 
   warnIfPortMoved('backend', requestedBackendPort, backendPort);
   warnIfPortMoved('frontend', requestedFrontendPort, frontendPort);
   console.log(`[dev] backend: ${backendOrigin}/`);
   console.log(`[dev] frontend: ${frontendOrigin}/`);
+  if (networkHost && host === defaultHost) {
+    console.log(`[dev] network: http://${networkHost}:${frontendPort}/`);
+  }
 
   processes = [
     startNpmProcess('backend', ['run', 'start:dev'], backendDir, {
@@ -48,6 +55,7 @@ async function main() {
     }),
     startFrontendProcess(frontendPort, {
       ...process.env,
+      BACKEND_ORIGIN: backendOrigin,
       PORT: String(frontendPort),
       NEXT_PUBLIC_BACKEND_ORIGIN: backendOrigin,
     }),
@@ -66,13 +74,28 @@ function startFrontendProcess(port, env) {
     return startProcess(
       'frontend',
       process.execPath,
-      [nextCliPath, 'dev', '--webpack', '-p', String(port)],
+      [nextCliPath, 'dev', '--webpack', '-H', env.HOST || defaultHost, '-p', String(port)],
       frontendDir,
       env,
     );
   }
 
-  return startNpmProcess('frontend', ['run', 'dev', '--', '-p', String(port)], frontendDir, env);
+  return startNpmProcess('frontend', ['run', 'dev', '--', '-H', env.HOST || defaultHost, '-p', String(port)], frontendDir, env);
+}
+
+function backendOriginHost(host) {
+  return host === '0.0.0.0' || host === '::' ? displayHost : host;
+}
+
+function firstNetworkHost() {
+  const os = require('node:os');
+  const interfaces = os.networkInterfaces();
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries || []) {
+      if (entry.family === 'IPv4' && !entry.internal) return entry.address;
+    }
+  }
+  return '';
 }
 
 function startProcess(label, command, args, cwd, env) {
@@ -107,7 +130,7 @@ async function findAvailablePort(preferredPort, host, reservedPorts = new Set())
 }
 
 async function isPortAvailable(port, host) {
-  const hostsToCheck = [...new Set([host, defaultHost, '::'])];
+  const hostsToCheck = [...new Set([host, displayHost, '::'])];
   for (const candidateHost of hostsToCheck) {
     if (!(await canListen(port, candidateHost))) return false;
   }
@@ -147,6 +170,92 @@ function warnIfPortMoved(label, requestedPort, selectedPort) {
   console.warn(`[dev] ${label} port ${requestedPort} is busy; using ${selectedPort} instead.`);
 }
 
+function stopExistingWorkspaceDevProcesses() {
+  const processIds = findExistingWorkspaceDevProcessIds();
+  if (!processIds.length) return;
+
+  console.warn(
+    `[dev] stopping existing dev process(es) for this workspace: ${processIds.join(', ')}`,
+  );
+
+  for (const pid of processIds) {
+    stopProcessTreeSync(pid);
+  }
+}
+
+function findExistingWorkspaceDevProcessIds() {
+  if (process.platform === 'win32') {
+    return findExistingWindowsDevProcessIds();
+  }
+
+  return findExistingPosixDevProcessIds();
+}
+
+function findExistingWindowsDevProcessIds() {
+  const script = `
+$frontend = ${toPowerShellString(frontendDir)}
+$backend = ${toPowerShellString(backendDir)}
+$current = ${process.pid}
+Get-CimInstance Win32_Process | Where-Object {
+  $_.ProcessId -ne $current -and
+  $_.CommandLine -and
+  $_.Name -match '^(node|node.exe|cmd.exe)$' -and
+  (
+    ($_.CommandLine -like "*$frontend*" -and $_.CommandLine -match 'next\\\\dist\\\\') -or
+    ($_.CommandLine -like "*$backend*" -and $_.CommandLine -match 'ts-node')
+  )
+} | Select-Object -ExpandProperty ProcessId
+`;
+
+  try {
+    const output = execFileSync(
+      'powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+      { encoding: 'utf8' },
+    );
+    return parseProcessIds(output);
+  } catch {
+    return [];
+  }
+}
+
+function findExistingPosixDevProcessIds() {
+  try {
+    const output = execFileSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8' });
+    const normalizedFrontendDir = frontendDir.split(path.sep).join('/');
+    const normalizedBackendDir = backendDir.split(path.sep).join('/');
+
+    return output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const match = line.match(/^(\d+)\s+(.+)$/);
+        if (!match) return null;
+        return { pid: Number(match[1]), commandLine: match[2].split(path.sep).join('/') };
+      })
+      .filter((entry) => entry && entry.pid !== process.pid)
+      .filter((entry) => (
+        (entry.commandLine.includes(normalizedFrontendDir) && entry.commandLine.includes('next/dist/')) ||
+        (entry.commandLine.includes(normalizedBackendDir) && entry.commandLine.includes('ts-node'))
+      ))
+      .map((entry) => entry.pid);
+  } catch {
+    return [];
+  }
+}
+
+function parseProcessIds(output) {
+  return [...new Set(String(output)
+    .split(/\r?\n/)
+    .map((line) => Number(line.trim()))
+    .filter((pid) => Number.isInteger(pid) && pid > 0))];
+}
+
+function toPowerShellString(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
 function resolveNpmCliPath() {
   const candidates = [
     process.env.npm_execpath,
@@ -184,6 +293,23 @@ function stopProcessTree(pid) {
   if (!pid) return;
   if (process.platform === 'win32') {
     spawn('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' });
+    return;
+  }
+  try {
+    process.kill(-pid, 'SIGTERM');
+  } catch {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {
+      // Process already stopped.
+    }
+  }
+}
+
+function stopProcessTreeSync(pid) {
+  if (!pid) return;
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' });
     return;
   }
   try {
