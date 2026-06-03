@@ -100,6 +100,30 @@
   font-display: block;
 }
 
+@font-face {
+  font-family: "Quicksand";
+  src: url("/fonts/Quicksand-500.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Quicksand";
+  src: url("/fonts/Quicksand-600.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Quicksand";
+  src: url("/fonts/Quicksand-700.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+}
+
 
 * {
   box-sizing: border-box;
