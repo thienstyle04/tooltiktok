@@ -63,7 +63,7 @@ export default function TemplateGalleryPanel({
 
           return (
             <article key={deck.id} className={`template-card ${active ? 'active' : ''}`}>
-              <button className="template-cover-button" type="button" onClick={() => onDeckSelect(deck)}>
+              <button className="template-cover-button" type="button" onClick={() => onPreviewDeck(deck)}>
                 {cover ? <img src={cover} alt="" /> : <span className="template-cover-fallback">{deck.navTitle}</span>}
                 <span className="template-cover-label">{deck.navTitle}</span>
               </button>

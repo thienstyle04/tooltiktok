@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { exportBatch, exportSelectedPagePng } from '../lib/exportClient';
+import { exportActiveList, exportBatch, exportSelectedPagePng } from '../lib/exportClient';
 import { apiFetch } from '../lib/apiClient';
 import {
   clearCachedDataset,
@@ -117,6 +117,20 @@ function listCountSignature(dataset) {
     .join('|');
 }
 
+function formatSheetSyncTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
+}
+
 export default function DeckStudio({ initialDataset = null }) {
   const initialDeck = initialDataset?.decks?.[0] || null;
   const initialList = initialDeck?.lists?.[0] || null;
@@ -140,6 +154,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const [progress, setProgress] = useState({ visible: false, failed: false, value: 0, label: 'Đang chuẩn bị xuất file...' });
   const [partners, setPartners] = useState([]);
   const [savingCoverText, setSavingCoverText] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const selectionHistoryRef = useRef([]);
   const spotlightPartnerRefreshRef = useRef(false);
@@ -217,15 +232,20 @@ export default function DeckStudio({ initialDataset = null }) {
 
   const loadDataset = useCallback(async (message = 'Đang tải dữ liệu workbook...', preferredSelection = {}, forceRefresh = false, options = {}) => {
     if (!options.silent) setStatus(message);
-    const endpoint = forceRefresh ? '/api/guide-data?refresh=1' : '/api/guide-data';
-    if (forceRefresh) clearCachedDataset();
-    const response = await apiFetch(endpoint, forceRefresh ? { cache: 'no-store' } : {});
-    if (!response.ok) throw new Error(`Không tải được dữ liệu: HTTP ${response.status}`);
-    const nextDataset = await response.json();
-    writeCachedDataset(nextDataset);
-    applyDataset(nextDataset, preferredSelection);
-    setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm.`);
-    return nextDataset;
+    if (forceRefresh) setRefreshing(true);
+    try {
+      const endpoint = forceRefresh ? '/api/guide-data?refresh=1' : '/api/guide-data';
+      if (forceRefresh) clearCachedDataset();
+      const response = await apiFetch(endpoint, forceRefresh ? { cache: 'no-store' } : {});
+      if (!response.ok) throw new Error(`Không tải được dữ liệu: HTTP ${response.status}`);
+      const nextDataset = await response.json();
+      writeCachedDataset(nextDataset);
+      applyDataset(nextDataset, preferredSelection);
+      setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm.`);
+      return nextDataset;
+    } finally {
+      if (forceRefresh) setRefreshing(false);
+    }
   }, [applyDataset]);
 
   useEffect(() => {
@@ -571,6 +591,7 @@ export default function DeckStudio({ initialDataset = null }) {
       return;
     }
     const safeCount = Math.min(10, Math.max(1, Number(count) || 5));
+    if (safeCount >= 5 && !window.confirm(`Tạo ${safeCount} list AI? Có thể mất vài phút.`)) return;
     setBusy(true);
     setStatus(`Đang tạo ${safeCount} list AI (xoay vòng tone)...`);
     try {
@@ -785,12 +806,30 @@ export default function DeckStudio({ initialDataset = null }) {
     setStatus(`Đã xuất và xóa ${cleanupCount} list AI đã xuất.`);
   }, [activeDeckId, activeListId, applyDataset, dataset]);
 
-  const handleExportBatch = useCallback(async () => {
+  const handleExportPage = useCallback(async () => {
+    await exportSelectedPagePng({
+      deck: activeDeck,
+      list: activeList,
+      selectedPageIndex,
+      quality: exportQuality,
+    }, exportCb);
+  }, [activeDeck, activeList, exportCb, exportQuality, selectedPageIndex]);
+
+  const handleExportList = useCallback(async () => {
+    await exportActiveList({
+      deck: activeDeck,
+      list: activeList,
+      quality: exportQuality,
+    }, exportCb);
+  }, [activeDeck, activeList, exportCb, exportQuality]);
+
+  const handleExportBatch = useCallback(async (options = {}) => {
+    const shouldDelete = options.deleteAfterExport !== false;
     setExportModalOpen(false);
     setActiveView('preview');
     const result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality }, exportCb);
     setSelectedListsForExport(new Set());
-    if (result?.success) {
+    if (result?.success && shouldDelete) {
       setBusy(true);
       try {
         await removeExportedGeneratedLists(result.exportedLists);
@@ -812,7 +851,12 @@ export default function DeckStudio({ initialDataset = null }) {
       if ((event.ctrlKey || event.metaKey) && key === 's') {
         event.preventDefault();
         if (!busy) {
-          exportSelectedPagePng({ deck: activeDeck, list: activeList, selectedPageIndex }, exportCb);
+          exportSelectedPagePng({
+            deck: activeDeck,
+            list: activeList,
+            selectedPageIndex,
+            quality: exportQuality,
+          }, exportCb);
         }
         return;
       }
@@ -850,6 +894,7 @@ export default function DeckStudio({ initialDataset = null }) {
     busy,
     captionToolsVisible,
     exportCb,
+    exportQuality,
     pushSelectionSnapshot,
     restoreSelectionSnapshot,
     selectedPageIndex,
@@ -945,7 +990,7 @@ export default function DeckStudio({ initialDataset = null }) {
         <header className="studio-topbar deck-toolbar">
           <div className="deck-heading">
             <div className="studio-breadcrumb">
-              <span>Deck Studio</span>
+              <span>Dalat Studio</span>
               <span className="breadcrumb-separator">/</span>
               <span>{activeDeck?.navTitle || 'Đang tải'}</span>
             </div>
@@ -964,7 +1009,18 @@ export default function DeckStudio({ initialDataset = null }) {
             </div>
           </div>
           <div className="toolbar-actions">
-            <button id="refreshBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message))}>Làm mới</button>
+            <span className="sync-meta" title={dataset?.generatedAt || ''}>
+              {refreshing ? 'Đang sync Sheet...' : `Sheet: ${formatSheetSyncTime(dataset?.generatedAt)}`}
+            </span>
+            <button
+              id="refreshBtn"
+              className="toolbar-button"
+              type="button"
+              disabled={busy || refreshing}
+              onClick={() => loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message))}
+            >
+              {refreshing ? 'Đang sync...' : 'Làm mới'}
+            </button>
           </div>
         </header>
 
@@ -991,7 +1047,7 @@ export default function DeckStudio({ initialDataset = null }) {
             <DataStatsPanel
               dataset={dataset}
               activeDeckId={activeDeckId}
-              onDeckSelect={handleDeckSelect}
+              onPreviewDeck={previewDeck}
             />
           </div>
         ) : activeView === 'caption' ? (
@@ -1068,6 +1124,9 @@ export default function DeckStudio({ initialDataset = null }) {
                     onCoverTextChange={handleCoverTextChange}
                     onCoverTextSave={saveCoverText}
                     savingCoverText={savingCoverText}
+                    onExportPage={handleExportPage}
+                    onExportList={handleExportList}
+                    busy={busy}
                   />
                 </div>
               </section>

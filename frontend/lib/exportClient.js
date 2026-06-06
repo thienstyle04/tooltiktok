@@ -1335,7 +1335,8 @@ function createFallbackPageBlob(pageNode, pixelRatio = 1, imageFormat = 'image/p
 
 export async function exportSelectedPagePng(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { deck, list, selectedPageIndex } = context;
+  const { deck, list, selectedPageIndex, quality = 'optimized' } = context;
+  const qualityProfile = exportQualityProfile(quality);
   if (!deck || !list) return;
 
   cb.setBusy(true);
@@ -1355,12 +1356,23 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
     cb.updateProgress(36, 'Đang chuẩn bị ảnh cho trang...');
     const preparedImages = await inlineImagesAsBlobs(pageNode, {
       fitImagesToElement: true,
-      fitPixelRatio: EXPORT_PIXEL_RATIO,
+      fitPixelRatio: qualityProfile.pixelRatio,
+      maxImageDimension: qualityProfile.sourceImageMaxDimension,
+      sourceImageFormat: qualityProfile.sourceImageFormat,
+      sourceImageQuality: qualityProfile.sourceImageQuality,
     });
     let blob;
     try {
       cb.updateProgress(66, 'Đang render PNG...');
-      blob = await renderPageBlobWithRetry(pageNode, { imagesReady: true });
+      blob = await renderPageBlobWithRetry(pageNode, {
+        imagesReady: true,
+        pixelRatio: qualityProfile.pixelRatio,
+        imageFormat: qualityProfile.imageFormat,
+        imageQuality: qualityProfile.imageQuality,
+        backgroundColor: qualityProfile.backgroundColor,
+        preferHtml2Canvas: qualityProfile.preferHtml2Canvas,
+        renderTimeoutMs: qualityProfile.renderTimeoutMs,
+      });
     } finally {
       restoreImagesFromBlobs(preparedImages);
     }
@@ -1404,6 +1416,9 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
       waitForReady: options.waitForImageReady,
       fitImagesToElement: true,
       fitPixelRatio: options.pixelRatio || EXPORT_PIXEL_RATIO,
+      maxImageDimension: options.maxImageDimension,
+      sourceImageFormat: options.sourceImageFormat,
+      sourceImageQuality: options.sourceImageQuality,
     })))).flat();
     try {
       await Promise.all(chunk.map(async (pageNode, chunkIdx) => {
@@ -1444,7 +1459,8 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
 
 export async function exportActiveList(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { deck, list } = context;
+  const { deck, list, quality = 'optimized' } = context;
+  const qualityProfile = exportQualityProfile(quality);
   if (!deck || !list) return;
 
   cb.setBusy(true);
@@ -1461,6 +1477,17 @@ export async function exportActiveList(context, callbacks = {}) {
     const blob = await generateZipForList(list, null, {
       pageNodes,
       deckId: deck.id,
+      pixelRatio: qualityProfile.pixelRatio,
+      maxImageDimension: qualityProfile.sourceImageMaxDimension,
+      sourceImageFormat: qualityProfile.sourceImageFormat,
+      sourceImageQuality: qualityProfile.sourceImageQuality,
+      imageFormat: qualityProfile.imageFormat,
+      imageQuality: qualityProfile.imageQuality,
+      backgroundColor: qualityProfile.backgroundColor,
+      preferHtml2Canvas: qualityProfile.preferHtml2Canvas,
+      renderTimeoutMs: qualityProfile.renderTimeoutMs,
+      fileExtension: qualityProfile.imageExtension,
+      renderConcurrencyLimit: batchRenderChunkSize(qualityProfile),
       onChunkPreparing: ({ chunkStart, chunkEnd, pageCount }) => {
         cb.updateProgress(10 + (renderedPages / totalPages) * 75, `Đang chuẩn bị ảnh "${list.title}": ${chunkStart}-${chunkEnd}/${pageCount} trang...`);
       },
