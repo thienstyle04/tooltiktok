@@ -24,6 +24,9 @@ export default function PageInspector({
   onCoverTextChange,
   onCoverTextSave,
   savingCoverText = false,
+  onExportPage,
+  onExportList,
+  busy = false,
 }) {
   const page = list?.pages?.[selectedPageIndex];
   if (!deck || !list || !page) {
@@ -112,6 +115,25 @@ export default function PageInspector({
           </div>
         </>
       )}
+
+      {typeof onExportPage === 'function' || typeof onExportList === 'function' ? (
+        <div className="inspector-export-actions">
+          <p className="inspector-export-kicker">Xuất ảnh</p>
+          <div className="inspector-export-buttons">
+            {typeof onExportPage === 'function' ? (
+              <button className="toolbar-button secondary" type="button" disabled={busy} onClick={onExportPage}>
+                Xuất trang PNG
+              </button>
+            ) : null}
+            {typeof onExportList === 'function' ? (
+              <button className="toolbar-button" type="button" disabled={busy} onClick={onExportList}>
+                Xuất list ZIP
+              </button>
+            ) : null}
+          </div>
+          <p className="inspector-export-hint">Phím tắt: Ctrl+S xuất trang · ← → đổi trang</p>
+        </div>
+      ) : null}
     </>
   );
 }

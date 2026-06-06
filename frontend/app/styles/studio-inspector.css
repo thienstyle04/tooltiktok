@@ -267,3 +267,31 @@
   color: var(--studio-muted);
 }
 
+.inspector-export-actions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--studio-line);
+}
+
+.inspector-export-kicker {
+  margin: 0 0 8px;
+  color: var(--studio-blue);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inspector-export-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.inspector-export-hint {
+  margin: 8px 0 0;
+  color: var(--studio-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+

@@ -1,3 +1,5 @@
+import { APP_VERSION } from '../lib/appVersion';
+
 export default function Sidebar({
   dataset,
   activeView,
@@ -29,7 +31,7 @@ export default function Sidebar({
         <span className="brand-mark" aria-hidden="true">DL</span>
         <div>
           <h1 className="brand-title">Dalat Studio</h1>
-          <p className="brand-version">v0.1.0</p>
+          <p className="brand-version">v{APP_VERSION}</p>
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { listIsMain } from '../lib/utils';
 
 const EXPORT_QUALITY_OPTIONS = [
@@ -24,6 +25,8 @@ export default function ExportModal({
   onClose,
   onExport,
 }) {
+  const [deleteAfterExport, setDeleteAfterExport] = useState(true);
+
   if (!open) return null;
   const decksWithLists = (dataset?.decks || [])
     .map((deck) => ({
@@ -39,7 +42,7 @@ export default function ExportModal({
       <div className="modal-card">
         <div className="modal-head">
           <div>
-            <p className="panel-kicker">Batch export</p>
+            <p className="panel-kicker">Xuất hàng loạt</p>
             <h3 className="modal-title">Chọn bộ ảnh để xuất ZIP</h3>
           </div>
           <button id="closeExportModalBtn" className="modal-close-btn" onClick={onClose}>×</button>
@@ -120,7 +123,22 @@ export default function ExportModal({
           </div>
         </div>
         <div className="modal-foot">
-          <button id="executeBatchExportBtn" className="toolbar-button primary" type="button" disabled={count === 0 || busy} onClick={onExport}>
+          <label className="export-delete-toggle">
+            <input
+              type="checkbox"
+              checked={deleteAfterExport}
+              onChange={(event) => setDeleteAfterExport(event.target.checked)}
+              disabled={busy}
+            />
+            <span>Xóa list AI sau khi xuất thành công (giữ workspace gọn)</span>
+          </label>
+          <button
+            id="executeBatchExportBtn"
+            className="toolbar-button primary"
+            type="button"
+            disabled={count === 0 || busy}
+            onClick={() => onExport({ deleteAfterExport })}
+          >
             {count > 0 ? `Bắt đầu xuất ${count} list đã chọn` : 'Hãy chọn ít nhất 1 list để xuất'}
           </button>
         </div>
