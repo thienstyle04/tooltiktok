@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-06T03:58:12.640Z",
+  "generatedAt": "2026-06-06T04:40:08.863Z",
   "workbookName": "Google Sheet",
-  "workbookMtimeMs": 1780718286907,
+  "workbookMtimeMs": 1780720802899,
   "items": {
     "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu": {
       "key": "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu",
@@ -9695,10 +9695,10 @@
         }
       ]
     },
-    "cafe|ngu|17_duong_truong_cong_dinh": {
-      "key": "cafe|ngu|17_duong_truong_cong_dinh",
+    "cafe|ngu_24h_coffee|17_duong_truong_cong_dinh": {
+      "key": "cafe|ngu_24h_coffee|17_duong_truong_cong_dinh",
       "sectionKey": "cafe",
-      "name": "Ngự",
+      "name": "Ngự - 24H Coffee",
       "address": "17 Đường Trương Công Định",
       "sourceLink": "https://drive.google.com/drive/folders/1E6b1mjkmgbqGEnb9zgcUIgkWWs6yI6Fm",
       "fileId": "1t_NNkkYC96J_KpQ0Lot9kiPcR-7ax0k6",
@@ -14724,6 +14724,42 @@
         }
       ]
     },
+    "check_in|chua_tau|31c_khe_sanh": {
+      "key": "check_in|chua_tau|31c_khe_sanh",
+      "sectionKey": "check_in",
+      "name": "Chùa Tàu",
+      "address": "31c Khe Sanh",
+      "sourceLink": "https://drive.google.com/drive/folders/11g8WTQftoY0cQhrTQ551cRCUSueAggpH",
+      "fileId": "1uQGO0uVWjFoo8NMeEYiW3GTWE2qVSlZY",
+      "fileName": "490143640_29144208621892038_4149232171028736338_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1uQGO0uVWjFoo8NMeEYiW3GTWE2qVSlZY",
+          "fileName": "490143640_29144208621892038_4149232171028736338_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1uQGO0uVWjFoo8NMeEYiW3GTWE2qVSlZY/view?usp=drive_web"
+        },
+        {
+          "fileId": "1euewWyNoH4CP4AGdv_KDEb3adL70JUZO",
+          "fileName": "490413736_29144208568558710_7535082641487587855_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1euewWyNoH4CP4AGdv_KDEb3adL70JUZO/view?usp=drive_web"
+        },
+        {
+          "fileId": "16BFeN8l9I8agjNzBEyiIuhcVMwD651-1",
+          "fileName": "490846852_29144208585225375_907557273659471651_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/16BFeN8l9I8agjNzBEyiIuhcVMwD651-1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1JLOkeP5PdLLZd12oyG9YaCRHK-aKZgM3",
+          "fileName": "491352554_29144208315225402_3081700756066653050_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JLOkeP5PdLLZd12oyG9YaCRHK-aKZgM3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1uK7EeS2iFRYOufaKYsPV0kvyB1I1Pr7A",
+          "fileName": "547964668_638784379287138_363963703211935733_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1uK7EeS2iFRYOufaKYsPV0kvyB1I1Pr7A/view?usp=drive_web"
+        }
+      ]
+    },
     "check_in|khach_san_du_parc|15a_d_tran_phu": {
       "key": "check_in|khach_san_du_parc|15a_d_tran_phu",
       "sectionKey": "check_in",
@@ -14853,14 +14889,9 @@
       "name": "Thác Prenn",
       "address": "Phường Xuân Hương",
       "sourceLink": "https://drive.google.com/drive/folders/1JCzm3H3kklASAJhNkXys8jOk7IVT5n1d",
-      "fileId": "1n_544NXN5LBNVOT_-cfmiGpeTD8F9pd-",
-      "fileName": "480759392_1975030033021400_1568530415877792032_n.jpg",
+      "fileId": "1YcW41U28fo6jfY2UNIFW8z78zkOuZiRp",
+      "fileName": "480807341_1975030226354714_8208169227762596028_n.jpg",
       "candidateImages": [
-        {
-          "fileId": "1n_544NXN5LBNVOT_-cfmiGpeTD8F9pd-",
-          "fileName": "480759392_1975030033021400_1568530415877792032_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1n_544NXN5LBNVOT_-cfmiGpeTD8F9pd-/view?usp=drive_web"
-        },
         {
           "fileId": "1YcW41U28fo6jfY2UNIFW8z78zkOuZiRp",
           "fileName": "480807341_1975030226354714_8208169227762596028_n.jpg",
@@ -14883,7 +14914,7 @@
       "sectionKey": "check_in",
       "name": "Làng biệt thự cổ Ana Mandara",
       "address": "02 Lê Lai",
-      "sourceLink": "https://drive.google.com/drive/folders/1kDg0yvT1ad2ChN_wGYSahAW6-UGoTYzV?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1kDg0yvT1ad2ChN_wGYSahAW6-UGoTYzV",
       "fileId": "1aO6tj7q1IukPz5LMh40SOzNbCn509g6c",
       "fileName": "592796197_1305245351642744_5842213995833044827_n.jpg",
       "candidateImages": [
@@ -14924,7 +14955,7 @@
       "sectionKey": "check_in",
       "name": "Biệt thự cổ Trần Hưng Đạo",
       "address": "Trần Hưng Đạo",
-      "sourceLink": "https://drive.google.com/drive/folders/1Er3g8aG9k7o0ExBvRF4iHj7SpsYXE8Sr?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1Er3g8aG9k7o0ExBvRF4iHj7SpsYXE8Sr",
       "fileId": "1iDhhGMcpFVDPhVXqk346cOcEcAs4xK-d",
       "fileName": "Lang-biet-thu-co-1.jpg",
       "candidateImages": [
@@ -14965,7 +14996,7 @@
       "sectionKey": "check_in",
       "name": "Tịnh xá Ngọc Đà",
       "address": "02 Tô Vĩnh Diện",
-      "sourceLink": "https://drive.google.com/drive/folders/1AlWUZ1GMmVGGkbJHQx7UNXSKMpwHhWjJ?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1AlWUZ1GMmVGGkbJHQx7UNXSKMpwHhWjJ",
       "fileId": "1cpceG_h2SfHK-MAqBFnAYkAMFPKPK-UZ",
       "fileName": "unnamed (1).jpg",
       "candidateImages": [
@@ -15006,7 +15037,7 @@
       "sectionKey": "check_in",
       "name": "Biệt thự cổ đường Cô Giang",
       "address": "Cô Bắc Cô Giang",
-      "sourceLink": "https://drive.google.com/drive/folders/16CSEoSQx67sNxyqfEJMQrzctEfqVf8-e?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/16CSEoSQx67sNxyqfEJMQrzctEfqVf8-e",
       "fileId": "1WS9mhhKhUJsbnLuJMJlns1NTPzJVkJKi",
       "fileName": "biet-thu-17-co-giang-diem-check-in-lang-man-tai-da-lat-2-1667920476.jpg",
       "candidateImages": [
@@ -15047,7 +15078,7 @@
       "sectionKey": "check_in",
       "name": "Nhà máy điện gió Cầu Đất",
       "address": "Cầu Đất Farm, Xuân Trường",
-      "sourceLink": "https://drive.google.com/drive/folders/11vK5eKCc6d7u8fBg1VIVb_7c8KvBC64D?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/11vK5eKCc6d7u8fBg1VIVb_7c8KvBC64D",
       "fileId": "1kGAylJ4sPT2gpU5CUdE5nKCce7s-Z0jh",
       "fileName": "474977462_1147345287023208_5813862814743886045_n.jpg",
       "candidateImages": [
@@ -15088,7 +15119,7 @@
       "sectionKey": "check_in",
       "name": "Trạm xe lửa Trại Mát",
       "address": "Quang Trung",
-      "sourceLink": "https://drive.google.com/drive/folders/1j1mIiIKWmWHeoJZW1tdoVboyirPFBbwp?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1j1mIiIKWmWHeoJZW1tdoVboyirPFBbwp",
       "fileId": "1tESrMXmINyZAxgQkGu3IOatGAjB-GM1J",
       "fileName": "Ga-Trai-Mat-03.jpg",
       "candidateImages": [
@@ -15129,7 +15160,7 @@
       "sectionKey": "check_in",
       "name": "Nhà thờ Tùng Lâm",
       "address": "686 Xô Viết Nghệ Tĩnh",
-      "sourceLink": "https://drive.google.com/drive/folders/1j2hFaZP8yJZzHOhcyjLJGC8zHfoi3P0r?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1j2hFaZP8yJZzHOhcyjLJGC8zHfoi3P0r",
       "fileId": "1GYkdnE5no9Mym4MEm2cdAV2GcWwqE4k1",
       "fileName": "240600184_4024891264282570_5667953160789336001_n.jpg",
       "candidateImages": [
@@ -15170,7 +15201,7 @@
       "sectionKey": "check_in",
       "name": "Chùa Linh Quang",
       "address": "421 Đường Hai Bà Trưng",
-      "sourceLink": "https://drive.google.com/drive/folders/1e4RbUodBa3q55KidIrGJYpyQ1YhPWV5L?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1e4RbUodBa3q55KidIrGJYpyQ1YhPWV5L",
       "fileId": "14aCP4uVmFxBP6digIqLNH65wy_j26Y6T",
       "fileName": "chua-linh-quang-da-lat-0.jpg",
       "candidateImages": [
@@ -15211,7 +15242,7 @@
       "sectionKey": "check_in",
       "name": "Chùa Linh Phong",
       "address": "Hoàng Hoa Thám",
-      "sourceLink": "https://drive.google.com/drive/folders/1JFoC6KmppH_tJW_be8XX90rDm7mblQ42?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1JFoC6KmppH_tJW_be8XX90rDm7mblQ42",
       "fileId": "1J5kp0C6oGwfAtSB5VLdiGYuIlREUp9O_",
       "fileName": "571270872_2178843705973364_2441817245369765421_n.jpg",
       "candidateImages": [
@@ -15252,7 +15283,7 @@
       "sectionKey": "check_in",
       "name": "Hầm hỏa xa",
       "address": "QL20, Xuân Trường",
-      "sourceLink": "https://drive.google.com/drive/folders/1y-MdGCpqBiLoYDUQ51BVSCBk7BRQ-WdQ?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1y-MdGCpqBiLoYDUQ51BVSCBk7BRQ-WdQ",
       "fileId": "1GtEHMER-LHJe-qJoSkZu8xCwkr_xNiho",
       "fileName": "158039394_1922858951226621_6476492772956528032_n.jpg",
       "candidateImages": [
@@ -15293,7 +15324,7 @@
       "sectionKey": "check_in",
       "name": "Vườn hoa thành phố",
       "address": "02  Trần Nhân Tông",
-      "sourceLink": "https://drive.google.com/drive/folders/1fpNzm12FoeWl31wiIs7wXwlvFI2k_VEm?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1fpNzm12FoeWl31wiIs7wXwlvFI2k_VEm",
       "fileId": "1jG8jaSBiaVlIonvXO7gl1m4L1GAdBnV2",
       "fileName": "vuon-hoa-thanh-pho-da-lat-1_1689838283.jpg",
       "candidateImages": [
@@ -15334,7 +15365,7 @@
       "sectionKey": "check_in",
       "name": "Từ viện Franciscaines",
       "address": "20 Hùng Vương",
-      "sourceLink": "https://drive.google.com/drive/folders/1SJ6SSzeEXAvpniRAonanAud_IDSi0UDB?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1SJ6SSzeEXAvpniRAonanAud_IDSi0UDB",
       "fileId": "1MxtVVjHu-7F5O6R9RhDgyXYow-Aj4iGH",
       "fileName": "tuvien-12-1508157926.webp",
       "candidateImages": [
@@ -15354,19 +15385,19 @@
           "viewUrl": "https://drive.google.com/file/d/1ZTTd3yKCK7uCvw1jGmzlgX81rAO4qezu/view?usp=drive_web"
         },
         {
-          "fileId": "1onK9YcAtnIt6630GT2m2OBRgqVvj8wE1",
-          "fileName": "tuvien-2-1508157894.webp",
-          "viewUrl": "https://drive.google.com/file/d/1onK9YcAtnIt6630GT2m2OBRgqVvj8wE1/view?usp=drive_web"
-        },
-        {
           "fileId": "1mbQrds3tjvnvZFxG8k654Mgetiim_XWZ",
           "fileName": "tuvien-6-1508157910.webp",
           "viewUrl": "https://drive.google.com/file/d/1mbQrds3tjvnvZFxG8k654Mgetiim_XWZ/view?usp=drive_web"
         },
         {
-          "fileId": "1HyEU9Sz37nQ33PgobyaUh4J3PUYonXTp",
-          "fileName": "tuvien-7-1508157913.webp",
-          "viewUrl": "https://drive.google.com/file/d/1HyEU9Sz37nQ33PgobyaUh4J3PUYonXTp/view?usp=drive_web"
+          "fileId": "1kb1uRtC4iF6cJu70noLBryS028jYmFrT",
+          "fileName": "IMG-9654-1508167586.webp",
+          "viewUrl": "https://drive.google.com/file/d/1kb1uRtC4iF6cJu70noLBryS028jYmFrT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_UluX7kqg_m3sFNOuGdc_SUEvxzsDbJ0",
+          "fileName": "IMG-9718-2-1508159249.webp",
+          "viewUrl": "https://drive.google.com/file/d/1_UluX7kqg_m3sFNOuGdc_SUEvxzsDbJ0/view?usp=drive_web"
         }
       ]
     },
@@ -15375,7 +15406,7 @@
       "sectionKey": "check_in",
       "name": "Nhà thờ Thánh Tâm",
       "address": "40 Trần Phú",
-      "sourceLink": "https://drive.google.com/drive/folders/1zg4xPSSlG5qll7fXLQi-MS6YA8GNP5AZ?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1zg4xPSSlG5qll7fXLQi-MS6YA8GNP5AZ",
       "fileId": "1vLxTNLqH-O2IFsmw5ksxuXWV5eQhW9_j",
       "fileName": "nha-tho-thanh-tam-da-lat-mang-phong-cach-chau-au-hien-dai.jpg",
       "candidateImages": [
@@ -15416,7 +15447,7 @@
       "sectionKey": "check_in",
       "name": "Nhà nghỉ Công đoàn",
       "address": "22 Quang Trung",
-      "sourceLink": "https://drive.google.com/drive/folders/106QkqBY49DOcsQquDXpSCO60oROGUi6o?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/106QkqBY49DOcsQquDXpSCO60oROGUi6o",
       "fileId": "1J8in45DL55e6jbBjOQuG7I-RVeFnwnjU",
       "fileName": "nha-khach-da-lat.jpg",
       "candidateImages": [
@@ -15457,39 +15488,39 @@
       "sectionKey": "check_in",
       "name": "Nhà thờ Thánh Mẫu",
       "address": "117  Thánh Mẫu",
-      "sourceLink": "https://drive.google.com/drive/folders/1F3AAAKyrVMGFBPT4QaoW7wnipEQq-NCm?usp=sharing",
-      "fileId": "1x3UyHmA7nvRKGgU06lh-3k_BVfw1avWW",
-      "fileName": "unnamed (1).jpg",
+      "sourceLink": "https://drive.google.com/drive/folders/1F3AAAKyrVMGFBPT4QaoW7wnipEQq-NCm",
+      "fileId": "1XkMuCcpPdQ2R6lKF5Y3sluKfKlYC-E0_",
+      "fileName": "153948069_1595378320648723_361256477827351301_n.jpg",
       "candidateImages": [
         {
-          "fileId": "1x3UyHmA7nvRKGgU06lh-3k_BVfw1avWW",
-          "fileName": "unnamed (1).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1x3UyHmA7nvRKGgU06lh-3k_BVfw1avWW/view?usp=drive_web"
+          "fileId": "1XkMuCcpPdQ2R6lKF5Y3sluKfKlYC-E0_",
+          "fileName": "153948069_1595378320648723_361256477827351301_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XkMuCcpPdQ2R6lKF5Y3sluKfKlYC-E0_/view?usp=drive_web"
         },
         {
-          "fileId": "1pIJxZwI_OKztsumiichYg9InyUMz8dJz",
-          "fileName": "unnamed (2).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1pIJxZwI_OKztsumiichYg9InyUMz8dJz/view?usp=drive_web"
+          "fileId": "1anngSkY5OMrbRIP7kaPopZztT1uwISf_",
+          "fileName": "154149708_1595378343982054_2418364820775134197_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1anngSkY5OMrbRIP7kaPopZztT1uwISf_/view?usp=drive_web"
         },
         {
-          "fileId": "1YtW69X6SQTUjXhTADQGpbHFY0jQxCJ5y",
-          "fileName": "unnamed (3).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1YtW69X6SQTUjXhTADQGpbHFY0jQxCJ5y/view?usp=drive_web"
+          "fileId": "1KgQEsWqaTk2eX3_mV6MtojsniRST4lIC",
+          "fileName": "154577822_1595378410648714_8163185597036096138_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1KgQEsWqaTk2eX3_mV6MtojsniRST4lIC/view?usp=drive_web"
         },
         {
-          "fileId": "1fnE4MpcaEjCxHZHEMCoGdbmPL1JeMLAV",
-          "fileName": "unnamed (4).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1fnE4MpcaEjCxHZHEMCoGdbmPL1JeMLAV/view?usp=drive_web"
+          "fileId": "1fbqxsKYJrIO6Rg8P5PerUhCcMca-lvRR",
+          "fileName": "154744454_1595378377315384_6340172201145425519_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1fbqxsKYJrIO6Rg8P5PerUhCcMca-lvRR/view?usp=drive_web"
         },
         {
-          "fileId": "15pbJkI9IrBG0AOmvB0YRaCN-ONDXx0ML",
-          "fileName": "unnamed (5).jpg",
-          "viewUrl": "https://drive.google.com/file/d/15pbJkI9IrBG0AOmvB0YRaCN-ONDXx0ML/view?usp=drive_web"
+          "fileId": "1jV97B452Fpf9zbBZsw2c6IUCFhzrXayz",
+          "fileName": "480914631_2318854221847063_1011292161282033386_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1jV97B452Fpf9zbBZsw2c6IUCFhzrXayz/view?usp=drive_web"
         },
         {
-          "fileId": "1l5e7cjHYBLk2h_1BwOGADhTKk2-A0WOC",
-          "fileName": "unnamed (6).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1l5e7cjHYBLk2h_1BwOGADhTKk2-A0WOC/view?usp=drive_web"
+          "fileId": "1mlorfmeRKjPkF3j-M11lswOj2nSePmq9",
+          "fileName": "481062480_2318854418513710_1414921080252337248_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1mlorfmeRKjPkF3j-M11lswOj2nSePmq9/view?usp=drive_web"
         }
       ]
     },
@@ -15498,7 +15529,7 @@
       "sectionKey": "check_in",
       "name": "Chùa Quan Âm",
       "address": "Hẻm 11 Khe Sanh",
-      "sourceLink": "https://drive.google.com/drive/folders/1CInLU1h_Ndv97UyKQ4Q_jE1ueVfw1ptK?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1CInLU1h_Ndv97UyKQ4Q_jE1ueVfw1ptK",
       "fileId": "1q0ALYjm_t8FOe8OfJZAqA7JJeDftLifu",
       "fileName": "unnamed (1).jpg",
       "candidateImages": [
@@ -15531,47 +15562,6 @@
           "fileId": "12Nur-TjdF6Zp5gaEOaFc90PIgphGMcc8",
           "fileName": "unnamed (6).jpg",
           "viewUrl": "https://drive.google.com/file/d/12Nur-TjdF6Zp5gaEOaFc90PIgphGMcc8/view?usp=drive_web"
-        }
-      ]
-    },
-    "check_in|ham_ruou_vang|77c_hung_vuong": {
-      "key": "check_in|ham_ruou_vang|77c_hung_vuong",
-      "sectionKey": "check_in",
-      "name": "Hầm rượu vang",
-      "address": "77C  Hùng Vương",
-      "sourceLink": "https://drive.google.com/drive/folders/1V2GVSacrD_NGSeAKNNUznYnGaKU3SX-h?usp=sharing",
-      "fileId": "14SnjN-ubBZz_L9gwYx7jCuwELWlbJGpY",
-      "fileName": "2025-09-08 (1).jpg",
-      "candidateImages": [
-        {
-          "fileId": "14SnjN-ubBZz_L9gwYx7jCuwELWlbJGpY",
-          "fileName": "2025-09-08 (1).jpg",
-          "viewUrl": "https://drive.google.com/file/d/14SnjN-ubBZz_L9gwYx7jCuwELWlbJGpY/view?usp=drive_web"
-        },
-        {
-          "fileId": "1i_uGOGFq2FOmnfxscIWiASum1SGouFwb",
-          "fileName": "2025-09-08.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1i_uGOGFq2FOmnfxscIWiASum1SGouFwb/view?usp=drive_web"
-        },
-        {
-          "fileId": "1OfHt-_rFHPxlh7iylLiVulFOjtOVo029",
-          "fileName": "unnamed (1).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1OfHt-_rFHPxlh7iylLiVulFOjtOVo029/view?usp=drive_web"
-        },
-        {
-          "fileId": "166P2L2WP5fxSGtLoNVMOmy0O13Q37_z_",
-          "fileName": "unnamed (2).jpg",
-          "viewUrl": "https://drive.google.com/file/d/166P2L2WP5fxSGtLoNVMOmy0O13Q37_z_/view?usp=drive_web"
-        },
-        {
-          "fileId": "1BZhNTX4J9UHXwt63sj99AjunaVTI0Xdt",
-          "fileName": "unnamed (3).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1BZhNTX4J9UHXwt63sj99AjunaVTI0Xdt/view?usp=drive_web"
-        },
-        {
-          "fileId": "1uzzjapQcKrnrPXeR6FC2L8VI77o1vRtQ",
-          "fileName": "unnamed (4).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1uzzjapQcKrnrPXeR6FC2L8VI77o1vRtQ/view?usp=drive_web"
         }
       ]
     },
@@ -18240,7 +18230,7 @@
       "sectionKey": "choi_dem",
       "name": "On The Rock Cocktail Bar",
       "address": "69 Trương Công Định",
-      "sourceLink": "https://drive.google.com/drive/folders/1qeyaAb3e2kkJ-W4-w8k3SYW3hTj6hfzV?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1qeyaAb3e2kkJ-W4-w8k3SYW3hTj6hfzV",
       "fileId": "1qdcPddIESsPYMt_NDIjIEpPVTyIW8urz",
       "fileName": "601825365_18065628755548117_5404888830235946075_n.jpg",
       "candidateImages": [
@@ -18281,7 +18271,7 @@
       "sectionKey": "choi_dem",
       "name": "The Roof by Banla Dalat",
       "address": "47 Nguyễn Đình Chiểu",
-      "sourceLink": "https://drive.google.com/drive/folders/1g4mIMXqgV8SJeIQHfK5QmNwv-Ky3tWaC?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1g4mIMXqgV8SJeIQHfK5QmNwv-Ky3tWaC",
       "fileId": "1NTSkKfq4vI7OI3C_ZhGF8wA218PLPYtP",
       "fileName": "605536077_827963313560912_1216536752175166748_n.jpg",
       "candidateImages": [
@@ -18322,34 +18312,34 @@
       "sectionKey": "choi_dem",
       "name": "Moon Lounge",
       "address": "03 Nguyễn Du",
-      "sourceLink": "https://drive.google.com/drive/folders/16-VSxysrk1hCiuelleASDY01TsSOat0M?usp=sharing",
-      "fileId": "1MeekvdTU2b5KD6ELXpfzq_RXOv3EP98X",
-      "fileName": "2023-03-31 (1).jpg",
+      "sourceLink": "https://drive.google.com/drive/folders/16-VSxysrk1hCiuelleASDY01TsSOat0M",
+      "fileId": "1UpDTCINAqbgpn5xUyYIjbULJsc-vYKRH",
+      "fileName": "629183587_933732319185297_2868993725263711308_n.jpg",
       "candidateImages": [
         {
-          "fileId": "1MeekvdTU2b5KD6ELXpfzq_RXOv3EP98X",
-          "fileName": "2023-03-31 (1).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1MeekvdTU2b5KD6ELXpfzq_RXOv3EP98X/view?usp=drive_web"
+          "fileId": "1UpDTCINAqbgpn5xUyYIjbULJsc-vYKRH",
+          "fileName": "629183587_933732319185297_2868993725263711308_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1UpDTCINAqbgpn5xUyYIjbULJsc-vYKRH/view?usp=drive_web"
         },
         {
-          "fileId": "1jPzb3MnaHnxDrc5eCptXM4mtEB92v1H1",
-          "fileName": "2023-03-31.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1jPzb3MnaHnxDrc5eCptXM4mtEB92v1H1/view?usp=drive_web"
+          "fileId": "1jmQBVDnMWvJyCF9x_6XmIVvJkO589Nz2",
+          "fileName": "672343252_988404717051390_1571832531612156652_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1jmQBVDnMWvJyCF9x_6XmIVvJkO589Nz2/view?usp=drive_web"
         },
         {
-          "fileId": "1PiXbGHL3pTsgkjMAL2td-BVgh1SpaU4x",
-          "fileName": "BOLLYWOOD (6).jpeg",
-          "viewUrl": "https://drive.google.com/file/d/1PiXbGHL3pTsgkjMAL2td-BVgh1SpaU4x/view?usp=drive_web"
+          "fileId": "1fkoeCqzZjlw7TmjDm_gvExDho9esYZDH",
+          "fileName": "672667773_983526900872505_7291534667779751053_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1fkoeCqzZjlw7TmjDm_gvExDho9esYZDH/view?usp=drive_web"
         },
         {
-          "fileId": "1_1oJjIX7eBnqOqECD0GxnWxFuK1JhMc3",
-          "fileName": "LA LA LAND (3).jpeg",
-          "viewUrl": "https://drive.google.com/file/d/1_1oJjIX7eBnqOqECD0GxnWxFuK1JhMc3/view?usp=drive_web"
+          "fileId": "1ITUca4UMDFVtIgzmx2_20eu15RflGmw9",
+          "fileName": "684847613_1001813825710479_1961458770578645753_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ITUca4UMDFVtIgzmx2_20eu15RflGmw9/view?usp=drive_web"
         },
         {
-          "fileId": "1nqiMzQxHhiW5UfCk_nSEw4ZKaB9Adyt2",
-          "fileName": "unnamed.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1nqiMzQxHhiW5UfCk_nSEw4ZKaB9Adyt2/view?usp=drive_web"
+          "fileId": "1l7gk1uc2vUkxtoBa_-ubpZbmyk880reB",
+          "fileName": "686942594_1001813845710477_7015256318406718424_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1l7gk1uc2vUkxtoBa_-ubpZbmyk880reB/view?usp=drive_web"
         }
       ]
     },
@@ -18358,7 +18348,7 @@
       "sectionKey": "choi_dem",
       "name": "Peng Quán",
       "address": "44 Lý Tự Trọng",
-      "sourceLink": "https://drive.google.com/drive/folders/1aA2od1c72cESQZcCmU2OGsqaLTTHIpqR?usp=sharing",
+      "sourceLink": "https://drive.google.com/drive/folders/1aA2od1c72cESQZcCmU2OGsqaLTTHIpqR",
       "fileId": "1biFP01pB_Mfku3bFf8vOu7otw6-QGWSU",
       "fileName": "IMG_6030.JPG",
       "candidateImages": [
@@ -18424,14 +18414,14 @@
           "viewUrl": "https://drive.google.com/file/d/1SwiqYzHMukmYA8Ws-9TyWKrT_g12TzXD/view?usp=drive_web"
         },
         {
-          "fileId": "1-yPR4fsKFjzn3f_ekY5NmP2J_0FKqws9",
-          "fileName": "IMG_6044.JPG",
-          "viewUrl": "https://drive.google.com/file/d/1-yPR4fsKFjzn3f_ekY5NmP2J_0FKqws9/view?usp=drive_web"
-        },
-        {
           "fileId": "189mXxz-HTT2reuzryANZRHEmfsBycWIT",
           "fileName": "IMG_6045.JPG",
           "viewUrl": "https://drive.google.com/file/d/189mXxz-HTT2reuzryANZRHEmfsBycWIT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1E6mJzd8TxUtgkYXCO66sXNEPB6ZUkcxc",
+          "fileName": "IMG_6046.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1E6mJzd8TxUtgkYXCO66sXNEPB6ZUkcxc/view?usp=drive_web"
         }
       ]
     },

@@ -211,6 +211,14 @@ body::before {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.sync-meta {
+  color: var(--studio-muted, #6b7268);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .toolbar-button {

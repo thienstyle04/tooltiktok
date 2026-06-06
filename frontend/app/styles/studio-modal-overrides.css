@@ -72,3 +72,32 @@
   color: var(--studio-pine);
 }
 
+.modal-foot {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.export-delete-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--studio-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.export-delete-toggle input {
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+
+.export-delete-toggle span {
+  flex: 1 1 auto;
+}
+
+.modal-foot .toolbar-button.primary {
+  align-self: flex-end;
+}
+

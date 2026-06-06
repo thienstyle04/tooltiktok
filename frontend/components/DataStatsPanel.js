@@ -20,7 +20,7 @@ function deckStats(deck) {
   };
 }
 
-export default function DataStatsPanel({ dataset, activeDeckId, onDeckSelect }) {
+export default function DataStatsPanel({ dataset, activeDeckId, onPreviewDeck }) {
   const decks = dataset?.decks || [];
   const total = decks.reduce((acc, deck) => {
     const stats = deckStats(deck);
@@ -62,7 +62,7 @@ export default function DataStatsPanel({ dataset, activeDeckId, onDeckSelect }) 
                     <span className="stats-card-kicker">{deck.navTitle}</span>
                     <h4>{deck.title}</h4>
                   </div>
-                  <button className="toolbar-button" type="button" onClick={() => onDeckSelect(deck)}>Chọn mẫu</button>
+                  <button className="toolbar-button" type="button" onClick={() => onPreviewDeck?.(deck)}>Xem preview</button>
                 </div>
                 <div className="stats-card-metrics">
                   <span><strong>{stats.lists}</strong> list</span>
