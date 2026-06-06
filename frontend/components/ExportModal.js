@@ -3,13 +3,13 @@ import { listIsMain } from '../lib/utils';
 const EXPORT_QUALITY_OPTIONS = [
   {
     id: 'optimized',
-    title: 'Chất lượng cao tối ưu',
-    description: 'Khuyên dùng cho 30-50 list. PNG bo góc trong suốt, ảnh Drive được nén/resize để nhẹ hơn bản gốc.',
+    title: 'Chất lượng cân bằng',
+    description: 'Mặc định, khuyên dùng cho 30-50 list. Nét cao hơn (~2.5–3 MB/ảnh) — JPEG 97%, ảnh nguồn tối đa 3000px, render 2.5x.',
   },
   {
     id: 'original',
     title: 'Chất lượng gốc',
-    description: 'PNG như hiện tại, ảnh đẹp nhất nhưng thời gian xuất lâu và file ZIP lớn hơn.',
+    description: 'Xuất final khi đã chốt list. PNG gốc, nét nhất nhưng chậm hơn và ZIP lớn hơn nhiều.',
   },
 ];
 
