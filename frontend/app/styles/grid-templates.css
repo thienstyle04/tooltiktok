@@ -1033,9 +1033,8 @@
   flex-direction: column;
   box-sizing: border-box;
   min-height: 0;
-  border: 2px solid #17201d;
+  border: 1px solid #5f6b68;
   background: #fff9df;
-  box-shadow: inset 0 0 0 1px rgba(23, 32, 29, 0.32);
 }
 
 .budget72-table-shell h2 {
@@ -1069,10 +1068,9 @@
 .budget72-schedule-table td,
 .budget72-summary-table th,
 .budget72-summary-table td {
-  border: 1px solid #17201d;
+  border: 1px solid #8a9390;
   padding: 1.6px 3px;
   vertical-align: middle;
-  overflow-wrap: anywhere;
 }
 
 .budget72-schedule-table th {
@@ -1103,28 +1101,45 @@
   background: #fde3e3;
 }
 
+.budget72-col-day,
 .budget72-day {
-  width: 13%;
+  width: 10%;
+  padding-left: 1px;
+  padding-right: 1px;
   text-align: center;
+  white-space: nowrap;
   font-weight: 850 !important;
 }
 
+.budget72-col-time,
 .budget72-time {
-  width: 12%;
+  width: 9%;
+  padding-left: 1px;
+  padding-right: 1px;
   text-align: center;
+  white-space: nowrap;
 }
 
+.budget72-col-activity,
 .budget72-activity {
-  width: 33%;
+  width: 36%;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
+.budget72-col-address,
 .budget72-address {
-  width: 29%;
+  width: 31%;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
+.budget72-col-cost,
 .budget72-cost {
-  width: 13%;
+  width: 14%;
   text-align: center;
+  overflow-wrap: break-word;
+  word-break: break-word;
   font-weight: 850 !important;
 }
 
@@ -1164,7 +1179,7 @@
   min-height: 28px;
   padding: 4px 9px;
   background: #ffe600;
-  border-top: 2px solid #17201d;
+  border-top: 1px solid #5f6b68;
   font-family: "Be Vietnam Pro", Arial, sans-serif;
   color: #151a16;
 }

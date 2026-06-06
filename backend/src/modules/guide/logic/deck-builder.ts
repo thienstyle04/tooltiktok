@@ -1623,7 +1623,7 @@ function buildBudget3N2DPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:budget-3n2d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:budget-3n2d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const selectedKeys = new Set<string>();
@@ -1850,7 +1850,7 @@ function buildItineraryPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2050,7 +2050,7 @@ function buildItinerary4N2DGrid8Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2202,7 +2202,7 @@ function buildItinerary4N3DPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2365,7 +2365,7 @@ function buildMustGoPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2404,7 +2404,7 @@ function buildFirstTimePages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2485,7 +2485,7 @@ function buildPov3DayPages(
     `${seedPrefix}:pov-3-day`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'portrait' },
+    { orientation: 'any' },
   );
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
@@ -2783,7 +2783,7 @@ function buildSpotlightGuidePages(
     `${seedPrefix}:spotlight-guide`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'portrait' },
+    { orientation: 'any' },
   );
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -3299,7 +3299,7 @@ function buildGrid6ZigzagPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6-zigzag`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6-zigzag`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -3370,7 +3370,7 @@ function buildGrid6Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -3462,7 +3462,7 @@ function buildGrid8Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -3574,7 +3574,7 @@ function buildGrid4MutantPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4-mutant`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4-mutant`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -3654,7 +3654,7 @@ function buildGrid4Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'portrait' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
