@@ -758,12 +758,13 @@ export class GuideService {
   }
 
   private mergeGeneratedLists(decks: GuideDeck[], coverImageUrls: string[] = []): GuideDeck[] {
+    const usedCoverUrls = new Set<string>();
     return decks.map((deck) => {
       const baseLists = deck.lists.map((list) => this.sanitizeBaseListForDisplay(list));
       const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => this.sanitizeGeneratedListText(list));
       const displayLists = generatedLists.length === 0
         ? baseLists
-        : [...baseLists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list, coverImageUrls))];
+        : [...baseLists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list, coverImageUrls, usedCoverUrls))];
       return { ...deck, lists: this.applyRecentImageReuseGuard(displayLists) };
     });
   }
@@ -943,13 +944,17 @@ export class GuideService {
     return false;
   }
 
-  private sanitizeGeneratedListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
+  private sanitizeGeneratedListForDisplay(
+    list: GuideDeckList,
+    coverImageUrls: string[] = [],
+    usedCoverUrls?: Set<string>,
+  ): GuideDeckList {
     const cleanList = this.sanitizeGeneratedListText(list);
     if (!/caption-/i.test(cleanList.id)) return cleanList;
 
     const safeDescription = this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanList.description, cleanList.pages));
     const pages = cleanList.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, cleanList, safeDescription));
-    const portableCoverImage = this.coverImageForList(cleanList, coverImageUrls) || this.firstPortableImageForPages(pages);
+    const portableCoverImage = this.coverImageForList(cleanList, coverImageUrls, usedCoverUrls) || this.firstPortableImageForPages(pages);
     return {
       ...cleanList,
       description: safeDescription,
@@ -982,10 +987,14 @@ export class GuideService {
     };
   }
 
-  private coverImageForList(list: GuideDeckList, coverImageUrls: string[]): string {
+  private coverImageForList(list: GuideDeckList, coverImageUrls: string[], usedCoverUrls?: Set<string>): string {
     const pool = coverImageUrls.filter((url) => this.isPortableImageUrl(url));
     if (pool.length === 0) return '';
-    return pool[stableHash(`${list.id}|${list.title}|${list.description}|cover`) % pool.length] || '';
+    const seed = `${list.id}|${list.title}|${list.description}|cover`;
+    const ordered = [...pool].sort((left, right) => stableHash(`${seed}:${left}`) - stableHash(`${seed}:${right}`));
+    const picked = ordered.find((url) => !usedCoverUrls?.has(url)) || ordered[0] || '';
+    if (picked) usedCoverUrls?.add(picked);
+    return picked;
   }
 
   private isPortableImageUrl(value?: string): boolean {

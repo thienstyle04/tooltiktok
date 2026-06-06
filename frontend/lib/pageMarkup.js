@@ -1061,13 +1061,20 @@ function renderBudget3N2DTablePage(page, index, listId) {
       <div class="budget72-table-shell">
         <h2>${escapeHtml(page.title || 'ĐÀ LẠT 3 NGÀY 2 ĐÊM')}</h2>
         <table class="budget72-schedule-table">
+          <colgroup>
+            <col class="budget72-col-day" />
+            <col class="budget72-col-time" />
+            <col class="budget72-col-activity" />
+            <col class="budget72-col-address" />
+            <col class="budget72-col-cost" />
+          </colgroup>
           <thead>
             <tr>
-              <th>Ngày</th>
-              <th>Thời gian</th>
-              <th>Hoạt động</th>
-              <th>Địa chỉ</th>
-              <th>Chi phí</th>
+              <th class="budget72-day">Ngày</th>
+              <th class="budget72-time">Thời gian</th>
+              <th class="budget72-activity">Hoạt động</th>
+              <th class="budget72-address">Địa chỉ</th>
+              <th class="budget72-cost">Chi phí</th>
             </tr>
           </thead>
           <tbody>
