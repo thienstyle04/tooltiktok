@@ -1,4 +1,4 @@
-import { DATASET_CACHE_KEY, sanitizeDataset } from './utils';
+import { DATASET_CACHE_KEY, STUDIO_CATALOG_REVISION_KEY, sanitizeDataset } from './utils';
 
 const DATASET_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DATASET_BACKGROUND_CHECK_INTERVAL_MS = 10 * 60 * 1000;
@@ -43,6 +43,10 @@ export function clearCachedDataset() {
     try {
       storage.removeItem(DATASET_CACHE_KEY);
       storage.removeItem(DATASET_BACKGROUND_CHECK_KEY);
+      storage.removeItem(STUDIO_CATALOG_REVISION_KEY);
+      // Dọn cache cũ để tránh nhầm phiên bản.
+      storage.removeItem('dalat-carousel-dataset-cache-v42');
+      storage.removeItem('dalat-carousel-dataset-cache-v43');
     } catch {
       // Ignore storage failures.
     }

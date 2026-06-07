@@ -2,6 +2,7 @@ import { countDeckPages, listIsMain } from '../lib/utils';
 
 const V2_DECK_IDS = new Set([
   'grid-8-feed',
+  'grid-8-quaytung',
   'spotlight-v2',
   'pov-3-v2',
 ]);

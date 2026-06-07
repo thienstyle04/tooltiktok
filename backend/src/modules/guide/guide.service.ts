@@ -50,8 +50,8 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { DriveFileAsset, fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
@@ -467,7 +467,10 @@ export class GuideService {
     const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story'
       ? this.budget3N2DCoverCaption(safeCaption, requestedTone, seed, generatedNumber)
       : safeCaption;
-    const generatedPages = applyCaptionToPages(basePages, finalCaption);
+    let generatedPages = applyCaptionToPages(basePages, finalCaption);
+    if (deckId === 'pov-3-v2') {
+      generatedPages = await this.enrichPov3V2StackTaglines(generatedPages);
+    }
 
     const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, finalCaption.coverTitle, finalCaption.body, generatedPages);
     generatedList.coverTitle = finalCaption.coverTitle;
@@ -862,6 +865,7 @@ export class GuideService {
     if (deckId === 'spotlight-guide') return SPOTLIGHT_GUIDE_TEMPLATE_VERSION;
     if (deckId === 'spotlight-partner') return SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
     if (deckId === 'grid-8-feed') return GRID_8_FEED_TEMPLATE_VERSION;
+    if (deckId === 'grid-8-quaytung') return GRID_8_QUAYTUNG_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v2') return SPOTLIGHT_V2_TEMPLATE_VERSION;
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
     if (deckId === 'budget-4n3d-wallet') return BUDGET_4N3D_WALLET_TEMPLATE_VERSION;
@@ -984,6 +988,12 @@ export class GuideService {
 
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
     const cleanPage = this.sanitizeDeckPageText(page);
+    if (cleanPage.type === 'cover' && cleanPage.layoutVariant === 'spotlight-v2') {
+      return {
+        ...cleanPage,
+        subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(cleanPage.subtitle || list.description)),
+      };
+    }
     if (cleanPage.type !== 'list' || cleanPage.layoutVariant !== 'journey-4n3d') return cleanPage;
 
     const rawSubtitle = String(cleanPage.subtitle ?? '').trim();
@@ -1032,10 +1042,11 @@ export class GuideService {
     if (page.type === 'cover') {
       const layout = String(page.layoutVariant || '');
       if (layout === 'spotlight-v2') {
+        const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
         return {
           ...page,
-          title: this.sanitizeContentText(page.title || 'Đà Lạt mà cứ ngỡ ở nước ngoài'),
-          subtitle: this.sanitizeContentText(page.subtitle || '/Tổng hợp những địa điểm mà dạo này mình thích/'),
+          title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
+          subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(rawSubtitle)),
         };
       }
       // Use page's own subtitle if available, otherwise use the list description (body).
@@ -1947,6 +1958,97 @@ export class GuideService {
       '- Trả về JSON object đúng schema:',
       '{"coverTitle":"...","headline":"...","body":"...","hashtags":["#...","#...","#...","#...","#..."]}',
     ].filter(Boolean).join('\n');
+  }
+
+  private isPov3ImageMappingNote(value: string): boolean {
+    return /^(?:Ảnh (?:đã map|tự map|minh họa|đối tác)|Thông tin đối tác)/i.test(String(value || '').trim());
+  }
+
+  private async enrichPov3V2StackTaglines(pages: DeckPage[]): Promise<DeckPage[]> {
+    const apiKey = String(process.env.DEEPSEEK_API_KEY ?? '').trim();
+    if (!apiKey) return pages;
+
+    type Entry = { key: string; name: string; moTa: string };
+    const entries: Entry[] = [];
+    const seen = new Set<string>();
+
+    for (const page of pages) {
+      if (page.type !== 'list' || page.layoutVariant !== 'pov-3-v2-stack') continue;
+      for (const item of page.items || []) {
+        const moTa = String(item.label || item.imageNote || '').replace(/\s+/g, ' ').trim();
+        if (!moTa || moTa.length < 24 || this.isPov3ImageMappingNote(moTa) || seen.has(moTa)) continue;
+        seen.add(moTa);
+        entries.push({ key: String(entries.length), name: item.name, moTa });
+      }
+    }
+    if (entries.length === 0) return pages;
+
+    const prompt = [
+      'Bạn là copywriter TikTok Gen Z Việt Nam.',
+      'Biến mô tả địa điểm từ Google Sheet thành 1 câu tagline ngắn, vui, gen Z.',
+      'Mỗi tagline tối đa 55 ký tự, không emoji, không hashtag, không ngoặc vuông.',
+      'Giữ đúng tinh thần địa điểm nhưng mỗi item phải diễn đạt khác nhau, tránh lặp cấu trúc.',
+      'Trả về đúng JSON: {"items":[{"key":"0","tagline":"..."}]}',
+      '',
+      JSON.stringify(entries),
+    ].join('\n');
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30_000);
+    try {
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: 'Chỉ trả về JSON object hợp lệ, không markdown, không giải thích.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 1.05,
+          max_tokens: 1200,
+          stream: false,
+        }),
+        signal: controller.signal,
+      });
+      if (!response.ok) return pages;
+
+      const responseText = await response.text();
+      let payload: any;
+      try { payload = JSON.parse(responseText); } catch { return pages; }
+      const content = String(payload?.choices?.[0]?.message?.content ?? '').trim();
+      if (!content) return pages;
+
+      const parsed = this.parseDeepSeekJson(content);
+      const rows = Array.isArray(parsed.items) ? parsed.items : [];
+      const taglineByMoTa = new Map<string, string>();
+      for (const entry of entries) {
+        const row = rows.find((item) => String((item as Record<string, unknown>).key ?? '').trim() === entry.key);
+        const tagline = String((row as Record<string, unknown> | undefined)?.tagline ?? '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 55);
+        if (tagline) taglineByMoTa.set(entry.moTa, tagline);
+      }
+      if (taglineByMoTa.size === 0) return pages;
+
+      return pages.map((page) => {
+        if (page.type !== 'list' || page.layoutVariant !== 'pov-3-v2-stack') return page;
+        return {
+          ...page,
+          items: (page.items || []).map((item) => {
+            const moTa = String(item.label || item.imageNote || '').replace(/\s+/g, ' ').trim();
+            const tagline = taglineByMoTa.get(moTa);
+            if (!tagline) return item;
+            return { ...item, label: tagline, imageNote: tagline };
+          }),
+        };
+      });
+    } catch {
+      return pages;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private parseDeepSeekJson(content: string): Record<string, unknown> {

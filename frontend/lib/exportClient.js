@@ -1105,6 +1105,8 @@ function deckShortName(deckId) {
     'first-time': 'firsttime',
     'grid-6': 'grid6',
     'grid-8': 'grid8',
+    'grid-8-feed': 'grid8feed',
+    'grid-8-quaytung': 'grid8qt',
     'grid-4': 'grid4',
     'grid-5': 'grid5',
     'spotlight-guide': 'spotlight',

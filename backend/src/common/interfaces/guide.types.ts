@@ -69,7 +69,7 @@ export interface CoverPage {
   backgroundImage: string;
   /** Spotlight V2 cover: lưới 2×2 — chỉ ảnh nền (pool Hinh_nen). */
   coverImages?: string[];
-  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-8' | 'grid-8-feed' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-partner' | 'spotlight-partner-v2' | 'pov-maikem' | 'pov-3-v2-cover' | 'budget-3n2d' | 'budget-3n2d-story' | 'budget-wallet-cover';
+  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung-cover' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-partner' | 'spotlight-partner-v2' | 'pov-maikem' | 'pov-3-v2-cover' | 'budget-3n2d' | 'budget-3n2d-story' | 'budget-wallet-cover';
   titlePlacement?: TitlePlacement;
 }
 
@@ -81,7 +81,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-8' | 'grid-8-feed' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
+  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
   titlePlacement?: TitlePlacement;
   contentStyle?: MutantContentStyle;
 }

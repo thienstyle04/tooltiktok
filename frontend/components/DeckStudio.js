@@ -11,7 +11,7 @@ import {
   writeCachedDataset,
 } from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
-import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, listIsMain, sanitizeDataset } from '../lib/utils';
+import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, listIsMain, sanitizeDataset } from '../lib/utils';
 import { setSpotlightV2CoverImagePool } from '../lib/pageMarkup';
 import CaptionTools from './CaptionTools';
 import DataStatsPanel from './DataStatsPanel';
@@ -109,6 +109,7 @@ function sanitizeCaptionBody(body, list) {
 
 const V2_TEMPLATE_DECK_IDS = [
   'grid-8-feed',
+  'grid-8-quaytung',
   'spotlight-v2',
   'pov-3-v2',
 ];
@@ -141,11 +142,45 @@ function needsSpotlightCoverRefresh(dataset) {
   return new Set(images).size < 4;
 }
 
+function needsGrid8QuaytungCatalogRefresh(dataset) {
+  const deck = (dataset?.decks || []).find((item) => item.id === 'grid-8-quaytung');
+  if (!deck) return true;
+  const main = (deck.lists || []).find((list) => listIsMain(list));
+  if (!main) return true;
+  if (Number(main.templateVersion || 0) < 1) return true;
+  if ((main.pages || []).length < 7) return true;
+  const cover = main.pages.find((page) => page.type === 'cover');
+  return cover?.layoutVariant !== 'grid-8-quaytung-cover';
+}
+
+function storedCatalogRevision() {
+  if (typeof window === 'undefined') return '';
+  try {
+    return String(window.localStorage.getItem(STUDIO_CATALOG_REVISION_KEY) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function markCatalogRevisionStored() {
+  if (typeof window === 'undefined') return;
+  const value = STUDIO_CATALOG_REVISION;
+  for (const storage of [window.localStorage, window.sessionStorage].filter(Boolean)) {
+    try {
+      storage.setItem(STUDIO_CATALOG_REVISION_KEY, value);
+    } catch {
+      // Ignore quota errors.
+    }
+  }
+}
+
 function needsTemplateCatalogRefresh(dataset) {
+  if (storedCatalogRevision() !== STUDIO_CATALOG_REVISION) return true;
   return hasEmptySpotlightPartnerDeck(dataset)
     || hasRetiredCatalogDecks(dataset)
     || missingCatalogDecks(dataset).length > 0
-    || needsSpotlightCoverRefresh(dataset);
+    || needsSpotlightCoverRefresh(dataset)
+    || needsGrid8QuaytungCatalogRefresh(dataset);
 }
 
 function listCountSignature(dataset) {
@@ -287,6 +322,7 @@ export default function DeckStudio({ initialDataset = null }) {
       if (!response.ok) throw new Error(`Không tải được dữ liệu: HTTP ${response.status}`);
       const nextDataset = await response.json();
       writeCachedDataset(nextDataset);
+      markCatalogRevisionStored();
       applyDataset(nextDataset, preferredSelection);
       setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm.`);
       return nextDataset;

@@ -879,6 +879,36 @@ function coverSubtitleFromCaption(body: string, fallback: string): string {
   return sanitizeDeckHeadline(cleanBody || fallback || '');
 }
 
+const SPOTLIGHT_V2_COVER_SUBTITLE_MAX = 58;
+
+export function truncateSpotlightV2CoverSubtitle(value: string, fallback = ''): string {
+  const stripped = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\/+|\/+$/g, '');
+  const clean = sanitizeDeckHeadline(stripped || fallback || '').trim();
+  if (!clean) return '';
+  if (clean.length <= SPOTLIGHT_V2_COVER_SUBTITLE_MAX) return clean;
+
+  const truncated = clean.slice(0, SPOTLIGHT_V2_COVER_SUBTITLE_MAX);
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > SPOTLIGHT_V2_COVER_SUBTITLE_MAX * 0.45) {
+    return `${truncated.slice(0, lastSpace).trim()}…`;
+  }
+  return `${truncated.trim()}…`;
+}
+
+function spotlightV2CoverSubtitleFromCaption(
+  caption: { headline: string; body: string },
+  fallback: string,
+): string {
+  const headline = String(caption.headline || '').replace(/\s+/g, ' ').trim();
+  const body = String(caption.body || '').replace(/\s+/g, ' ').trim();
+  const firstSentence = body.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() || body;
+  const source = headline || firstSentence || body || fallback;
+  return truncateSpotlightV2CoverSubtitle(source, fallback);
+}
+
 export function buildListPage(
   chipText: string,
   chipTone: AccentTone,
@@ -1432,10 +1462,13 @@ export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: s
   const coverTitle = String(caption.coverTitle ?? '').trim();
   return pages.map((page) => {
     if (page.type === 'cover') {
+      const subtitle = page.layoutVariant === 'spotlight-v2'
+        ? spotlightV2CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
+        : coverSubtitleFromCaption(safeBody, page.subtitle);
       return {
         ...page,
         title: sanitizeDeckHeadline(coverTitle || caption.headline || page.title),
-        subtitle: coverSubtitleFromCaption(safeBody, page.subtitle),
+        subtitle,
       };
     }
     return page;
@@ -3546,6 +3579,140 @@ function buildGrid8Pages(
       layoutVariant: 'grid-8',
     },
     ...contentPages,
+  ];
+}
+
+export function buildGrid8QuaytungPages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const imageResolver = createListImageResolver(
+    imageUrls,
+    libraryEntries,
+    `${seedPrefix}:grid-8-quaytung`,
+    mappedImageUrls,
+    globalUsedImageUrls || [],
+    { orientation: 'any' },
+  );
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const pick = createListPicker(globalUsedItemIds);
+
+  type GridConfig = {
+    chipText: string;
+    chipTone: AccentTone;
+    hook: string;
+    tagline: string;
+    seed: string;
+    pool: GuideItem[];
+    label?: (item: GuideItem) => string;
+    checkin?: boolean;
+  };
+
+  const gridConfigs: GridConfig[] = [
+    {
+      chipText: 'Cafe sáng',
+      chipTone: 'gold',
+      hook: 'CAFE SÁNG',
+      tagline: 'những quán cafe local vừa chill vừa có gu',
+      seed: '-cafe-sang',
+      pool: pools.dayCafeItems.length > 0 ? pools.dayCafeItems : pools.cafeItems,
+      label: (item) => item.type || 'Cafe',
+    },
+    {
+      chipText: 'Check-in',
+      chipTone: 'terracotta',
+      hook: 'MẢNG XANH',
+      tagline: 'địa điểm hòa mình với thiên nhiên siu đẹp',
+      seed: '-mang-xanh',
+      pool: pools.checkinItems,
+      checkin: true,
+    },
+    {
+      chipText: 'Cafe',
+      chipTone: 'gold',
+      hook: 'CHẤT LIỆU',
+      tagline: 'những quán mang đậm chất liệu dalat',
+      seed: '-chat-lieu',
+      pool: pools.cafeItems,
+      label: (item) => item.type || 'Cafe',
+    },
+    {
+      chipText: 'Cafe đẹp',
+      chipTone: 'gold',
+      hook: 'CAFE ĐẸP',
+      tagline: 'toàn địa điểm cafe hot thu hút giới trẻ',
+      seed: '-cafe-dep',
+      pool: pools.cafeItems,
+      label: (item) => item.type || 'Cafe',
+    },
+    {
+      chipText: 'Ăn vặt',
+      chipTone: 'berry',
+      hook: 'ĂN VẶT',
+      tagline: 'tổng hợp quán ăn vặt ngon cho hệ thích mukbang',
+      seed: '-an-vat',
+      pool: pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.foodItems,
+      label: mealLabelForItem,
+    },
+  ];
+
+  const gridPages = gridConfigs.map((cfg) => {
+    const items = cfg.checkin
+      ? buildBalancedCheckinGrid8Items(pools.checkinItems, 8, `${seedPrefix}${cfg.seed}`, pick, imageResolver)
+      : buildGrid8PageItems(cfg.pool, cfg.pool, 8, `${seedPrefix}${cfg.seed}`, pick, imageResolver, cfg.label || mealLabelForItem);
+    return buildListPage(
+      cfg.chipText,
+      cfg.chipTone,
+      cfg.hook,
+      cfg.tagline,
+      items,
+      background(`${seedPrefix}${cfg.seed}-bg`),
+      'grid-8-quaytung',
+    );
+  });
+
+  const menuSections = [
+    { title: 'QUÁN ĂN SÁNG', pool: pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.daytimeFoodItems, count: 7, seed: '-menu-sang' },
+    { title: 'CƠM NHÀ SIU NGON', pool: pools.lunchItems.length > 0 ? pools.lunchItems : pools.daytimeFoodItems, count: 5, seed: '-menu-com' },
+    { title: 'MẤY MÓN NGON KHÁC', pool: pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.foodItems, count: 5, seed: '-menu-khac' },
+    { title: 'BBQ - LẨU NƯỚNG', pool: pools.grillHotpotItems.length > 0 ? pools.grillHotpotItems : pools.dinnerItems, count: 7, seed: '-menu-bbq' },
+  ];
+  const menuItems: PageItem[] = [];
+  for (const section of menuSections) {
+    const picked = pickWithUsedFallback(section.pool, section.count, `${seedPrefix}${section.seed}`, pick);
+    for (const item of picked) {
+      menuItems.push(pageItemWithResolver(item, section.title, imageResolver));
+    }
+  }
+
+  const menuPage = buildListPage(
+    'Ăn uống',
+    'berry',
+    'ĐỊA ĐIỂM ĂN UỐNG NGON',
+    'Tổng hợp quán ăn theo buổi để lưu nhanh.',
+    menuItems,
+    coverBackground(`${seedPrefix}-menu-bg`),
+    'grid-8-quaytung-menu',
+  );
+
+  return [
+    {
+      ...buildCoverPage(
+        'List này toàn địa điểm "vuýp"',
+        'Lưu list này cho chuyến đi thành công',
+        coverBackground(`${seedPrefix}-cover`),
+      ),
+      layoutVariant: 'grid-8-quaytung-cover',
+    },
+    ...gridPages,
+    menuPage,
   ];
 }
 

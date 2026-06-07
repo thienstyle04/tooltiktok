@@ -10,6 +10,7 @@ import type {
 import {
   buildDeckList,
   buildGrid5Pages,
+  buildGrid8QuaytungPages,
   buildListPage,
   buildPagesForDeck,
   buildPov3V2Pages,
@@ -18,12 +19,14 @@ import {
 import { stableHash } from './image-resolver';
 
 export const GRID_8_FEED_TEMPLATE_VERSION = 10;
-export const SPOTLIGHT_V2_TEMPLATE_VERSION = 13;
-export const POV_3_V2_TEMPLATE_VERSION = 5;
+export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 1;
+export const SPOTLIGHT_V2_TEMPLATE_VERSION = 15;
+export const POV_3_V2_TEMPLATE_VERSION = 6;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
 
 export const V2_DECK_IDS = [
   'grid-8-feed',
+  'grid-8-quaytung',
   'spotlight-v2',
   'pov-3-v2',
 ] as const;
@@ -122,8 +125,6 @@ export function tuneSpotlightV2Cover(
     if (variant === 'spotlight-v2') {
       return {
         ...page,
-        title: 'Đà Lạt mà cứ ngỡ ở nước ngoài',
-        subtitle: '/Tổng hợp những địa điểm mà dạo này mình thích/',
         coverImages: coverGridImages,
         backgroundImage: coverGridImages[0] || page.backgroundImage,
       };
@@ -158,6 +159,19 @@ export function buildGrid8FeedPages(common: DeckBuildCommon, seedPrefix: string)
   const pages = buildPagesForDeck('grid-8', ...buildArgs(common, seedPrefix));
   const remapped = remapDeckLayouts(pages, { 'grid-8': 'grid-8-feed' });
   return tuneV2ListPageTitles(remapped);
+}
+
+export function buildGrid8QuaytungDeckPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
+  const pools = createDeckBuildPools(common.itemsBySection);
+  return buildGrid8QuaytungPages(
+    pools,
+    common.imageUrls,
+    common.libraryEntries,
+    seedPrefix,
+    common.globalUsedItemIds,
+    common.globalUsedImageUrls,
+    common.coverImageUrls,
+  );
 }
 
 export function buildSpotlightV2Pages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
@@ -280,6 +294,7 @@ export function buildBudget4N3DWalletPages(common: DeckBuildCommon, seedPrefix: 
 
 const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'grid-8-feed': GRID_8_FEED_TEMPLATE_VERSION,
+  'grid-8-quaytung': GRID_8_QUAYTUNG_TEMPLATE_VERSION,
   'spotlight-v2': SPOTLIGHT_V2_TEMPLATE_VERSION,
   'pov-3-v2': POV_3_V2_TEMPLATE_VERSION,
 };
@@ -290,6 +305,12 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     title: 'Bộ trang 8 ô — bản Feed (V2)',
     description: 'Song song Lưới 8 Ô: chữ to hơn, badge 01–08, title giữa 2 dòng. Tham chiếu rong_choi / quaytung.',
     listName: 'List lưới 8 feed V2',
+  },
+  'grid-8-quaytung': {
+    nav: 'Lưới 8 Quaytung',
+    title: 'Bộ lưới 8 ô — bản Quaytung (V2)',
+    description: 'Cover script vàng + 5 trang lưới 3×3 overlay + trang tổng hợp ăn uống. Tham chiếu quaytungdalat.hihi.',
+    listName: 'List lưới 8 quaytung V2',
   },
   'spotlight-v2': {
     nav: 'Spotlight V2',
@@ -327,6 +348,8 @@ export function buildPagesForDeckV2(
   switch (deckId) {
     case 'grid-8-feed':
       return buildGrid8FeedPages(common, seedPrefix);
+    case 'grid-8-quaytung':
+      return buildGrid8QuaytungDeckPages(common, seedPrefix);
     case 'spotlight-v2':
       return buildSpotlightV2Pages(common, seedPrefix);
     case 'pov-3-v2':

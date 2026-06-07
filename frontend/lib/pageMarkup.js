@@ -664,6 +664,7 @@ function sanitizeSubtitleForDisplay(value, pages) {
 
 const V2_COVER_VARIANTS = new Set([
   'grid-8-feed',
+  'grid-8-quaytung-cover',
   'spotlight-v2',
   'spotlight-partner-v2',
   'pov-maikem',
@@ -673,6 +674,8 @@ const V2_COVER_VARIANTS = new Set([
 
 const V2_LIST_VARIANTS = new Set([
   'grid-8-feed',
+  'grid-8-quaytung',
+  'grid-8-quaytung-menu',
   'spotlight-v2',
   'spotlight-v2-list',
   'spotlight-partner-v2',
@@ -828,6 +831,150 @@ function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, ba
   `;
 }
 
+function renderGrid8QuaytungDalatBadge() {
+  return '<span class="grid8-quaytung-dalat-badge">dalat</span>';
+}
+
+function formatGrid8QuaytungCoverTitle(title) {
+  const raw = String(title || 'List này toàn địa điểm "vuýp"').replace(/\s+/g, ' ').trim();
+  const words = raw.split(' ');
+  if (words.length <= 4) return escapeHtml(raw);
+  const splitAt = Math.ceil(words.length / 2);
+  return `${escapeHtml(words.slice(0, splitAt).join(' '))}<br>${escapeHtml(words.slice(splitAt).join(' '))}`;
+}
+
+function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  const subtitle = String(coverSubtitle || 'Lưu list này cho chuyến đi thành công').replace(/^\[+|\]+$/g, '').trim();
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="grid8-quaytung-cover-photo">
+        ${renderPreviewImage(backgroundImage, coverTitle)}
+      </div>
+      <div class="grid8-quaytung-cover-dim"></div>
+      <div class="grid8-quaytung-cover-center">
+        ${renderGrid8QuaytungDalatBadge()}
+        <h1 class="grid8-quaytung-cover-title">${formatGrid8QuaytungCoverTitle(coverTitle)}</h1>
+        <p class="grid8-quaytung-cover-sub">[ ${escapeHtml(subtitle)} ]</p>
+      </div>
+    </article>
+  `;
+}
+
+function grid8QuaytungItemHours(item) {
+  const secondary = String(item?.metaSecondary || '').replace(/\s+/g, ' ').trim();
+  const hoursMatch = secondary.match(/Khung giờ:\s*([^·]+)/i);
+  if (hoursMatch) return hoursMatch[1].trim();
+  const priceMatch = secondary.match(/Giá:\s*([^·]+)/i);
+  if (priceMatch && /free|miễn\s*phí|^0\s*đ$/i.test(priceMatch[1])) return 'FREE';
+  if (/free|miễn\s*phí/i.test(secondary)) return 'FREE';
+  return '';
+}
+
+function renderGrid8QuaytungSlot(item) {
+  const displayName = gridDisplayName(item);
+  const address = cleanGridAddress(item?.metaPrimary) || String(item?.metaPrimary || '').trim();
+  const hours = grid8QuaytungItemHours(item);
+  return `
+    <div class="grid8-quaytung-slot ${escapeHtml(imageSourceClass(item))}">
+      <div class="grid8-quaytung-photo">
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+        <div class="grid8-quaytung-shade"></div>
+        <div class="grid8-quaytung-labels">
+          <div class="grid8-quaytung-name">${escapeHtml(displayName)}</div>
+          ${address ? `<div class="grid8-quaytung-address">${escapeHtml(address)}</div>` : ''}
+          ${hours ? `<div class="grid8-quaytung-hours"><span class="grid8-quaytung-clock" aria-hidden="true">🕒</span> ${escapeHtml(hours)}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderGrid8QuaytungCenterSlot(page, backgroundImage) {
+  const hook = String(page.title || '').trim();
+  const tagline = String(page.subtitle || '').trim();
+  return `
+    <div class="grid8-quaytung-slot grid8-quaytung-center-slot">
+      <div class="grid8-quaytung-photo">
+        ${backgroundImage ? renderPreviewImage(backgroundImage, hook) : ''}
+        <div class="grid8-quaytung-center-shade"></div>
+        <div class="grid8-quaytung-center-copy">
+          ${renderGrid8QuaytungDalatBadge()}
+          <div class="grid8-quaytung-center-hook">"${escapeHtml(hook)}"</div>
+          ${tagline ? `<div class="grid8-quaytung-center-tagline">${escapeHtml(tagline)}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderGrid8QuaytungItems(page, items, backgroundImage) {
+  const cells = (items || []).slice(0, 8);
+  const centerHtml = renderGrid8QuaytungCenterSlot(page, backgroundImage);
+  const ordered = [
+    ...cells.slice(0, 3).map((item) => renderGrid8QuaytungSlot(item)),
+    cells[3] ? renderGrid8QuaytungSlot(cells[3]) : '',
+    centerHtml,
+    cells[4] ? renderGrid8QuaytungSlot(cells[4]) : '',
+    ...cells.slice(5, 8).map((item) => renderGrid8QuaytungSlot(item)),
+  ].filter(Boolean);
+  return ordered.join('');
+}
+
+function renderGrid8QuaytungMenuSection(section, reverse) {
+  const photoItem = section.items.find((item) => item.imageUrl) || section.items[0];
+  const photoUrl = photoItem?.imageUrl || '';
+  const rows = section.items.map((item) => {
+    const address = cleanGridAddress(item.metaPrimary) || String(item.metaPrimary || '').trim();
+    return `
+      <li class="grid8-quaytung-menu-row">
+        <strong>${escapeHtml(gridDisplayName(item))}</strong>
+        ${address ? `<span>${escapeHtml(address)}</span>` : ''}
+      </li>
+    `;
+  }).join('');
+  return `
+    <section class="grid8-quaytung-menu-section${reverse ? ' is-reverse' : ''}">
+      <div class="grid8-quaytung-menu-section-copy">
+        <h3 class="grid8-quaytung-menu-section-title">✓ ${escapeHtml(section.title)}</h3>
+        <ul class="grid8-quaytung-menu-list">${rows}</ul>
+      </div>
+      <div class="grid8-quaytung-menu-section-photo">
+        ${photoUrl ? renderPreviewImage(photoUrl, section.title) : ''}
+      </div>
+    </section>
+  `;
+}
+
+function renderGrid8QuaytungMenuPage(page, index, listId, list) {
+  const sectionOrder = [];
+  const sectionMap = new Map();
+  for (const item of page.items || []) {
+    const key = String(item.label || 'Gợi ý').trim();
+    if (!sectionMap.has(key)) {
+      sectionMap.set(key, []);
+      sectionOrder.push(key);
+    }
+    sectionMap.get(key).push(item);
+  }
+  const sections = sectionOrder.map((title) => ({ title, items: sectionMap.get(title) || [] }));
+  const backgroundImage = page.backgroundImage || coverBackgroundImage(page, list);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-menu-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || 'menu')}.png">
+      <div class="grid8-quaytung-menu-bg">
+        ${renderPreviewImage(backgroundImage, page.title)}
+      </div>
+      <div class="grid8-quaytung-menu-dim"></div>
+      <div class="grid8-quaytung-menu-head">
+        ${renderGrid8QuaytungDalatBadge()}
+        <h2 class="grid8-quaytung-menu-title">${escapeHtml(page.title || 'ĐỊA ĐIỂM ĂN UỐNG NGON')}</h2>
+      </div>
+      <div class="grid8-quaytung-menu-sections">
+        ${sections.map((section, idx) => renderGrid8QuaytungMenuSection(section, idx % 2 === 1)).join('')}
+      </div>
+    </article>
+  `;
+}
+
 function renderGrid5TitleCell(titleText) {
   return `
     <article class="grid5-cell grid5-title-cell">
@@ -962,6 +1109,7 @@ function renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, 
           </div>
         `).join('')}
       </div>
+      <div class="spotlight-v2-cover-dim" aria-hidden="true"></div>
       <div class="spotlight-v2-cover-center">
         ${options.partner ? '<div class="spotlight-v2-cover-partner-script">dalat.</div>' : ''}
         ${!options.partner ? '<div class="spotlight-v2-cover-ornament" aria-hidden="true">✦ · 📷 · ✦</div>' : ''}
@@ -1275,6 +1423,9 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
   if (page.layoutVariant === 'grid-8-feed') {
     return renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
   }
+  if (page.layoutVariant === 'grid-8-quaytung-cover') {
+    return renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
   if (page.layoutVariant === 'grid-5') {
     return renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
   }
@@ -1306,6 +1457,19 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
         </div>
       </article>
     `;
+  }
+  if (page.layoutVariant === 'grid-8-quaytung') {
+    const bg = page.backgroundImage || page.items?.[0]?.imageUrl || coverBackgroundImage(page, list);
+    return `
+      <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        <div class="grid8-quaytung-matrix">
+          ${renderGrid8QuaytungItems(page, page.items, bg)}
+        </div>
+      </article>
+    `;
+  }
+  if (page.layoutVariant === 'grid-8-quaytung-menu') {
+    return renderGrid8QuaytungMenuPage(page, index, listId, list);
   }
   if (page.layoutVariant === 'grid-5') {
     return renderGrid5Page(page, index, listId, pageSubtitle, list);
