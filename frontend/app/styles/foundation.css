@@ -62,25 +62,9 @@
 
 @font-face {
   font-family: "Baloo 2";
-  src: url("/fonts/Baloo2-600.ttf") format("truetype");
+  src: url("/fonts/Baloo2-700.woff2") format("woff2");
   font-style: normal;
-  font-weight: 600;
-  font-display: block;
-}
-
-@font-face {
-  font-family: "Baloo 2";
-  src: url("/fonts/Baloo2-700.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 700;
-  font-display: block;
-}
-
-@font-face {
-  font-family: "Baloo 2";
-  src: url("/fonts/Baloo2-800.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 800;
+  font-weight: 600 800;
   font-display: block;
 }
 

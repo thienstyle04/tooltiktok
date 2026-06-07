@@ -5,3 +5,4 @@ release/
 .tmp-*
 *.log
 .omx/
+backend/src/modules/guide/tools/export-quality-test-output/

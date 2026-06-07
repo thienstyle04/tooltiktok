@@ -11,7 +11,8 @@ import {
   writeCachedDataset,
 } from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
-import { SELECTION_STORAGE_KEY, listIsMain } from '../lib/utils';
+import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, listIsMain, sanitizeDataset } from '../lib/utils';
+import { setSpotlightV2CoverImagePool } from '../lib/pageMarkup';
 import CaptionTools from './CaptionTools';
 import DataStatsPanel from './DataStatsPanel';
 import DeleteListsModal from './DeleteListsModal';
@@ -106,14 +107,92 @@ function sanitizeCaptionBody(body, list) {
   return bodyListsStops(clean, forbiddenPlaceNames) ? GENERIC_CAPTION_BODY : clean;
 }
 
+const V2_TEMPLATE_DECK_IDS = [
+  'grid-8-feed',
+  'grid-8-quaytung',
+  'spotlight-v2',
+  'pov-3-v2',
+];
+
+const REQUIRED_CATALOG_DECK_IDS = [
+  'grid-5',
+  ...V2_TEMPLATE_DECK_IDS,
+];
+
 function hasEmptySpotlightPartnerDeck(dataset) {
   const deck = (dataset?.decks || []).find((item) => item.id === SPOTLIGHT_PARTNER_DECK_ID);
   return Boolean(deck && (deck.lists || []).length === 0);
 }
 
+function missingCatalogDecks(dataset) {
+  const deckIds = new Set((dataset?.decks || []).map((deck) => deck.id));
+  return REQUIRED_CATALOG_DECK_IDS.filter((deckId) => !deckIds.has(deckId));
+}
+
+function hasRetiredCatalogDecks(dataset) {
+  return (dataset?.decks || []).some((deck) => RETIRED_DECK_IDS.has(deck.id));
+}
+
+function needsSpotlightCoverRefresh(dataset) {
+  const coverCount = dataset?.source?.coverImageCount;
+  if (typeof coverCount !== 'number' || coverCount < 4) return true;
+  const deck = (dataset?.decks || []).find((item) => item.id === 'spotlight-v2');
+  const cover = deck?.lists?.[0]?.pages?.find((page) => page.type === 'cover');
+  const images = Array.isArray(cover?.coverImages) ? cover.coverImages.filter(Boolean) : [];
+  return new Set(images).size < 4;
+}
+
+function needsGrid8QuaytungCatalogRefresh(dataset) {
+  const deck = (dataset?.decks || []).find((item) => item.id === 'grid-8-quaytung');
+  if (!deck) return true;
+  const main = (deck.lists || []).find((list) => listIsMain(list));
+  if (!main) return true;
+  if (Number(main.templateVersion || 0) < 1) return true;
+  if ((main.pages || []).length < 7) return true;
+  const cover = main.pages.find((page) => page.type === 'cover');
+  return cover?.layoutVariant !== 'grid-8-quaytung-cover';
+}
+
+function storedCatalogRevision() {
+  if (typeof window === 'undefined') return '';
+  try {
+    return String(window.localStorage.getItem(STUDIO_CATALOG_REVISION_KEY) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function markCatalogRevisionStored() {
+  if (typeof window === 'undefined') return;
+  const value = STUDIO_CATALOG_REVISION;
+  for (const storage of [window.localStorage, window.sessionStorage].filter(Boolean)) {
+    try {
+      storage.setItem(STUDIO_CATALOG_REVISION_KEY, value);
+    } catch {
+      // Ignore quota errors.
+    }
+  }
+}
+
+function needsTemplateCatalogRefresh(dataset) {
+  if (storedCatalogRevision() !== STUDIO_CATALOG_REVISION) return true;
+  return hasEmptySpotlightPartnerDeck(dataset)
+    || hasRetiredCatalogDecks(dataset)
+    || missingCatalogDecks(dataset).length > 0
+    || needsSpotlightCoverRefresh(dataset)
+    || needsGrid8QuaytungCatalogRefresh(dataset);
+}
+
 function listCountSignature(dataset) {
   return (dataset?.decks || [])
     .map((deck) => `${deck.id}:${(deck.lists || []).length}`)
+    .join('|');
+}
+
+function deckCatalogSignature(dataset) {
+  return (dataset?.decks || [])
+    .map((deck) => deck.id)
+    .sort()
     .join('|');
 }
 
@@ -156,6 +235,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const [savingCoverText, setSavingCoverText] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
+  const v2CatalogRefreshAttemptedRef = useRef(false);
   const selectionHistoryRef = useRef([]);
   const spotlightPartnerRefreshRef = useRef(false);
   const datasetRef = useRef(initialDataset);
@@ -218,12 +298,14 @@ export default function DeckStudio({ initialDataset = null }) {
   }), [showProgress, updateProgress, completeProgress, failProgress]);
 
   const applyDataset = useCallback((nextDataset, preferredSelection = {}) => {
-    const normalized = normalizeSelection(nextDataset, {
+    const sanitized = sanitizeDataset(nextDataset);
+    setSpotlightV2CoverImagePool(sanitized?.source?.coverImageUrls || []);
+    const normalized = normalizeSelection(sanitized, {
       ...currentSelectionRef.current,
       ...preferredSelection,
     });
-    datasetRef.current = nextDataset;
-    setDataset(nextDataset);
+    datasetRef.current = sanitized;
+    setDataset(sanitized);
     setActiveDeckId(normalized.activeDeckId);
     setActiveListId(normalized.activeListId);
     setSelectedPageIndex(normalized.selectedPageIndex);
@@ -240,6 +322,7 @@ export default function DeckStudio({ initialDataset = null }) {
       if (!response.ok) throw new Error(`Không tải được dữ liệu: HTTP ${response.status}`);
       const nextDataset = await response.json();
       writeCachedDataset(nextDataset);
+      markCatalogRevisionStored();
       applyDataset(nextDataset, preferredSelection);
       setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm.`);
       return nextDataset;
@@ -259,11 +342,11 @@ export default function DeckStudio({ initialDataset = null }) {
     if (cached?.dataset) {
       applyDataset(cached.dataset, stored);
       setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm).`);
-      if (hasEmptySpotlightPartnerDeck(cached.dataset)) {
+      if (needsTemplateCatalogRefresh(cached.dataset)) {
         clearCachedDataset();
-        loadDataset('Đang nạp lại mẫu Spotlight Đối tác...', stored, true, { silent: true }).catch((error) => {
+        loadDataset('Đang nạp lại thư viện mẫu V2...', stored, true, { silent: true }).catch((error) => {
           console.error(error);
-          setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được mẫu Spotlight Đối tác: ${error.message}`);
+          setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được mẫu mới: ${error.message}`);
         });
       } else if (shouldCheckDatasetInBackground()) {
         markDatasetBackgroundChecked();
@@ -302,7 +385,10 @@ export default function DeckStudio({ initialDataset = null }) {
         const response = await apiFetch('/api/guide-data?refresh=1', { cache: 'no-store' });
         if (!response.ok) return;
         const nextDataset = await response.json();
-        if (listCountSignature(nextDataset) === listCountSignature(datasetRef.current)) return;
+        if (
+          deckCatalogSignature(nextDataset) === deckCatalogSignature(datasetRef.current)
+          && listCountSignature(nextDataset) === listCountSignature(datasetRef.current)
+        ) return;
         writeCachedDataset(nextDataset);
         applyDataset(nextDataset, currentSelectionRef.current);
         setStatus(`Đã cập nhật dữ liệu mới (${nextDataset.source?.totalItems || 0} địa điểm).`);
@@ -329,6 +415,16 @@ export default function DeckStudio({ initialDataset = null }) {
       // Ignore storage failures.
     }
   }, [activeDeckId, activeListId, selectedPageIndex]);
+
+  useEffect(() => {
+    if (!dataset || v2CatalogRefreshAttemptedRef.current || !needsTemplateCatalogRefresh(dataset)) return;
+    v2CatalogRefreshAttemptedRef.current = true;
+    clearCachedDataset();
+    loadDataset('Đang nạp lại thư viện mẫu V2...', currentSelectionRef.current, true, { silent: true }).catch((error) => {
+      console.error(error);
+      setStatus(`Chưa tải được mẫu V2 mới: ${error.message}`);
+    });
+  }, [dataset, loadDataset]);
 
   useEffect(() => {
     if (activeDeckId !== SPOTLIGHT_PARTNER_DECK_ID) return;

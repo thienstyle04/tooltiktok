@@ -2,7 +2,7 @@ import { listIsMain } from '../lib/utils';
 import DeckCanvas from './DeckCanvas';
 import DeckSkeleton from './DeckSkeleton';
 
-export default function PreviewPanel({ deck, list, selectedPageIndex, onPageSelect, onDeleteList, loading }) {
+export default function PreviewPanel({ deck, list, selectedPageIndex, onPageSelect, onDeleteList, loading, coverImageUrls = [] }) {
   if (loading) {
     return (
       <section className="preview-panel">
@@ -76,7 +76,7 @@ export default function PreviewPanel({ deck, list, selectedPageIndex, onPageSele
               )}
             </div>
           </div>
-          <DeckCanvas list={list} selectedPageIndex={selectedPageIndex} onPageSelect={onPageSelect} />
+          <DeckCanvas list={list} selectedPageIndex={selectedPageIndex} onPageSelect={onPageSelect} coverImageUrls={coverImageUrls} />
         </section>
       </div>
     </section>
