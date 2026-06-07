@@ -18,6 +18,7 @@ import {
 import { hasItemKey, itemUsageKey, markItemKey } from './data-allocator';
 import { allowedImageKindsForItem, createListImageResolver, stableHash, topDirKind } from './image-resolver';
 import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
+import { buildPagesForDeckV2, getV2DeckDefinitions, isV2DeckId } from './deck-builder-v2';
 
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
@@ -28,6 +29,7 @@ export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 15;
 export const POV_3_DAY_TEMPLATE_VERSION = 12;
 export const GRID_4_TEMPLATE_VERSION = 17;
 export const GRID_4_MUTANT_TEMPLATE_VERSION = 1;
+export const GRID_5_TEMPLATE_VERSION = 3;
 export const GRID_6_TEMPLATE_VERSION = 16;
 export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 1;
 export const GRID_8_TEMPLATE_VERSION = 15;
@@ -884,7 +886,7 @@ export function buildListPage(
   subtitle: string,
   items: PageItem[],
   backgroundImage: string,
-  layoutVariant: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-8' | 'grid-4' | 'grid-4-mutant' | 'journey-4n3d' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-list' | 'spotlight-partner' | 'spotlight-partner-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' = 'standard',
+  layoutVariant: NonNullable<ListPage['layoutVariant']> = 'standard',
 ): ListPage {
   return { type: 'list', chipText, chipTone, title, subtitle, items, backgroundImage, layoutVariant };
 }
@@ -2868,7 +2870,7 @@ function buildSpotlightGuidePages(
     buildListPage(
       'Homestay',
       'pine',
-      'Homestay nên xem',
+      'Homestay cần lưu',
       '9 lựa chọn lưu trú được gom riêng để dễ chốt chỗ ở trước chuyến đi.',
       buildSpotlightListItems(pools.stayItems, 9, `${seedPrefix}-homestay`, pick, imageResolver, 'Lưu trú'),
       background(`${seedPrefix}-homestay-bg`),
@@ -3644,7 +3646,7 @@ function buildGrid4MutantPages(
   return [coverPage, ...contentPages];
 }
 
-function buildGrid4Pages(
+export function buildGrid4Pages(
   pools: DeckBuildPools,
   imageUrls: string[],
   libraryEntries: ImageLibraryFolderEntry[],
@@ -3652,6 +3654,7 @@ function buildGrid4Pages(
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
   coverImageUrls: string[] = [],
+  itemsPerPage = 4,
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
@@ -3666,7 +3669,7 @@ function buildGrid4Pages(
       'berry',
       'MÓN NGON ĐÀ LẠT',
       '4 quán ăn được gom riêng để người xem chọn bữa nhanh.',
-      buildGridPageItems(pools.foodItems, pools.foodItems, 4, `${seedPrefix}-food`, pick, imageResolver, mealLabelForItem),
+      buildGridPageItems(pools.foodItems, pools.foodItems, itemsPerPage, `${seedPrefix}-food`, pick, imageResolver, mealLabelForItem),
       background(`${seedPrefix}-food-cover-bg`),
       'grid-4',
     ),
@@ -3675,7 +3678,7 @@ function buildGrid4Pages(
       'gold',
       'QUÁN CAFE ĐÀ LẠT',
       '4 quán cafe được tách riêng khỏi nhóm quán ăn.',
-      buildGridPageItems(pools.cafeItems, pools.cafeItems, 4, `${seedPrefix}-cafe`, pick, imageResolver, (item) => item.type),
+      buildGridPageItems(pools.cafeItems, pools.cafeItems, itemsPerPage, `${seedPrefix}-cafe`, pick, imageResolver, (item) => item.type),
       background(`${seedPrefix}-cafe-cover-bg`),
       'grid-4',
     ),
@@ -3684,7 +3687,7 @@ function buildGrid4Pages(
       'terracotta',
       'ĐỊA ĐIỂM CHECK-IN',
       '4 địa điểm check-in rõ nhóm, không trộn khu du lịch.',
-      buildBalancedCheckinGridItems(pools.checkinItems, 4, `${seedPrefix}-checkin`, pick, imageResolver),
+      buildBalancedCheckinGridItems(pools.checkinItems, itemsPerPage, `${seedPrefix}-checkin`, pick, imageResolver),
       background(`${seedPrefix}-checkin-cover-bg`),
       'grid-4',
     ),
@@ -3693,7 +3696,7 @@ function buildGrid4Pages(
       'slate',
       'CHƠI ĐÊM ĐÀ LẠT',
       'Các điểm đi buổi tối, nghe nhạc, ăn đêm và lên kế hoạch sau 20h.',
-      buildGridPageItems(nightlifeItems, nightlifeItems, 4, `${seedPrefix}-nightlife`, pick, imageResolver, photomodeServiceLabel),
+      buildGridPageItems(nightlifeItems, nightlifeItems, itemsPerPage, `${seedPrefix}-nightlife`, pick, imageResolver, photomodeServiceLabel),
       background(`${seedPrefix}-nightlife-cover-bg`),
       'grid-4',
     ),
@@ -3702,7 +3705,7 @@ function buildGrid4Pages(
       'pine',
       'DỊCH VỤ CẦN CHÚ Ý',
       'Lưu trú, thuê xe & quà tặng',
-      buildGridPageItems(pools.serviceItems, pools.serviceItems, 4, `${seedPrefix}-services`, pick, imageResolver, photomodeServiceLabel),
+      buildGridPageItems(pools.serviceItems, pools.serviceItems, itemsPerPage, `${seedPrefix}-services`, pick, imageResolver, photomodeServiceLabel),
       background(`${seedPrefix}-services-cover-bg`),
       'grid-4',
     ),
@@ -3711,7 +3714,7 @@ function buildGrid4Pages(
       'pine',
       'HOMESTAY ĐÀ LẠT',
       'Các chỗ nghỉ nên xem riêng để dễ chốt phòng, không trộn với dịch vụ khác.',
-      buildGridPageItems(pools.stayItems, pools.stayItems, 4, `${seedPrefix}-homestay`, pick, imageResolver, photomodeServiceLabel),
+      buildGridPageItems(pools.stayItems, pools.stayItems, itemsPerPage, `${seedPrefix}-homestay`, pick, imageResolver, photomodeServiceLabel),
       background(`${seedPrefix}-homestay-cover-bg`),
       'grid-4',
     ),
@@ -3720,7 +3723,7 @@ function buildGrid4Pages(
       'slate',
       activityPage.title,
       activityPage.isActivity ? 'Các hoạt động và điểm ghé được luân phiên với trang khu du lịch giữa các list.' : 'Các khu du lịch được tách riêng khỏi check-in.',
-      buildGridPageItems(activityPage.items, activityPage.items, 4, `${seedPrefix}-activity`, pick, imageResolver, (item) => item.type),
+      buildGridPageItems(activityPage.items, activityPage.items, itemsPerPage, `${seedPrefix}-activity`, pick, imageResolver, (item) => item.type),
       background(`${seedPrefix}-activity-cover-bg`),
       'grid-4',
     ),
@@ -3739,6 +3742,250 @@ function buildGrid4Pages(
   ];
 }
 
+function stripChipPrefixFromGridTitle(chipText: string, title: string): string {
+  const chip = String(chipText || '').trim();
+  const raw = String(title || '').trim();
+  if (!raw) return '';
+  if (!chip) return raw;
+  const lowerTitle = raw.toLowerCase();
+  const lowerChip = chip.toLowerCase();
+  if (lowerTitle === lowerChip) return '';
+  if (lowerTitle.startsWith(`${lowerChip} - `)) return raw.slice(chip.length + 3).trim();
+  if (lowerTitle.startsWith(`${lowerChip}-`)) return raw.slice(chip.length + 1).trim();
+  if (lowerTitle.startsWith(lowerChip)) return raw.slice(chip.length).replace(/^[\s\-–—:]+/, '').trim();
+  return raw;
+}
+
+function tuneGrid5ListPageTitles(pages: DeckPage[]): DeckPage[] {
+  return pages.map((page) => {
+    if (page.type !== 'list') return page;
+    const listPage = page as ListPage;
+    const stripped = stripChipPrefixFromGridTitle(listPage.chipText || '', listPage.title || '');
+    if (!stripped || stripped === listPage.title) return page;
+    return { ...listPage, title: stripped };
+  });
+}
+
+/** Mẫu 5 = mẫu 4 + 1 địa điểm/trang; list dùng lưới 2×3 (ô title + 5 ảnh). */
+export function buildGrid5Pages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const pages = buildGrid4Pages(
+    pools,
+    imageUrls,
+    libraryEntries,
+    seedPrefix,
+    globalUsedItemIds,
+    globalUsedImageUrls,
+    coverImageUrls,
+    5,
+  );
+
+  return tuneGrid5ListPageTitles(
+    pages.map((page) => {
+      if (page.type === 'cover') {
+        return {
+          ...page,
+          layoutVariant: 'grid-5',
+          title: 'Dalat',
+          subtitle: 'Tháng 5+6 nên đi đâu? Làm gì?',
+        } satisfies CoverPage;
+      }
+      if (page.type === 'list') {
+        const listPage = page as ListPage;
+        return {
+          ...listPage,
+          layoutVariant: 'grid-5',
+          backgroundImage: '',
+        } satisfies ListPage;
+      }
+      return page;
+    }),
+  );
+}
+
+function pov3V2PriceLabel(item: GuideItem): string {
+  if (item.sectionKey === 'check_in' || item.sectionKey === 'khu_du_lich') {
+    return isFreeCheckinItem(item) ? 'Free' : 'Có phí';
+  }
+  const clean = String(item.price || '').replace(/\s+/g, ' ').trim();
+  if (!clean || isFreePrice(clean)) return 'Free';
+  return 'Có phí';
+}
+
+function pov3V2Tagline(item: GuideItem): string {
+  return String(item.highlight || item.style || '').replace(/\s+/g, ' ').trim();
+}
+
+function pov3V2PageItem(
+  item: GuideItem,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  options: { foodGrid?: boolean } = {},
+): PageItem {
+  const resolvedImage = resolveImage(item);
+  const tagline = pov3V2Tagline(item);
+  return {
+    label: tagline,
+    id: item.id,
+    sourceKey: itemUsageKey(item),
+    sourceSectionKey: item.sectionKey,
+    name: item.name,
+    metaPrimary: item.address || 'Đang cập nhật',
+    metaSecondary: pov3V2PriceLabel(item),
+    imageUrl: resolvedImage.imageUrl,
+    imageMapped: resolvedImage.imageMapped,
+    imageSource: resolvedImage.imageSource,
+    imageNote: tagline,
+    candidateImageUrls: resolvedImage.candidateImageUrls,
+    isPartner: item.isPartner,
+    rawName: item.name,
+  };
+}
+
+function buildPov3V2StackItems(
+  pool: GuideItem[],
+  count: number,
+  seed: string,
+  pick: PickFn,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+): PageItem[] {
+  return pickPhotomodeItemsWithQuota(pool, count, seed, pick).map((item) => pov3V2PageItem(item, resolveImage));
+}
+
+function buildPov3V2GridItems(
+  primaryItems: GuideItem[],
+  fallbackItems: GuideItem[],
+  count: number,
+  seed: string,
+  pick: PickFn,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  foodGrid = false,
+): PageItem[] {
+  return pickGridItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick).map((item) =>
+    pov3V2PageItem(item, resolveImage, { foodGrid }),
+  );
+}
+
+export function buildPov3V2Pages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const imageResolver = createListImageResolver(
+    imageUrls,
+    libraryEntries,
+    `${seedPrefix}:pov-3-v2`,
+    mappedImageUrls,
+    globalUsedImageUrls || [],
+    { orientation: 'any' },
+  );
+  const resolveImage = (item: GuideItem) => imageResolver(item);
+  const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
+  const pick = createListPicker(globalUsedItemIds);
+  const checkinItems = balancedCheckinPool(
+    pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
+    12,
+    `${seedPrefix}-checkin-pool`,
+  );
+  const coverItem = pickSingleContextualItem(
+    checkinItems,
+    checkinItems,
+    `${seedPrefix}-cover`,
+    pick,
+  )[0];
+  const coverImage = coverBackground(`${seedPrefix}-cover-bg`) || (coverItem
+    ? pov3V2PageItem(coverItem, resolveImage).imageUrl
+    : '');
+
+  const pages: DeckPage[] = [
+    {
+      ...buildCoverPage(
+        'đứng đâu\ncũng đẹp',
+        '[ Những địa điểm checkin mang đậm vibe Đà Lạt ]',
+        coverImage,
+      ),
+      title: 'đứng đâu\ncũng đẹp',
+      layoutVariant: 'pov-3-v2-cover',
+    },
+  ];
+
+  for (let pageIndex = 0; pageIndex < 4; pageIndex += 1) {
+    const stackItems = buildPov3V2StackItems(
+      checkinItems,
+      3,
+      `${seedPrefix}-stack-${pageIndex + 1}`,
+      pick,
+      resolveImage,
+    );
+    if (stackItems.length === 0) break;
+    pages.push(buildListPage(
+      'Check-in',
+      'berry',
+      '',
+      '',
+      stackItems,
+      stackItems[0]?.imageUrl || background(`${seedPrefix}-stack-${pageIndex + 1}-bg`),
+      'pov-3-v2-stack',
+    ));
+  }
+
+  const cafeItems = buildPov3V2GridItems(
+    pools.cafeItems,
+    pools.cafeItems,
+    9,
+    `${seedPrefix}-cafe-grid`,
+    pick,
+    resolveImage,
+    false,
+  );
+  if (cafeItems.length > 0) {
+    pages.push(buildListPage(
+      'Cafe',
+      'gold',
+      'Những chiếc quán cafe xinh',
+      '',
+      cafeItems,
+      cafeItems[0]?.imageUrl || background(`${seedPrefix}-cafe-grid-bg`),
+      'pov-3-v2-grid',
+    ));
+  }
+
+  const foodItems = buildPov3V2GridItems(
+    pools.foodItems,
+    pools.foodItems,
+    9,
+    `${seedPrefix}-food-grid`,
+    pick,
+    resolveImage,
+    false,
+  );
+  if (foodItems.length > 0) {
+    pages.push(buildListPage(
+      'Quán ăn',
+      'berry',
+      'các quán ăn ngon',
+      '',
+      foodItems,
+      foodItems[0]?.imageUrl || background(`${seedPrefix}-food-grid-bg`),
+      'pov-3-v2-grid',
+    ));
+  }
+
+  return pages;
+}
+
 // ─── Public entry point ───────────────────────────────────────────────────────
 
 export function buildPagesForDeck(
@@ -3751,6 +3998,18 @@ export function buildPagesForDeck(
   globalUsedImageUrls?: Set<string>,
   coverImageUrls: string[] = [],
 ): DeckPage[] {
+  if (isV2DeckId(deckId)) {
+    return buildPagesForDeckV2(
+      deckId,
+      itemsBySection,
+      imageUrls,
+      libraryEntries,
+      seedPrefix,
+      globalUsedItemIds,
+      globalUsedImageUrls,
+      coverImageUrls,
+    );
+  }
   const pools = createDeckBuildPools(itemsBySection);
   if (deckId === 'itinerary-3n2d') return buildItineraryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'budget-3n2d') return buildBudget3N2DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
@@ -3765,6 +4024,7 @@ export function buildPagesForDeck(
   if (deckId === 'grid-8') return buildGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-4') return buildGrid4Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'grid-4-mutant') return buildGrid4MutantPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'grid-5') return buildGrid5Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'spotlight-guide') return buildSpotlightGuidePages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   throw new Error(`Không hỗ trợ deck: ${deckId}`);
 }
@@ -3822,20 +4082,6 @@ export function buildDecks(
       lists: [buildDeckList('pov-3-day', 'main', 'List chính', 'List POV 3 ngày', 'Danh sách ảnh chính cho bộ POV 3 ngày vi vu khắp Đà Lạt.', buildPagesForDeck('pov-3-day', common.itemsBySection, common.imageUrls, common.libraryEntries, 'pov-3-day-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
-      id: 'must-go',
-      navTitle: 'Điểm không thể bỏ qua',
-      title: 'Bộ trang các điểm không thể bỏ qua',
-      description: 'Format này bám gần series must-go: cover mạnh, sau đó tách riêng điểm nổi tiếng, check-in free, cafe và lưu trú.',
-      lists: [buildDeckList('must-go', 'main', 'List chính', 'List must-go', 'Danh sách ảnh chính cho bộ điểm không thể bỏ qua.', buildPagesForDeck('must-go', common.itemsBySection, common.imageUrls, common.libraryEntries, 'must-go-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
-    },
-    {
-      id: 'first-time',
-      navTitle: 'Lưu ý cho người mới',
-      title: 'Bộ trang dành cho người chuẩn bị đến Đà Lạt',
-      description: 'Format này đi theo logic tư vấn trước chuyến đi: đi sớm, ăn gì, ngồi cafe ở đâu, check-in ở đâu và cần nhớ gì.',
-      lists: [buildDeckList('first-time', 'main', 'List chính', 'List cho người mới', 'Danh sách ảnh chính cho bộ lưu ý người mới đến Đà Lạt.', buildPagesForDeck('first-time', common.itemsBySection, common.imageUrls, common.libraryEntries, 'first-time-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
-    },
-    {
       id: 'grid-6',
       navTitle: 'Mẫu Lưới 6 Ô',
       title: 'Bộ trang bố cục lưới 2x3 (6 địa điểm)',
@@ -3871,6 +4117,13 @@ export function buildDecks(
       lists: [buildDeckList('grid-4-mutant', 'main', 'List chính', 'List lưới 4 đột biến', 'Danh sách ảnh chính cho mẫu lưới 2x2 đột biến.', buildPagesForDeck('grid-4-mutant', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-4-mutant-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
+      id: 'grid-5',
+      navTitle: 'Mẫu Lưới 5 Ô',
+      title: 'Bộ trang bố cục lưới 2×3 (5 địa điểm)',
+      description: 'Cùng nhóm trang với Lưới 4 Ô nhưng thêm 1 địa điểm/trang (4+1=5). Lưới 2×3: ô title kem + 5 ảnh, cover @camedalat.',
+      lists: [buildDeckList('grid-5', 'main', 'List chính', 'List lưới 5 ô', 'Danh sách ảnh chính cho mẫu lưới 2×3 (5 địa điểm).', buildPagesForDeck('grid-5', common.itemsBySection, common.imageUrls, common.libraryEntries, 'grid-5-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
+    },
+    {
       id: 'spotlight-guide',
       navTitle: 'Mẫu Spotlight',
       title: 'Bộ trang spotlight 1 địa điểm',
@@ -3884,5 +4137,6 @@ export function buildDecks(
       description: 'Mẫu dành riêng cho đối tác: cover + mỗi ảnh Drive của đối tác là 1 trang spotlight + trang list đối tác liên quan. Chọn đối tác từ danh sách để sinh mẫu.',
       lists: buildSpotlightPartnerSampleLists(common.itemsBySection, common.imageUrls, common.libraryEntries, common.coverImageUrls),
     },
+    ...getV2DeckDefinitions(common),
   ];
 }

@@ -1,5 +1,22 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
-export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v7';
+export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v41';
+
+/** Deck đã gỡ khỏi app — lọc khỏi cache/dataset cũ. */
+export const RETIRED_DECK_IDS = new Set([
+  'grid-cafe-light',
+  'budget-4n3d-wallet',
+  'must-go',
+  'first-time',
+  'spotlight-partner-v2',
+  'pov-maikem',
+]);
+
+export function sanitizeDataset(dataset) {
+  if (!dataset?.decks?.length) return dataset;
+  const decks = dataset.decks.filter((deck) => !RETIRED_DECK_IDS.has(deck.id));
+  if (decks.length === dataset.decks.length) return dataset;
+  return { ...dataset, decks };
+}
 
 export function escapeHtml(value) {
   return String(value ?? '')

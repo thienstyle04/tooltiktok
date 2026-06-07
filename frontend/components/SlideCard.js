@@ -78,17 +78,17 @@ function repairBudget72StoryText(root, page, index) {
   setTextIfBroken(article.querySelector('.budget72-total-final span'), BUDGET72_STORY_COPY.total.finalLabel);
 }
 
-function renderSlideHtml(list, page, index) {
+function renderSlideHtml(list, page, index, coverImageUrls = []) {
   return page.type === 'cover'
-    ? renderCoverPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list)
+    ? renderCoverPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list, coverImageUrls)
     : renderListPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list);
 }
 
-function SlideCard({ list, page, index, selected, onSelect }) {
+function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] }) {
   const contentRef = useRef(null);
   const html = useMemo(
-    () => renderSlideHtml(list, page, index),
-    [list, page, index],
+    () => renderSlideHtml(list, page, index, coverImageUrls),
+    [list, page, index, coverImageUrls],
   );
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { DATASET_CACHE_KEY } from './utils';
+import { DATASET_CACHE_KEY, sanitizeDataset } from './utils';
 
 const DATASET_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DATASET_BACKGROUND_CHECK_INTERVAL_MS = 10 * 60 * 1000;
@@ -18,7 +18,7 @@ export function readCachedDataset() {
       const entry = JSON.parse(raw);
       if (!entry?.dataset || typeof entry.savedAt !== 'number') continue;
       if (now - entry.savedAt > DATASET_CACHE_TTL_MS) continue;
-      return entry;
+      return { ...entry, dataset: sanitizeDataset(entry.dataset) };
     } catch {
       // Ignore malformed or unavailable browser storage.
     }
@@ -28,7 +28,7 @@ export function readCachedDataset() {
 
 export function writeCachedDataset(dataset) {
   if (!dataset) return;
-  const entry = JSON.stringify({ savedAt: Date.now(), dataset });
+  const entry = JSON.stringify({ savedAt: Date.now(), dataset: sanitizeDataset(dataset) });
   for (const storage of storageList()) {
     try {
       storage.setItem(DATASET_CACHE_KEY, entry);

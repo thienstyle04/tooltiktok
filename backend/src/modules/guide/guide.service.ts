@@ -50,7 +50,8 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION } from './logic/deck-builder';
+import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION } from './logic/deck-builder';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { DriveFileAsset, fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
@@ -212,6 +213,8 @@ export class GuideService {
       source: {
         workbook: this.getWorkbookSource().workbookName,
         imageCount: context.imageUrls.length,
+        coverImageCount: context.coverImageUrls.length,
+        coverImageUrls: context.coverImageUrls,
         manualMappedItemCount: context.manualMappedItemCount,
         mappedItemCount: context.mappedItemCount,
         autoMappedItemCount: context.autoMappedItemCount,
@@ -760,7 +763,7 @@ export class GuideService {
   private mergeGeneratedLists(decks: GuideDeck[], coverImageUrls: string[] = []): GuideDeck[] {
     const usedCoverUrls = new Set<string>();
     return decks.map((deck) => {
-      const baseLists = deck.lists.map((list) => this.sanitizeBaseListForDisplay(list));
+      const baseLists = deck.lists.map((list) => this.sanitizeBaseListForDisplay(list, coverImageUrls));
       const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => this.sanitizeGeneratedListText(list));
       const displayLists = generatedLists.length === 0
         ? baseLists
@@ -852,11 +855,16 @@ export class GuideService {
     if (deckId === 'pov-3-day') return POV_3_DAY_TEMPLATE_VERSION;
     if (deckId === 'grid-4') return GRID_4_TEMPLATE_VERSION;
     if (deckId === 'grid-4-mutant') return GRID_4_MUTANT_TEMPLATE_VERSION;
+    if (deckId === 'grid-5') return GRID_5_TEMPLATE_VERSION;
     if (deckId === 'grid-6-zigzag') return GRID_6_ZIGZAG_TEMPLATE_VERSION;
     if (deckId === 'grid-6') return GRID_6_TEMPLATE_VERSION;
     if (deckId === 'grid-8') return GRID_8_TEMPLATE_VERSION;
     if (deckId === 'spotlight-guide') return SPOTLIGHT_GUIDE_TEMPLATE_VERSION;
     if (deckId === 'spotlight-partner') return SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
+    if (deckId === 'grid-8-feed') return GRID_8_FEED_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-v2') return SPOTLIGHT_V2_TEMPLATE_VERSION;
+    if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
+    if (deckId === 'budget-4n3d-wallet') return BUDGET_4N3D_WALLET_TEMPLATE_VERSION;
     return undefined;
   }
 
@@ -954,19 +962,24 @@ export class GuideService {
 
     const safeDescription = this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanList.description, cleanList.pages));
     const pages = cleanList.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, cleanList, safeDescription));
-    const portableCoverImage = this.coverImageForList(cleanList, coverImageUrls, usedCoverUrls) || this.firstPortableImageForPages(pages);
+    const enrichedPages = tuneSpotlightV2Cover(pages, coverImageUrls, `${cleanList.id}|cover-grid`);
+    const portableCoverImage = this.coverImageForList(cleanList, coverImageUrls, usedCoverUrls) || this.firstPortableImageForPages(enrichedPages);
     return {
       ...cleanList,
       description: safeDescription,
-      pages: pages.map((page) => page.type === 'cover' && portableCoverImage
-        ? { ...page, backgroundImage: portableCoverImage }
-        : page),
+      pages: enrichedPages.map((page) => {
+        if (page.type !== 'cover') return page;
+        const grid = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
+        if (grid.length > 0) return { ...page, backgroundImage: grid[0] };
+        return portableCoverImage ? { ...page, backgroundImage: portableCoverImage } : page;
+      }),
     };
   }
 
-  private sanitizeBaseListForDisplay(list: GuideDeckList): GuideDeckList {
+  private sanitizeBaseListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
     const pages = list.pages.map((page) => this.sanitizeBasePageForDisplay(page, list));
-    return { ...list, pages };
+    const enrichedPages = tuneSpotlightV2Cover(pages, coverImageUrls, `${list.id}|cover-grid`);
+    return { ...list, pages: enrichedPages };
   }
 
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
@@ -1017,6 +1030,14 @@ export class GuideService {
 
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
     if (page.type === 'cover') {
+      const layout = String(page.layoutVariant || '');
+      if (layout === 'spotlight-v2') {
+        return {
+          ...page,
+          title: this.sanitizeContentText(page.title || 'Đà Lạt mà cứ ngỡ ở nước ngoài'),
+          subtitle: this.sanitizeContentText(page.subtitle || '/Tổng hợp những địa điểm mà dạo này mình thích/'),
+        };
+      }
       // Use page's own subtitle if available, otherwise use the list description (body).
       // Truncate to ~150 chars, cutting at sentence boundary for natural reading.
       const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
@@ -1449,6 +1470,13 @@ export class GuideService {
               const [metaPrimary, metaSecondary] = page.layoutVariant === 'budget-3n2d-gallery'
                 ? this.budgetGalleryItemMetaFromSource(sourceItem)
                 : this.pageItemMetaFromSource(sourceItem);
+              const isPov3V2Stack = page.layoutVariant === 'pov-3-v2-stack';
+              const highlight = String(sourceItem.highlight || sourceItem.style || '')
+                .replace(/\s+/g, ' ')
+                .trim();
+              const mappingNote = sourceItem.imageSource === 'manual'
+                ? 'Ảnh đã map đúng địa điểm từ sheet'
+                : pageItem.imageNote;
               const nextPageItem = {
                 ...pageItem,
                 id: sourceItem.id,
@@ -1459,9 +1487,8 @@ export class GuideService {
                 metaPrimary,
                 metaSecondary,
                 isPartner: sourceItem.isPartner,
-                imageNote: sourceItem.imageSource === 'manual'
-                  ? 'Ảnh đã map đúng địa điểm từ sheet'
-                  : pageItem.imageNote,
+                label: isPov3V2Stack && highlight ? highlight : pageItem.label,
+                imageNote: isPov3V2Stack && highlight ? highlight : mappingNote,
                 candidateImageUrls: sourceItem.imageSource === 'manual'
                   ? sourceItem.candidateImageUrls
                   : pageItem.candidateImageUrls,
@@ -1619,7 +1646,7 @@ export class GuideService {
     const address = firstValue(row, 'dia_chi');
     const openHours = firstValue(row, 'gio_mo_cua', 'gio_mo_cua_', 'gio_mo_cua_1');
     const style = firstValue(row, 'phong_cach');
-    const highlight = firstValue(row, 'mon_an_noi_bat', 'mon_noi_bat', 'noi_bat');
+    const highlight = firstValue(row, 'mo_ta', 'mota', 'mo_ta_dia_diem', 'mon_an_noi_bat', 'mon_noi_bat', 'noi_bat');
     const partner = firstValue(row, 'doi_tac', 'doi_tac_cong_ty');
     const phone = firstValue(row, 'sdt');
     const price = firstValue(row, 'gia');

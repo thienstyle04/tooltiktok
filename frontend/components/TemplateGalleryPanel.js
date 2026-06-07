@@ -1,5 +1,11 @@
 import { countDeckPages, listIsMain } from '../lib/utils';
 
+const V2_DECK_IDS = new Set([
+  'grid-8-feed',
+  'spotlight-v2',
+  'pov-3-v2',
+]);
+
 function countDeckItems(deck) {
   return (deck?.lists || []).reduce((total, list) => total + (list.pages || []).reduce((pageTotal, page) => {
     return pageTotal + (Array.isArray(page.items) ? page.items.length : 0);
@@ -50,7 +56,9 @@ export default function TemplateGalleryPanel({
           <p className="panel-kicker">Mẫu deck</p>
           <h3 className="panel-title">Thư viện mẫu đã tạo</h3>
         </div>
-        <p className="panel-note">{decks.length} mẫu · {decks.reduce((total, deck) => total + deck.lists.length, 0)} list</p>
+        <div className="panel-head-actions">
+          <p className="panel-note">{decks.length} mẫu · {decks.reduce((total, deck) => total + deck.lists.length, 0)} list</p>
+        </div>
       </div>
 
       <div className="template-gallery-body">
@@ -70,7 +78,10 @@ export default function TemplateGalleryPanel({
 
               <div className="template-card-copy">
                 <div>
-                  <p className="template-card-kicker">{deck.lists.length} list · {pageCount} trang</p>
+                  <p className="template-card-kicker">
+                    {deck.lists.length} list · {pageCount} trang
+                    {V2_DECK_IDS.has(deck.id) ? <span className="template-gallery-v2-badge">V2</span> : null}
+                  </p>
                   <h4>{deck.title}</h4>
                   <p>{deck.description}</p>
                 </div>
