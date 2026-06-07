@@ -1,5 +1,25 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
-export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v7';
+export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v44';
+/** Tăng khi thêm/sửa mẫu V2 — buộc nạp lại catalog dù cache còn hạn. */
+export const STUDIO_CATALOG_REVISION = '2026-06-07-grid8-quaytung';
+export const STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
+
+/** Deck đã gỡ khỏi app — lọc khỏi cache/dataset cũ. */
+export const RETIRED_DECK_IDS = new Set([
+  'grid-cafe-light',
+  'budget-4n3d-wallet',
+  'must-go',
+  'first-time',
+  'spotlight-partner-v2',
+  'pov-maikem',
+]);
+
+export function sanitizeDataset(dataset) {
+  if (!dataset?.decks?.length) return dataset;
+  const decks = dataset.decks.filter((deck) => !RETIRED_DECK_IDS.has(deck.id));
+  if (decks.length === dataset.decks.length) return dataset;
+  return { ...dataset, decks };
+}
 
 export function escapeHtml(value) {
   return String(value ?? '')

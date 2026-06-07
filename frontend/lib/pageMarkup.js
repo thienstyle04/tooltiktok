@@ -234,6 +234,12 @@ function isServiceOrStayListPage(page) {
   return isServiceListPage(page) || isStayListPage(page);
 }
 
+function spotlightV2ListHeading(page) {
+  if (isStayListPage(page)) return 'Homestay cần lưu';
+  if (isServiceListPage(page)) return 'Dịch vụ cần lưu';
+  return String(page?.title || page?.chipText || '').trim();
+}
+
 function isGeneratedCaptionList(list) {
   return /caption-/i.test(String(list?.id || ''));
 }
@@ -656,10 +662,862 @@ function sanitizeSubtitleForDisplay(value, pages) {
   return polishShortVietnameseCopy(clean);
 }
 
-export function renderCoverPage(page, index, total, listId, hashtags = [], list = null) {
+const V2_COVER_VARIANTS = new Set([
+  'grid-8-feed',
+  'grid-8-quaytung-cover',
+  'spotlight-v2',
+  'spotlight-partner-v2',
+  'pov-maikem',
+  'pov-3-v2-cover',
+  'budget-wallet-cover',
+]);
+
+const V2_LIST_VARIANTS = new Set([
+  'grid-8-feed',
+  'grid-8-quaytung',
+  'grid-8-quaytung-menu',
+  'spotlight-v2',
+  'spotlight-v2-list',
+  'spotlight-partner-v2',
+  'spotlight-partner-v2-info',
+  'pov-maikem',
+  'pov-3-v2-stack',
+  'pov-3-v2-grid',
+  'budget-wallet-day',
+  'budget-wallet-fixed',
+  'budget-wallet-bill',
+]);
+
+function cafeLightPrice(item) {
+  const raw = String(item.metaSecondary || item.metaPrimary || '').trim();
+  const match = raw.match(/(\d+\s*k|\d+[.,]?\d*\s*tr)/i);
+  return match ? match[1] : (raw.includes('Giá') ? raw : '');
+}
+
+const GRID8_FEED_CENTER_HOOKS = {
+  food: 'Ăn uống gì',
+  cafe: 'Coffee lowkey',
+  checkin: 'Checkin free',
+  service: 'Tiện ích uy tín',
+  nightlife: 'Chơi đêm chill',
+  stay: 'Homestay vibe',
+  activity: 'Hoạt động hot',
+  tourism: 'Điểm must-go',
+};
+
+function grid8FeedCenterHook(page, list) {
+  const kind = gridPageKind(page);
+  if (GRID8_FEED_CENTER_HOOKS[kind]) return GRID8_FEED_CENTER_HOOKS[kind];
+  const stripped = stripChipPrefixFromTitle(page.chipText, page.title);
+  if (stripped) return stripped;
+  return String(page.chipText || 'Đà Lạt').trim();
+}
+
+function grid8FeedItemMeta(item) {
+  const address = cleanGridAddress(item?.metaPrimary);
+  if (address) return address;
+  const raw = String(item?.metaPrimary || '').trim();
+  const phone = raw.match(/(?:\+?84|0)\d[\d\s.]{7,12}\d/);
+  if (phone) return phone[0].replace(/\s+/g, ' ').trim();
+  return String(item?.metaSecondary || '').trim();
+}
+
+function stripChipPrefixFromTitle(chipText, title) {
+  const chip = String(chipText || '').trim();
+  const raw = String(title || '').trim();
+  if (!raw) return '';
+  if (!chip) return raw;
+  const lowerTitle = raw.toLowerCase();
+  const lowerChip = chip.toLowerCase();
+  if (lowerTitle === lowerChip) return '';
+  if (lowerTitle.startsWith(`${lowerChip} - `)) return raw.slice(chip.length + 3).trim();
+  if (lowerTitle.startsWith(`${lowerChip}-`)) return raw.slice(chip.length + 1).trim();
+  if (lowerTitle.startsWith(lowerChip)) return raw.slice(chip.length).replace(/^[\s\-–—:]+/, '').trim();
+  return raw;
+}
+
+const GRID5_TITLE_CARDS = {
+  checkin: 'Một vài điểm check in hot',
+  food: 'Một vài quán ăn ngon',
+  cafe: 'Một vài quán cafe đẹp',
+  nightlife: 'Một vài spot chơi đêm',
+  service: 'Homestay & Spa',
+  stay: 'Homestay & Spa',
+  activity: 'Một vài hoạt động hot',
+  tourism: 'Một vài điểm du lịch',
+};
+
+function grid5TitleCard(page, list) {
+  const kind = gridPageKind(page);
+  if (kind === 'cafe') {
+    const idx = listVariantIndex(list, 2, page.chipText);
+    return idx === 0 ? 'Một vài quán cafe đẹp' : 'Một vài quán cafe chill';
+  }
+  if (GRID5_TITLE_CARDS[kind]) return GRID5_TITLE_CARDS[kind];
+  const stripped = stripChipPrefixFromTitle(page.chipText, page.title);
+  return stripped || String(page.chipText || 'Gợi ý Đà Lạt').trim();
+}
+
+function grid5ItemMeta(item) {
+  const address = cleanGridAddress(item?.metaPrimary);
+  if (address) return address;
+  return String(item?.metaSecondary || '').trim();
+}
+
+function renderGrid8FeedSlot(item) {
+  const displayName = gridDisplayName(item);
+  const meta = grid8FeedItemMeta(item);
+  return `
+    <div class="grid8-feed-slot ${escapeHtml(imageSourceClass(item))}">
+      <div class="grid8-feed-frame">
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+      </div>
+      <div class="grid8-feed-labels">
+        <div class="grid8-feed-name">${escapeHtml(displayName)}</div>
+        ${meta ? `<div class="grid8-feed-meta">${escapeHtml(meta)}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function formatGrid8FeedCenterHook(hookText) {
+  const raw = String(hookText || '').trim();
+  if (!raw) return '';
+  const words = raw.split(/\s+/);
+  if (words.length <= 1) return escapeHtml(raw);
+  const splitAt = words.length === 2 ? 1 : Math.ceil(words.length / 2);
+  return `${escapeHtml(words.slice(0, splitAt).join(' '))}<br>${escapeHtml(words.slice(splitAt).join(' '))}`;
+}
+
+function renderGrid8FeedCenterSlot(hookText) {
+  return `
+    <div class="grid8-feed-slot grid8-feed-center-slot">
+      <div class="grid8-feed-center-stage">
+        <div class="grid8-feed-center-hook">${formatGrid8FeedCenterHook(hookText)}</div>
+      </div>
+      <div class="grid8-feed-center-label-spacer" aria-hidden="true"></div>
+    </div>
+  `;
+}
+
+function renderGrid8FeedItems(items, centerHook) {
+  const cells = (items || []).slice(0, 8);
+  const centerHtml = renderGrid8FeedCenterSlot(centerHook);
+  const ordered = [
+    ...cells.slice(0, 3).map((item) => renderGrid8FeedSlot(item)),
+    cells[3] ? renderGrid8FeedSlot(cells[3]) : '',
+    centerHtml,
+    cells[4] ? renderGrid8FeedSlot(cells[4]) : '',
+    ...cells.slice(5, 8).map((item) => renderGrid8FeedSlot(item)),
+  ].filter(Boolean);
+
+  return ordered.join('');
+}
+
+function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  const hero = String(coverTitle || 'CÁC ĐỊA ĐIỂM ĐÀ LẠT').toUpperCase();
+  const tagline = String(coverSubtitle || 'BỎ LỠ CHẮC CHẮN LÀ HỐI HẬN').toUpperCase();
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid8-feed-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="grid8-feed-cover-photo">
+        ${renderPreviewImage(backgroundImage, coverTitle)}
+      </div>
+      <div class="grid8-feed-cover-dim"></div>
+      <div class="grid8-feed-cover-top">
+        <h1 class="grid8-feed-cover-hero">${escapeHtml(hero)}</h1>
+        <p class="grid8-feed-cover-tagline">${escapeHtml(tagline)}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderGrid8QuaytungDalatBadge() {
+  return '<span class="grid8-quaytung-dalat-badge">dalat</span>';
+}
+
+function formatGrid8QuaytungCoverTitle(title) {
+  const raw = String(title || 'List này toàn địa điểm "vuýp"').replace(/\s+/g, ' ').trim();
+  const words = raw.split(' ');
+  if (words.length <= 4) return escapeHtml(raw);
+  const splitAt = Math.ceil(words.length / 2);
+  return `${escapeHtml(words.slice(0, splitAt).join(' '))}<br>${escapeHtml(words.slice(splitAt).join(' '))}`;
+}
+
+function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  const subtitle = String(coverSubtitle || 'Lưu list này cho chuyến đi thành công').replace(/^\[+|\]+$/g, '').trim();
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="grid8-quaytung-cover-photo">
+        ${renderPreviewImage(backgroundImage, coverTitle)}
+      </div>
+      <div class="grid8-quaytung-cover-dim"></div>
+      <div class="grid8-quaytung-cover-center">
+        ${renderGrid8QuaytungDalatBadge()}
+        <h1 class="grid8-quaytung-cover-title">${formatGrid8QuaytungCoverTitle(coverTitle)}</h1>
+        <p class="grid8-quaytung-cover-sub">[ ${escapeHtml(subtitle)} ]</p>
+      </div>
+    </article>
+  `;
+}
+
+function grid8QuaytungItemHours(item) {
+  const secondary = String(item?.metaSecondary || '').replace(/\s+/g, ' ').trim();
+  const hoursMatch = secondary.match(/Khung giờ:\s*([^·]+)/i);
+  if (hoursMatch) return hoursMatch[1].trim();
+  const priceMatch = secondary.match(/Giá:\s*([^·]+)/i);
+  if (priceMatch && /free|miễn\s*phí|^0\s*đ$/i.test(priceMatch[1])) return 'FREE';
+  if (/free|miễn\s*phí/i.test(secondary)) return 'FREE';
+  return '';
+}
+
+function renderGrid8QuaytungSlot(item) {
+  const displayName = gridDisplayName(item);
+  const address = cleanGridAddress(item?.metaPrimary) || String(item?.metaPrimary || '').trim();
+  const hours = grid8QuaytungItemHours(item);
+  return `
+    <div class="grid8-quaytung-slot ${escapeHtml(imageSourceClass(item))}">
+      <div class="grid8-quaytung-photo">
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+        <div class="grid8-quaytung-shade"></div>
+        <div class="grid8-quaytung-labels">
+          <div class="grid8-quaytung-name">${escapeHtml(displayName)}</div>
+          ${address ? `<div class="grid8-quaytung-address">${escapeHtml(address)}</div>` : ''}
+          ${hours ? `<div class="grid8-quaytung-hours"><span class="grid8-quaytung-clock" aria-hidden="true">🕒</span> ${escapeHtml(hours)}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderGrid8QuaytungCenterSlot(page, backgroundImage) {
+  const hook = String(page.title || '').trim();
+  const tagline = String(page.subtitle || '').trim();
+  return `
+    <div class="grid8-quaytung-slot grid8-quaytung-center-slot">
+      <div class="grid8-quaytung-photo">
+        ${backgroundImage ? renderPreviewImage(backgroundImage, hook) : ''}
+        <div class="grid8-quaytung-center-shade"></div>
+        <div class="grid8-quaytung-center-copy">
+          ${renderGrid8QuaytungDalatBadge()}
+          <div class="grid8-quaytung-center-hook">"${escapeHtml(hook)}"</div>
+          ${tagline ? `<div class="grid8-quaytung-center-tagline">${escapeHtml(tagline)}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderGrid8QuaytungItems(page, items, backgroundImage) {
+  const cells = (items || []).slice(0, 8);
+  const centerHtml = renderGrid8QuaytungCenterSlot(page, backgroundImage);
+  const ordered = [
+    ...cells.slice(0, 3).map((item) => renderGrid8QuaytungSlot(item)),
+    cells[3] ? renderGrid8QuaytungSlot(cells[3]) : '',
+    centerHtml,
+    cells[4] ? renderGrid8QuaytungSlot(cells[4]) : '',
+    ...cells.slice(5, 8).map((item) => renderGrid8QuaytungSlot(item)),
+  ].filter(Boolean);
+  return ordered.join('');
+}
+
+function renderGrid8QuaytungMenuSection(section, reverse) {
+  const photoItem = section.items.find((item) => item.imageUrl) || section.items[0];
+  const photoUrl = photoItem?.imageUrl || '';
+  const rows = section.items.map((item) => {
+    const address = cleanGridAddress(item.metaPrimary) || String(item.metaPrimary || '').trim();
+    return `
+      <li class="grid8-quaytung-menu-row">
+        <strong>${escapeHtml(gridDisplayName(item))}</strong>
+        ${address ? `<span>${escapeHtml(address)}</span>` : ''}
+      </li>
+    `;
+  }).join('');
+  return `
+    <section class="grid8-quaytung-menu-section${reverse ? ' is-reverse' : ''}">
+      <div class="grid8-quaytung-menu-section-copy">
+        <h3 class="grid8-quaytung-menu-section-title">✓ ${escapeHtml(section.title)}</h3>
+        <ul class="grid8-quaytung-menu-list">${rows}</ul>
+      </div>
+      <div class="grid8-quaytung-menu-section-photo">
+        ${photoUrl ? renderPreviewImage(photoUrl, section.title) : ''}
+      </div>
+    </section>
+  `;
+}
+
+function renderGrid8QuaytungMenuPage(page, index, listId, list) {
+  const sectionOrder = [];
+  const sectionMap = new Map();
+  for (const item of page.items || []) {
+    const key = String(item.label || 'Gợi ý').trim();
+    if (!sectionMap.has(key)) {
+      sectionMap.set(key, []);
+      sectionOrder.push(key);
+    }
+    sectionMap.get(key).push(item);
+  }
+  const sections = sectionOrder.map((title) => ({ title, items: sectionMap.get(title) || [] }));
+  const backgroundImage = page.backgroundImage || coverBackgroundImage(page, list);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-menu-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || 'menu')}.png">
+      <div class="grid8-quaytung-menu-bg">
+        ${renderPreviewImage(backgroundImage, page.title)}
+      </div>
+      <div class="grid8-quaytung-menu-dim"></div>
+      <div class="grid8-quaytung-menu-head">
+        ${renderGrid8QuaytungDalatBadge()}
+        <h2 class="grid8-quaytung-menu-title">${escapeHtml(page.title || 'ĐỊA ĐIỂM ĂN UỐNG NGON')}</h2>
+      </div>
+      <div class="grid8-quaytung-menu-sections">
+        ${sections.map((section, idx) => renderGrid8QuaytungMenuSection(section, idx % 2 === 1)).join('')}
+      </div>
+    </article>
+  `;
+}
+
+function renderGrid5TitleCell(titleText) {
+  return `
+    <article class="grid5-cell grid5-title-cell">
+      <span class="grid5-star grid5-star-tl" aria-hidden="true">✦</span>
+      <span class="grid5-star grid5-star-tr" aria-hidden="true">★</span>
+      <span class="grid5-star grid5-star-bl" aria-hidden="true">✦</span>
+      <div class="grid5-title-text">${escapeHtml(titleText)}</div>
+    </article>
+  `;
+}
+
+function renderGrid5PhotoCell(item) {
+  const meta = grid5ItemMeta(item);
+  return `
+    <article class="grid5-cell grid5-photo-cell ${escapeHtml(imageSourceClass(item))}">
+      ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+      <div class="grid5-photo-shade"></div>
+      <div class="grid5-photo-copy">
+        <div class="grid5-photo-name">${escapeHtml(gridDisplayName(item))}</div>
+        ${meta ? `<div class="grid5-photo-meta">${escapeHtml(meta)}</div>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderGrid5Matrix(items, titleText) {
+  const cells = (items || []).slice(0, 5);
+  const ordered = [
+    renderGrid5TitleCell(titleText),
+    cells[0] ? renderGrid5PhotoCell(cells[0]) : '',
+    cells[1] ? renderGrid5PhotoCell(cells[1]) : '',
+    cells[2] ? renderGrid5PhotoCell(cells[2]) : '',
+    cells[3] ? renderGrid5PhotoCell(cells[3]) : '',
+    cells[4] ? renderGrid5PhotoCell(cells[4]) : '',
+  ].filter(Boolean);
+  return ordered.join('');
+}
+
+function renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  const hero = String(coverTitle || 'Dalat').trim();
+  const hook = String(coverSubtitle || 'Tháng 5+6 nên đi đâu? Làm gì?').trim();
+  const bracket = '[ Gợi ý những tọa độ hay ho cho chuyến đi mùa hè ]';
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid5-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="grid5-cover-bg">
+        ${renderPreviewImage(backgroundImage, coverTitle)}
+      </div>
+      <div class="grid5-cover-shade"></div>
+      <div class="grid5-cover-copy">
+        <div class="grid5-cover-script">Thong dong</div>
+        <div class="grid5-cover-hero-row">
+          <h1 class="grid5-cover-dalat">${escapeHtml(hero)}</h1>
+          <p class="grid5-cover-hook">${escapeHtml(hook)}</p>
+        </div>
+        <p class="grid5-cover-bracket">${escapeHtml(bracket)}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderGrid5Page(page, index, listId, pageSubtitle, list = null) {
+  const titleCard = grid5TitleCard(page, list);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid5-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <div class="grid5-matrix">
+        ${renderGrid5Matrix(page.items, titleCard)}
+      </div>
+    </article>
+  `;
+}
+
+function spotlightCoverGridSeed(value) {
+  let hash = 2166136261;
+  const text = String(value || '');
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pickUniqueCoverGridImages(pool, seed, count = 4) {
+  const unique = [...new Set((pool || []).map((url) => String(url || '').trim()).filter(Boolean))];
+  if (unique.length === 0) return [];
+  const ordered = [...unique].sort(
+    (left, right) => spotlightCoverGridSeed(`${seed}:${left}`) - spotlightCoverGridSeed(`${seed}:${right}`),
+  );
+  return ordered.slice(0, count);
+}
+
+let spotlightV2CoverImagePool = [];
+
+export function setSpotlightV2CoverImagePool(urls) {
+  spotlightV2CoverImagePool = Array.isArray(urls) ? urls.filter(Boolean) : [];
+}
+
+function spotlightV2CoverGridImages(page, backgroundImage, listId = '', coverImageUrls = []) {
+  const fromPage = Array.isArray(page?.coverImages) ? page.coverImages.filter(Boolean) : [];
+  const uniqueFromPage = [...new Set(fromPage)];
+  if (uniqueFromPage.length >= 4) return uniqueFromPage.slice(0, 4);
+
+  const pool = (coverImageUrls.length > 0 ? coverImageUrls : spotlightV2CoverImagePool).filter(Boolean);
+  const seed = `${listId || page?.title || 'spotlight-v2-cover'}|cover-grid`;
+  const fromPool = pickUniqueCoverGridImages(pool, seed, 4);
+  const merged = [...new Set([...uniqueFromPage, ...fromPool])];
+  if (merged.length >= 4) return merged.slice(0, 4);
+  if (merged.length > 0) return merged;
+
+  return backgroundImage ? [backgroundImage] : [];
+}
+
+function formatSpotlightV2CoverSubtitle(subtitle) {
+  const clean = String(subtitle || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  if (clean.startsWith('/') && clean.endsWith('/')) return clean;
+  return `/${clean.replace(/^\/+|\/+$/g, '')}/`;
+}
+
+function renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, options = {}) {
+  const partnerClass = options.partner ? ' spotlight-partner-v2-cover' : '';
+  const coverImageUrls = options.coverImageUrls || [];
+  let tiles = spotlightV2CoverGridImages(page, backgroundImage, listId, coverImageUrls);
+  while (tiles.length < 4) tiles.push('');
+  tiles = tiles.slice(0, 4);
+  const subtitle = formatSpotlightV2CoverSubtitle(coverSubtitle);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v2-cover', partnerClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="spotlight-v2-cover-grid">
+        ${tiles.map((url, tileIndex) => `
+          <div class="spotlight-v2-cover-cell">
+            ${url ? renderPreviewImage(url, `${coverTitle || 'cover'} ${tileIndex + 1}`) : ''}
+          </div>
+        `).join('')}
+      </div>
+      <div class="spotlight-v2-cover-dim" aria-hidden="true"></div>
+      <div class="spotlight-v2-cover-center">
+        ${options.partner ? '<div class="spotlight-v2-cover-partner-script">dalat.</div>' : ''}
+        ${!options.partner ? '<div class="spotlight-v2-cover-ornament" aria-hidden="true">✦ · 📷 · ✦</div>' : ''}
+        ${coverTitle ? `<h1 class="spotlight-v2-cover-title">${escapeHtml(coverTitle)}</h1>` : ''}
+        ${subtitle ? `<p class="spotlight-v2-cover-caption">${escapeHtml(subtitle)}</p>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightV2Page(page, index, listId, list, options = {}) {
+  const item = page.items?.[0] || {};
+  const backgroundImage = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
+  const titleText = item.rawName || item.name || page.title || '';
+  const address = spotlightV2AddressLine(item);
+  const hours = spotlightV2HoursLine(item);
+  const positionClass = spotlightPositionClass(page, index, item);
+  const partnerClass = options.partner ? ' spotlight-partner-v2-page' : '';
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v2-page', `${positionClass} ${partnerClass}`.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || item.name || 'spotlight')}.png">
+      <div class="spotlight-v2-bg">
+        ${renderPreviewImage(backgroundImage, item.name || page.title)}
+      </div>
+      <div class="spotlight-v2-shade"></div>
+      <div class="spotlight-v2-copy">
+        <h2 class="spotlight-v2-name">
+          <span class="spotlight-pin">${renderPhotomodePin()}</span>
+          <span class="spotlight-v2-name-text">${escapeHtml(titleText)}</span>
+        </h2>
+        ${address ? `<p class="spotlight-v2-address">${escapeHtml(address)}</p>` : ''}
+        ${hours ? `<p class="spotlight-v2-hours">${escapeHtml(hours)}</p>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightPartnerV2Page(page, index, listId, list) {
+  return renderSpotlightV2Page(page, index, listId, list, { partner: true });
+}
+
+function renderPovMaikemCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'pov-maikem-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="pov-maikem-cover-bg">
+        ${renderPreviewImage(backgroundImage, coverTitle)}
+      </div>
+      <div class="pov-maikem-cover-shade"></div>
+      <div class="pov-maikem-cover-copy">
+        <h3 class="pov-maikem-cover-title">${escapeHtml(coverTitle)}</h3>
+        ${coverSubtitle ? `<p class="pov-maikem-cover-subtitle">${escapeHtml(coverSubtitle)}</p>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function pov3V2HeadlineLines(title) {
+  const raw = String(title || 'đứng đâu\ncũng đẹp').replace(/\\n/g, '\n');
+  const lines = raw.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length === 0) return ['đứng đâu', 'cũng đẹp'];
+  if (lines.length === 1) {
+    const parts = lines[0].split(/\s+/);
+    if (parts.length >= 4) return [parts.slice(0, 2).join(' '), parts.slice(2).join(' ')];
+    return [lines[0], 'cũng đẹp'];
+  }
+  return lines.slice(0, 2);
+}
+
+function pov3V2BracketSubtitle(subtitle) {
+  const clean = String(subtitle || '[ Những địa điểm checkin mang đậm vibe Đà Lạt ]').replace(/\s+/g, ' ').trim();
+  if (!clean) return '[ Những địa điểm checkin mang đậm vibe Đà Lạt ]';
+  const inner = clean.replace(/^[\[\(\s]+|[\]\)\s]+$/g, '');
+  return `[ ${inner} ]`;
+}
+
+function renderPov3V2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  const [lineOne, lineTwo] = pov3V2HeadlineLines(coverTitle);
+  const bracketText = pov3V2BracketSubtitle(coverSubtitle);
+  const highlightMatch = bracketText.match(/^(.*?)(\bĐà Lạt\b|\bDa Lat\b)(.*)$/i);
+  const subtitleHtml = highlightMatch
+    ? `${escapeHtml(highlightMatch[1])}<span class="pov-3-v2-accent">${escapeHtml(highlightMatch[2])}</span>${escapeHtml(highlightMatch[3])}`
+    : escapeHtml(bracketText);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'pov-3-v2-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="pov-3-v2-cover-bg">
+        ${renderPreviewImage(backgroundImage, coverTitle || 'POV 3 cover')}
+      </div>
+      <div class="pov-3-v2-cover-shade"></div>
+      <div class="pov-3-v2-cover-copy">
+        <h1 class="pov-3-v2-headline">
+          <span>${escapeHtml(lineOne)}</span>
+          <span>${escapeHtml(lineTwo || '')}</span>
+        </h1>
+        <p class="pov-3-v2-bracket">${subtitleHtml}</p>
+      </div>
+    </article>
+  `;
+}
+
+function isImageMappingNote(value) {
+  return /^(?:Ảnh (?:đã map|tự map|minh họa|đối tác)|Thông tin đối tác)/i.test(String(value || '').trim());
+}
+
+function pov3V2StackTagline(item) {
+  const label = String(item.label || '').trim();
+  const note = String(item.imageNote || '').trim();
+  if (label && !isImageMappingNote(label)) return label;
+  if (note && !isImageMappingNote(note)) return note;
+  return '';
+}
+
+function renderPov3V2StackRow(item) {
+  const address = String(item.metaPrimary || '').trim();
+  const taglineTextRaw = pov3V2StackTagline(item);
+  const taglineText = taglineTextRaw
+    ? (taglineTextRaw.startsWith('[') ? taglineTextRaw : `[ ${taglineTextRaw.replace(/^[\[(\s]+|[\]\)\s]+$/g, '')} ]`)
+    : '';
+  return `
+    <section class="pov-3-v2-stack-row ${escapeHtml(imageSourceClass(item))}">
+      ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+      <div class="pov-3-v2-stack-shade"></div>
+      <div class="pov-3-v2-stack-copy">
+        <h3 class="pov-3-v2-stack-name">${escapeHtml(item.name)}</h3>
+        ${address ? `<p class="pov-3-v2-stack-meta">${escapeHtml(address)}</p>` : ''}
+        ${taglineText ? `<p class="pov-3-v2-stack-tagline">${escapeHtml(taglineText)}</p>` : ''}
+      </div>
+    </section>
+  `;
+}
+
+function renderPov3V2StackPage(page, index, listId) {
+  const items = (page.items || []).slice(0, 3);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'pov-3-v2-stack-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || 'stack')}.png">
+      <div class="pov-3-v2-stack-feed">
+        ${items.map((item) => renderPov3V2StackRow(item)).join('')}
+      </div>
+    </article>
+  `;
+}
+
+function renderPov3V2GridLabel(item) {
+  const address = cleanGridAddress(item.metaPrimary);
+  const showAddress = address && address.toLowerCase() !== 'đang cập nhật';
+  return `
+    <div class="pov-3-v2-grid-name">${escapeHtml(item.name)}</div>
+    ${showAddress ? `<div class="pov-3-v2-grid-address">${escapeHtml(address)}</div>` : ''}
+  `;
+}
+
+function renderPov3V2GridPage(page, index, listId, pageSubtitle) {
+  const items = (page.items || []).slice(0, 9);
+  const panelTitle = page.title || pageSubtitle || page.chipText || '';
+  const backgroundImage = page.backgroundImage || items[0]?.imageUrl || '';
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'pov-3-v2-grid-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || 'grid')}.png">
+      <div class="pov-3-v2-grid-bg">
+        ${renderPreviewImage(backgroundImage, panelTitle)}
+      </div>
+      <div class="pov-3-v2-grid-panel">
+        <h2 class="pov-3-v2-grid-title">"${escapeHtml(panelTitle)}"</h2>
+        <div class="pov-3-v2-grid-matrix">
+          ${items.map((item) => `
+            <div class="pov-3-v2-grid-cell ${escapeHtml(imageSourceClass(item))}">
+              <div class="pov-3-v2-grid-thumb">
+                ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+              </div>
+              <div class="pov-3-v2-grid-label">
+                ${renderPov3V2GridLabel(item)}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderPovMaikemPage(page, index, listId) {
+  const items = (page.items || []).slice(0, 3);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'pov-maikem-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <div class="pov-maikem-feed">
+        ${items.map((item) => {
+          const price = cafeLightPrice(item);
+          const meta = [item.metaPrimary, price].filter(Boolean).join(' · ');
+          return `
+          <section class="pov-maikem-slide ${escapeHtml(imageSourceClass(item))}">
+            ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+            <div class="pov-maikem-slide-shade"></div>
+            <div class="pov-maikem-slide-copy">
+              <strong class="pov-maikem-slide-title">${escapeHtml(item.name)}</strong>
+              ${meta ? `<p class="pov-maikem-slide-meta">${escapeHtml(meta)}</p>` : ''}
+            </div>
+          </section>
+        `;
+        }).join('')}
+      </div>
+    </article>
+  `;
+}
+
+function renderBudgetWalletCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  const titleParts = String(coverTitle || '').split('·').map((part) => part.trim()).filter(Boolean);
+  const subtitleParts = String(coverSubtitle || '').split('·').map((part) => part.trim()).filter(Boolean);
+  const mainTitle = titleParts[0] || coverTitle || '4N3Đ ĐÀ LẠT';
+  const hookLine = titleParts[1] || subtitleParts[0] || 'MỞ VÍ ~4.2TR';
+  const subLine = subtitleParts.length > 1
+    ? subtitleParts.slice(1).join(' · ')
+    : (titleParts.length > 1 ? '' : subtitleParts.slice(1).join(' · '));
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget-wallet-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="budget-wallet-cover-bg">
+        ${renderPreviewImage(backgroundImage, coverTitle)}
+      </div>
+      <div class="budget-wallet-cover-shade"></div>
+      <div class="budget-wallet-cover-copy">
+        <div class="budget-wallet-script">dalat.</div>
+        <h1 class="budget-wallet-title">${escapeHtml(mainTitle)}</h1>
+        <h2 class="budget-wallet-hook">${escapeHtml(hookLine)}</h2>
+        ${subLine ? `<p class="budget-wallet-sub">${escapeHtml(subLine)}</p>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderBudgetWalletDayPage(page, index, listId, list) {
+  const items = (page.items || []).slice(0, 7);
+  const thumbs = items.filter((item) => item.imageUrl).slice(0, 3);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget-wallet-day'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || 'ngay')}.png">
+      <section class="budget-wallet-slip">
+        <header class="budget-wallet-slip-head">
+          <div>
+            <span>${escapeHtml(String(page.chipText || '').toUpperCase())}</span>
+            <h2>${escapeHtml(page.title || '')}</h2>
+          </div>
+          <span class="budget-wallet-slip-total">${escapeHtml(page.subtitle || '')}</span>
+        </header>
+        <div class="budget-wallet-lines">
+          ${items.map((item) => {
+            const { time } = budgetStoryParts(item);
+            return `
+              <article class="budget-wallet-line">
+                <span>${escapeHtml(time)}</span>
+                <strong>${escapeHtml(budgetStoryDisplayTitle(item.name))}</strong>
+                <em>${escapeHtml(item.metaSecondary || '')}</em>
+              </article>
+            `;
+          }).join('')}
+        </div>
+        ${thumbs.length > 0 ? `
+          <div class="budget-wallet-thumbs">
+            ${thumbs.map((item) => `
+              <div class="budget-wallet-thumb">${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}</div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </section>
+    </article>
+  `;
+}
+
+function renderBudgetWalletFixedPage(page, index, listId) {
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget-wallet-fixed'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-phi-co-dinh.png">
+      <section class="budget-wallet-fixed-panel">
+        <span>${escapeHtml(page.chipText || '')}</span>
+        <h2>${escapeHtml(page.title || '')}</h2>
+        <p>${escapeHtml(page.subtitle || '')}</p>
+        <div class="budget-wallet-lines">
+          ${(page.items || []).map((item) => `
+            <article class="budget-wallet-line">
+              <span>${escapeHtml(item.label || '')}</span>
+              <strong>${escapeHtml(item.name || '')}</strong>
+              <em>${escapeHtml(item.metaSecondary || '')}</em>
+            </article>
+          `).join('')}
+        </div>
+      </section>
+    </article>
+  `;
+}
+
+function renderBudgetWalletBillPage(page, index, listId) {
+  const items = page.items || [];
+  const total = items.find((item) => /tong|total/i.test(String(item.id || ''))) || items[items.length - 1] || {};
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'budget-wallet-bill'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-bill.png">
+      <section class="budget-wallet-bill-panel">
+        <span>${escapeHtml(String(page.chipText || 'BILL').toUpperCase())}</span>
+        <h2>${escapeHtml(page.title || 'BILL 4N3Đ')}</h2>
+        <div class="budget-wallet-lines">
+          ${items.filter((item) => !/tong|total/i.test(String(item.id || ''))).map((item) => `
+            <article class="budget-wallet-line">
+              <span></span>
+              <strong>${escapeHtml(item.name || '')}</strong>
+              <em>${escapeHtml(item.metaSecondary || '')}</em>
+            </article>
+          `).join('')}
+        </div>
+        <div class="budget-wallet-bill-final">
+          <span>Tổng bill</span>
+          <strong>${escapeHtml(total.metaSecondary || '~4.2tr')}</strong>
+        </div>
+      </section>
+    </article>
+  `;
+}
+
+function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
+  if (page.layoutVariant === 'grid-8-feed') {
+    return renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
+  if (page.layoutVariant === 'grid-8-quaytung-cover') {
+    return renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
+  if (page.layoutVariant === 'grid-5') {
+    return renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
+  if (page.layoutVariant === 'spotlight-v2') {
+    return renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, { coverImageUrls });
+  }
+  if (page.layoutVariant === 'spotlight-partner-v2') {
+    return renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, { partner: true, coverImageUrls });
+  }
+  if (page.layoutVariant === 'pov-maikem') {
+    return renderPovMaikemCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
+  if (page.layoutVariant === 'pov-3-v2-cover') {
+    return renderPov3V2Cover(page, index, listId, page.title || coverTitle, coverSubtitle, backgroundImage);
+  }
+  if (page.layoutVariant === 'budget-wallet-cover') {
+    return renderBudgetWalletCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
+  return '';
+}
+
+function renderListPageV2(page, index, listId, list, pageSubtitle) {
+  if (page.layoutVariant === 'grid-8-feed') {
+    const centerHook = grid8FeedCenterHook(page, list);
+    return `
+      <article class="${escapeHtml(storyPageClass(listId, 'grid8-feed-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        <div class="grid8-feed-matrix">
+          ${renderGrid8FeedItems(page.items, centerHook)}
+        </div>
+      </article>
+    `;
+  }
+  if (page.layoutVariant === 'grid-8-quaytung') {
+    const bg = page.backgroundImage || page.items?.[0]?.imageUrl || coverBackgroundImage(page, list);
+    return `
+      <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        <div class="grid8-quaytung-matrix">
+          ${renderGrid8QuaytungItems(page, page.items, bg)}
+        </div>
+      </article>
+    `;
+  }
+  if (page.layoutVariant === 'grid-8-quaytung-menu') {
+    return renderGrid8QuaytungMenuPage(page, index, listId, list);
+  }
+  if (page.layoutVariant === 'grid-5') {
+    return renderGrid5Page(page, index, listId, pageSubtitle, list);
+  }
+  if (page.layoutVariant === 'spotlight-v2') {
+    return renderSpotlightV2Page(page, index, listId, list);
+  }
+  if (page.layoutVariant === 'spotlight-partner-v2') {
+    return renderSpotlightPartnerV2Page(page, index, listId, list);
+  }
+  if (page.layoutVariant === 'spotlight-v2-list') {
+    return renderSpotlightV2ListPage(page, index, listId, list, pageSubtitle);
+  }
+  if (page.layoutVariant === 'spotlight-partner-v2-info') {
+    return renderSpotlightPartnerV2InfoPage(page, index, listId, list);
+  }
+  if (page.layoutVariant === 'pov-maikem') {
+    return renderPovMaikemPage(page, index, listId);
+  }
+  if (page.layoutVariant === 'pov-3-v2-stack') {
+    return renderPov3V2StackPage(page, index, listId);
+  }
+  if (page.layoutVariant === 'pov-3-v2-grid' || page.layoutVariant === 'pov-3-v2-grid-food') {
+    return renderPov3V2GridPage(page, index, listId, pageSubtitle);
+  }
+  if (page.layoutVariant === 'budget-wallet-day') {
+    return renderBudgetWalletDayPage(page, index, listId, list);
+  }
+  if (page.layoutVariant === 'budget-wallet-fixed') {
+    return renderBudgetWalletFixedPage(page, index, listId);
+  }
+  if (page.layoutVariant === 'budget-wallet-bill') {
+    return renderBudgetWalletBillPage(page, index, listId);
+  }
+  return '';
+}
+
+export function renderCoverPage(page, index, total, listId, hashtags = [], list = null, coverImageUrls = []) {
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
   const coverTitle = polishShortVietnameseCopy(page.title);
   const backgroundImage = coverBackgroundImage(page, list);
+  if (page.layoutVariant === 'grid-5') {
+    return renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
+  if (V2_COVER_VARIANTS.has(page.layoutVariant)) {
+    const v2Html = renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls);
+    if (v2Html) return v2Html;
+  }
   if (page.layoutVariant === 'grid-6-zigzag') {
     return renderZigzagCover(page, index, listId);
   }
@@ -893,6 +1751,34 @@ function renderSpotlightMetaLine(value, className = '') {
   `;
 }
 
+function spotlightV2AddressLine(item) {
+  return String(item?.metaPrimary || '').replace(/\s+/g, ' ').trim();
+}
+
+function spotlightV2HoursLine(item) {
+  const secondary = String(item?.metaSecondary || '').replace(/\s+/g, ' ').trim();
+  if (!secondary) return '';
+
+  const labeledHours = secondary.match(/^(Khung giờ|Open|Hoạt động):\s*(.+)$/i);
+  if (labeledHours) {
+    const label = labeledHours[1].toLowerCase() === 'khung giờ' ? 'Open' : labeledHours[1];
+    const hours = labeledHours[2].split('·')[0].trim();
+    return hours ? `${label}: ${hours}` : '';
+  }
+
+  const embeddedHours = secondary.match(/(?:Khung giờ|Open|Hoạt động):\s*([^·]+)/i);
+  if (embeddedHours) {
+    const token = embeddedHours[0].trim();
+    if (/^open:/i.test(token) || /^hoạt động:/i.test(token)) return token;
+    const hours = embeddedHours[1].trim();
+    return hours ? `Open: ${hours}` : '';
+  }
+
+  if (/(giá|sđt|liên hệ):/i.test(secondary)) return '';
+  const fallback = secondary.split('·')[0].trim();
+  return fallback ? `Open: ${fallback}` : '';
+}
+
 function spotlightTitleFitClass(value) {
   const length = String(value || '').trim().length;
   if (length >= 28) return 'spotlight-title-fit-xs';
@@ -939,10 +1825,12 @@ function renderSpotlightPartnerPage(page, index, listId, list) {
 
 function renderSpotlightListItems(items, options = {}) {
   const showLabels = options.showLabels !== false;
+  const showSecondary = options.showSecondary !== false;
   return (items || []).map((item) => {
     const isHomestay = item.sourceSectionKey === 'homestay';
-    const metaSecondary = item.metaSecondary
-      || (isHomestay && item.price ? `Giá: ${item.price}` : '');
+    const metaSecondary = showSecondary
+      ? (item.metaSecondary || (isHomestay && item.price ? `Giá: ${item.price}` : ''))
+      : '';
     return `
     <article class="spotlight-list-row ${escapeHtml(imageSourceClass(item))}">
       <div class="spotlight-list-thumb">
@@ -957,6 +1845,28 @@ function renderSpotlightListItems(items, options = {}) {
     </article>
   `;
   }).join('');
+}
+
+function renderSpotlightV2ListPage(page, index, listId, list, pageSubtitle) {
+  const backgroundImage = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
+  const showItemLabels = !isStayListPage(page);
+  const heading = spotlightV2ListHeading(page);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v2-list-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || page.title || 'list')}.png">
+      <div class="spotlight-v2-bg">
+        ${renderPreviewImage(backgroundImage, heading)}
+      </div>
+      <div class="spotlight-v2-list-shade"></div>
+      <div class="spotlight-v2-list-panel">
+        <div class="spotlight-v2-list-heading">
+          <h2>${escapeHtml(heading)}</h2>
+        </div>
+        <div class="spotlight-v2-list-stack">
+          ${renderSpotlightListItems(page.items, { showLabels: showItemLabels, showSecondary: false })}
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 function renderSpotlightListPage(page, index, listId, list, pageSubtitle) {
@@ -1001,6 +1911,32 @@ function renderSpotlightPartnerInfoPage(page, index, listId, list) {
           ${itemRows}
         </div>
         <div class="spotlight-partner-info-cta">Lưu lại khi cần cho chuyến Đà Lạt tới.</div>
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightPartnerV2InfoPage(page, index, listId, list) {
+  const backgroundImage = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
+  const itemRows = (page.items || []).map((item) => `
+    <article class="spotlight-partner-v2-info-row">
+      <span>${escapeHtml(item.label || '')}</span>
+      <strong>${escapeHtml(item.metaPrimary || item.name || '')}</strong>
+    </article>
+  `).join('');
+
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-partner-v2-info-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-thong-tin.png">
+      <div class="spotlight-v2-bg">
+        ${renderPreviewImage(backgroundImage, page.title)}
+      </div>
+      <div class="spotlight-v2-shade"></div>
+      <div class="spotlight-v2-info-band">
+        ${page.title ? `<h2 class="spotlight-v2-info-title">${escapeHtml(page.title)}</h2>` : ''}
+        <div class="spotlight-partner-v2-info-stack">
+          ${itemRows}
+        </div>
+        <p class="spotlight-v2-cta">Lưu để đặt / inbox khi cần</p>
       </div>
     </article>
   `;
@@ -1549,6 +2485,13 @@ function journey4N3DTitle(chipText, title) {
 
 export function renderListPage(page, index, total, listId, hashtags = [], list = null) {
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
+  if (page.layoutVariant === 'grid-5') {
+    return renderGrid5Page(page, index, listId, pageSubtitle, list);
+  }
+  if (V2_LIST_VARIANTS.has(page.layoutVariant)) {
+    const v2Html = renderListPageV2(page, index, listId, list, pageSubtitle);
+    if (v2Html) return v2Html;
+  }
   if (isSpotlightLayout(page)) {
     return renderSpotlightPage(page, index, listId, list, pageSubtitle);
   }

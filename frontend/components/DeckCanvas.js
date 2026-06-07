@@ -1,6 +1,6 @@
 import SlideCard from './SlideCard';
 
-export default function DeckCanvas({ list, selectedPageIndex, onPageSelect }) {
+export default function DeckCanvas({ list, selectedPageIndex, onPageSelect, coverImageUrls = [] }) {
   if (!list?.pages?.length) {
     return (
       <div className="list-preview-stage">
@@ -20,6 +20,7 @@ export default function DeckCanvas({ list, selectedPageIndex, onPageSelect }) {
             index={index}
             selected={index === selectedPageIndex}
             onSelect={onPageSelect}
+            coverImageUrls={coverImageUrls}
           />
         ))}
       </div>

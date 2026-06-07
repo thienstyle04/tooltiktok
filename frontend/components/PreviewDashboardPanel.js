@@ -13,6 +13,12 @@ export default function PreviewDashboardPanel({
   onDeleteList,
   loading,
 }) {
+  const V2_DECK_IDS = new Set([
+    'grid-8-feed',
+    'grid-8-quaytung',
+    'spotlight-v2',
+    'pov-3-v2',
+  ]);
   const decks = dataset?.decks || [];
   const lists = activeDeck?.lists || [];
 
@@ -24,7 +30,9 @@ export default function PreviewDashboardPanel({
             <p className="panel-kicker">Preview</p>
             <h3 className="panel-title">Chọn mẫu để xem deck</h3>
           </div>
-          <p className="panel-note">{activeDeck?.navTitle || 'Đang tải'} · {activeList?.pages?.length || 0} trang</p>
+          <div className="panel-head-actions">
+            <p className="panel-note">{activeDeck?.navTitle || 'Đang tải'} · {activeList?.pages?.length || 0} trang</p>
+          </div>
         </div>
 
         <div className="preview-selector-body">
@@ -36,7 +44,10 @@ export default function PreviewDashboardPanel({
                 type="button"
                 onClick={() => onDeckSelect(deck)}
               >
-                <span>{deck.navTitle}</span>
+                <span>
+                  {deck.navTitle}
+                  {V2_DECK_IDS.has(deck.id) ? <em className="preview-deck-v2-tag">V2</em> : null}
+                </span>
                 <small>{deck.lists.length} list</small>
               </button>
             ))}
@@ -65,6 +76,7 @@ export default function PreviewDashboardPanel({
         onPageSelect={onPageSelect}
         onDeleteList={onDeleteList}
         loading={loading}
+        coverImageUrls={dataset?.source?.coverImageUrls || []}
       />
     </div>
   );

@@ -1,0 +1,1803 @@
+/* ─── Template V2 — bám TikTok refs (rong_choi, camedalat, didauchoi49, maikem, quaytung) ───
+   PHẢI import sau layout-guards.css để override rule mẫu cũ. */
+
+/* Shared V2 spotlight layers (không dùng .spotlight-page / .spotlight-title) */
+.story-page.spotlight-v2-page,
+.story-page.spotlight-v2-cover,
+.story-page.spotlight-v2-list-page,
+.story-page.spotlight-partner-v2-info-page {
+  position: relative;
+  overflow: hidden;
+  background: #0f1410;
+  color: #fffaf0;
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-bg,
+.story-page.spotlight-v2-list-page .spotlight-v2-bg,
+.story-page.spotlight-partner-v2-info-page .spotlight-v2-bg {
+  position: absolute;
+  inset: 0;
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-bg img,
+.story-page.spotlight-v2-list-page .spotlight-v2-bg img,
+.story-page.spotlight-partner-v2-info-page .spotlight-v2-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+/* ═══ 1. grid-8-feed — dalat_rong_choi (lưới viền trắng + title giữa) ═══ */
+.story-page.grid8-feed-page,
+.story-page.grid8-feed-cover {
+  --grid8-feed-yellow: #ffe566;
+  --grid8-feed-script: "Caveat", "Baloo 2", cursive;
+  --grid8-feed-hook-font: "Quicksand", "Be Vietnam Pro", Arial, sans-serif;
+  --grid8-feed-meta-font: "Be Vietnam Pro", Arial, sans-serif;
+}
+
+/* ── Cover: title vàng trên ảnh nền ── */
+.story-page.grid8-feed-cover {
+  position: relative;
+  overflow: hidden;
+  background: #0e0d0c;
+}
+
+.story-page.grid8-feed-cover .grid8-feed-cover-photo,
+.story-page.grid8-feed-cover .grid8-feed-cover-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+}
+
+.story-page.grid8-feed-cover .grid8-feed-cover-dim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 8, 8, 0.35) 0%, rgba(8, 8, 8, 0.2) 42%, rgba(8, 8, 8, 0.55) 100%);
+}
+
+.story-page.grid8-feed-cover .grid8-feed-cover-top {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 16%;
+  z-index: 2;
+  text-align: center;
+}
+
+.story-page.grid8-feed-cover .grid8-feed-cover-hero {
+  margin: 0;
+  font-family: var(--grid8-feed-hook-font) !important;
+  font-size: clamp(1.05rem, 3.2vw, 1.45rem);
+  font-weight: 800 !important;
+  line-height: 1.08;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--grid8-feed-yellow);
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.65);
+}
+
+.story-page.grid8-feed-cover .grid8-feed-cover-tagline {
+  margin: 10px 0 0;
+  font-family: var(--grid8-feed-meta-font);
+  font-size: clamp(0.62rem, 1.8vw, 0.78rem);
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+/* ── List: lưới 3×3 — căn giữa dọc bằng translateY(-50%) ── */
+.story-page.grid8-feed-page {
+  position: relative !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 397px !important;
+  height: 562px !important;
+  min-height: 562px !important;
+  max-height: 562px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: #0a0a0a !important;
+  color: #fff;
+  overflow: hidden !important;
+}
+
+.story-page.grid8-feed-page .grid8-feed-matrix {
+  position: absolute;
+  top: 50%;
+  left: 7px;
+  right: 7px;
+  transform: translateY(-50%);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  gap: 5px 4px;
+  box-sizing: border-box;
+}
+
+.story-page.grid8-feed-page .grid8-feed-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-width: 0;
+  gap: 3px;
+}
+
+.story-page.grid8-feed-page .grid8-feed-frame {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  border: 2px solid #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #2a2622;
+  box-sizing: border-box;
+}
+
+.story-page.grid8-feed-page .grid8-feed-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+.story-page.grid8-feed-page .grid8-feed-labels,
+.story-page.grid8-feed-page .grid8-feed-center-label-spacer {
+  flex: 0 0 44px;
+  height: 44px;
+  width: 100%;
+}
+
+.story-page.grid8-feed-page .grid8-feed-labels {
+  text-align: center;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 1px;
+}
+
+.story-page.grid8-feed-page .grid8-feed-center-stage {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.story-page.grid8-feed-page .grid8-feed-name {
+  font-family: var(--grid8-feed-script) !important;
+  font-weight: 700 !important;
+  color: var(--grid8-feed-yellow);
+  line-height: 1.05;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  font-size: 0.88rem;
+}
+
+.story-page.grid8-feed-page .grid8-feed-meta {
+  margin-top: 0;
+  font-family: var(--grid8-feed-meta-font);
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1.12;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  opacity: 0.95;
+}
+
+.story-page.grid8-feed-page .grid8-feed-center-hook {
+  width: 100%;
+  font-family: var(--grid8-feed-script) !important;
+  font-weight: 700 !important;
+  font-size: 1.72rem;
+  line-height: 0.98;
+  text-align: center;
+  color: var(--grid8-feed-yellow);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* ═══ 1b. grid-8-quaytung — quaytungdalat.hihi (overlay 3×3 + menu) ═══ */
+.story-page.grid8-quaytung-cover,
+.story-page.grid8-quaytung-page,
+.story-page.grid8-quaytung-menu-page {
+  --grid8-quaytung-yellow: #ffe566;
+  --grid8-quaytung-red: #e63b3b;
+  --grid8-quaytung-script: "Quicksand", "Be Vietnam Pro", Arial, sans-serif;
+  --grid8-quaytung-meta: "Be Vietnam Pro", Arial, sans-serif;
+  font-family: var(--grid8-quaytung-meta) !important;
+}
+
+.story-page.grid8-quaytung-cover {
+  position: relative;
+  overflow: hidden;
+  background: #0e0d0c;
+}
+
+.story-page.grid8-quaytung-cover .grid8-quaytung-cover-photo,
+.story-page.grid8-quaytung-cover .grid8-quaytung-cover-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+}
+
+.story-page.grid8-quaytung-cover .grid8-quaytung-cover-dim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 8, 8, 0.35) 0%, rgba(8, 8, 8, 0.18) 45%, rgba(8, 8, 8, 0.62) 100%);
+}
+
+.story-page.grid8-quaytung-cover .grid8-quaytung-cover-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  width: 86%;
+  text-align: center;
+}
+
+.story-page.grid8-quaytung-cover .grid8-quaytung-cover-title {
+  margin: 8px 0 0;
+  font-family: var(--grid8-quaytung-meta) !important;
+  font-size: clamp(1.15rem, 3.6vw, 1.75rem);
+  font-weight: 800 !important;
+  line-height: 1.02;
+  color: var(--grid8-quaytung-yellow);
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.72);
+}
+
+.story-page.grid8-quaytung-cover .grid8-quaytung-cover-sub {
+  margin: 10px 0 0;
+  font-family: var(--grid8-quaytung-meta);
+  font-size: clamp(0.52rem, 1.5vw, 0.62rem);
+  font-weight: 500;
+  line-height: 1.28;
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.grid8-quaytung-dalat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--grid8-quaytung-red);
+  color: #fff;
+  font-family: var(--grid8-quaytung-meta);
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.story-page.grid8-quaytung-page {
+  position: relative !important;
+  display: block !important;
+  width: 397px !important;
+  height: 562px !important;
+  min-height: 562px !important;
+  max-height: 562px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: #0a0a0a !important;
+  overflow: hidden !important;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-matrix {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-slot {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-photo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1a1714;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.28) 42%, rgba(0, 0, 0, 0.55) 100%);
+  pointer-events: none;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-labels {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 8%;
+  z-index: 2;
+  text-align: center;
+  pointer-events: none;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-name {
+  font-family: var(--grid8-quaytung-meta) !important;
+  font-weight: 800 !important;
+  font-size: clamp(0.52rem, 1.55vw, 0.68rem);
+  line-height: 1.05;
+  color: var(--grid8-quaytung-yellow);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-address,
+.story-page.grid8-quaytung-page .grid8-quaytung-hours {
+  margin-top: 2px;
+  font-family: var(--grid8-quaytung-meta);
+  font-size: 0.42rem;
+  font-weight: 600;
+  line-height: 1.12;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.65);
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-clock {
+  font-size: 0.38rem;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-center-shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.52);
+  pointer-events: none;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-center-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-center-hook {
+  margin-top: 4px;
+  font-family: var(--grid8-quaytung-meta) !important;
+  font-weight: 800 !important;
+  font-size: clamp(0.72rem, 2.2vw, 0.95rem);
+  line-height: 1.02;
+  color: var(--grid8-quaytung-yellow);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.72);
+}
+
+.story-page.grid8-quaytung-page .grid8-quaytung-center-tagline {
+  margin-top: 4px;
+  font-family: var(--grid8-quaytung-meta);
+  font-size: 0.4rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.grid8-quaytung-menu-page {
+  position: relative;
+  overflow: hidden;
+  background: #e8efe4;
+  color: #2a1212;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-bg,
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.35;
+  filter: blur(1px);
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-dim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.92) 100%);
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-head {
+  position: relative;
+  z-index: 2;
+  padding: 14px 16px 8px;
+  text-align: center;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-title {
+  margin: 8px 0 0;
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-size: clamp(0.82rem, 2.4vw, 1rem);
+  font-weight: 800 !important;
+  line-height: 1.08;
+  color: #7a1a1a;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-sections {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px 12px;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 6px;
+  align-items: start;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section.is-reverse {
+  direction: rtl;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section.is-reverse > * {
+  direction: ltr;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section-title {
+  margin: 0 0 4px;
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-size: 0.48rem;
+  font-weight: 800 !important;
+  color: #7a1a1a;
+  line-height: 1.1;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-row {
+  margin: 0 0 2px;
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-size: 0.38rem;
+  line-height: 1.15;
+  color: #1a1a1a;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-row strong {
+  font-family: inherit !important;
+  font-weight: 700 !important;
+  display: inline;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-row span {
+  font-family: inherit !important;
+  font-weight: 500 !important;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section-photo {
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  background: #ddd;
+}
+
+.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Khóa font tiếng Việt — tránh strong/span rơi font khác nhau */
+.story-page.grid8-quaytung-menu-page :is(
+  .grid8-quaytung-menu-title,
+  .grid8-quaytung-menu-section-title,
+  .grid8-quaytung-menu-row,
+  .grid8-quaytung-menu-row strong,
+  .grid8-quaytung-menu-row span
+) {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+}
+
+/* ═══ 2. spotlight-v2 (dalatdidauchoi49) ═══ */
+.story-page.spotlight-v2-page .spotlight-v2-shade,
+.story-page.spotlight-v2-list-page .spotlight-v2-list-shade,
+.story-page.spotlight-partner-v2-info-page .spotlight-v2-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ── spotlight-v2 cover: lưới 2×2 ảnh nền + title giữa ── */
+.story-page.spotlight-v2-cover {
+  position: relative;
+  overflow: hidden;
+  background: #0f1410;
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  z-index: 0;
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-cell {
+  position: relative;
+  overflow: hidden;
+  background: #1a1714;
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  filter: brightness(0.88) saturate(0.95);
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-dim {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  width: 92%;
+  height: 40%;
+  border-radius: 20px;
+  background: radial-gradient(ellipse at center, rgba(8, 8, 8, 0.78) 0%, rgba(8, 8, 8, 0.52) 52%, rgba(8, 8, 8, 0) 100%);
+  pointer-events: none;
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  width: 84%;
+  text-align: center;
+  pointer-events: none;
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-partner-script {
+  margin-bottom: 6px;
+  font-family: "Baloo 2", "Quicksand", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: rgba(255, 250, 240, 0.94);
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.72);
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-ornament {
+  margin-bottom: 5px;
+  font-size: 0.46rem;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-title {
+  margin: 0;
+  font-family: "Quicksand", "Be Vietnam Pro", Arial, sans-serif !important;
+  font-size: clamp(0.92rem, 2.8vw, 1.18rem);
+  font-weight: 800 !important;
+  line-height: 1.12;
+  color: #ffe566;
+  text-wrap: balance;
+  text-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.78),
+    0 0 18px rgba(255, 229, 102, 0.38);
+}
+
+.story-page.spotlight-v2-cover .spotlight-v2-cover-caption {
+  margin: 7px 0 0;
+  font-family: "Be Vietnam Pro", sans-serif !important;
+  font-size: 0.52rem;
+  font-weight: 500;
+  line-height: 1.28;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.62);
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-shade {
+  background:
+    linear-gradient(180deg, rgba(8, 10, 8, 0.08) 0%, rgba(8, 10, 8, 0.05) 55%, rgba(8, 10, 8, 0.72) 100%),
+    radial-gradient(circle at 18% 16%, rgba(8, 10, 8, 0.42), transparent 36%),
+    radial-gradient(circle at 82% 26%, rgba(8, 10, 8, 0.38), transparent 34%),
+    linear-gradient(115deg, rgba(8, 10, 8, 0.36), transparent 58%);
+}
+
+.story-page.spotlight-partner-v2-info-page .spotlight-v2-shade {
+  background:
+    linear-gradient(180deg, rgba(11, 13, 10, 0.08) 0%, rgba(11, 13, 10, 0.05) 55%, rgba(11, 13, 10, 0.72) 100%);
+}
+
+.story-page.spotlight-v2-list-page .spotlight-v2-list-shade {
+  background: linear-gradient(180deg, rgba(11, 13, 10, 0.12) 0%, rgba(11, 13, 10, 0.55) 100%);
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 3px;
+  max-width: 100%;
+  padding: 42px 24px 44px;
+  box-sizing: border-box;
+  text-align: left;
+  pointer-events: none;
+}
+
+.story-page.spotlight-v2-page.spotlight-pos-upper-left .spotlight-v2-copy {
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 68px 24px 36px;
+}
+
+.story-page.spotlight-v2-page.spotlight-pos-upper-right .spotlight-v2-copy {
+  justify-content: flex-start;
+  align-items: flex-end;
+  padding: 72px 24px 36px;
+  text-align: right;
+}
+
+.story-page.spotlight-v2-page.spotlight-pos-center-left .spotlight-v2-copy {
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 24px;
+}
+
+.story-page.spotlight-v2-page.spotlight-pos-center-right .spotlight-v2-copy {
+  justify-content: center;
+  align-items: flex-end;
+  padding: 40px 24px;
+  text-align: right;
+}
+
+.story-page.spotlight-v2-page.spotlight-pos-lower-left .spotlight-v2-copy {
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 40px 24px 48px;
+}
+
+.story-page.spotlight-v2-page.spotlight-pos-lower-right .spotlight-v2-copy {
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding: 40px 24px 48px;
+  text-align: right;
+}
+
+.story-page.spotlight-v2-page.spotlight-pos-upper-right .spotlight-v2-name,
+.story-page.spotlight-v2-page.spotlight-pos-center-right .spotlight-v2-name,
+.story-page.spotlight-v2-page.spotlight-pos-lower-right .spotlight-v2-name {
+  align-self: flex-end;
+  max-width: 76%;
+}
+
+.story-page.spotlight-v2-page.spotlight-pos-upper-right .spotlight-v2-address,
+.story-page.spotlight-v2-page.spotlight-pos-upper-right .spotlight-v2-hours,
+.story-page.spotlight-v2-page.spotlight-pos-center-right .spotlight-v2-address,
+.story-page.spotlight-v2-page.spotlight-pos-center-right .spotlight-v2-hours,
+.story-page.spotlight-v2-page.spotlight-pos-lower-right .spotlight-v2-address,
+.story-page.spotlight-v2-page.spotlight-pos-lower-right .spotlight-v2-hours {
+  align-self: flex-end;
+  max-width: 76%;
+}
+
+.story-page.spotlight-partner-v2-info-page .spotlight-v2-info-band {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 38%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 28px !important;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, transparent, rgba(8, 10, 8, 0.82));
+  text-align: left;
+}
+
+.story-page.spotlight-partner-v2-info-page .spotlight-v2-info-title {
+  margin: 0 0 8px;
+  color: #fffaf0;
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.story-page.spotlight-partner-v2-info-page .spotlight-partner-v2-info-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-height: 42%;
+  overflow: hidden;
+}
+
+.story-page.spotlight-partner-v2-info-page .spotlight-partner-v2-info-row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 8px;
+  font-size: 0.58rem;
+  color: rgba(255, 250, 243, 0.92);
+}
+
+.story-page.spotlight-partner-v2-info-page .spotlight-partner-v2-info-row span {
+  font-weight: 700;
+  color: #ffe08a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.story-page.spotlight-partner-v2-info-page .spotlight-partner-v2-info-row strong {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-chip,
+.story-page.spotlight-partner-v2-info-page .spotlight-v2-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 250, 243, 0.92);
+  color: #171411;
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  max-width: 76%;
+  font-family: "Quicksand", "Be Vietnam Pro", sans-serif !important;
+  font-size: 0.84rem;
+  font-weight: 700 !important;
+  line-height: 1.14;
+  color: #ffd84d;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-name .spotlight-pin {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 2px;
+  color: #ffd84d;
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-name-text {
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-address,
+.story-page.spotlight-v2-page .spotlight-v2-hours {
+  margin: 0;
+  max-width: 76%;
+  color: #fff;
+  font-family: "Be Vietnam Pro", sans-serif !important;
+  font-size: 0.54rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-address {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-hours {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.story-page.spotlight-partner-v2-page .spotlight-v2-chip {
+  background: rgba(255, 207, 93, 0.98);
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-cta {
+  margin: 8px 0 0;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: rgba(255, 250, 243, 0.88);
+  letter-spacing: 0.02em;
+}
+
+.story-page.spotlight-v2-list-page .spotlight-v2-list-panel {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 18px;
+  z-index: 2;
+  border-radius: 16px;
+  background: rgba(255, 250, 243, 0.95);
+  color: #171411;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.story-page.spotlight-v2-list-page .spotlight-v2-list-heading span {
+  display: block;
+  font-size: 0.48rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bb5b43;
+}
+
+.story-page.spotlight-v2-list-page .spotlight-v2-list-heading h2 {
+  margin: 4px 0 0;
+  font-family: "Be Vietnam Pro", sans-serif !important;
+  font-size: 0.92rem;
+  font-weight: 900 !important;
+  line-height: 1.12;
+  color: #171411;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.spotlight-v2-list-page .spotlight-v2-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+  margin-top: 8px;
+}
+
+.story-page.spotlight-v2-list-page .spotlight-list-row {
+  background: rgba(23, 20, 17, 0.05);
+}
+
+.story-page.spotlight-v2-list-page .spotlight-list-copy strong,
+.story-page.spotlight-v2-list-page .spotlight-list-copy .story-image-title {
+  color: #171411 !important;
+}
+
+.story-page.spotlight-v2-list-page .spotlight-list-copy .spotlight-meta {
+  color: #4a4540;
+}
+
+.story-page.spotlight-v2-list-page .spotlight-list-copy .spotlight-meta.secondary {
+  color: #6b6560;
+}
+
+.story-page.spotlight-v2-list-page .spotlight-list-copy .spotlight-pin {
+  color: #bb5b43;
+}
+
+/* ═══ 4. pov-maikem (dalat.maikem) ═══ */
+.story-page.pov-maikem-cover {
+  position: relative;
+  overflow: hidden;
+  background: #1a1714;
+}
+
+.story-page.pov-maikem-cover .pov-maikem-cover-bg,
+.story-page.pov-maikem-cover .pov-maikem-cover-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-page.pov-maikem-cover .pov-maikem-cover-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 13, 10, 0.05) 0%, rgba(11, 13, 10, 0.78) 100%);
+}
+
+.story-page.pov-maikem-cover .pov-maikem-cover-copy {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 28px;
+  font-family: "Quicksand", sans-serif;
+  color: #fff;
+  text-align: left;
+}
+
+.story-page.pov-maikem-cover .pov-maikem-cover-kicker {
+  display: inline-flex;
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 224, 138, 0.92);
+  color: #1a1a1a;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.story-page.pov-maikem-cover .pov-maikem-cover-title {
+  font-family: "Quicksand", sans-serif !important;
+  font-weight: 700 !important;
+  font-size: clamp(1.15rem, 3.6vw, 1.65rem) !important;
+  line-height: 1.1;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.pov-maikem-cover .pov-maikem-cover-subtitle {
+  margin-top: 6px;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* POV maikem — full-bleed stack (không card, không nền kem) */
+.story-page.pov-maikem-page {
+  position: relative;
+  background: #0e0d0c;
+  font-family: "Quicksand", "Be Vietnam Pro", sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.story-page.pov-maikem-page .pov-maikem-page-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  max-width: 46%;
+  padding: 6px 9px;
+  border-radius: 10px;
+  background: rgba(14, 13, 12, 0.62);
+  color: #fffaf0;
+  font-size: 0.46rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: right;
+  border: 1px solid rgba(255, 250, 240, 0.22);
+}
+
+.story-page.pov-maikem-page .pov-maikem-feed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.story-page.pov-maikem-page .pov-maikem-slide {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #1a1714;
+}
+
+.story-page.pov-maikem-page .pov-maikem-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.story-page.pov-maikem-page .pov-maikem-slide-shade {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+  pointer-events: none;
+}
+
+.story-page.pov-maikem-page .pov-maikem-slide-copy {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  z-index: 1;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.story-page.pov-maikem-page .pov-maikem-slide-tag {
+  display: inline-flex;
+  margin-bottom: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 224, 138, 0.92);
+  color: #1a1a1a;
+  font-size: 0.42rem;
+  font-weight: 700;
+}
+
+.story-page.pov-maikem-page .pov-maikem-slide-title {
+  font-family: "Quicksand", sans-serif !important;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.14;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-page.pov-maikem-page .pov-maikem-slide-meta {
+  margin: 3px 0 0;
+  font-size: 0.5rem;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.9);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ═══ 4b. pov-3-v2 (dalat.maikem ref) ═══ */
+.story-page.pov-3-v2-cover,
+.story-page.pov-3-v2-stack-page,
+.story-page.pov-3-v2-grid-page {
+  --grid8-feed-yellow: #ffe566;
+  --grid8-feed-script: "Caveat", "Baloo 2", cursive;
+  --grid8-feed-hook-font: "Quicksand", "Be Vietnam Pro", Arial, sans-serif;
+  --grid8-feed-meta-font: "Be Vietnam Pro", Arial, sans-serif;
+}
+
+.story-page.pov-3-v2-cover {
+  position: relative;
+  overflow: hidden;
+  background: #0e0d0c;
+  color: #fff;
+}
+
+.story-page.pov-3-v2-cover .pov-3-v2-cover-bg,
+.story-page.pov-3-v2-cover .pov-3-v2-cover-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.story-page.pov-3-v2-cover .pov-3-v2-cover-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 10, 8, 0.42) 0%, rgba(8, 10, 8, 0.08) 38%, rgba(8, 10, 8, 0.55) 100%);
+}
+
+.story-page.pov-3-v2-cover .pov-3-v2-cover-copy {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  transform: translateX(-50%);
+  z-index: 2;
+  width: 86%;
+  text-align: center;
+}
+
+.story-page.pov-3-v2-cover .pov-3-v2-headline {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  font-family: var(--grid8-feed-hook-font) !important;
+  font-size: clamp(1.05rem, 3.2vw, 1.45rem);
+  font-weight: 800 !important;
+  line-height: 1.06;
+  color: var(--grid8-feed-yellow);
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.65);
+}
+
+.story-page.pov-3-v2-cover .pov-3-v2-bracket {
+  margin: 8px 0 0;
+  font-family: var(--grid8-feed-meta-font) !important;
+  font-size: clamp(0.52rem, 1.5vw, 0.62rem);
+  font-weight: 600;
+  line-height: 1.28;
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.story-page.pov-3-v2-cover .pov-3-v2-accent {
+  color: var(--grid8-feed-yellow);
+}
+
+.story-page.pov-3-v2-stack-page {
+  display: flex;
+  flex-direction: column;
+  background: #0e0d0c;
+  overflow: hidden;
+}
+
+.story-page.pov-3-v2-stack-page .pov-3-v2-stack-feed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.story-page.pov-3-v2-stack-page .pov-3-v2-stack-row {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.story-page.pov-3-v2-stack-page .pov-3-v2-stack-row img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.story-page.pov-3-v2-stack-page .pov-3-v2-stack-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(8, 10, 8, 0.82) 0%, rgba(8, 10, 8, 0.12) 58%, rgba(8, 10, 8, 0.02) 100%);
+}
+
+.story-page.pov-3-v2-stack-page .pov-3-v2-stack-copy {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  z-index: 2;
+  color: #fff;
+}
+
+.story-page.pov-3-v2-stack-page .pov-3-v2-stack-name {
+  margin: 0;
+  font-family: var(--grid8-feed-script) !important;
+  font-size: clamp(0.95rem, 2.8vw, 1.22rem);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--grid8-feed-yellow);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+.story-page.pov-3-v2-stack-page .pov-3-v2-stack-meta {
+  margin: 4px 0 0;
+  font-family: var(--grid8-feed-meta-font) !important;
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.story-page.pov-3-v2-stack-page .pov-3-v2-stack-tagline {
+  margin: 3px 0 0;
+  font-family: var(--grid8-feed-meta-font) !important;
+  font-size: 0.46rem;
+  font-weight: 500;
+  line-height: 1.22;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.story-page.pov-3-v2-grid-page {
+  position: relative;
+  overflow: hidden;
+  background: #ddd4c6;
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-bg,
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(10px) brightness(0.82);
+  transform: scale(1.08);
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  width: 88%;
+  max-height: 90%;
+  padding: 14px 12px 12px;
+  border: 2px solid #1f3f67;
+  border-radius: 18px;
+  background: rgba(248, 242, 232, 0.92);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-title {
+  margin: 0 0 10px;
+  text-align: center;
+  font-family: var(--grid8-feed-script) !important;
+  font-size: clamp(0.95rem, 2.8vw, 1.18rem);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--grid8-feed-yellow);
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-matrix {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 6px;
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-cell {
+  min-width: 0;
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-thumb {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #d8d0c4;
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-label {
+  margin-top: 4px;
+  text-align: center;
+  color: #1a1714;
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-dish,
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-name {
+  font-family: var(--grid8-feed-script) !important;
+  font-size: 0.52rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.story-page.pov-3-v2-grid-page .pov-3-v2-grid-address {
+  margin-top: 1px;
+  font-family: var(--grid8-feed-meta-font) !important;
+  font-size: 0.38rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: #2b2620;
+}
+
+/* POV 3 V2 — export fixes (html2canvas / fitImageBlob) */
+.batch-export-root .story-page.pov-3-v2-cover .pov-3-v2-bracket {
+  font-family: "Quicksand", sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1.34 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65) !important;
+}
+
+.batch-export-root .story-page.pov-3-v2-stack-page .pov-3-v2-stack-tagline {
+  font-family: "Quicksand", sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1.28 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65) !important;
+}
+
+.batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-panel {
+  left: 6%;
+  right: 6%;
+  top: 4%;
+  bottom: 4%;
+  width: auto;
+  max-height: none;
+  transform: none;
+  overflow: visible;
+}
+
+.batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-bg img {
+  transform: none;
+}
+
+.batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-thumb {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  aspect-ratio: auto;
+  overflow: hidden;
+}
+
+.batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-name {
+  font-family: "Caveat", "Segoe Script", cursive !important;
+  font-size: 11px !important;
+}
+
+.batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-address {
+  font-family: "Quicksand", sans-serif !important;
+  font-size: 8px !important;
+}
+
+/* ═══ 5. budget-4n3d-wallet (quaytung) ═══ */
+.story-page.budget-wallet-cover {
+  background: #120f0c;
+  color: #fffaf3;
+}
+
+.story-page.budget-wallet-cover .budget-wallet-cover-bg,
+.story-page.budget-wallet-cover .budget-wallet-cover-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-page.budget-wallet-cover .budget-wallet-cover-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.78));
+}
+
+.story-page.budget-wallet-cover .budget-wallet-cover-copy {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 32px;
+}
+
+.story-page.budget-wallet-cover .budget-wallet-script {
+  font-family: "Baloo 2", "Quicksand", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffe08a;
+  margin-bottom: 8px;
+}
+
+.story-page.budget-wallet-cover .budget-wallet-title {
+  margin: 0;
+  font-family: "Quicksand", "Be Vietnam Pro", Arial, sans-serif !important;
+  font-size: clamp(1.35rem, 4vw, 1.95rem);
+  font-weight: 800 !important;
+  line-height: 1.04;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #ffe566;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.65);
+}
+
+.story-page.budget-wallet-cover .budget-wallet-hook {
+  margin: 8px 0 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fffaf3;
+}
+
+.story-page.budget-wallet-cover .budget-wallet-sub {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.story-page.budget-wallet-day,
+.story-page.budget-wallet-fixed,
+.story-page.budget-wallet-bill {
+  background: #e8e2d6;
+}
+
+.story-page.budget-wallet-day .budget-wallet-slip,
+.story-page.budget-wallet-fixed .budget-wallet-fixed-panel h2,
+.story-page.budget-wallet-bill .budget-wallet-bill-panel h2 {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.story-page.budget-wallet-fixed .budget-wallet-fixed-panel > span,
+.story-page.budget-wallet-bill .budget-wallet-bill-panel > span {
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #bb5b43;
+  text-transform: uppercase;
+}
+
+.story-page.budget-wallet-fixed .budget-wallet-fixed-panel,
+.story-page.budget-wallet-bill .budget-wallet-bill-panel {
+  position: absolute;
+  inset: 16px;
+  border-radius: 16px;
+  background: #faf6ec;
+  border: 1px solid #d8d0c0;
+  color: #171411;
+  padding: 16px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 12px 30px rgba(62, 48, 29, 0.12);
+}
+
+.story-page.budget-wallet-day .budget-wallet-slip-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #d8d0c0;
+  padding-bottom: 10px;
+}
+
+.story-page.budget-wallet-day .budget-wallet-slip-head span {
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #bb5b43;
+}
+
+.story-page.budget-wallet-day .budget-wallet-slip-head h2 {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.story-page.budget-wallet-day .budget-wallet-slip-total {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #171411;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.story-page.budget-wallet-day .budget-wallet-lines,
+.story-page.budget-wallet-fixed .budget-wallet-lines,
+.story-page.budget-wallet-bill .budget-wallet-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.story-page.budget-wallet-day .budget-wallet-line,
+.story-page.budget-wallet-fixed .budget-wallet-line,
+.story-page.budget-wallet-bill .budget-wallet-line {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  font-size: 0.58rem;
+  border-bottom: 1px dashed rgba(23, 20, 17, 0.14);
+  padding-bottom: 5px;
+}
+
+.story-page.budget-wallet-day .budget-wallet-line em,
+.story-page.budget-wallet-fixed .budget-wallet-line em,
+.story-page.budget-wallet-bill .budget-wallet-line em {
+  font-style: normal;
+  font-weight: 900;
+  color: #b42318;
+  font-variant-numeric: tabular-nums;
+}
+
+.story-page.budget-wallet-day .budget-wallet-thumbs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: auto;
+}
+
+.story-page.budget-wallet-day .budget-wallet-thumb {
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+
+.story-page.budget-wallet-day .budget-wallet-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-page.budget-wallet-bill .budget-wallet-bill-panel h2 {
+  margin: 4px 0 0;
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.story-page.budget-wallet-bill .budget-wallet-bill-final {
+  margin-top: auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #171411;
+  color: #ffe08a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 900;
+  font-size: 0.82rem;
+}
+
+.story-page.budget-wallet-bill .budget-wallet-bill-final strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══ Compare modal ═══ */
+.template-gallery-shell .panel-head-actions,
+.preview-selector-panel .panel-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.preview-deck-v2-tag {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(187, 91, 67, 0.16);
+  color: var(--terracotta);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.template-gallery-compare-btn {
+  margin-left: auto;
+}
+
+.template-compare-modal {
+  max-width: min(96vw, 1400px);
+  width: 96vw;
+}
+
+.template-compare-pairs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.template-compare-pair-btn {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.template-compare-pair-btn:hover,
+.template-compare-pair-btn.active {
+  border-color: var(--terracotta);
+  color: var(--terracotta);
+}
+
+.template-compare-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.template-compare-selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.template-compare-selectors label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.template-compare-selectors select {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.template-compare-sync-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.template-compare-sync-note {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  color: var(--terracotta);
+}
+
+.template-compare-stage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-height: 62vh;
+  overflow: auto;
+}
+
+.template-compare-column {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  padding: 12px;
+  min-width: 0;
+}
+
+.template-compare-page-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.template-compare-page-tab {
+  min-width: 2.4rem;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.template-compare-page-tab.active,
+.template-compare-page-tab:hover {
+  border-color: var(--terracotta);
+  color: var(--terracotta);
+}
+
+.template-compare-focus-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.template-compare-page-caption {
+  margin: 0;
+  width: 100%;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.template-compare-focus-stage .slide-card-frame {
+  width: min(100%, 280px);
+  margin: 0 auto;
+}
+
+.template-compare-focus-stage .slide-card-frame.is-selected {
+  outline: none;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 900px) {
+  .template-compare-selectors,
+  .template-compare-stage {
+    grid-template-columns: 1fr;
+  }
+}

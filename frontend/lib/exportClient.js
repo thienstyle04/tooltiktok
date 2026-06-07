@@ -4,7 +4,13 @@ import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { renderCoverPage, renderListPage } from './pageMarkup';
+import { readCachedDataset } from './datasetCache';
 import { listIsMain, sanitizeFilePart } from './utils';
+
+function coverImageUrlsForExport() {
+  const cached = readCachedDataset();
+  return cached?.dataset?.source?.coverImageUrls || [];
+}
 
 /**
  * Download a blob as a file. More reliable than file-saver's saveAs because:
@@ -451,8 +457,21 @@ async function fitImageBlobToElement(blob, img, options = {}) {
   if (objectFit !== 'cover') return blob;
 
   const rect = img.getBoundingClientRect?.();
-  const cssWidth = Number(rect?.width || img.clientWidth || 0);
-  const cssHeight = Number(rect?.height || img.clientHeight || 0);
+  let cssWidth = Number(rect?.width || img.clientWidth || 0);
+  let cssHeight = Number(rect?.height || img.clientHeight || 0);
+  if (cssWidth >= 1 && cssHeight < 1) {
+    const aspectRatio = String(styles?.aspectRatio || '').trim();
+    const ratioMatch = aspectRatio.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+    if (ratioMatch) {
+      cssHeight = cssWidth * (Number(ratioMatch[2]) / Number(ratioMatch[1]));
+    } else {
+      const parentRect = img.parentElement?.getBoundingClientRect?.();
+      if (parentRect && parentRect.width >= 1 && parentRect.height >= 1) {
+        cssWidth = parentRect.width;
+        cssHeight = parentRect.height;
+      }
+    }
+  }
   if (cssWidth < 1 || cssHeight < 1) return blob;
 
   let bitmap = null;
@@ -862,7 +881,7 @@ function clearBatchExportRoot() {
 
 function renderPageMarkupForExport(list, page, index) {
   if (page.type === 'cover') {
-    return renderCoverPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list);
+    return renderCoverPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list, coverImageUrlsForExport());
   }
   return renderListPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list);
 }
@@ -1086,7 +1105,10 @@ function deckShortName(deckId) {
     'first-time': 'firsttime',
     'grid-6': 'grid6',
     'grid-8': 'grid8',
+    'grid-8-feed': 'grid8feed',
+    'grid-8-quaytung': 'grid8qt',
     'grid-4': 'grid4',
+    'grid-5': 'grid5',
     'spotlight-guide': 'spotlight',
     'spotlight-partner': 'partner',
   };
