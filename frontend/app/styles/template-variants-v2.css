@@ -33,42 +33,59 @@
 .story-page.grid8-feed-page,
 .story-page.grid8-feed-cover {
   --grid8-feed-yellow: #ffe566;
-  --grid8-feed-script: "Caveat", "Baloo 2", cursive;
+  --grid8-feed-script: "Quicksand", "Be Vietnam Pro", Arial, sans-serif;
   --grid8-feed-hook-font: "Quicksand", "Be Vietnam Pro", Arial, sans-serif;
   --grid8-feed-meta-font: "Be Vietnam Pro", Arial, sans-serif;
 }
 
-/* ── Cover: title vàng trên ảnh nền ── */
+/* ── Cover: lưới 2×2 ảnh nền + title giữa + phủ đen 50% ── */
 .story-page.grid8-feed-cover {
   position: relative;
   overflow: hidden;
   background: #0e0d0c;
 }
 
-.story-page.grid8-feed-cover .grid8-feed-cover-photo,
-.story-page.grid8-feed-cover .grid8-feed-cover-photo img {
+.story-page.grid8-feed-cover .grid8-feed-cover-grid {
   position: absolute;
   inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  z-index: 0;
+}
+
+.story-page.grid8-feed-cover .grid8-feed-cover-cell {
+  position: relative;
+  overflow: hidden;
+  background: #1a1714;
+}
+
+.story-page.grid8-feed-cover .grid8-feed-cover-cell img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 35%;
+  object-position: center;
+  display: block;
 }
 
 .story-page.grid8-feed-cover .grid8-feed-cover-dim {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(8, 8, 8, 0.35) 0%, rgba(8, 8, 8, 0.2) 42%, rgba(8, 8, 8, 0.55) 100%);
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }
 
-.story-page.grid8-feed-cover .grid8-feed-cover-top {
+.story-page.grid8-feed-cover .grid8-feed-cover-center {
   position: absolute;
-  left: 20px;
-  right: 20px;
-  top: 16%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 2;
+  width: 86%;
   text-align: center;
+  pointer-events: none;
 }
 
 .story-page.grid8-feed-cover .grid8-feed-cover-hero {
@@ -80,18 +97,24 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--grid8-feed-yellow);
-  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.65);
+  text-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.85),
+    0 0 1px rgba(0, 0, 0, 0.95),
+    -1px -1px 0 rgba(0, 0, 0, 0.55),
+    1px 1px 0 rgba(0, 0, 0, 0.55);
 }
 
 .story-page.grid8-feed-cover .grid8-feed-cover-tagline {
   margin: 10px 0 0;
-  font-family: var(--grid8-feed-meta-font);
+  font-family: var(--grid8-feed-meta-font) !important;
   font-size: clamp(0.62rem, 1.8vw, 0.78rem);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   text-transform: uppercase;
   color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  text-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.75),
+    0 0 1px rgba(0, 0, 0, 0.9);
 }
 
 /* ── List: lưới 3×3 — căn giữa dọc bằng translateY(-50%) ── */
@@ -113,14 +136,16 @@
 .story-page.grid8-feed-page .grid8-feed-matrix {
   position: absolute;
   top: 50%;
-  left: 7px;
-  right: 7px;
-  transform: translateY(-50%);
+  left: 10px;
+  right: 10px;
+  transform: translateY(-50%) scale(0.94);
+  transform-origin: center center;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: auto;
-  gap: 5px 4px;
+  gap: 4px 3px;
   box-sizing: border-box;
+  max-height: 96%;
 }
 
 .story-page.grid8-feed-page .grid8-feed-slot {
@@ -129,7 +154,9 @@
   align-items: stretch;
   justify-content: flex-start;
   min-width: 0;
-  gap: 3px;
+  min-height: 0;
+  gap: 2px;
+  overflow: hidden;
 }
 
 .story-page.grid8-feed-page .grid8-feed-frame {
@@ -137,15 +164,18 @@
   aspect-ratio: 1 / 1;
   flex: 0 0 auto;
   border: 2px solid #fff;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   background: #2a2622;
   box-sizing: border-box;
+  isolation: isolate;
 }
 
 .story-page.grid8-feed-page .grid8-feed-frame img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: cover;
   object-position: center 30%;
   display: block;
@@ -153,9 +183,11 @@
 
 .story-page.grid8-feed-page .grid8-feed-labels,
 .story-page.grid8-feed-page .grid8-feed-center-label-spacer {
-  flex: 0 0 44px;
-  height: 44px;
+  flex: 0 0 50px;
+  height: 50px;
+  max-height: 50px;
   width: 100%;
+  overflow: hidden;
 }
 
 .story-page.grid8-feed-page .grid8-feed-labels {
@@ -174,35 +206,38 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
+  padding: 0 6px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .story-page.grid8-feed-page .grid8-feed-name {
   font-family: var(--grid8-feed-script) !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
   color: var(--grid8-feed-yellow);
-  line-height: 1.05;
+  line-height: 1.08;
   text-align: center;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-  font-size: 0.88rem;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.55),
+    0 0 1px rgba(0, 0, 0, 0.85);
+  font-size: 0.68rem;
 }
 
 .story-page.grid8-feed-page .grid8-feed-meta {
   margin-top: 0;
   font-family: var(--grid8-feed-meta-font);
-  font-size: 0.58rem;
+  font-size: 0.48rem;
   font-weight: 600;
-  line-height: 1.12;
+  line-height: 1.1;
   color: #fff;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
   opacity: 0.95;
@@ -211,12 +246,17 @@
 .story-page.grid8-feed-page .grid8-feed-center-hook {
   width: 100%;
   font-family: var(--grid8-feed-script) !important;
-  font-weight: 700 !important;
-  font-size: 1.72rem;
-  line-height: 0.98;
+  font-weight: 800 !important;
+  font-size: clamp(0.72rem, 2vw, 0.95rem);
+  line-height: 1.06;
   text-align: center;
   color: var(--grid8-feed-yellow);
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ═══ 1b. grid-8-quaytung — quaytungdalat.hihi (overlay 3×3 + menu) ═══ */
@@ -437,9 +477,14 @@
 
 .story-page.grid8-quaytung-menu-page {
   position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: #e8efe4;
   color: #2a1212;
+  height: 562px;
+  max-height: 562px;
+  box-sizing: border-box;
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-bg,
@@ -463,35 +508,42 @@
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-head {
   position: relative;
   z-index: 2;
-  padding: 14px 16px 8px;
+  flex: 0 0 auto;
+  padding: 8px 12px 4px;
   text-align: center;
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-title {
-  margin: 8px 0 0;
+  margin: 4px 0 0;
   font-family: "Be Vietnam Pro", Arial, sans-serif !important;
-  font-size: clamp(0.82rem, 2.4vw, 1rem);
+  font-size: clamp(0.58rem, 1.7vw, 0.72rem);
   font-weight: 800 !important;
-  line-height: 1.08;
+  line-height: 1.06;
   color: #7a1a1a;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   text-transform: uppercase;
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-sections {
   position: relative;
   z-index: 2;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 10px 12px;
+  gap: 4px;
+  padding: 0 8px 8px;
+  overflow: hidden;
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 6px;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 4px;
   align-items: start;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section.is-reverse {
@@ -503,26 +555,33 @@
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section-title {
-  margin: 0 0 4px;
+  margin: 0 0 2px;
   font-family: "Be Vietnam Pro", Arial, sans-serif !important;
-  font-size: 0.48rem;
+  font-size: 0.42rem;
   font-weight: 800 !important;
   color: #7a1a1a;
-  line-height: 1.1;
+  line-height: 1.08;
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-list {
   margin: 0;
   padding: 0;
   list-style: none;
+  overflow: hidden;
+  max-height: 100%;
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-row {
-  margin: 0 0 2px;
+  margin: 0 0 1px;
   font-family: "Be Vietnam Pro", Arial, sans-serif !important;
-  font-size: 0.38rem;
-  line-height: 1.15;
+  font-size: 0.34rem;
+  line-height: 1.12;
   color: #1a1a1a;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-row strong {
@@ -537,8 +596,10 @@
 }
 
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section-photo {
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
+  width: 100%;
+  max-height: 100%;
   aspect-ratio: 1 / 1;
   background: #ddd;
 }
@@ -546,6 +607,8 @@
 .story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-section-photo img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: cover;
   display: block;
 }
@@ -605,14 +668,9 @@
 
 .story-page.spotlight-v2-cover .spotlight-v2-cover-dim {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
   z-index: 1;
-  width: 92%;
-  height: 40%;
-  border-radius: 20px;
-  background: radial-gradient(ellipse at center, rgba(8, 8, 8, 0.78) 0%, rgba(8, 8, 8, 0.52) 52%, rgba(8, 8, 8, 0) 100%);
+  background: rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 
@@ -622,7 +680,7 @@
   top: 50%;
   transform: translate(-50%, -50%);
   z-index: 2;
-  width: 84%;
+  width: 88%;
   text-align: center;
   pointer-events: none;
 }
@@ -647,32 +705,34 @@
 .story-page.spotlight-v2-cover .spotlight-v2-cover-title {
   margin: 0;
   font-family: "Quicksand", "Be Vietnam Pro", Arial, sans-serif !important;
-  font-size: clamp(0.92rem, 2.8vw, 1.18rem);
+  font-size: clamp(1.05rem, 3.2vw, 1.38rem);
   font-weight: 800 !important;
-  line-height: 1.12;
+  line-height: 1.1;
   color: #ffe566;
   text-wrap: balance;
   text-shadow:
-    0 3px 14px rgba(0, 0, 0, 0.78),
-    0 0 18px rgba(255, 229, 102, 0.38);
+    0 3px 14px rgba(0, 0, 0, 0.88),
+    0 0 1px rgba(0, 0, 0, 0.95),
+    -1px -1px 0 rgba(0, 0, 0, 0.65),
+    1px 1px 0 rgba(0, 0, 0, 0.65);
 }
 
 .story-page.spotlight-v2-cover .spotlight-v2-cover-caption {
-  margin: 7px 0 0;
+  margin: 10px 0 0;
   font-family: "Be Vietnam Pro", sans-serif !important;
-  font-size: 0.52rem;
-  font-weight: 500;
-  line-height: 1.28;
+  font-size: clamp(0.56rem, 1.7vw, 0.68rem);
+  font-weight: 600;
+  line-height: 1.32;
   color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.62);
+  text-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.78),
+    0 0 1px rgba(0, 0, 0, 0.9);
 }
 
 .story-page.spotlight-v2-page .spotlight-v2-shade {
   background:
-    linear-gradient(180deg, rgba(8, 10, 8, 0.08) 0%, rgba(8, 10, 8, 0.05) 55%, rgba(8, 10, 8, 0.72) 100%),
-    radial-gradient(circle at 18% 16%, rgba(8, 10, 8, 0.42), transparent 36%),
-    radial-gradient(circle at 82% 26%, rgba(8, 10, 8, 0.38), transparent 34%),
-    linear-gradient(115deg, rgba(8, 10, 8, 0.36), transparent 58%);
+    rgba(0, 0, 0, 0.5),
+    linear-gradient(180deg, rgba(8, 10, 8, 0.08) 0%, rgba(8, 10, 8, 0.05) 55%, rgba(8, 10, 8, 0.72) 100%);
 }
 
 .story-page.spotlight-partner-v2-info-page .spotlight-v2-shade {
@@ -828,13 +888,17 @@
   align-items: flex-start;
   gap: 4px;
   margin: 0;
-  max-width: 76%;
+  max-width: 82%;
   font-family: "Quicksand", "Be Vietnam Pro", sans-serif !important;
-  font-size: 0.84rem;
-  font-weight: 700 !important;
-  line-height: 1.14;
+  font-size: clamp(0.92rem, 2.8vw, 1.08rem);
+  font-weight: 800 !important;
+  line-height: 1.12;
   color: #ffd84d;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  text-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.82),
+    0 0 1px rgba(0, 0, 0, 0.95),
+    -1px -1px 0 rgba(0, 0, 0, 0.62),
+    1px 1px 0 rgba(0, 0, 0, 0.62);
 }
 
 .story-page.spotlight-v2-page .spotlight-v2-name .spotlight-pin {
@@ -857,13 +921,15 @@
 .story-page.spotlight-v2-page .spotlight-v2-address,
 .story-page.spotlight-v2-page .spotlight-v2-hours {
   margin: 0;
-  max-width: 76%;
+  max-width: 82%;
   color: #fff;
   font-family: "Be Vietnam Pro", sans-serif !important;
-  font-size: 0.54rem;
-  font-weight: 500;
-  line-height: 1.2;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  font-size: clamp(0.58rem, 1.7vw, 0.68rem);
+  font-weight: 600;
+  line-height: 1.24;
+  text-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.72),
+    0 0 1px rgba(0, 0, 0, 0.88);
 }
 
 .story-page.spotlight-v2-page .spotlight-v2-address {
@@ -1133,7 +1199,7 @@
 .story-page.pov-3-v2-stack-page,
 .story-page.pov-3-v2-grid-page {
   --grid8-feed-yellow: #ffe566;
-  --grid8-feed-script: "Caveat", "Baloo 2", cursive;
+  --grid8-feed-script: "Quicksand", "Be Vietnam Pro", Arial, sans-serif;
   --grid8-feed-hook-font: "Quicksand", "Be Vietnam Pro", Arial, sans-serif;
   --grid8-feed-meta-font: "Be Vietnam Pro", Arial, sans-serif;
 }
@@ -1222,6 +1288,8 @@
 .story-page.pov-3-v2-stack-page .pov-3-v2-stack-row img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: cover;
   display: block;
 }
@@ -1229,26 +1297,41 @@
 .story-page.pov-3-v2-stack-page .pov-3-v2-stack-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(0deg, rgba(8, 10, 8, 0.82) 0%, rgba(8, 10, 8, 0.12) 58%, rgba(8, 10, 8, 0.02) 100%);
+  background:
+    linear-gradient(0deg, rgba(8, 10, 8, 0.88) 0%, rgba(8, 10, 8, 0.28) 58%, rgba(8, 10, 8, 0.08) 100%);
 }
 
 .story-page.pov-3-v2-stack-page .pov-3-v2-stack-copy {
   position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 8px;
   z-index: 2;
   color: #fff;
+  max-width: 88%;
 }
 
 .story-page.pov-3-v2-stack-page .pov-3-v2-stack-name {
   margin: 0;
   font-family: var(--grid8-feed-script) !important;
-  font-size: clamp(0.95rem, 2.8vw, 1.22rem);
-  font-weight: 700;
-  line-height: 1.05;
-  color: var(--grid8-feed-yellow);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  font-size: clamp(0.78rem, 2.2vw, 0.98rem);
+  font-weight: 800 !important;
+  line-height: 1.3;
+  color: #fff;
+  text-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.85),
+    0 0 1px rgba(0, 0, 0, 0.95),
+    -1px -1px 0 rgba(0, 0, 0, 0.72),
+    1px 1px 0 rgba(0, 0, 0, 0.72),
+    0 0 12px rgba(255, 229, 102, 0.35);
+  -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.55);
+  /* Tên 1 dòng: nowrap + ellipsis cho cả preview lẫn export (html2canvas).
+     line-height 1.3 + padding-top chừa khoảng cho dấu tiếng Việt phía trên. */
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  padding-top: 1px;
 }
 
 .story-page.pov-3-v2-stack-page .pov-3-v2-stack-meta {
@@ -1261,12 +1344,15 @@
 }
 
 .story-page.pov-3-v2-stack-page .pov-3-v2-stack-tagline {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   font-family: var(--grid8-feed-meta-font) !important;
-  font-size: 0.46rem;
+  font-size: 0.4rem;
   font-weight: 500;
   line-height: 1.22;
   color: rgba(255, 255, 255, 0.92);
+  display: block;
+  overflow: hidden;
+  max-height: calc(1.22em * 2);
 }
 
 .story-page.pov-3-v2-grid-page {
@@ -1306,10 +1392,13 @@
   margin: 0 0 10px;
   text-align: center;
   font-family: var(--grid8-feed-script) !important;
-  font-size: clamp(0.95rem, 2.8vw, 1.18rem);
-  font-weight: 700;
+  font-size: clamp(1rem, 2.9vw, 1.22rem);
+  font-weight: 800 !important;
   line-height: 1.05;
-  color: var(--grid8-feed-yellow);
+  color: #8a5a00;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.65),
+    0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
 .story-page.pov-3-v2-grid-page .pov-3-v2-grid-matrix {
@@ -1344,10 +1433,10 @@
 
 .story-page.pov-3-v2-grid-page .pov-3-v2-grid-dish,
 .story-page.pov-3-v2-grid-page .pov-3-v2-grid-name {
-  font-family: var(--grid8-feed-script) !important;
-  font-size: 0.52rem;
+  font-family: var(--grid8-feed-meta-font) !important;
+  font-size: 0.54rem;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.12;
 }
 
 .story-page.pov-3-v2-grid-page .pov-3-v2-grid-address {
@@ -1370,6 +1459,17 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65) !important;
 }
 
+.batch-export-root .story-page.pov-3-v2-stack-page .pov-3-v2-stack-name {
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+  line-height: 1.35 !important;
+  padding-top: 1px;
+}
+
 .batch-export-root .story-page.pov-3-v2-stack-page .pov-3-v2-stack-tagline {
   font-family: "Quicksand", sans-serif !important;
   font-size: 10px !important;
@@ -1378,6 +1478,7 @@
   color: #ffffff !important;
   opacity: 1 !important;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65) !important;
+  max-height: calc(1.28em * 2) !important;
 }
 
 .batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-panel {
@@ -1413,8 +1514,9 @@
 }
 
 .batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-name {
-  font-family: "Caveat", "Segoe Script", cursive !important;
+  font-family: "Be Vietnam Pro", "Quicksand", sans-serif !important;
   font-size: 11px !important;
+  font-weight: 700 !important;
 }
 
 .batch-export-root .story-page.pov-3-v2-grid-page .pov-3-v2-grid-address {

@@ -259,6 +259,9 @@ function polishShortVietnameseCopy(value) {
   if (!text) return '';
 
   text = text
+    .replace(/\bĐà\s*Lạt\s+VN\b/giu, 'Đà Lạt')
+    .replace(/\s+\/\s*VN\b/giu, '')
+    .replace(/\s+\bVN\b(?=\s|$|[./])/giu, '')
     .replace(/\bĐà\s*Lạt\s*ẩn\s*mình\s*sau\s*vách\s*núi\b/giu, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
     .replace(/\bĐà\s*Lạt\s*đủ\s*để\s*đi\s*ngay\b/giu, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
     .replace(/\bmở\s+to\s+mắt\b/giu, 'mở mang tầm mắt')
@@ -765,8 +768,8 @@ function grid5ItemMeta(item) {
 }
 
 function renderGrid8FeedSlot(item) {
-  const displayName = gridDisplayName(item);
-  const meta = grid8FeedItemMeta(item);
+  const displayName = truncateMenuLine(gridDisplayName(item), 22);
+  const meta = truncateMenuLine(grid8FeedItemMeta(item), 32);
   return `
     <div class="grid8-feed-slot ${escapeHtml(imageSourceClass(item))}">
       <div class="grid8-feed-frame">
@@ -781,7 +784,7 @@ function renderGrid8FeedSlot(item) {
 }
 
 function formatGrid8FeedCenterHook(hookText) {
-  const raw = String(hookText || '').trim();
+  const raw = truncateMenuLine(String(hookText || '').trim(), 28);
   if (!raw) return '';
   const words = raw.split(/\s+/);
   if (words.length <= 1) return escapeHtml(raw);
@@ -814,16 +817,38 @@ function renderGrid8FeedItems(items, centerHook) {
   return ordered.join('');
 }
 
-function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+function grid8FeedCoverGridImages(page, backgroundImage, listId = '', coverImageUrls = []) {
+  const fromPage = Array.isArray(page?.coverImages) ? page.coverImages.filter(Boolean) : [];
+  const uniqueFromPage = [...new Set(fromPage)];
+  if (uniqueFromPage.length >= 4) return uniqueFromPage.slice(0, 4);
+
+  const pool = (coverImageUrls.length > 0 ? coverImageUrls : spotlightV2CoverImagePool).filter(Boolean);
+  const seed = `${listId || page?.title || 'grid8-feed-cover'}|cover-grid`;
+  const fromPool = pickUniqueCoverGridImages(pool, seed, 4);
+  const merged = [...new Set([...uniqueFromPage, ...fromPool])];
+  if (merged.length >= 4) return merged.slice(0, 4);
+  if (merged.length > 0) return merged;
+
+  return backgroundImage ? [backgroundImage] : [];
+}
+
+function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
   const hero = String(coverTitle || 'CÁC ĐỊA ĐIỂM ĐÀ LẠT').toUpperCase();
   const tagline = String(coverSubtitle || 'BỎ LỠ CHẮC CHẮN LÀ HỐI HẬN').toUpperCase();
+  let tiles = grid8FeedCoverGridImages(page, backgroundImage, listId, coverImageUrls);
+  while (tiles.length < 4) tiles.push('');
+  tiles = tiles.slice(0, 4);
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'grid8-feed-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
-      <div class="grid8-feed-cover-photo">
-        ${renderPreviewImage(backgroundImage, coverTitle)}
+      <div class="grid8-feed-cover-grid">
+        ${tiles.map((url, tileIndex) => `
+          <div class="grid8-feed-cover-cell">
+            ${url ? renderPreviewImage(url, `${coverTitle || 'cover'} ${tileIndex + 1}`) : ''}
+          </div>
+        `).join('')}
       </div>
-      <div class="grid8-feed-cover-dim"></div>
-      <div class="grid8-feed-cover-top">
+      <div class="grid8-feed-cover-dim" aria-hidden="true"></div>
+      <div class="grid8-feed-cover-center">
         <h1 class="grid8-feed-cover-hero">${escapeHtml(hero)}</h1>
         <p class="grid8-feed-cover-tagline">${escapeHtml(tagline)}</p>
       </div>
@@ -836,7 +861,12 @@ function renderGrid8QuaytungDalatBadge() {
 }
 
 function formatGrid8QuaytungCoverTitle(title) {
-  const raw = String(title || 'List này toàn địa điểm "vuýp"').replace(/\s+/g, ' ').trim();
+  const raw = String(title || 'List này toàn địa điểm "vuýp"')
+    .replace(/\bĐà\s*Lạt\s+VN\b/giu, 'Đà Lạt')
+    .replace(/\s+\/\s*VN\b/giu, '')
+    .replace(/\s+\bVN\b(?=\s|$|[./])/giu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   const words = raw.split(' ');
   if (words.length <= 4) return escapeHtml(raw);
   const splitAt = Math.ceil(words.length / 2);
@@ -860,20 +890,35 @@ function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle
   `;
 }
 
-function grid8QuaytungItemHours(item) {
+function grid8QuaytungExtractPrice(item) {
   const secondary = String(item?.metaSecondary || '').replace(/\s+/g, ' ').trim();
-  const hoursMatch = secondary.match(/Khung giờ:\s*([^·]+)/i);
-  if (hoursMatch) return hoursMatch[1].trim();
   const priceMatch = secondary.match(/Giá:\s*([^·]+)/i);
-  if (priceMatch && /free|miễn\s*phí|^0\s*đ$/i.test(priceMatch[1])) return 'FREE';
+  if (priceMatch) {
+    const raw = priceMatch[1].trim();
+    if (/free|miễn\s*phí|^0\s*đ$/i.test(raw)) return 'FREE';
+    return raw;
+  }
   if (/free|miễn\s*phí/i.test(secondary)) return 'FREE';
   return '';
 }
 
-function renderGrid8QuaytungSlot(item) {
+function grid8QuaytungDefaultPrice(item) {
+  const section = String(item?.sourceSectionKey || '').toLowerCase();
+  if (section.includes('check') || section.includes('khu_du') || section.includes('lich_su')) return 'FREE';
+  return 'Liên hệ';
+}
+
+function grid8QuaytungUnifiedPrices(items) {
+  const labels = (items || []).map((item) => grid8QuaytungExtractPrice(item));
+  const showForAll = labels.some(Boolean);
+  if (!showForAll) return labels;
+  return (items || []).map((item, index) => labels[index] || grid8QuaytungDefaultPrice(item));
+}
+
+function renderGrid8QuaytungSlot(item, priceLabel = '') {
   const displayName = gridDisplayName(item);
   const address = cleanGridAddress(item?.metaPrimary) || String(item?.metaPrimary || '').trim();
-  const hours = grid8QuaytungItemHours(item);
+  const price = priceLabel || grid8QuaytungExtractPrice(item);
   return `
     <div class="grid8-quaytung-slot ${escapeHtml(imageSourceClass(item))}">
       <div class="grid8-quaytung-photo">
@@ -882,7 +927,7 @@ function renderGrid8QuaytungSlot(item) {
         <div class="grid8-quaytung-labels">
           <div class="grid8-quaytung-name">${escapeHtml(displayName)}</div>
           ${address ? `<div class="grid8-quaytung-address">${escapeHtml(address)}</div>` : ''}
-          ${hours ? `<div class="grid8-quaytung-hours"><span class="grid8-quaytung-clock" aria-hidden="true">🕒</span> ${escapeHtml(hours)}</div>` : ''}
+          ${price ? `<div class="grid8-quaytung-hours"><span class="grid8-quaytung-clock" aria-hidden="true">🎟</span> ${escapeHtml(price)}</div>` : ''}
         </div>
       </div>
     </div>
@@ -909,13 +954,14 @@ function renderGrid8QuaytungCenterSlot(page, backgroundImage) {
 
 function renderGrid8QuaytungItems(page, items, backgroundImage) {
   const cells = (items || []).slice(0, 8);
+  const priceLabels = grid8QuaytungUnifiedPrices(cells);
   const centerHtml = renderGrid8QuaytungCenterSlot(page, backgroundImage);
   const ordered = [
-    ...cells.slice(0, 3).map((item) => renderGrid8QuaytungSlot(item)),
-    cells[3] ? renderGrid8QuaytungSlot(cells[3]) : '',
+    ...cells.slice(0, 3).map((item, index) => renderGrid8QuaytungSlot(item, priceLabels[index])),
+    cells[3] ? renderGrid8QuaytungSlot(cells[3], priceLabels[3]) : '',
     centerHtml,
-    cells[4] ? renderGrid8QuaytungSlot(cells[4]) : '',
-    ...cells.slice(5, 8).map((item) => renderGrid8QuaytungSlot(item)),
+    cells[4] ? renderGrid8QuaytungSlot(cells[4], priceLabels[4]) : '',
+    ...cells.slice(5, 8).map((item, offset) => renderGrid8QuaytungSlot(item, priceLabels[offset + 5])),
   ].filter(Boolean);
   return ordered.join('');
 }
@@ -925,10 +971,11 @@ function renderGrid8QuaytungMenuSection(section, reverse) {
   const photoUrl = photoItem?.imageUrl || '';
   const rows = section.items.map((item) => {
     const address = cleanGridAddress(item.metaPrimary) || String(item.metaPrimary || '').trim();
+    const shortAddress = address ? truncateMenuLine(address, 36) : '';
     return `
       <li class="grid8-quaytung-menu-row">
-        <strong>${escapeHtml(gridDisplayName(item))}</strong>
-        ${address ? `<span>${escapeHtml(address)}</span>` : ''}
+        <strong>${escapeHtml(truncateMenuLine(gridDisplayName(item), 28))}</strong>
+        ${shortAddress ? `<span>${escapeHtml(shortAddress)}</span>` : ''}
       </li>
     `;
   }).join('');
@@ -966,7 +1013,7 @@ function renderGrid8QuaytungMenuPage(page, index, listId, list) {
       <div class="grid8-quaytung-menu-dim"></div>
       <div class="grid8-quaytung-menu-head">
         ${renderGrid8QuaytungDalatBadge()}
-        <h2 class="grid8-quaytung-menu-title">${escapeHtml(page.title || 'ĐỊA ĐIỂM ĂN UỐNG NGON')}</h2>
+        <h2 class="grid8-quaytung-menu-title">${escapeHtml(truncateMenuLine(page.title || 'ĐỊA ĐIỂM ĂN UỐNG NGON', 32))}</h2>
       </div>
       <div class="grid8-quaytung-menu-sections">
         ${sections.map((section, idx) => renderGrid8QuaytungMenuSection(section, idx % 2 === 1)).join('')}
@@ -1212,12 +1259,35 @@ function isImageMappingNote(value) {
   return /^(?:Ảnh (?:đã map|tự map|minh họa|đối tác)|Thông tin đối tác)/i.test(String(value || '').trim());
 }
 
+const POV_3_V2_STACK_TAGLINE_MAX = 78;
+
+function truncatePov3V2StackTagline(value, maxLen = POV_3_V2_STACK_TAGLINE_MAX) {
+  const clean = String(value || '')
+    .replace(/^\[+|\]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!clean) return '';
+  if (clean.length <= maxLen) return clean;
+  const cut = clean.slice(0, maxLen);
+  const sp = cut.lastIndexOf(' ');
+  if (sp > maxLen * 0.45) return cut.slice(0, sp).trim();
+  return cut.trim();
+}
+
+function truncateMenuLine(value, maxLen = 42) {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= maxLen) return clean;
+  const cut = clean.slice(0, maxLen);
+  const sp = cut.lastIndexOf(' ');
+  return `${(sp > maxLen * 0.45 ? cut.slice(0, sp) : cut).trim()}…`;
+}
+
 function pov3V2StackTagline(item) {
   const label = String(item.label || '').trim();
   const note = String(item.imageNote || '').trim();
-  if (label && !isImageMappingNote(label)) return label;
-  if (note && !isImageMappingNote(note)) return note;
-  return '';
+  const raw = (label && !isImageMappingNote(label) ? label : '')
+    || (note && !isImageMappingNote(note) ? note : '');
+  return truncatePov3V2StackTagline(raw);
 }
 
 function renderPov3V2StackRow(item) {
@@ -1421,7 +1491,7 @@ function renderBudgetWalletBillPage(page, index, listId) {
 
 function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
   if (page.layoutVariant === 'grid-8-feed') {
-    return renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+    return renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls);
   }
   if (page.layoutVariant === 'grid-8-quaytung-cover') {
     return renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);

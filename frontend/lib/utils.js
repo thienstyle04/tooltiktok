@@ -1,7 +1,6 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
-export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v44';
-/** Tăng khi thêm/sửa mẫu V2 — buộc nạp lại catalog dù cache còn hạn. */
-export const STUDIO_CATALOG_REVISION = '2026-06-07-grid8-quaytung';
+export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v46';
+export const STUDIO_CATALOG_REVISION = '2026-06-07-v2-layout-tight';
 export const STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
 
 /** Deck đã gỡ khỏi app — lọc khỏi cache/dataset cũ. */

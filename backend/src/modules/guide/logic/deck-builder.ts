@@ -870,6 +870,9 @@ export function sanitizeDeckHeadline(value: string): string {
     .replace(/miễn\s*phí/gi, 'dễ đi')
     .replace(/\bĐà\s*Lạt\s*ẩn\s*mình\s*sau\s*vách\s*núi\b/gi, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
     .replace(/\bĐà\s*Lạt\s*đủ\s*để\s*đi\s*ngay\b/gi, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
+    .replace(/\bĐà\s*Lạt\s+VN\b/gi, 'Đà Lạt')
+    .replace(/\s+\/\s*VN\b/gi, '')
+    .replace(/\s+\bVN\b(?=\s|$|[./])/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -880,6 +883,25 @@ function coverSubtitleFromCaption(body: string, fallback: string): string {
 }
 
 const SPOTLIGHT_V2_COVER_SUBTITLE_MAX = 58;
+/** ~2 dòng tagline trên stack row (export 10px); cắt từ, không thêm … */
+export const POV_3_V2_STACK_TAGLINE_MAX = 78;
+
+export function truncatePov3V2StackTagline(
+  value: string,
+  max = POV_3_V2_STACK_TAGLINE_MAX,
+): string {
+  const clean = String(value || '')
+    .replace(/^\[+|\]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!clean) return '';
+  if (clean.length <= max) return clean;
+
+  const truncated = clean.slice(0, max);
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > max * 0.45) return truncated.slice(0, lastSpace).trim();
+  return truncated.trim();
+}
 
 export function truncateSpotlightV2CoverSubtitle(value: string, fallback = ''): string {
   const stripped = String(value || '')
@@ -4022,7 +4044,13 @@ function buildPov3V2StackItems(
   pick: PickFn,
   resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
 ): PageItem[] {
-  return pickPhotomodeItemsWithQuota(pool, count, seed, pick).map((item) => pov3V2PageItem(item, resolveImage));
+  const picked = ensureGuideItemCount(
+    pickPhotomodeItemsWithQuota(pool, count, seed, pick),
+    pool,
+    count,
+    `${seed}-stack`,
+  );
+  return picked.slice(0, count).map((item) => pov3V2PageItem(item, resolveImage));
 }
 
 function buildPov3V2GridItems(
@@ -4096,7 +4124,7 @@ export function buildPov3V2Pages(
       pick,
       resolveImage,
     );
-    if (stackItems.length === 0) break;
+    if (stackItems.length < 3) continue;
     pages.push(buildListPage(
       'Check-in',
       'berry',
