@@ -3,8 +3,10 @@ import type {
   DeckPage,
   GuideDeck,
   GuideDeckList,
+  GuideItem,
   ImageLibraryFolderEntry,
   ListPage,
+  PageItem,
   WorkbookItemsBySection,
 } from '../../../common/interfaces/guide.types';
 import {
@@ -14,14 +16,17 @@ import {
   buildListPage,
   buildPagesForDeck,
   buildPov3V2Pages,
+  collectMappedImageUrls,
   createDeckBuildPools,
+  pageItemWithResolver,
 } from './deck-builder';
-import { stableHash } from './image-resolver';
+import { itemUsageKey } from './data-allocator';
+import { createListImageResolver, stableHash } from './image-resolver';
 
-export const GRID_8_FEED_TEMPLATE_VERSION = 10;
-export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 1;
-export const SPOTLIGHT_V2_TEMPLATE_VERSION = 15;
-export const POV_3_V2_TEMPLATE_VERSION = 6;
+export const GRID_8_FEED_TEMPLATE_VERSION = 12;
+export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 3;
+export const SPOTLIGHT_V2_TEMPLATE_VERSION = 16;
+export const POV_3_V2_TEMPLATE_VERSION = 8;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
 
 export const V2_DECK_IDS = [
@@ -129,7 +134,83 @@ export function tuneSpotlightV2Cover(
         backgroundImage: coverGridImages[0] || page.backgroundImage,
       };
     }
+    if (variant === 'grid-8-feed') {
+      return {
+        ...page,
+        coverImages: coverGridImages,
+        backgroundImage: coverGridImages[0] || page.backgroundImage,
+      };
+    }
     return page;
+  });
+}
+
+export function tuneGrid8FeedCover(
+  pages: DeckPage[],
+  coverImageUrls: string[],
+  seedPrefix: string,
+): DeckPage[] {
+  return tuneSpotlightV2Cover(pages, coverImageUrls, seedPrefix);
+}
+
+function allGuideItemsFromSection(itemsBySection: WorkbookItemsBySection): GuideItem[] {
+  return Object.values(itemsBySection).flat();
+}
+
+function findGuideItemForPageItem(
+  itemsBySection: WorkbookItemsBySection,
+  pageItem: PageItem,
+): GuideItem | null {
+  const allItems = allGuideItemsFromSection(itemsBySection);
+  if (pageItem.id) {
+    const byId = allItems.find((item) => item.id === pageItem.id);
+    if (byId) return byId;
+  }
+  const sourceKey = String(pageItem.sourceKey || '').trim();
+  if (sourceKey) {
+    const byKey = allItems.find((item) => itemUsageKey(item) === sourceKey);
+    if (byKey) return byKey;
+  }
+  const name = String(pageItem.rawName || pageItem.name || '').trim();
+  if (!name) return null;
+  return allItems.find((item) => item.name === name) || null;
+}
+
+export function retuneSpotlightV2SpotImages(
+  pages: DeckPage[],
+  common: DeckBuildCommon,
+  seedPrefix: string,
+): DeckPage[] {
+  const mappedImageUrls = collectMappedImageUrls(createDeckBuildPools(common.itemsBySection));
+
+  return pages.map((page, index) => {
+    if (page.type !== 'list' || page.layoutVariant !== 'spotlight-v2') return page;
+    const listPage = page as ListPage;
+    const pageItem = listPage.items?.[0];
+    if (!pageItem) return page;
+
+    const guideItem = findGuideItemForPageItem(common.itemsBySection, pageItem);
+    if (!guideItem) return page;
+
+    const resolver = createListImageResolver(
+      common.imageUrls,
+      common.libraryEntries,
+      `${seedPrefix}:spotlight-v2:${index}:${guideItem.id}`,
+      mappedImageUrls,
+      common.globalUsedImageUrls || [],
+      { orientation: 'any', strictMapping: true },
+    );
+    const nextItem = pageItemWithResolver(
+      guideItem,
+      pageItem.label || listPage.chipText,
+      resolver,
+    );
+
+    return {
+      ...listPage,
+      items: [nextItem],
+      backgroundImage: nextItem.imageUrl || listPage.backgroundImage,
+    };
   });
 }
 
@@ -158,7 +239,8 @@ function tuneV2ListPageTitles(pages: DeckPage[]): DeckPage[] {
 export function buildGrid8FeedPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
   const pages = buildPagesForDeck('grid-8', ...buildArgs(common, seedPrefix));
   const remapped = remapDeckLayouts(pages, { 'grid-8': 'grid-8-feed' });
-  return tuneV2ListPageTitles(remapped);
+  const tuned = tuneV2ListPageTitles(remapped);
+  return tuneGrid8FeedCover(tuned, common.coverImageUrls, seedPrefix);
 }
 
 export function buildGrid8QuaytungDeckPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
@@ -180,7 +262,8 @@ export function buildSpotlightV2Pages(common: DeckBuildCommon, seedPrefix: strin
     spotlight: 'spotlight-v2',
     'spotlight-list': 'spotlight-v2-list',
   });
-  return tuneSpotlightV2Cover(tuneV2ListPageTitles(remapped), common.coverImageUrls, seedPrefix);
+  const tuned = tuneSpotlightV2Cover(tuneV2ListPageTitles(remapped), common.coverImageUrls, seedPrefix);
+  return retuneSpotlightV2SpotImages(tuned, common, seedPrefix);
 }
 
 export function buildPov3V2DeckPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {

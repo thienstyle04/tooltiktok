@@ -308,6 +308,8 @@ type ListImageResolverOptions = {
   orientation?: 'any' | 'landscape' | 'portrait';
   workspaceRoot?: string;
   dalatImageDir?: string;
+  /** Spotlight V2: ưu tiên ảnh map/candidate, tránh fallback ngẫu nhiên khác địa điểm. */
+  strictMapping?: boolean;
 };
 
 const imageDimensionsCache = new Map<string, ImageDimensions | null>();
@@ -797,6 +799,29 @@ export function createListImageResolver(
     preferredAllLibraryUrls.sort((a, b) => stableHash(`${seed}:${item.id}:all:${a}`) - stableHash(`${seed}:${item.id}:all:${b}`));
     const allLibraryUrl = pickUnused(preferredAllLibraryUrls);
     if (allLibraryUrl) return { imageUrl: allLibraryUrl, imageMapped: false, imageSource: 'fallback', imageNote: 'Ảnh minh họa' };
+
+    if (resolverOptions.strictMapping) {
+      const strictCandidates = preferredImageCandidates(
+        item.name,
+        [
+          ...(item.candidateImageUrls || []),
+          item.imageUrl,
+        ].filter(Boolean),
+      );
+      const strictUrl = strictCandidates.find((url) => url && !shouldAvoidImageForItem(item.name, url)) || '';
+      if (strictUrl) {
+        rememberPicked(strictUrl);
+        return {
+          ...common,
+          imageUrl: strictUrl,
+          imageMapped: item.imageSource === 'manual' || item.imageSource === 'auto',
+          imageSource: item.imageSource === 'manual' ? 'manual' : 'auto',
+          imageNote: item.imageSource === 'manual'
+            ? 'Ảnh đã map đúng địa điểm từ sheet'
+            : 'Ảnh tự map đúng theo thư viện',
+        };
+      }
+    }
 
     const fallbackCandidates = filterImageUrlsForResolverOptions([...imageUrls], libraryEntries, resolverOptions);
     fallbackCandidates.sort((a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`));

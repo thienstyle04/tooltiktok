@@ -50,7 +50,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
+import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { DriveFileAsset, fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
@@ -1498,8 +1498,12 @@ export class GuideService {
                 metaPrimary,
                 metaSecondary,
                 isPartner: sourceItem.isPartner,
-                label: isPov3V2Stack && highlight ? highlight : pageItem.label,
-                imageNote: isPov3V2Stack && highlight ? highlight : mappingNote,
+                label: isPov3V2Stack && highlight
+                  ? truncatePov3V2StackTagline(highlight)
+                  : pageItem.label,
+                imageNote: isPov3V2Stack && highlight
+                  ? truncatePov3V2StackTagline(highlight)
+                  : mappingNote,
                 candidateImageUrls: sourceItem.imageSource === 'manual'
                   ? sourceItem.candidateImageUrls
                   : pageItem.candidateImageUrls,
@@ -2252,14 +2256,18 @@ export class GuideService {
 
   private sanitizePageItemText(item: PageItem, page?: DeckPage): PageItem {
     const isBudgetTableItem = page?.type === 'list' && page.layoutVariant === 'budget-3n2d-table';
+    const isPov3V2Stack = page?.type === 'list' && page.layoutVariant === 'pov-3-v2-stack';
+    const stackTagline = isPov3V2Stack
+      ? truncatePov3V2StackTagline(item.label || item.imageNote || '')
+      : '';
     return {
       ...item,
-      label: this.sanitizeContentText(item.label || ''),
+      label: this.sanitizeContentText(isPov3V2Stack ? (stackTagline || item.label || '') : (item.label || '')),
       name: this.sanitizeContentText(item.name || ''),
       rawName: item.rawName ? this.sanitizeContentText(item.rawName) : item.rawName,
       metaPrimary: this.sanitizeContentText(item.metaPrimary || ''),
       metaSecondary: this.sanitizeContentText(item.metaSecondary || ''),
-      imageNote: this.sanitizeContentText(item.imageNote || ''),
+      imageNote: this.sanitizeContentText(isPov3V2Stack ? (stackTagline || item.imageNote || '') : (item.imageNote || '')),
       ...(isBudgetTableItem ? {
         imageUrl: '',
         imageMapped: false,
