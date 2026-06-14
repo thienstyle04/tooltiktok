@@ -883,6 +883,45 @@ function coverSubtitleFromCaption(body: string, fallback: string): string {
 }
 
 const SPOTLIGHT_V2_COVER_SUBTITLE_MAX = 58;
+/** ~4 dòng tagline cover grid-8-feed; cắt câu/từ, không thêm … */
+export const GRID_8_FEED_COVER_SUBTITLE_MAX = 168;
+
+export function truncateGrid8FeedCoverSubtitle(value: string, fallback = '', max = GRID_8_FEED_COVER_SUBTITLE_MAX): string {
+  const stripped = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\/+|\/+$/g, '');
+  const clean = sanitizeDeckHeadline(stripped || fallback || '').trim();
+  if (!clean) return '';
+  if (clean.length <= max) return clean;
+
+  const truncated = clean.slice(0, max);
+  const lastSentenceEnd = Math.max(
+    truncated.lastIndexOf('. '),
+    truncated.lastIndexOf('! '),
+    truncated.lastIndexOf('? '),
+    truncated.lastIndexOf('.\n'),
+  );
+  if (lastSentenceEnd > max * 0.35) {
+    return clean.slice(0, lastSentenceEnd + 1).trim();
+  }
+
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > max * 0.45) return truncated.slice(0, lastSpace).trim();
+  return truncated.trim();
+}
+
+function grid8FeedCoverSubtitleFromCaption(
+  caption: { headline: string; body: string },
+  fallback: string,
+): string {
+  const body = String(caption.body || '').replace(/\s+/g, ' ').trim();
+  const firstSentence = body.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() || body;
+  const secondSentence = body.slice(firstSentence.length).match(/^\s*[^.!?]+[.!?]?/)?.[0]?.trim() || '';
+  const combined = [firstSentence, secondSentence].filter(Boolean).join(' ').trim();
+  return truncateGrid8FeedCoverSubtitle(combined || body, fallback);
+}
+
 /** ~2 dòng tagline trên stack row (export 10px); cắt từ, không thêm … */
 export const POV_3_V2_STACK_TAGLINE_MAX = 78;
 
@@ -1486,7 +1525,9 @@ export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: s
     if (page.type === 'cover') {
       const subtitle = page.layoutVariant === 'spotlight-v2'
         ? spotlightV2CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
-        : coverSubtitleFromCaption(safeBody, page.subtitle);
+        : page.layoutVariant === 'grid-8-feed'
+          ? grid8FeedCoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
+          : coverSubtitleFromCaption(safeBody, page.subtitle);
       return {
         ...page,
         title: sanitizeDeckHeadline(coverTitle || caption.headline || page.title),

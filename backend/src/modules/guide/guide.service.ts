@@ -50,8 +50,8 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { DriveFileAsset, fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
@@ -1047,6 +1047,14 @@ export class GuideService {
           ...page,
           title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
           subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(rawSubtitle)),
+        };
+      }
+      if (layout === 'grid-8-feed') {
+        const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
+        return {
+          ...page,
+          title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
+          subtitle: this.sanitizeContentText(truncateGrid8FeedCoverSubtitle(rawSubtitle)),
         };
       }
       // Use page's own subtitle if available, otherwise use the list description (body).
@@ -2179,13 +2187,17 @@ export class GuideService {
     const pages = Array.isArray(list.pages)
       ? list.pages.map((page) => this.sanitizeDeckPageText(page))
       : [];
+    const isGrid8Feed = String(list.id || '').startsWith('grid-8-feed');
+    const postCaption = isGrid8Feed
+      ? normalizeGrid8FeedPostCaption(String(list.postCaption || ''))
+      : (list.postCaption ? this.sanitizeContentText(list.postCaption) : list.postCaption);
     return {
       ...list,
       navTitle: this.sanitizeContentText(list.navTitle || ''),
       title: this.sanitizeContentText(sanitizeDeckHeadline(list.title || '')),
       description: this.sanitizeContentText(list.description || ''),
       coverTitle: list.coverTitle ? this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle)) : list.coverTitle,
-      postCaption: list.postCaption ? this.sanitizeContentText(list.postCaption) : list.postCaption,
+      postCaption,
       captionHashtags: Array.isArray(list.captionHashtags)
         ? list.captionHashtags.map((tag) => String(tag || '').trim()).filter(Boolean)
         : list.captionHashtags,
@@ -2195,10 +2207,16 @@ export class GuideService {
 
   private sanitizeDeckPageText(page: DeckPage): DeckPage {
     if (page.type === 'cover') {
+      let subtitle = this.sanitizeContentText(page.subtitle || '');
+      if (page.layoutVariant === 'grid-8-feed') {
+        subtitle = this.sanitizeContentText(truncateGrid8FeedCoverSubtitle(subtitle));
+      } else if (page.layoutVariant === 'spotlight-v2') {
+        subtitle = this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(subtitle));
+      }
       return {
         ...page,
         title: this.sanitizeContentText(sanitizeDeckHeadline(page.title || '')),
-        subtitle: this.sanitizeContentText(page.subtitle || ''),
+        subtitle,
       };
     }
 

@@ -1,6 +1,6 @@
 {
   "name": "dalat-carousel-next-frontend",
-  "version": "0.1.05",
+  "version": "0.1.06",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack -p 3001",

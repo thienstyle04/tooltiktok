@@ -23,7 +23,17 @@ import {
 import { itemUsageKey } from './data-allocator';
 import { createListImageResolver, stableHash } from './image-resolver';
 
-export const GRID_8_FEED_TEMPLATE_VERSION = 12;
+export const GRID_8_FEED_TEMPLATE_VERSION = 15;
+export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
+
+export function normalizeGrid8FeedPostCaption(value: string): string {
+  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return GRID_8_FEED_DEFAULT_POST_CAPTION;
+  if (/mỗi lựa chọn\s*1 tâm/i.test(clean) || /moi lua chon\s*1 tam/i.test(clean)) {
+    return GRID_8_FEED_DEFAULT_POST_CAPTION;
+  }
+  return clean;
+}
 export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V2_TEMPLATE_VERSION = 16;
 export const POV_3_V2_TEMPLATE_VERSION = 8;

@@ -1,6 +1,6 @@
 {
   "name": "dalat-tiktok-carousel-tool",
-  "version": "0.1.05",
+  "version": "0.1.06",
   "private": true,
   "description": "NestJS tool for generating Da Lat TikTok carousel previews from the local workbook and image sets.",
   "engines": {
