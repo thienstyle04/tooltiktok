@@ -768,8 +768,8 @@ function grid5ItemMeta(item) {
 }
 
 function renderGrid8FeedSlot(item) {
-  const displayName = truncateMenuLine(gridDisplayName(item), 22);
-  const meta = truncateMenuLine(grid8FeedItemMeta(item), 32);
+  const displayName = gridDisplayName(item);
+  const meta = grid8FeedItemMeta(item);
   return `
     <div class="grid8-feed-slot ${escapeHtml(imageSourceClass(item))}">
       <div class="grid8-feed-frame">
@@ -817,6 +817,43 @@ function renderGrid8FeedItems(items, centerHook) {
   return ordered.join('');
 }
 
+function grid8FeedPageBgImages(page, backgroundImage, listId = '', coverImageUrls = []) {
+  const fromItems = (Array.isArray(page?.items) ? page.items : [])
+    .map((item) => String(item?.imageUrl || '').trim())
+    .filter(Boolean);
+  const uniqueFromItems = [...new Set(fromItems)];
+  if (uniqueFromItems.length >= 4) return uniqueFromItems.slice(0, 4);
+
+  const fromPageBg = String(page?.backgroundImage || backgroundImage || '').trim();
+  const pool = (coverImageUrls.length > 0 ? coverImageUrls : spotlightV2CoverImagePool).filter(Boolean);
+  const seed = `${listId || page?.chipText || 'grid8-feed-page'}|${page?.title || page?.chipText || 'bg'}`;
+  const fromPool = pickUniqueCoverGridImages(pool, seed, 4);
+  const merged = [...new Set([...uniqueFromItems, fromPageBg, ...fromPool].filter(Boolean))];
+  if (merged.length >= 4) return merged.slice(0, 4);
+  if (merged.length > 0) {
+    const padded = [...merged];
+    while (padded.length < 4) padded.push(padded[padded.length % merged.length]);
+    return padded.slice(0, 4);
+  }
+  return fromPageBg ? [fromPageBg] : [];
+}
+
+function renderGrid8FeedPageBackground(page, backgroundImage, listId = '', coverImageUrls = []) {
+  let tiles = grid8FeedPageBgImages(page, backgroundImage, listId, coverImageUrls);
+  while (tiles.length < 4) tiles.push('');
+  tiles = tiles.slice(0, 4);
+  const label = page?.title || page?.chipText || 'background';
+  return `
+    <div class="grid8-feed-page-bg-grid">
+      ${tiles.map((url, tileIndex) => `
+        <div class="grid8-feed-page-bg-cell">
+          ${url ? renderPreviewImage(url, `${label} ${tileIndex + 1}`) : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 function grid8FeedCoverGridImages(page, backgroundImage, listId = '', coverImageUrls = []) {
   const fromPage = Array.isArray(page?.coverImages) ? page.coverImages.filter(Boolean) : [];
   const uniqueFromPage = [...new Set(fromPage)];
@@ -832,9 +869,24 @@ function grid8FeedCoverGridImages(page, backgroundImage, listId = '', coverImage
   return backgroundImage ? [backgroundImage] : [];
 }
 
+function formatGrid8FeedCoverHero(title) {
+  const raw = String(title || 'CÁC ĐỊA ĐIỂM ĐÀ LẠT').replace(/\s+/g, ' ').trim();
+  const upper = raw.toUpperCase();
+  const words = upper.split(' ');
+  if (words.length <= 5) return escapeHtml(upper);
+  const splitAt = Math.ceil(words.length / 2);
+  return `${escapeHtml(words.slice(0, splitAt).join(' '))}<br>${escapeHtml(words.slice(splitAt).join(' '))}`;
+}
+
+function formatGrid8FeedCoverTagline(value) {
+  let text = String(value || 'BỎ LỠ CHẮC CHẮN LÀ HỐI HẬN').replace(/\s+/g, ' ').trim();
+  text = text.replace(/\.{3,}$/, '').replace(/…+$/, '').trim();
+  return escapeHtml(text.toUpperCase());
+}
+
 function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
-  const hero = String(coverTitle || 'CÁC ĐỊA ĐIỂM ĐÀ LẠT').toUpperCase();
-  const tagline = String(coverSubtitle || 'BỎ LỠ CHẮC CHẮN LÀ HỐI HẬN').toUpperCase();
+  const hero = formatGrid8FeedCoverHero(coverTitle);
+  const tagline = formatGrid8FeedCoverTagline(coverSubtitle);
   let tiles = grid8FeedCoverGridImages(page, backgroundImage, listId, coverImageUrls);
   while (tiles.length < 4) tiles.push('');
   tiles = tiles.slice(0, 4);
@@ -849,8 +901,8 @@ function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, ba
       </div>
       <div class="grid8-feed-cover-dim" aria-hidden="true"></div>
       <div class="grid8-feed-cover-center">
-        <h1 class="grid8-feed-cover-hero">${escapeHtml(hero)}</h1>
-        <p class="grid8-feed-cover-tagline">${escapeHtml(tagline)}</p>
+        <h1 class="grid8-feed-cover-hero">${hero}</h1>
+        <p class="grid8-feed-cover-tagline">${tagline}</p>
       </div>
     </article>
   `;
@@ -1520,8 +1572,12 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
 function renderListPageV2(page, index, listId, list, pageSubtitle) {
   if (page.layoutVariant === 'grid-8-feed') {
     const centerHook = grid8FeedCenterHook(page, list);
+    const backgroundImage = page.backgroundImage || page.items?.[0]?.imageUrl || coverBackgroundImage(page, list);
+    const coverImageUrls = list?.coverImageUrls || [];
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-feed-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        ${renderGrid8FeedPageBackground(page, backgroundImage, listId, coverImageUrls)}
+        <div class="grid8-feed-page-dim" aria-hidden="true"></div>
         <div class="grid8-feed-matrix">
           ${renderGrid8FeedItems(page.items, centerHook)}
         </div>

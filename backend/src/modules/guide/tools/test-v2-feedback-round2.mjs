@@ -14,7 +14,7 @@ const cssPath = join(rootDir, 'frontend/app/styles/template-variants-v2.css');
 const API = process.env.TEST_API_URL || 'http://127.0.0.1:3000/api/guide-data?refresh=1';
 const V2_DECKS = ['grid-8-feed', 'grid-8-quaytung', 'spotlight-v2', 'pov-3-v2'];
 const EXPECTED_VERSIONS = {
-  'grid-8-feed': 12,
+  'grid-8-feed': 15,
   'grid-8-quaytung': 3,
   'spotlight-v2': 16,
   'pov-3-v2': 8,
@@ -97,6 +97,10 @@ function testGrid8Feed(list) {
   const listPages = (list.pages || []).filter((p) => p.layoutVariant === 'grid-8-feed');
   if (listPages.length > 0) ok('trang list grid-8-feed', `${listPages.length} trang`);
   else bad('trang list grid-8-feed', '0 trang');
+
+  const coverSubtitle = String(cover.subtitle || '');
+  if (!/\.{3,}$|…/.test(coverSubtitle)) ok('cover subtitle không có dấu …', `${coverSubtitle.length} ký tự`);
+  else bad('cover subtitle không có dấu …', coverSubtitle.slice(-24));
 }
 
 function testGrid8Quaytung(list) {
@@ -183,6 +187,7 @@ function testCssMarkers() {
   const checks = [
     ['grid8-feed-cover-grid', 'grid8feed cover 2×2'],
     ['grid8-feed-cover-dim', 'grid8feed overlay'],
+    ['grid8-feed-page-bg-grid', 'grid8feed list background'],
     ['Quicksand', 'font Quicksand'],
     ['rgba(0, 0, 0, 0.5)', 'overlay 50%'],
     ['pov-3-v2-stack-name', 'pov stack title'],
@@ -202,6 +207,7 @@ function testMarkupSource() {
   const markup = readFileSync(frontendLib, 'utf8');
   const checks = [
     ['grid8-feed-cover-grid', 'grid-8-feed cover grid'],
+    ['grid8-feed-page-bg-grid', 'grid-8-feed list background'],
     ['grid8-quaytung-cover-title', 'grid-8-quaytung cover title'],
     ['spotlight-v2-cover-grid', 'spotlight-v2 cover grid'],
     ['pov-3-v2-stack-row', 'pov-3-v2 stack row'],
