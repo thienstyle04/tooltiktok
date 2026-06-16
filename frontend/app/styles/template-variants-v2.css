@@ -1659,56 +1659,30 @@
 }
 
 .story-page.itinerary-4n3d-stack-page {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   overflow: hidden;
   background: #0e0d0c;
   color: #fff;
+  border-radius: 0;
 }
 
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-head {
-  flex: 0 0 auto;
-  padding: 8px 12px 4px;
-  text-align: center;
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  z-index: 0;
 }
 
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-head-lead {
-  margin: 4px 0 0;
-  font-family: var(--stack-meta-font) !important;
-  font-size: clamp(0.46rem, 1.35vw, 0.56rem);
-  font-weight: 600;
-  line-height: 1.24;
-  color: rgba(255, 255, 255, 0.92);
-  text-wrap: balance;
-}
-
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-head-title {
-  margin: 0;
-  font-family: var(--stack-script) !important;
-  font-size: clamp(0.82rem, 2.4vw, 1rem);
-  font-weight: 800 !important;
-  line-height: 1.12;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--stack-yellow);
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
-}
-
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-feed {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-row {
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell {
   position: relative;
-  flex: 1 1 0;
-  min-height: 0;
   overflow: hidden;
+  background: #1a1714;
 }
 
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-row img {
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1716,31 +1690,98 @@
   display: block;
 }
 
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-row.is-people-focus img {
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell.is-people-focus img {
   object-position: center 20%;
 }
 
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-row-shade {
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell-shade {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(8, 10, 8, 0.82) 0%, rgba(8, 10, 8, 0.42) 42%, rgba(8, 10, 8, 0.12) 100%);
+    linear-gradient(0deg, rgba(8, 10, 8, 0.88) 0%, rgba(8, 10, 8, 0.42) 38%, rgba(8, 10, 8, 0.1) 100%);
+}
+
+.story-page.itinerary-4n3d-stack-page::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 24%;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(8, 10, 8, 0.68) 0%, rgba(8, 10, 8, 0.22) 72%, transparent 100%);
+  pointer-events: none;
+}
+
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-head {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 10px;
+  z-index: 3;
+  text-align: left;
+  pointer-events: none;
+}
+
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-headline {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  font-family: var(--stack-script) !important;
+  font-size: clamp(0.95rem, 2.8vw, 1.18rem);
+  font-weight: 800 !important;
+  line-height: 1.06;
+  color: var(--stack-yellow);
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.65);
+}
+
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-bracket {
+  margin: 6px 0 0;
+  font-family: var(--stack-meta-font) !important;
+  font-size: clamp(0.48rem, 1.35vw, 0.58rem);
+  font-weight: 600;
+  line-height: 1.28;
+  color: rgba(255, 255, 255, 0.96);
+  text-wrap: balance;
+  text-align: left;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-accent {
+  color: var(--stack-yellow);
 }
 
 .story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-row-copy {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 7px;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
   z-index: 2;
-  max-width: 92%;
+  max-width: calc(100% - 24px);
+}
+
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell:nth-child(3) .itinerary-4n3d-stack-row-copy,
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell:nth-child(4) .itinerary-4n3d-stack-row-copy {
+  bottom: 14px;
+}
+
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell:nth-child(3) .itinerary-4n3d-stack-row-copy {
+  left: 14px;
+  max-width: calc(100% - 26px);
+}
+
+.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell:nth-child(4) .itinerary-4n3d-stack-row-copy {
+  left: 12px;
+  right: 14px;
+  max-width: calc(100% - 26px);
 }
 
 .story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-day {
   font-family: var(--stack-meta-font) !important;
-  font-size: 0.46rem;
+  font-size: 0.42rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--stack-yellow);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
@@ -1749,28 +1790,42 @@
 .story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-name {
   margin: 2px 0 0;
   font-family: var(--stack-script) !important;
-  font-size: clamp(0.68rem, 2vw, 0.86rem);
+  font-size: clamp(0.56rem, 1.65vw, 0.72rem);
   font-weight: 800 !important;
-  line-height: 1.14;
+  line-height: 1.2;
   color: #fff;
   text-shadow:
     0 3px 12px rgba(0, 0, 0, 0.85),
     0 0 1px rgba(0, 0, 0, 0.95);
   display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   overflow: hidden;
-  max-height: calc(1.14em * 2);
+  padding-top: 1px;
 }
 
 .story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-address {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-family: var(--stack-meta-font) !important;
-  font-size: 0.46rem;
+  font-size: 0.42rem;
   font-weight: 600;
-  line-height: 1.16;
+  line-height: 1.2;
   color: rgba(255, 255, 255, 0.94);
   display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   overflow: hidden;
-  max-height: calc(1.16em * 2);
+}
+
+.batch-export-root .story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-name,
+.batch-export-root .story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-address {
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+}
+
+.batch-export-root .story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-name {
+  padding-top: 1px;
 }
 
 /* ═══ 5. budget-4n3d-wallet (quaytung) ═══ */

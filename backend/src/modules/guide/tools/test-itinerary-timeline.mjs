@@ -19,7 +19,7 @@ const { pathToFileURL } = await import('node:url');
 
 const API = process.env.TEST_API_URL || 'http://127.0.0.1:3000/api/guide-data?refresh=1';
 const DECK_ID = 'itinerary-timeline';
-const EXPECTED_VERSION = 7;
+const EXPECTED_VERSION = 8;
 const EXPECTED_SLOTS_PER_DAY = 8;
 const REF_DAY_TIMES = {
   'Ngày 01': ['05:00', '08:00', '10:00', '12:00', '15:00', '18:00', '20:00', '21:00'],
@@ -81,7 +81,7 @@ function testStaticAssets() {
 
   const cssChecks = [
     ['Cormorant Garamond', 'font serif cover'],
-    ['Allura', 'font script cover/ngày'],
+    ['Caveat', 'font script cover/ngày'],
     ['Be Vietnam Pro', 'font body'],
     ['itl-cover-serif', 'cover serif class'],
     ['itl-cover-script', 'cover script hero'],

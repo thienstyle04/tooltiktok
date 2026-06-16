@@ -2668,6 +2668,24 @@
   transition: none !important;
 }
 
+.batch-export-root .story-page.budget72-table-page {
+  background: #f2eee1;
+}
+
+.batch-export-root .story-page.budget72-table-page .budget72-table-shell {
+  inset: 9px 9px 8px;
+}
+
+.batch-export-root .story-page.budget72-table-page .budget72-schedule-table td,
+.batch-export-root .story-page.budget72-table-page .budget72-summary-table td {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.batch-export-root .story-page.budget72-cover .budget72-cover-bg img {
+  object-position: center 28%;
+}
+
 /* ─── Grid 4 Mutant Layout ────────────────────────────────────────────────── */
 
 /* Content page: shared base */

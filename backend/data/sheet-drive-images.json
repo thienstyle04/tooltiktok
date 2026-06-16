@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-11T13:29:08.646Z",
+  "generatedAt": "2026-06-16T09:25:49.997Z",
   "workbookName": "Google Sheet",
-  "workbookMtimeMs": 1781184533919,
+  "workbookMtimeMs": 1781601933953,
   "items": {
     "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu": {
       "key": "quan_an|hu_tieu_muc_ong_diem|14b_ba_trieu",
@@ -5677,6 +5677,47 @@
         }
       ]
     },
+    "quan_an|tam_bop_lau_nuong|51_tran_binh_trong_cam_ly": {
+      "key": "quan_an|tam_bop_lau_nuong|51_tran_binh_trong_cam_ly",
+      "sectionKey": "quan_an",
+      "name": "Tầm Bóp Lẩu Nướng",
+      "address": "51 Trần Bình Trọng, Cam Ly",
+      "sourceLink": "https://drive.google.com/drive/folders/12wQwSOTD9k1T4cylPb1Qk4Th58ZzID04",
+      "fileId": "1ccv4N47qupR4fKWBrlDlMGObyq84IbXp",
+      "fileName": "DSC00216.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1ccv4N47qupR4fKWBrlDlMGObyq84IbXp",
+          "fileName": "DSC00216.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ccv4N47qupR4fKWBrlDlMGObyq84IbXp/view?usp=drive_web"
+        },
+        {
+          "fileId": "1aDh1tx_wVvAFbUO9e-HH-8SCYK3vdgwX",
+          "fileName": "DSC00560.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1aDh1tx_wVvAFbUO9e-HH-8SCYK3vdgwX/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HW2372W9NRFUMboudNKtrvap50av1pNL",
+          "fileName": "DSC00613.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1HW2372W9NRFUMboudNKtrvap50av1pNL/view?usp=drive_web"
+        },
+        {
+          "fileId": "1bJ6wnc21fA72ybvE0A8xkNa7DB8yJ4mv",
+          "fileName": "DSC00615.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1bJ6wnc21fA72ybvE0A8xkNa7DB8yJ4mv/view?usp=drive_web"
+        },
+        {
+          "fileId": "1oqVLv9cEQH389YLP-37ZyBIumAO19sht",
+          "fileName": "DSC00616.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1oqVLv9cEQH389YLP-37ZyBIumAO19sht/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ax6BGtPPkBG-n-z1l_HVvBkbupIEXdvA",
+          "fileName": "DSC00627.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ax6BGtPPkBG-n-z1l_HVvBkbupIEXdvA/view?usp=drive_web"
+        }
+      ]
+    },
     "cafe|ca_phe_capulus|90_to_ngoc_van": {
       "key": "cafe|ca_phe_capulus|90_to_ngoc_van",
       "sectionKey": "cafe",
@@ -6251,44 +6292,44 @@
         }
       ]
     },
-    "cafe|1_2_cricle_coffee|04_dang_thai_than": {
-      "key": "cafe|1_2_cricle_coffee|04_dang_thai_than",
+    "cafe|tiem_ca_phe_chenh_venh|huynh_tan_phat_phuong_lam_vien_da_lat": {
+      "key": "cafe|tiem_ca_phe_chenh_venh|huynh_tan_phat_phuong_lam_vien_da_lat",
       "sectionKey": "cafe",
-      "name": "1/2 Cricle Coffee",
-      "address": "04 Đặng Thái Thân",
-      "sourceLink": "https://drive.google.com/drive/folders/14upRvGa2YUiRCI4Bz2L_9u5Sn_07YqlN",
-      "fileId": "1psWZ9HRCCXX9irtacfDx5jlzvClyf7yK",
-      "fileName": "12 Cricle Coffee.jpg",
+      "name": "Tiệm Cà Phê Chênh Vênh",
+      "address": "Huỳnh Tấn Phát, Phường Lâm Viên Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1uO3VRz-XlQP7KVaAMV9n9xTwYUm5qzdC",
+      "fileId": "1QaKHhG7RU28F79Rpc1Ml9mE9q2zX4RZi",
+      "fileName": "604826096_122197434404557426_7210830050406850557_n.jpg",
       "candidateImages": [
         {
-          "fileId": "1psWZ9HRCCXX9irtacfDx5jlzvClyf7yK",
-          "fileName": "12 Cricle Coffee.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1psWZ9HRCCXX9irtacfDx5jlzvClyf7yK/view?usp=drive_web"
+          "fileId": "1QaKHhG7RU28F79Rpc1Ml9mE9q2zX4RZi",
+          "fileName": "604826096_122197434404557426_7210830050406850557_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QaKHhG7RU28F79Rpc1Ml9mE9q2zX4RZi/view?usp=drive_web"
         },
         {
-          "fileId": "1DnyZT9GgjuxFXhh6jtPizHvuTTwSQkid",
-          "fileName": "520278542_122169251342371349_7167341587115752611_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1DnyZT9GgjuxFXhh6jtPizHvuTTwSQkid/view?usp=drive_web"
+          "fileId": "1lYGGSPvvMYgaP8Uvkn_4V5yb_9lppo0t",
+          "fileName": "605635085_122197434368557426_1388686592442806270_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1lYGGSPvvMYgaP8Uvkn_4V5yb_9lppo0t/view?usp=drive_web"
         },
         {
-          "fileId": "1bAlN8ijXor_LsmWTueT5iwg0-O2upbqg",
-          "fileName": "521666558_122169251432371349_6391498146279128697_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1bAlN8ijXor_LsmWTueT5iwg0-O2upbqg/view?usp=drive_web"
+          "fileId": "1iEqKhc6yui_gQWrQaN_KMb2JhAZ6goNj",
+          "fileName": "605765504_122197800356557426_8593346462539140446_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1iEqKhc6yui_gQWrQaN_KMb2JhAZ6goNj/view?usp=drive_web"
         },
         {
-          "fileId": "1uErnuQrpR6jeRz0g7msFDKTr7HgCDRe9",
-          "fileName": "558542063_122178480302371349_4292160221069884462_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1uErnuQrpR6jeRz0g7msFDKTr7HgCDRe9/view?usp=drive_web"
+          "fileId": "1pFltSSJXfFdCThdFLfZVJAO6YZX_-YC5",
+          "fileName": "605808443_122197800368557426_3123370186743291536_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pFltSSJXfFdCThdFLfZVJAO6YZX_-YC5/view?usp=drive_web"
         },
         {
-          "fileId": "1Q5h_FnlEIvnL1I1yBdOVO6ZqKyRrk7ww",
-          "fileName": "561360224_122179164068371349_8771175792802483708_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1Q5h_FnlEIvnL1I1yBdOVO6ZqKyRrk7ww/view?usp=drive_web"
+          "fileId": "1CIqXHmRgm7pbNuNKBME1CWfjheOQuYuz",
+          "fileName": "612064619_122199079694557426_1442110155826616425_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CIqXHmRgm7pbNuNKBME1CWfjheOQuYuz/view?usp=drive_web"
         },
         {
-          "fileId": "1M-JgtceidP58KffNCyFN13fbVAY0ZW1B",
-          "fileName": "561553784_122178481700371349_6152523737711990207_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1M-JgtceidP58KffNCyFN13fbVAY0ZW1B/view?usp=drive_web"
+          "fileId": "1CMToplaRL1R3lDm8EuevfEgAX-6BCusb",
+          "fileName": "624747124_122204070716557426_7618752297901540124_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CMToplaRL1R3lDm8EuevfEgAX-6BCusb/view?usp=drive_web"
         }
       ]
     },
@@ -6348,9 +6389,19 @@
           "viewUrl": "https://drive.google.com/file/d/1An7WOQR9z5AvaNUm-DRBuEfFiMcI_nB3/view?usp=drive_web"
         },
         {
+          "fileId": "1lyqI0Z988BycShDcVUPvPVGJrI-OlBmx",
+          "fileName": "W.A. cà phê.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1lyqI0Z988BycShDcVUPvPVGJrI-OlBmx/view?usp=drive_web"
+        },
+        {
           "fileId": "1ZmeBBuy9Jh95p2-_e0CwTHwNLVoFLAL3",
           "fileName": "605287553_740879799055318_4149610279445127416_n.jpg",
           "viewUrl": "https://drive.google.com/file/d/1ZmeBBuy9Jh95p2-_e0CwTHwNLVoFLAL3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1nLp2kPgZ6lbWk63noUUoufxEpHMWr-1F",
+          "fileName": "605287553_740879799055318_4149610279445127416_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1nLp2kPgZ6lbWk63noUUoufxEpHMWr-1F/view?usp=drive_web"
         },
         {
           "fileId": "1miltvjVspIr816kEv_NxKe2xXc9Uqayi",
@@ -6358,19 +6409,9 @@
           "viewUrl": "https://drive.google.com/file/d/1miltvjVspIr816kEv_NxKe2xXc9Uqayi/view?usp=drive_web"
         },
         {
-          "fileId": "1WL9jTQIlqL_Mrv4rZGgrUlrYza0x7D6l",
-          "fileName": "628211913_777625985380699_2287789089314886546_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1WL9jTQIlqL_Mrv4rZGgrUlrYza0x7D6l/view?usp=drive_web"
-        },
-        {
-          "fileId": "1blWu3uNPLfEW5_q3SsagaFq_ud_6NbUq",
-          "fileName": "629240316_777626002047364_5409874631144956608_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1blWu3uNPLfEW5_q3SsagaFq_ud_6NbUq/view?usp=drive_web"
-        },
-        {
-          "fileId": "1c_qWq07Ht67eDM0myx0pBCOruTFjzGm3",
-          "fileName": "631474002_780174061792558_7837951666957697086_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1c_qWq07Ht67eDM0myx0pBCOruTFjzGm3/view?usp=drive_web"
+          "fileId": "1C-5V_0oUmKSTV_FihzEOPoTmOWHP_-G6",
+          "fileName": "611114192_751108434699121_6620195294795495902_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1C-5V_0oUmKSTV_FihzEOPoTmOWHP_-G6/view?usp=drive_web"
         }
       ]
     },
@@ -7691,39 +7732,39 @@
       "sectionKey": "cafe",
       "name": "La Crème",
       "address": "17 Phù Đổng Thiên Vương",
-      "sourceLink": "https://drive.google.com/drive/folders/1FliCEquyPzVbv_HLdmBxeiTP3q91J-sT",
-      "fileId": "18B9fa0qEkNVuEx63qnotRP5EpzAAXLhH",
+      "sourceLink": "https://drive.google.com/drive/folders/1cEM-9gX8BJLiSWw7nbda3omgMMVnmAvf?usp=drive_link",
+      "fileId": "1cLCZHgBH5AZLa_aOlBH5-1fEcFPsX2Sk",
       "fileName": "La Crème.jpg",
       "candidateImages": [
         {
-          "fileId": "18B9fa0qEkNVuEx63qnotRP5EpzAAXLhH",
+          "fileId": "1cLCZHgBH5AZLa_aOlBH5-1fEcFPsX2Sk",
           "fileName": "La Crème.jpg",
-          "viewUrl": "https://drive.google.com/file/d/18B9fa0qEkNVuEx63qnotRP5EpzAAXLhH/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/1cLCZHgBH5AZLa_aOlBH5-1fEcFPsX2Sk/view?usp=drive_web"
         },
         {
-          "fileId": "1qJDl-57iPTgRu5LUF3XoZTYbgAzxYx8y",
+          "fileId": "1Qvfs7ufNX7l47uKqqnykkB4-LklHqGLM",
+          "fileName": "482980122_122218463384213859_2883572031275632764_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Qvfs7ufNX7l47uKqqnykkB4-LklHqGLM/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_IsVk14wMDW9e1mrlzOgIVMTSQcwO5DS",
           "fileName": "484064776_122218464182213859_3048794634500634102_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1qJDl-57iPTgRu5LUF3XoZTYbgAzxYx8y/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/1_IsVk14wMDW9e1mrlzOgIVMTSQcwO5DS/view?usp=drive_web"
         },
         {
-          "fileId": "1HC9lfropSULB0owkznrGQe9KVjPxYAb7",
+          "fileId": "1axbUY4eL_Rb7iDia6DTl95ChimLXCNT-",
           "fileName": "484065263_122218463342213859_1332508537347769402_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1HC9lfropSULB0owkznrGQe9KVjPxYAb7/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/1axbUY4eL_Rb7iDia6DTl95ChimLXCNT-/view?usp=drive_web"
         },
         {
-          "fileId": "1knRH3rzvICa4TIXKiHQCXSy7jWECxUlV",
+          "fileId": "16UT9jhotIArbyVQddJY0N762oCCOQwSx",
           "fileName": "484318108_122218454162213859_2891952917800271728_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1knRH3rzvICa4TIXKiHQCXSy7jWECxUlV/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/16UT9jhotIArbyVQddJY0N762oCCOQwSx/view?usp=drive_web"
         },
         {
-          "fileId": "1Lj0Sk6Gt4Wvq8tSAj20UKh-F9rgRHwCM",
+          "fileId": "12B3s-MXIh2RIsRIKK4SfwKypEh3STGq4",
           "fileName": "484322738_122218464512213859_2343724106880303164_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1Lj0Sk6Gt4Wvq8tSAj20UKh-F9rgRHwCM/view?usp=drive_web"
-        },
-        {
-          "fileId": "1hBqVLsYrAX58A2ibgM0GdvqxoD5UAiJD",
-          "fileName": "484352609_122218464860213859_8232760353371634644_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1hBqVLsYrAX58A2ibgM0GdvqxoD5UAiJD/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/12B3s-MXIh2RIsRIKK4SfwKypEh3STGq4/view?usp=drive_web"
         }
       ]
     },
@@ -8470,39 +8511,39 @@
       "sectionKey": "cafe",
       "name": "Thô's Artisan Coffee",
       "address": "10 Phan Bội Châu",
-      "sourceLink": "https://drive.google.com/drive/folders/1C33oM7KIbx5xYtoDOhAU_K0PWtYzCfvg",
-      "fileId": "1nEEdN0tT3DFFP1MZ2QcswsxpCOS_qJvc",
-      "fileName": "Thô's Artisan Coffee.jpg",
+      "sourceLink": "https://drive.google.com/drive/folders/18wuDR9ElmDeXiHOZpuMBLvvXO6Pjr-rg?usp=drive_link",
+      "fileId": "1NrDczhZnoNcOheLks8ueUaXMbxEUIaOE",
+      "fileName": "Thô_s Artisan Coffee.jpg",
       "candidateImages": [
         {
-          "fileId": "1nEEdN0tT3DFFP1MZ2QcswsxpCOS_qJvc",
-          "fileName": "Thô's Artisan Coffee.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1nEEdN0tT3DFFP1MZ2QcswsxpCOS_qJvc/view?usp=drive_web"
+          "fileId": "1NrDczhZnoNcOheLks8ueUaXMbxEUIaOE",
+          "fileName": "Thô_s Artisan Coffee.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NrDczhZnoNcOheLks8ueUaXMbxEUIaOE/view?usp=drive_web"
         },
         {
-          "fileId": "1YFe7XJHxReOPlsXv0UJaKyovEUrXTiEO",
-          "fileName": "646775647_122204332058330522_3192982079475478160_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1YFe7XJHxReOPlsXv0UJaKyovEUrXTiEO/view?usp=drive_web"
-        },
-        {
-          "fileId": "10p-WGcyAgCa5z03-M7yj5VQ0_Bp3rK22",
+          "fileId": "1jzrOvoOey_Wz80ptuvE5Kmhk4QudVJSK",
           "fileName": "658185928_17932496520233702_8250465347670987781_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/10p-WGcyAgCa5z03-M7yj5VQ0_Bp3rK22/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/1jzrOvoOey_Wz80ptuvE5Kmhk4QudVJSK/view?usp=drive_web"
         },
         {
-          "fileId": "1PJgHZIoE676m7lKvOhRsc_gNHPGZJ-Zm",
+          "fileId": "1c1WAHSdQLiJhzMjpZaUHHTQcL8Shr57X",
           "fileName": "658772497_17931690243233702_8551185747181095201_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1PJgHZIoE676m7lKvOhRsc_gNHPGZJ-Zm/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/1c1WAHSdQLiJhzMjpZaUHHTQcL8Shr57X/view?usp=drive_web"
         },
         {
-          "fileId": "1zAQJeFZQ1s16lymY3zBynK9u6nya8A5A",
+          "fileId": "1UnIANhrnxxOcs3JeuEk9g5zPOHKAmhz7",
           "fileName": "658883778_17931690213233702_477762439347669803_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1zAQJeFZQ1s16lymY3zBynK9u6nya8A5A/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/1UnIANhrnxxOcs3JeuEk9g5zPOHKAmhz7/view?usp=drive_web"
         },
         {
-          "fileId": "1kboaNlIXRCgTfSpMun97ueD9bybNarqn",
+          "fileId": "1Z-h6h1BeXZp4Vg_CkkOqjekVZwBu6SMA",
           "fileName": "658928872_17931690039233702_8236257729752747270_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1kboaNlIXRCgTfSpMun97ueD9bybNarqn/view?usp=drive_web"
+          "viewUrl": "https://drive.google.com/file/d/1Z-h6h1BeXZp4Vg_CkkOqjekVZwBu6SMA/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XA2LqIaPa01t_FM3VDUuVSWIoSjv5-Yu",
+          "fileName": "661498582_17932496538233702_5807685043866041144_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XA2LqIaPa01t_FM3VDUuVSWIoSjv5-Yu/view?usp=drive_web"
         }
       ]
     },
@@ -9736,22 +9777,6 @@
         }
       ]
     },
-    "cafe|allinb_cafe|22_ly_nam_de": {
-      "key": "cafe|allinb_cafe|22_ly_nam_de",
-      "sectionKey": "cafe",
-      "name": "AllinB cafe",
-      "address": "22 Lý Nam Đế",
-      "sourceLink": "https://drive.google.com/open?id=18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8",
-      "fileId": "18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8",
-      "fileName": "",
-      "candidateImages": [
-        {
-          "fileId": "18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8",
-          "fileName": "",
-          "viewUrl": "https://drive.google.com/file/d/18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8/view?usp=drive_web"
-        }
-      ]
-    },
     "cafe|happy_hill|ho_tuyen_lam": {
       "key": "cafe|happy_hill|ho_tuyen_lam",
       "sectionKey": "cafe",
@@ -9872,6 +9897,678 @@
           "fileId": "1bXgNgypQN1rRcMgvVEXHJ918uZCGU2rM",
           "fileName": "1WUpukYsnC3VdDjawPYxR1CIOzMjvNmiBQFfqwLMtFPuxwJFneftQQR8ldNJm4Xolvl.jpg",
           "viewUrl": "https://drive.google.com/file/d/1bXgNgypQN1rRcMgvVEXHJ918uZCGU2rM/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|allinb_cafe|22_ly_nam_de": {
+      "key": "cafe|allinb_cafe|22_ly_nam_de",
+      "sectionKey": "cafe",
+      "name": "AllinB cafe",
+      "address": "22 Lý Nam Đế",
+      "sourceLink": "https://drive.google.com/open?id=18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8",
+      "fileId": "18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8",
+      "fileName": "",
+      "candidateImages": [
+        {
+          "fileId": "18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8",
+          "fileName": "",
+          "viewUrl": "https://drive.google.com/file/d/18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|sitooterie|hem_2_so_35_duong_khoi_nghia_bac_son": {
+      "key": "cafe|sitooterie|hem_2_so_35_duong_khoi_nghia_bac_son",
+      "sectionKey": "cafe",
+      "name": "Sitooterie",
+      "address": "Hẻm 2, số 35 đường Khởi Nghĩa Bắc Sơn",
+      "sourceLink": "https://drive.google.com/drive/folders/1XP8rjNzF7jUt1XtpVyAccb4ChHqqko-d?usp=drive_link",
+      "fileId": "1MA91zJ-JdMPpIvpGdVcf9MYgK1iH8E1c",
+      "fileName": "16. Sitooterie.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1MA91zJ-JdMPpIvpGdVcf9MYgK1iH8E1c",
+          "fileName": "16. Sitooterie.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1MA91zJ-JdMPpIvpGdVcf9MYgK1iH8E1c/view?usp=drive_web"
+        },
+        {
+          "fileId": "13XAFZbb8wS3tme1D9cCtLT-h5BgyLbrz",
+          "fileName": "492911179_9679202988861991_6206050338745193409_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13XAFZbb8wS3tme1D9cCtLT-h5BgyLbrz/view?usp=drive_web"
+        },
+        {
+          "fileId": "1S5Vy43tiK69x1uaMCdYqDjG0kRMwF5Pa",
+          "fileName": "492933962_9679203008861989_6970015237948951917_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1S5Vy43tiK69x1uaMCdYqDjG0kRMwF5Pa/view?usp=drive_web"
+        },
+        {
+          "fileId": "1pcIChPC2dWwOVqm-IaFPX2MuSUv1eH27",
+          "fileName": "493276499_9679202972195326_8227693391490173446_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1pcIChPC2dWwOVqm-IaFPX2MuSUv1eH27/view?usp=drive_web"
+        },
+        {
+          "fileId": "1jrcLUNfzabEZkMZUMghF0sevqwiMYg5I",
+          "fileName": "493278314_9679203082195315_78880962202480444_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1jrcLUNfzabEZkMZUMghF0sevqwiMYg5I/view?usp=drive_web"
+        },
+        {
+          "fileId": "1x6VAyhYvR5gTaGVJwT_6QxIluGZ2xM5_",
+          "fileName": "493386540_9679202992195324_3401254863918351565_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1x6VAyhYvR5gTaGVJwT_6QxIluGZ2xM5_/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|makakamp_coffee|nguyen_dinh_quan_phuong_5": {
+      "key": "cafe|makakamp_coffee|nguyen_dinh_quan_phuong_5",
+      "sectionKey": "cafe",
+      "name": "Makakamp Coffee",
+      "address": "Nguyễn Đình Quân, Phường 5",
+      "sourceLink": "https://drive.google.com/drive/folders/1xx6TrgyCLy2NA0rAW9niNUgbW83EcKz0?usp=drive_link",
+      "fileId": "1VQdtksZY1yOaY1pLCIDo43X6X3FALyH3",
+      "fileName": "2. 𝐌𝐀𝐊𝐀𝐊𝐀𝐌𝐏 𝐂𝐎𝐅𝐅𝐄𝐄.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1VQdtksZY1yOaY1pLCIDo43X6X3FALyH3",
+          "fileName": "2. 𝐌𝐀𝐊𝐀𝐊𝐀𝐌𝐏 𝐂𝐎𝐅𝐅𝐄𝐄.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1VQdtksZY1yOaY1pLCIDo43X6X3FALyH3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1lixyuZrw58Gjgy1g76_Z5iWM4FMMJpMv",
+          "fileName": "480073632_1720942572099302_4957522486136734516_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1lixyuZrw58Gjgy1g76_Z5iWM4FMMJpMv/view?usp=drive_web"
+        },
+        {
+          "fileId": "1U50Vcd1dbM3qlFBKZHIbYRVSq6RjNZSU",
+          "fileName": "480087227_1720942362099323_6461496617230970332_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1U50Vcd1dbM3qlFBKZHIbYRVSq6RjNZSU/view?usp=drive_web"
+        },
+        {
+          "fileId": "1WUv9K1TJRl336MRvyQ6qfy1LZyzcyA8i",
+          "fileName": "480137365_1720942355432657_414666250643710393_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1WUv9K1TJRl336MRvyQ6qfy1LZyzcyA8i/view?usp=drive_web"
+        },
+        {
+          "fileId": "1iwnUtcimcolfRewCr1rWkJ849EFVLBss",
+          "fileName": "480140804_1720942595432633_6392846512277155827_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1iwnUtcimcolfRewCr1rWkJ849EFVLBss/view?usp=drive_web"
+        },
+        {
+          "fileId": "1YDym8z8fSstYvIA9p1eXgfV3zm3G6p5o",
+          "fileName": "480155552_1720942655432627_3051415335221836123_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1YDym8z8fSstYvIA9p1eXgfV3zm3G6p5o/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|happy_hill|happy_hill_coffee": {
+      "key": "cafe|happy_hill|happy_hill_coffee",
+      "sectionKey": "cafe",
+      "name": "HAPPY HILL",
+      "address": "Happy Hill Coffee",
+      "sourceLink": "https://drive.google.com/drive/folders/14Z15DCVePebsXSjsA8ToSpA1XHouPZnA?usp=drive_link",
+      "fileId": "1tn-PwNZCkX5vXxrrEIbBSWsc6lOo-W35",
+      "fileName": "HAPPY HILL ĐÀ LẠT.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1tn-PwNZCkX5vXxrrEIbBSWsc6lOo-W35",
+          "fileName": "HAPPY HILL ĐÀ LẠT.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1tn-PwNZCkX5vXxrrEIbBSWsc6lOo-W35/view?usp=drive_web"
+        },
+        {
+          "fileId": "13MH7heS2MHyGL3Q3pGG9s2CsDNcvl1gn",
+          "fileName": "557972454_1141491418132729_7423861948070379221_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13MH7heS2MHyGL3Q3pGG9s2CsDNcvl1gn/view?usp=drive_web"
+        },
+        {
+          "fileId": "1LZpJmkCPzt-e4ZWz5kej-vBIWYurxUO8",
+          "fileName": "558194361_1141491491466055_9065608108614285182_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1LZpJmkCPzt-e4ZWz5kej-vBIWYurxUO8/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Xr3qQGvctPMgIoeXOyZBeAfIX4zL2BBO",
+          "fileName": "559125345_1141491454799392_4711731860289812323_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Xr3qQGvctPMgIoeXOyZBeAfIX4zL2BBO/view?usp=drive_web"
+        },
+        {
+          "fileId": "1nHVqw0P8HD09tIgK18eRHCDP81HPd4ZI",
+          "fileName": "559980702_1141491498132721_7666917157419798527_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1nHVqw0P8HD09tIgK18eRHCDP81HPd4ZI/view?usp=drive_web"
+        },
+        {
+          "fileId": "1C1D8opkiKibQhx0TGMfwqQmXh1M-Rtca",
+          "fileName": "560259889_1141491441466060_8271160513060191443_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1C1D8opkiKibQhx0TGMfwqQmXh1M-Rtca/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|ca_phe_vot_ba_nam|13_phan_boi_chau_phuong_1": {
+      "key": "cafe|ca_phe_vot_ba_nam|13_phan_boi_chau_phuong_1",
+      "sectionKey": "cafe",
+      "name": "Cà phê vợt bà Năm",
+      "address": "13 Phan Bội Châu, Phường 1",
+      "sourceLink": "https://drive.google.com/drive/folders/1Sr-uxI7zOx2ebNoiIUsoIrhxtE77upNX?usp=drive_link",
+      "fileId": "1By8NVbWfyxaQFtwQhJcxU6rX3F9O_voU",
+      "fileName": "6. caffe bà năm.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1By8NVbWfyxaQFtwQhJcxU6rX3F9O_voU",
+          "fileName": "6. caffe bà năm.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1By8NVbWfyxaQFtwQhJcxU6rX3F9O_voU/view?usp=drive_web"
+        },
+        {
+          "fileId": "1CUwxnymuC0jK8FH2pkpXbrNsttMB867S",
+          "fileName": "129106098_3488482284602428_8486270207038387323_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1CUwxnymuC0jK8FH2pkpXbrNsttMB867S/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XzdaDiT4pdhrdx6XTPbaQ67Z3XEtWJkW",
+          "fileName": "129731633_3488482191269104_8611736478874018348_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XzdaDiT4pdhrdx6XTPbaQ67Z3XEtWJkW/view?usp=drive_web"
+        },
+        {
+          "fileId": "1jCC4a-Hl0uToPloP40IZsvwDOmDVo3d0",
+          "fileName": "129731634_3488482337935756_8883746065605421501_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1jCC4a-Hl0uToPloP40IZsvwDOmDVo3d0/view?usp=drive_web"
+        },
+        {
+          "fileId": "1eQO4P26OmQ_M3QwvZ06Jak_-nWb5xQMM",
+          "fileName": "129821742_3488481924602464_2531481303986254354_n(1).jpg",
+          "viewUrl": "https://drive.google.com/file/d/1eQO4P26OmQ_M3QwvZ06Jak_-nWb5xQMM/view?usp=drive_web"
+        },
+        {
+          "fileId": "1IcC2DB27YT4MNWwGpY22FznocmAxnkbx",
+          "fileName": "129821742_3488481924602464_2531481303986254354_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1IcC2DB27YT4MNWwGpY22FznocmAxnkbx/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|le_petit_jardin_dalat|65_to_hieu": {
+      "key": "cafe|le_petit_jardin_dalat|65_to_hieu",
+      "sectionKey": "cafe",
+      "name": "Le Petit Jardin Dalat",
+      "address": "65 Tô Hiệu",
+      "sourceLink": "https://drive.google.com/drive/folders/1ViaY5_ytKGO9ZeWs2QfbhQkuzTAYVIdC?usp=drive_link",
+      "fileId": "1nFOP12hhRs2C7H_kO0zCzFCIdMCM0qew",
+      "fileName": "11. Le Petit Jardin Dalat..jpg",
+      "candidateImages": [
+        {
+          "fileId": "1nFOP12hhRs2C7H_kO0zCzFCIdMCM0qew",
+          "fileName": "11. Le Petit Jardin Dalat..jpg",
+          "viewUrl": "https://drive.google.com/file/d/1nFOP12hhRs2C7H_kO0zCzFCIdMCM0qew/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QDNVDnEPVaSoCCVMYccni9Y7pF7wGdZk",
+          "fileName": "489431049_3546154529024373_5652195726690545725_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1QDNVDnEPVaSoCCVMYccni9Y7pF7wGdZk/view?usp=drive_web"
+        },
+        {
+          "fileId": "1aFFYeMksPiDIeFzbiPP8TGZkpnVBsIQP",
+          "fileName": "489434783_3546155555690937_4862977006220846573_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1aFFYeMksPiDIeFzbiPP8TGZkpnVBsIQP/view?usp=drive_web"
+        },
+        {
+          "fileId": "1z4A72Gi2kF3stKzxjgHUNtugUjTpitbT",
+          "fileName": "489457199_3546154495691043_4952509364578991392_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1z4A72Gi2kF3stKzxjgHUNtugUjTpitbT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qQ7vjG6IV4lhFwLgbrtCQbYV1H0Ot9DO",
+          "fileName": "489461676_3546155439024282_1102159689964847878_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qQ7vjG6IV4lhFwLgbrtCQbYV1H0Ot9DO/view?usp=drive_web"
+        },
+        {
+          "fileId": "1tZe0xOR4x5o6p7SR-GsgPRKdYWyWh00Q",
+          "fileName": "489618595_3546154385691054_7173997071837730028_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1tZe0xOR4x5o6p7SR-GsgPRKdYWyWh00Q/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|cafe_hai_nguoi|6a_co_giang": {
+      "key": "cafe|cafe_hai_nguoi|6a_co_giang",
+      "sectionKey": "cafe",
+      "name": "Cafe Hai Người",
+      "address": "6A Cô Giang",
+      "sourceLink": "https://drive.google.com/drive/folders/1LYvuIl9tGUoojgSrXNBeeXwV0O68ysTQ?usp=drive_link",
+      "fileId": "1ganl4nRy17MF-r6PwDiJvvM22QI1T8PH",
+      "fileName": "645905570_1354055816524798_1433131743855505095_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1ganl4nRy17MF-r6PwDiJvvM22QI1T8PH",
+          "fileName": "645905570_1354055816524798_1433131743855505095_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ganl4nRy17MF-r6PwDiJvvM22QI1T8PH/view?usp=drive_web"
+        },
+        {
+          "fileId": "1K-f0r7vlU5-aGz8PYYRQosxDyA3o1H7G",
+          "fileName": "649216732_18347868115232403_5010823455806627068_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1K-f0r7vlU5-aGz8PYYRQosxDyA3o1H7G/view?usp=drive_web"
+        },
+        {
+          "fileId": "1NHIC8YIoOxO1hEPW2W00-_G1iMOi9znm",
+          "fileName": "670536121_1000804965964438_302990419622204426_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NHIC8YIoOxO1hEPW2W00-_G1iMOi9znm/view?usp=drive_web"
+        },
+        {
+          "fileId": "1J_BKBLk99RmA8BCsv6p-7izXAOqM8Oyo",
+          "fileName": "672335992_1000805169297751_8435743449334518473_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1J_BKBLk99RmA8BCsv6p-7izXAOqM8Oyo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1sr606I7HawDRZ4zhgncm6KiXgbdevZcD",
+          "fileName": "672685696_1000805072631094_6390515498308065539_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1sr606I7HawDRZ4zhgncm6KiXgbdevZcD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1fV9YIMtLFRteKONBKjMvAYyWlOtjKxqv",
+          "fileName": "672686342_1000805279297740_3584608040635369008_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1fV9YIMtLFRteKONBKjMvAYyWlOtjKxqv/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|bao_tien_mot_mo_binh_yen|deo_mimosa_phuong_10": {
+      "key": "cafe|bao_tien_mot_mo_binh_yen|deo_mimosa_phuong_10",
+      "sectionKey": "cafe",
+      "name": "Bao tiền một mớ bình yên",
+      "address": "Đèo Mimosa, Phường 10",
+      "sourceLink": "https://drive.google.com/drive/folders/1_FqWoS_H7zBXhFAX5MPFV4UeB0nbIEs2?usp=drive_link",
+      "fileId": "1yMZ7LTbHF0yhmSD5I7HgT1DSGjJGQxU1",
+      "fileName": "Bao tiền một mớ bình yên.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1yMZ7LTbHF0yhmSD5I7HgT1DSGjJGQxU1",
+          "fileName": "Bao tiền một mớ bình yên.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1yMZ7LTbHF0yhmSD5I7HgT1DSGjJGQxU1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zL-gC7_L_CVPyhWetbzwAqqiAkSQ1mWk",
+          "fileName": "566222737_662115626971672_5396575988152638691_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zL-gC7_L_CVPyhWetbzwAqqiAkSQ1mWk/view?usp=drive_web"
+        },
+        {
+          "fileId": "18myMz5QMiiaH5KHmuziODb4P2etZYNC9",
+          "fileName": "566271244_662115463638355_5395767772924816884_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18myMz5QMiiaH5KHmuziODb4P2etZYNC9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1xT7dguG_PAv8f8RqeAGFjZQ6h0OS1Fff",
+          "fileName": "568667595_662115603638341_8223119935433239714_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xT7dguG_PAv8f8RqeAGFjZQ6h0OS1Fff/view?usp=drive_web"
+        },
+        {
+          "fileId": "1cRGjuTxzZrrFDevwwSpCGviBBaZpMNNl",
+          "fileName": "569336453_662115540305014_4135274120855549881_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cRGjuTxzZrrFDevwwSpCGviBBaZpMNNl/view?usp=drive_web"
+        },
+        {
+          "fileId": "18FxGWB4mOIvq9xOEl_Xg5OZ7FscdqwUN",
+          "fileName": "571115002_662115500305018_6619749112478259976_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18FxGWB4mOIvq9xOEl_Xg5OZ7FscdqwUN/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|rung_nhiet_doi_cafe|63_deo_prenn": {
+      "key": "cafe|rung_nhiet_doi_cafe|63_deo_prenn",
+      "sectionKey": "cafe",
+      "name": "RỪNG NHIỆT ĐỚI CAFE",
+      "address": "63 Đèo Prenn",
+      "sourceLink": "https://drive.google.com/drive/folders/1QKUAiDdGyi3D0wClUNHgU_hoHLWtQkRs?usp=drive_link",
+      "fileId": "1q8tY2aH78G30o9jtN6LzZnkJ4ZZlWTob",
+      "fileName": "14. RỪNG NHIỆT ĐỚI CAFE.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1q8tY2aH78G30o9jtN6LzZnkJ4ZZlWTob",
+          "fileName": "14. RỪNG NHIỆT ĐỚI CAFE.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1q8tY2aH78G30o9jtN6LzZnkJ4ZZlWTob/view?usp=drive_web"
+        },
+        {
+          "fileId": "1cwabjuQATUXaDa6WI_oJB8uVtpmHJKU1",
+          "fileName": "574081961_1662184911755424_4403668296581237627_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1cwabjuQATUXaDa6WI_oJB8uVtpmHJKU1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1VpEDM1pPF3Wz-bsV79-__Mil96pJzSM-",
+          "fileName": "574562567_1662184835088765_5536057792662400424_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1VpEDM1pPF3Wz-bsV79-__Mil96pJzSM-/view?usp=drive_web"
+        },
+        {
+          "fileId": "1doO8i8lwKVdrPpq4eQIosJwx6LldQsw-",
+          "fileName": "574905704_1662184875088761_7753586816588784635_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1doO8i8lwKVdrPpq4eQIosJwx6LldQsw-/view?usp=drive_web"
+        },
+        {
+          "fileId": "1-QEU9qf0FUvnpJH-FQHOqnQXRO0G97dA",
+          "fileName": "575175020_1662184885088760_5852807465093332607_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-QEU9qf0FUvnpJH-FQHOqnQXRO0G97dA/view?usp=drive_web"
+        },
+        {
+          "fileId": "1sabRyFHebsjCB7BVqIeLecxpKfevOpCc",
+          "fileName": "575189300_1661791658461416_7262246401452179810_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1sabRyFHebsjCB7BVqIeLecxpKfevOpCc/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|chang_vang_coffee_bbq|119_huynh_tan_phat_phuong_11": {
+      "key": "cafe|chang_vang_coffee_bbq|119_huynh_tan_phat_phuong_11",
+      "sectionKey": "cafe",
+      "name": "CHẠNG VẠNG Coffee & BBQ",
+      "address": "119 Huỳnh Tấn Phát, Phường 11",
+      "sourceLink": "https://drive.google.com/drive/folders/1b7QEPOS4vMbLUuUPr8RxdlSRcAD7_zSE?usp=drive_link",
+      "fileId": "1-_h1GvWh0WcGsFWtkEtjWxz7X07WHTXn",
+      "fileName": "17. CHẠNG VẠNG 𝐂𝐨𝐟𝐟𝐞𝐞 & 𝐁𝐁𝐐.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1-_h1GvWh0WcGsFWtkEtjWxz7X07WHTXn",
+          "fileName": "17. CHẠNG VẠNG 𝐂𝐨𝐟𝐟𝐞𝐞 & 𝐁𝐁𝐐.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-_h1GvWh0WcGsFWtkEtjWxz7X07WHTXn/view?usp=drive_web"
+        },
+        {
+          "fileId": "1NA2ddTagTuPPOzUbL1w2oAQGP7MuT5Ai",
+          "fileName": "605110196_4371738203095634_6677103841047532591_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1NA2ddTagTuPPOzUbL1w2oAQGP7MuT5Ai/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Xa-2lVn5QdaUKR_gRuAlMrauKA5uFXHw",
+          "fileName": "605132268_4371737693095685_3093338263374599904_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Xa-2lVn5QdaUKR_gRuAlMrauKA5uFXHw/view?usp=drive_web"
+        },
+        {
+          "fileId": "1f7clPJ0MXB7IGccKpplTxyimbhk-rOBw",
+          "fileName": "605181012_4371737699762351_580625496353113331_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1f7clPJ0MXB7IGccKpplTxyimbhk-rOBw/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_Hqtz7hGA_gPUXArtef-IYqnnKNv1taM",
+          "fileName": "605440673_4371737659762355_4402503516224423630_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_Hqtz7hGA_gPUXArtef-IYqnnKNv1taM/view?usp=drive_web"
+        },
+        {
+          "fileId": "1b6VOycilBdEcYNg_x2USp3JsJZqhrLPH",
+          "fileName": "605626227_4371738336428954_7604350417399403067_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1b6VOycilBdEcYNg_x2USp3JsJZqhrLPH/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|ca_phe_tung|6_khu_hoa_binh_phuong_01": {
+      "key": "cafe|ca_phe_tung|6_khu_hoa_binh_phuong_01",
+      "sectionKey": "cafe",
+      "name": "Cà Phê Tùng",
+      "address": "6 Khu Hòa Bình, Phường 01",
+      "sourceLink": "https://drive.google.com/drive/folders/18q7MIpMvUE50aGgOAP_koxgD3-rzkt9W?usp=drive_link",
+      "fileId": "1JpBsXl1k68VdbEWxrmQgUE9OULK6zoM8",
+      "fileName": "15. Cà Phê Tùng.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1JpBsXl1k68VdbEWxrmQgUE9OULK6zoM8",
+          "fileName": "15. Cà Phê Tùng.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JpBsXl1k68VdbEWxrmQgUE9OULK6zoM8/view?usp=drive_web"
+        },
+        {
+          "fileId": "1n1-A8Lr4HVjtvuY7B1xGr6mHmGpROPYF",
+          "fileName": "516139067_2227144621078899_756405134757407645_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1n1-A8Lr4HVjtvuY7B1xGr6mHmGpROPYF/view?usp=drive_web"
+        },
+        {
+          "fileId": "1hXmCV1NtwBCGzsTaJfu7xk48nmHSJlAM",
+          "fileName": "516538856_2227146147745413_6363251008047916469_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1hXmCV1NtwBCGzsTaJfu7xk48nmHSJlAM/view?usp=drive_web"
+        },
+        {
+          "fileId": "1S9Ev_uSOIVBWQzfqWaUnktVrxBdII4L_",
+          "fileName": "516643877_2227146587745369_1768787441086731802_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1S9Ev_uSOIVBWQzfqWaUnktVrxBdII4L_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1gwvV5YYd1NpyhGJHxqI_DDMsNLDGTvSj",
+          "fileName": "516670191_2227145681078793_6442721148306588949_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1gwvV5YYd1NpyhGJHxqI_DDMsNLDGTvSj/view?usp=drive_web"
+        },
+        {
+          "fileId": "1zXQATnV8SfubFnBZ3btq60wxYxyXxEQC",
+          "fileName": "516704125_2227146357745392_3928124407371792776_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1zXQATnV8SfubFnBZ3btq60wxYxyXxEQC/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|ca_phe_di|so_03_dong_da_phuong_3": {
+      "key": "cafe|ca_phe_di|so_03_dong_da_phuong_3",
+      "sectionKey": "cafe",
+      "name": "Cà Phê Đi",
+      "address": "Số 03 Đống Đa, Phường 3",
+      "sourceLink": "https://drive.google.com/drive/folders/10_2hTIe3nk32j61veTVG9Amnzk0PmC7G?usp=drive_link",
+      "fileId": "1tG7-pNd762aflKMxWNDlK26WO8e9hIP2",
+      "fileName": "3. Cà Phê Đi.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1tG7-pNd762aflKMxWNDlK26WO8e9hIP2",
+          "fileName": "3. Cà Phê Đi.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1tG7-pNd762aflKMxWNDlK26WO8e9hIP2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1y6MY1kBUnOqbOJyszqIARVrKC0hlkGtV",
+          "fileName": "493512127_9693844877397802_4425748548025023002_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1y6MY1kBUnOqbOJyszqIARVrKC0hlkGtV/view?usp=drive_web"
+        },
+        {
+          "fileId": "1UEjOtn7zBf_xeugekrrMIEhaR5MuMjra",
+          "fileName": "493812924_9693845020731121_2404836429140801585_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1UEjOtn7zBf_xeugekrrMIEhaR5MuMjra/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HxoQa5Em7Hf5_MpXLZhBJB16FAEMaRTd",
+          "fileName": "493870509_9693845034064453_1817413820978172714_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1HxoQa5Em7Hf5_MpXLZhBJB16FAEMaRTd/view?usp=drive_web"
+        },
+        {
+          "fileId": "1r7x2PUzV11vgFjD5Q0xqNMJSkvBbG3Mv",
+          "fileName": "493906695_9693844847397805_2013773681960628046_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1r7x2PUzV11vgFjD5Q0xqNMJSkvBbG3Mv/view?usp=drive_web"
+        },
+        {
+          "fileId": "1mX6P0dTp2w-Q16ygJ5gL0gO85MaBTzhO",
+          "fileName": "493966794_9693844940731129_420389731678996353_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1mX6P0dTp2w-Q16ygJ5gL0gO85MaBTzhO/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|keng_coffee_campsite|khu_deo_mimosa_phuong_10": {
+      "key": "cafe|keng_coffee_campsite|khu_deo_mimosa_phuong_10",
+      "sectionKey": "cafe",
+      "name": "KẺNG Coffee & campsite",
+      "address": "Khu Đèo Mimosa, Phường 10",
+      "sourceLink": "https://drive.google.com/drive/folders/1dywyx7J77r6X7xHw6YWY8O3inkPfiv7l?usp=drive_link",
+      "fileId": "1G_kDQajFP8lriNMxeuKqTGdjYb90Xv-p",
+      "fileName": "18. KẺNG 𝐜𝐨𝐟𝐟𝐞𝐞 & 𝐜𝐚𝐦𝐩𝐬𝐢𝐭𝐞.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1G_kDQajFP8lriNMxeuKqTGdjYb90Xv-p",
+          "fileName": "18. KẺNG 𝐜𝐨𝐟𝐟𝐞𝐞 & 𝐜𝐚𝐦𝐩𝐬𝐢𝐭𝐞.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1G_kDQajFP8lriNMxeuKqTGdjYb90Xv-p/view?usp=drive_web"
+        },
+        {
+          "fileId": "1vfbkECH6Bvy53nJUcTMvjul--_E0m4zo",
+          "fileName": "482088155_122261164196022572_4620975174306520346_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1vfbkECH6Bvy53nJUcTMvjul--_E0m4zo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1VHNccByZ1wh06lISgqOJ27MREDfZQPn8",
+          "fileName": "482211017_122261163788022572_4637375491747614251_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1VHNccByZ1wh06lISgqOJ27MREDfZQPn8/view?usp=drive_web"
+        },
+        {
+          "fileId": "1asXkyGr1zSy3JY4_K9A60PsLE3u2WoXw",
+          "fileName": "482212163_122261163656022572_5573944357324374134_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1asXkyGr1zSy3JY4_K9A60PsLE3u2WoXw/view?usp=drive_web"
+        },
+        {
+          "fileId": "1rKSjNtc9iifJbBXCgz3ykPdcIO3b0CY3",
+          "fileName": "482216970_122261163824022572_6175491602073273330_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1rKSjNtc9iifJbBXCgz3ykPdcIO3b0CY3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1kWQ2MvvkI-eZTKTAwNLGq1Jg_epMGulg",
+          "fileName": "482221545_122261163776022572_1512943072822086181_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1kWQ2MvvkI-eZTKTAwNLGq1Jg_epMGulg/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|cafe_nga|02a_nguyen_chi_thanh_phuong_1": {
+      "key": "cafe|cafe_nga|02a_nguyen_chi_thanh_phuong_1",
+      "sectionKey": "cafe",
+      "name": "Cafe Nga",
+      "address": "02A Nguyễn Chí Thanh, Phường 1",
+      "sourceLink": "https://drive.google.com/drive/folders/1yi1qVx5JB5WNWkdg90_UidFFUX0Ok3f_?usp=drive_link",
+      "fileId": "1eY8J4Faxv24CeN8p4kom4-gl4n7gZoRZ",
+      "fileName": "cafe Nga.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1eY8J4Faxv24CeN8p4kom4-gl4n7gZoRZ",
+          "fileName": "cafe Nga.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1eY8J4Faxv24CeN8p4kom4-gl4n7gZoRZ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1B9mlKIGuVkDIhYSGZxks6HhpYuATgR71",
+          "fileName": "487405449_1047882824032066_4042839908279578664_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1B9mlKIGuVkDIhYSGZxks6HhpYuATgR71/view?usp=drive_web"
+        },
+        {
+          "fileId": "1JbIL-aDzkPlh-xhs2gnUysJ4UkiDFb9O",
+          "fileName": "487433851_1047882790698736_188319986509524630_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1JbIL-aDzkPlh-xhs2gnUysJ4UkiDFb9O/view?usp=drive_web"
+        },
+        {
+          "fileId": "12N5jOM1oG82Q8XtMA4FjyJHMZuKFUU62",
+          "fileName": "494062298_1069750141845334_4680013777954288189_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/12N5jOM1oG82Q8XtMA4FjyJHMZuKFUU62/view?usp=drive_web"
+        },
+        {
+          "fileId": "1I9Vw51b9ZvIJCBc8lIvOhqF97Z6Es_1G",
+          "fileName": "497543813_1082273127259702_6160853557355890067_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1I9Vw51b9ZvIJCBc8lIvOhqF97Z6Es_1G/view?usp=drive_web"
+        },
+        {
+          "fileId": "1-5pvXM5Z0o8cHOM2Ubg1OvPWKoPjhGrO",
+          "fileName": "497735962_1082273510592997_967420648285376687_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-5pvXM5Z0o8cHOM2Ubg1OvPWKoPjhGrO/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|suoi_binh_yen|duong_hoa_cam_tu_cau_phuong_3": {
+      "key": "cafe|suoi_binh_yen|duong_hoa_cam_tu_cau_phuong_3",
+      "sectionKey": "cafe",
+      "name": "Suối bình yên",
+      "address": "Đường Hoa Cẩm Tú Cầu, Phường 3",
+      "sourceLink": "https://drive.google.com/drive/folders/1r4D5syYw2DYJqb-5rhMNazwJ6N2guy7a?usp=drive_link",
+      "fileId": "1RrW3cEIZjlgOPBlfE3b7qnv6JtfZ7W6H",
+      "fileName": "Suối Bình Yên.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1RrW3cEIZjlgOPBlfE3b7qnv6JtfZ7W6H",
+          "fileName": "Suối Bình Yên.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1RrW3cEIZjlgOPBlfE3b7qnv6JtfZ7W6H/view?usp=drive_web"
+        },
+        {
+          "fileId": "1L5xSQdGUHvzOEQiKnlJDPc1ErjfgvFQm",
+          "fileName": "557602245_122179702988529812_1016306144601466407_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1L5xSQdGUHvzOEQiKnlJDPc1ErjfgvFQm/view?usp=drive_web"
+        },
+        {
+          "fileId": "13RVQDZCwXTyW5vJQr-k-1LftiPH13Cr4",
+          "fileName": "557603273_122179702898529812_2813010067639092338_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13RVQDZCwXTyW5vJQr-k-1LftiPH13Cr4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1d5Nj_mIZILDNgRCAaPApUPJgQVRNrSCx",
+          "fileName": "564685648_122182332518529812_7348727830791811077_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1d5Nj_mIZILDNgRCAaPApUPJgQVRNrSCx/view?usp=drive_web"
+        },
+        {
+          "fileId": "1HkRPg8S-IKbwjO0MnJiXwDOu4bqsCvyX",
+          "fileName": "565809882_122182332494529812_6832105762097026512_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1HkRPg8S-IKbwjO0MnJiXwDOu4bqsCvyX/view?usp=drive_web"
+        },
+        {
+          "fileId": "17kt-C71e4-fA1jPEW7_ApC8LIEtjij1k",
+          "fileName": "587612369_122187608570529812_1299712429418741783_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17kt-C71e4-fA1jPEW7_ApC8LIEtjij1k/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|him_cafe|2_2_khoi_nghia_bac_son": {
+      "key": "cafe|him_cafe|2_2_khoi_nghia_bac_son",
+      "sectionKey": "cafe",
+      "name": "Him Cafe",
+      "address": "2/2 Khởi Nghĩa Bắc Sơn",
+      "sourceLink": "https://drive.google.com/drive/folders/1031iE-L4HEfGHJA-0lCHNfEf0QkASMGg?usp=drive_link",
+      "fileId": "1fgNoOF3pSS8SnlxP_GKVeSDUD0zMgzUI",
+      "fileName": "Him Cafe.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1fgNoOF3pSS8SnlxP_GKVeSDUD0zMgzUI",
+          "fileName": "Him Cafe.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1fgNoOF3pSS8SnlxP_GKVeSDUD0zMgzUI/view?usp=drive_web"
+        },
+        {
+          "fileId": "1sgiaH0i1FCD7Sk2tYPzG3Rh2gxz4-cL9",
+          "fileName": "472330400_1521236808553171_7190727506350415374_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1sgiaH0i1FCD7Sk2tYPzG3Rh2gxz4-cL9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1V4f-SPblTvujnuL8dUAgKVgQM54-7T7i",
+          "fileName": "472420334_1521236501886535_4731099445109801167_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1V4f-SPblTvujnuL8dUAgKVgQM54-7T7i/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qAEhHG4TRcr_nZQCxu8MZmNuRVDp1JGz",
+          "fileName": "472568972_1523169525026566_2869431276416634679_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1qAEhHG4TRcr_nZQCxu8MZmNuRVDp1JGz/view?usp=drive_web"
+        },
+        {
+          "fileId": "18Q4FXQ5ZVPKKFPqCybOFoaGJJ-t6GXgh",
+          "fileName": "487336627_1416248106464638_4795028060623511548_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18Q4FXQ5ZVPKKFPqCybOFoaGJJ-t6GXgh/view?usp=drive_web"
+        },
+        {
+          "fileId": "1xZBf_zzLVqUAG7f9Ms-ysJHIKwDATvfW",
+          "fileName": "488090094_1422970672459048_1648209149839344556_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1xZBf_zzLVqUAG7f9Ms-ysJHIKwDATvfW/view?usp=drive_web"
+        }
+      ]
+    },
+    "cafe|tiem_ca_phe_tach|73_lam_van_thanh": {
+      "key": "cafe|tiem_ca_phe_tach|73_lam_van_thanh",
+      "sectionKey": "cafe",
+      "name": "Tiệm Cà Phê Tách",
+      "address": "73 Lâm Văn Thạnh",
+      "sourceLink": "https://drive.google.com/drive/folders/1VfvxpihCoVf7tUSSQXDJdJLN_rd6Chxu?usp=drive_link",
+      "fileId": "1Wt3ThXBNybfMRrKuS0Rf9z55nuxMPced",
+      "fileName": "Tiệm Cà Phê Tách.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1Wt3ThXBNybfMRrKuS0Rf9z55nuxMPced",
+          "fileName": "Tiệm Cà Phê Tách.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Wt3ThXBNybfMRrKuS0Rf9z55nuxMPced/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GMEXKDVhZq7To7CNDTWSz1ne80oXzSN4",
+          "fileName": "493260442_698720093114455_5479749515455966523_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GMEXKDVhZq7To7CNDTWSz1ne80oXzSN4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1-RO3ZRcr87InXRkYy8mqpXlicbX3sbru",
+          "fileName": "494025883_701183802868084_2152707855150393341_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-RO3ZRcr87InXRkYy8mqpXlicbX3sbru/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Q_bbY0tqjqrlpympSw08GFlgjPOfS7XZ",
+          "fileName": "522642461_770449512608179_4165399282321297193_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Q_bbY0tqjqrlpympSw08GFlgjPOfS7XZ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Np02XcIaoBOvInE5kYfMOnb3MoELm4Gq",
+          "fileName": "523367445_770449509274846_4636914774979218743_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Np02XcIaoBOvInE5kYfMOnb3MoELm4Gq/view?usp=drive_web"
+        },
+        {
+          "fileId": "18haJ0WnK05P2IFgl_b8otvt6Wlg8tV3y",
+          "fileName": "536267457_803653099287820_6685690173456302287_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18haJ0WnK05P2IFgl_b8otvt6Wlg8tV3y/view?usp=drive_web"
         }
       ]
     },
@@ -11925,6 +12622,47 @@
         }
       ]
     },
+    "homestay|hanna_villa|68b_hoang_hoa_tham": {
+      "key": "homestay|hanna_villa|68b_hoang_hoa_tham",
+      "sectionKey": "homestay",
+      "name": "Hanna Villa",
+      "address": "68B Hoàng Hoa Thám",
+      "sourceLink": "https://drive.google.com/drive/folders/1cg05NNEXt0wTudT16W9fP0h7A1SQuMss",
+      "fileId": "136VCsCpRS-KNS5VtR0Qt9YAIkGcmnbP9",
+      "fileName": "2.png",
+      "candidateImages": [
+        {
+          "fileId": "136VCsCpRS-KNS5VtR0Qt9YAIkGcmnbP9",
+          "fileName": "2.png",
+          "viewUrl": "https://drive.google.com/file/d/136VCsCpRS-KNS5VtR0Qt9YAIkGcmnbP9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1XPEFh3ij2iuF5yjqMGm7os4DoI2CmCWM",
+          "fileName": "3.png",
+          "viewUrl": "https://drive.google.com/file/d/1XPEFh3ij2iuF5yjqMGm7os4DoI2CmCWM/view?usp=drive_web"
+        },
+        {
+          "fileId": "1iGo9sR-k_8VDfEF3ETePsNL52UVu0gsV",
+          "fileName": "4.png",
+          "viewUrl": "https://drive.google.com/file/d/1iGo9sR-k_8VDfEF3ETePsNL52UVu0gsV/view?usp=drive_web"
+        },
+        {
+          "fileId": "1EnxdYvRzrkMgVXKgZHw5o33Zw5Vat834",
+          "fileName": "5.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1EnxdYvRzrkMgVXKgZHw5o33Zw5Vat834/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Hj9eCPiR5Il0cYAxVtatWmxV22qtDxx9",
+          "fileName": "7.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Hj9eCPiR5Il0cYAxVtatWmxV22qtDxx9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Xl7IuRincV_8Jpq2v8-Ym7jFgVR-Jg9Y",
+          "fileName": "DSC02116.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Xl7IuRincV_8Jpq2v8-Ym7jFgVR-Jg9Y/view?usp=drive_web"
+        }
+      ]
+    },
     "check_in|biet_thu_dong_da|duong_dong_da": {
       "key": "check_in|biet_thu_dong_da|duong_dong_da",
       "sectionKey": "check_in",
@@ -12555,29 +13293,29 @@
           "viewUrl": "https://drive.google.com/file/d/10njLRSxzjxrO3eP1oRnkYnFCUJ5Ju3co/view?usp=drive_web"
         },
         {
+          "fileId": "1XzA8NQI2vC0GImHE0GcQgSV0CMpOr07f",
+          "fileName": "481069217_1160118752418287_7929280533797637652_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1XzA8NQI2vC0GImHE0GcQgSV0CMpOr07f/view?usp=drive_web"
+        },
+        {
+          "fileId": "1VOUs_fSoDHreLoRXWRGXARMkjAc9GZya",
+          "fileName": "481994370_1160118662418296_375411455416379631_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1VOUs_fSoDHreLoRXWRGXARMkjAc9GZya/view?usp=drive_web"
+        },
+        {
+          "fileId": "1AyTXKwa3H95Xe7kHuqRNwWeqoixmi_w0",
+          "fileName": "481994370_1160118665751629_2286444445578135738_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1AyTXKwa3H95Xe7kHuqRNwWeqoixmi_w0/view?usp=drive_web"
+        },
+        {
           "fileId": "1I06K6-SjLBlFNPUs6z76I-jn8DpSjw4V",
           "fileName": "482238193_1086202170186733_5713120969714322818_n.jpg",
           "viewUrl": "https://drive.google.com/file/d/1I06K6-SjLBlFNPUs6z76I-jn8DpSjw4V/view?usp=drive_web"
         },
         {
-          "fileId": "1994DawRw23yWIaGc7EoxGbtsAOUaOD1M",
-          "fileName": "510284844_760283233349947_5695250743092400724_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1994DawRw23yWIaGc7EoxGbtsAOUaOD1M/view?usp=drive_web"
-        },
-        {
-          "fileId": "1OQ7doLZ3wHLBn-jhxMC9O0yazHniWu9o",
-          "fileName": "510364961_760283150016622_3420261477858621948_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1OQ7doLZ3wHLBn-jhxMC9O0yazHniWu9o/view?usp=drive_web"
-        },
-        {
-          "fileId": "1lU8wHdK0EgDE9I1Tvaz74wVDdihvG0bG",
-          "fileName": "510804041_760283390016598_788963738864272963_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1lU8wHdK0EgDE9I1Tvaz74wVDdihvG0bG/view?usp=drive_web"
-        },
-        {
-          "fileId": "1-hXyNY6Xh4sBnLQWRXp8EhNAmEFHzf4F",
-          "fileName": "512209537_760283120016625_5493344751802372102_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1-hXyNY6Xh4sBnLQWRXp8EhNAmEFHzf4F/view?usp=drive_web"
+          "fileId": "1OjblfxvBHge32jZG5ckJgp02KtNgQNXB",
+          "fileName": "486117165_688672783844326_726565444097933621_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1OjblfxvBHge32jZG5ckJgp02KtNgQNXB/view?usp=drive_web"
         }
       ]
     },
@@ -14534,11 +15272,6 @@
           "viewUrl": "https://drive.google.com/file/d/1G8jAHDLUp4ZieJ3dOu4vacxx-bPBT_1X/view?usp=drive_web"
         },
         {
-          "fileId": "1fjNfTHDZ-86OiPXmjm5vP9qvOvLQVJOb",
-          "fileName": "569004294_1221730143326049_2154423192394503249_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1fjNfTHDZ-86OiPXmjm5vP9qvOvLQVJOb/view?usp=drive_web"
-        },
-        {
           "fileId": "1eHk-O6AY4aFdtamOac0geR0Vbe6Br71p",
           "fileName": "569023102_1221730479992682_3844825012276878036_n.jpg",
           "viewUrl": "https://drive.google.com/file/d/1eHk-O6AY4aFdtamOac0geR0Vbe6Br71p/view?usp=drive_web"
@@ -14547,6 +15280,11 @@
           "fileId": "1Gr9NYwK1llFHJpdP8WPvhW10khkihjVL",
           "fileName": "570307850_1221730333326030_3584845154904630204_n.jpg",
           "viewUrl": "https://drive.google.com/file/d/1Gr9NYwK1llFHJpdP8WPvhW10khkihjVL/view?usp=drive_web"
+        },
+        {
+          "fileId": "17L4KOoXxci6wvedg1Q4plhTJCoJJ7BGy",
+          "fileName": "571116427_1221730353326028_1062326837406113459_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17L4KOoXxci6wvedg1Q4plhTJCoJJ7BGy/view?usp=drive_web"
         }
       ]
     },
@@ -15663,44 +16401,449 @@
         }
       ]
     },
-    "check_in|chua_quan_am|hem_11_khe_sanh": {
-      "key": "check_in|chua_quan_am|hem_11_khe_sanh",
+    "check_in|cay_thong_co_don|suoi_vang_xa_lat": {
+      "key": "check_in|cay_thong_co_don|suoi_vang_xa_lat",
       "sectionKey": "check_in",
-      "name": "Chùa Quan Âm",
-      "address": "Hẻm 11 Khe Sanh",
-      "sourceLink": "https://drive.google.com/drive/folders/1CInLU1h_Ndv97UyKQ4Q_jE1ueVfw1ptK",
-      "fileId": "1q0ALYjm_t8FOe8OfJZAqA7JJeDftLifu",
-      "fileName": "unnamed (1).jpg",
+      "name": "Cây thông cô đơn",
+      "address": "Suối Vàng, xã Lát",
+      "sourceLink": "https://drive.google.com/drive/folders/1nwSrfQIRl_2zlhQvyBjFeLNt3tM93uLv",
+      "fileId": "1dBAelnF6JQkYR4_NP_ZjzTToe8_tNyH5",
+      "fileName": "cây thông cô đơn.jpg",
       "candidateImages": [
         {
-          "fileId": "1q0ALYjm_t8FOe8OfJZAqA7JJeDftLifu",
-          "fileName": "unnamed (1).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1q0ALYjm_t8FOe8OfJZAqA7JJeDftLifu/view?usp=drive_web"
+          "fileId": "1dBAelnF6JQkYR4_NP_ZjzTToe8_tNyH5",
+          "fileName": "cây thông cô đơn.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1dBAelnF6JQkYR4_NP_ZjzTToe8_tNyH5/view?usp=drive_web"
         },
         {
-          "fileId": "1L-uB7CJ1TxeapceUilfvG6008efl2m_v",
-          "fileName": "unnamed (2).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1L-uB7CJ1TxeapceUilfvG6008efl2m_v/view?usp=drive_web"
+          "fileId": "1E5zNFb-MGZQS3mEHcDJc6WP4l9Hh2kxt",
+          "fileName": "485944763_2078424242620491_7683099581098619448_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1E5zNFb-MGZQS3mEHcDJc6WP4l9Hh2kxt/view?usp=drive_web"
         },
         {
-          "fileId": "1nCkmjAjoMIU_aQoWV0i12ogFXwl3KRYy",
-          "fileName": "unnamed (3).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1nCkmjAjoMIU_aQoWV0i12ogFXwl3KRYy/view?usp=drive_web"
+          "fileId": "1C90BU6F1HuiHJ_KdImyeZKSeBcqbDzf8",
+          "fileName": "486249008_2078424472620468_5756789457931473905_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1C90BU6F1HuiHJ_KdImyeZKSeBcqbDzf8/view?usp=drive_web"
         },
         {
-          "fileId": "1iSOy-BKkA_kRJRvG96IEU8ZAZydwnHG-",
-          "fileName": "unnamed (4).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1iSOy-BKkA_kRJRvG96IEU8ZAZydwnHG-/view?usp=drive_web"
+          "fileId": "1Ghl837TRLEIUEJSKtySdnbVRb6WH-krY",
+          "fileName": "486362693_2078424272620488_7294387925427612699_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Ghl837TRLEIUEJSKtySdnbVRb6WH-krY/view?usp=drive_web"
         },
         {
-          "fileId": "1AE8Jlru6OL2feSkEj-5jKCmvgxrUHa4C",
-          "fileName": "unnamed (5).jpg",
-          "viewUrl": "https://drive.google.com/file/d/1AE8Jlru6OL2feSkEj-5jKCmvgxrUHa4C/view?usp=drive_web"
+          "fileId": "1X-TkS7dDdDAXIWFPFQVN4N-olfGWoLno",
+          "fileName": "486942855_2078424405953808_7794047957318909423_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1X-TkS7dDdDAXIWFPFQVN4N-olfGWoLno/view?usp=drive_web"
         },
         {
-          "fileId": "12Nur-TjdF6Zp5gaEOaFc90PIgphGMcc8",
-          "fileName": "unnamed (6).jpg",
-          "viewUrl": "https://drive.google.com/file/d/12Nur-TjdF6Zp5gaEOaFc90PIgphGMcc8/view?usp=drive_web"
+          "fileId": "1-qfWTkhO-RA4ibzEU3PzjcnfP8_wwoBN",
+          "fileName": "544914796_2131084794082589_1854100363022775804_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-qfWTkhO-RA4ibzEU3PzjcnfP8_wwoBN/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|don_bosco|36_duong_bui_thi_xuan": {
+      "key": "check_in|don_bosco|36_duong_bui_thi_xuan",
+      "sectionKey": "check_in",
+      "name": "Don Bosco",
+      "address": "36 Đường Bùi Thị Xuân",
+      "sourceLink": "https://drive.google.com/drive/folders/1kFGXfQXbJrJ8b41Rxi9LzVPyjo7V8C4h",
+      "fileId": "18gLDOXQ3JUvjRb0uOiPM-3pLvXvYYTs_",
+      "fileName": "Don Bosco.jpg",
+      "candidateImages": [
+        {
+          "fileId": "18gLDOXQ3JUvjRb0uOiPM-3pLvXvYYTs_",
+          "fileName": "Don Bosco.jpg",
+          "viewUrl": "https://drive.google.com/file/d/18gLDOXQ3JUvjRb0uOiPM-3pLvXvYYTs_/view?usp=drive_web"
+        },
+        {
+          "fileId": "1uc_OhipQOpNfyT10R4VsL0Ptg06KUDcX",
+          "fileName": "475886130_1029887148988094_454509165149243110_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1uc_OhipQOpNfyT10R4VsL0Ptg06KUDcX/view?usp=drive_web"
+        },
+        {
+          "fileId": "1GBrRxoUwAqgoc8nkf-C1bn5zX6VXu2bo",
+          "fileName": "480403881_649838387564831_1096732730620584927_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1GBrRxoUwAqgoc8nkf-C1bn5zX6VXu2bo/view?usp=drive_web"
+        },
+        {
+          "fileId": "1_Z-Z56FwgsEzivzYay75iXtIG0JFMufq",
+          "fileName": "480407197_649838370898166_6946261634366795262_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_Z-Z56FwgsEzivzYay75iXtIG0JFMufq/view?usp=drive_web"
+        },
+        {
+          "fileId": "1agzf05FN8bqv-ydr8EjsIW6xAYRn2In8",
+          "fileName": "527024610_2101696480354754_3197548732641304991_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1agzf05FN8bqv-ydr8EjsIW6xAYRn2In8/view?usp=drive_web"
+        },
+        {
+          "fileId": "14qkk3T-VQUPBJRlZFUcCtbfH9FO9CyCK",
+          "fileName": "527451030_2101696333688102_7714193721215024545_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/14qkk3T-VQUPBJRlZFUcCtbfH9FO9CyCK/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|doc_dong_da|duong_dong_da": {
+      "key": "check_in|doc_dong_da|duong_dong_da",
+      "sectionKey": "check_in",
+      "name": "Dốc Đống Đa",
+      "address": "Đường Đống Đa",
+      "sourceLink": "https://drive.google.com/drive/folders/1JAZOkxPyfe_UX97O8h3mi2nDdXSSBiLb",
+      "fileId": "1yxsWFd_F-N1v9KZJojAJZHbuivY0FmY1",
+      "fileName": "IMG_1497.JPG",
+      "candidateImages": [
+        {
+          "fileId": "1yxsWFd_F-N1v9KZJojAJZHbuivY0FmY1",
+          "fileName": "IMG_1497.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1yxsWFd_F-N1v9KZJojAJZHbuivY0FmY1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1lKz5U7X_AOsuejEml1zYmB2p6ZpG1euK",
+          "fileName": "IMG_1498.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1lKz5U7X_AOsuejEml1zYmB2p6ZpG1euK/view?usp=drive_web"
+        },
+        {
+          "fileId": "1po63dHOFSXZDAOQbiFnAzPFf9i_A_6mY",
+          "fileName": "IMG_1499.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1po63dHOFSXZDAOQbiFnAzPFf9i_A_6mY/view?usp=drive_web"
+        },
+        {
+          "fileId": "1i0Ekh-PB8c1_zYZ3XNbNT90D6cHG7GVb",
+          "fileName": "IMG_1500.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1i0Ekh-PB8c1_zYZ3XNbNT90D6cHG7GVb/view?usp=drive_web"
+        },
+        {
+          "fileId": "15H-shJBlKBUJEOew8m9HdhuGsoq4csmX",
+          "fileName": "IMG_1501.JPG",
+          "viewUrl": "https://drive.google.com/file/d/15H-shJBlKBUJEOew8m9HdhuGsoq4csmX/view?usp=drive_web"
+        },
+        {
+          "fileId": "1jxQs1EeXajaDUDcz8zk8gLxrpMh0Vrcz",
+          "fileName": "IMG_1502.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1jxQs1EeXajaDUDcz8zk8gLxrpMh0Vrcz/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|doc_suong_nguyet_anh|duong_suong_nguyet_anh": {
+      "key": "check_in|doc_suong_nguyet_anh|duong_suong_nguyet_anh",
+      "sectionKey": "check_in",
+      "name": "Dốc Sương Nguyệt Ánh",
+      "address": "Đường Sương Nguyệt Ánh",
+      "sourceLink": "https://drive.google.com/drive/folders/1r8PwdllBe6sntspt8yXBMKnNtgrPD8t5",
+      "fileId": "17B9wvnLWJDzfqo7lPzpIu1RU4ruLexnJ",
+      "fileName": "480112509_122246296676009913_4228325058210892035_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "17B9wvnLWJDzfqo7lPzpIu1RU4ruLexnJ",
+          "fileName": "480112509_122246296676009913_4228325058210892035_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17B9wvnLWJDzfqo7lPzpIu1RU4ruLexnJ/view?usp=drive_web"
+        },
+        {
+          "fileId": "17vYkR6R6qrSj9DHlp53jeLpZRFpLFVd2",
+          "fileName": "485963788_941974444816156_489437622219653592_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/17vYkR6R6qrSj9DHlp53jeLpZRFpLFVd2/view?usp=drive_web"
+        },
+        {
+          "fileId": "1u76GYfWq7nO_4F8EIBn2FpIcXBzwIDht",
+          "fileName": "486477525_1096978375775779_1185953233973013590_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1u76GYfWq7nO_4F8EIBn2FpIcXBzwIDht/view?usp=drive_web"
+        },
+        {
+          "fileId": "1k5sdidk1OltF1nL09113DdxoEcWluqJ6",
+          "fileName": "490092037_1142122194579129_8695294849653664767_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1k5sdidk1OltF1nL09113DdxoEcWluqJ6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1-TAVNi361oAuguCCeEAyJI8NPrVSzEJ4",
+          "fileName": "526785933_2103979490126453_4416366009414648116_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-TAVNi361oAuguCCeEAyJI8NPrVSzEJ4/view?usp=drive_web"
+        },
+        {
+          "fileId": "13MLwh--WQ6ZK51mi7R71Cg_VQqbPhxpq",
+          "fileName": "527790329_2103979443459791_2604547955736206362_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/13MLwh--WQ6ZK51mi7R71Cg_VQqbPhxpq/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|dap_ankoret|suoi_vang_xa_lat": {
+      "key": "check_in|dap_ankoret|suoi_vang_xa_lat",
+      "sectionKey": "check_in",
+      "name": "Đập Ankoret",
+      "address": "Suối Vàng, Xã Lát",
+      "sourceLink": "https://drive.google.com/drive/folders/10BOmJa6c2DcpyO6msU_f-ouY3ouEze1_",
+      "fileId": "1EKv0hHYZ3YdeGv6dFQ7-0ZwBBwyuWCP9",
+      "fileName": "dakr.png",
+      "candidateImages": [
+        {
+          "fileId": "1EKv0hHYZ3YdeGv6dFQ7-0ZwBBwyuWCP9",
+          "fileName": "dakr.png",
+          "viewUrl": "https://drive.google.com/file/d/1EKv0hHYZ3YdeGv6dFQ7-0ZwBBwyuWCP9/view?usp=drive_web"
+        },
+        {
+          "fileId": "1QWgFa_fB2-VkZSQdA6jc7qNAd8hJyBL3",
+          "fileName": "dakr1.png",
+          "viewUrl": "https://drive.google.com/file/d/1QWgFa_fB2-VkZSQdA6jc7qNAd8hJyBL3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wZyRy4SO2wqUqGmzTjOX1bnoX80d1uTC",
+          "fileName": "dakr2.png",
+          "viewUrl": "https://drive.google.com/file/d/1wZyRy4SO2wqUqGmzTjOX1bnoX80d1uTC/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wL3zFv4yGTsM4ZthjiOfXCdMpNLGTAYI",
+          "fileName": "dakr3.png",
+          "viewUrl": "https://drive.google.com/file/d/1wL3zFv4yGTsM4ZthjiOfXCdMpNLGTAYI/view?usp=drive_web"
+        },
+        {
+          "fileId": "1U9P74czWMctUraAZoXV2cpylNvgHtMmi",
+          "fileName": "dakr4.png",
+          "viewUrl": "https://drive.google.com/file/d/1U9P74czWMctUraAZoXV2cpylNvgHtMmi/view?usp=drive_web"
+        },
+        {
+          "fileId": "1lYYJ-b4s27p3hq0WqLY7bYz-P00_G5M7",
+          "fileName": "dakr5.png",
+          "viewUrl": "https://drive.google.com/file/d/1lYYJ-b4s27p3hq0WqLY7bYz-P00_G5M7/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|do_mang_lin|khu_mang_lin_phuong_lang_biang": {
+      "key": "check_in|do_mang_lin|khu_mang_lin_phuong_lang_biang",
+      "sectionKey": "check_in",
+      "name": "Đồ Măng Lin",
+      "address": "Khu Măng Lin, Phường Lang Biang",
+      "sourceLink": "https://drive.google.com/drive/folders/1jcoMsFeI9x_7FG5rPFg6nzQqfrbqs0XF",
+      "fileId": "1iWePEz56g3ffcTBvFcegnzAD7Wq9SqrC",
+      "fileName": "IMG_1465.JPG",
+      "candidateImages": [
+        {
+          "fileId": "1iWePEz56g3ffcTBvFcegnzAD7Wq9SqrC",
+          "fileName": "IMG_1465.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1iWePEz56g3ffcTBvFcegnzAD7Wq9SqrC/view?usp=drive_web"
+        },
+        {
+          "fileId": "1oIF7U78HXKKluJIVBMwOza9_-LYFUL4T",
+          "fileName": "IMG_1466.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1oIF7U78HXKKluJIVBMwOza9_-LYFUL4T/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ZALUCHs1V5EYsSdgj_PeP9j8c8kGFAGb",
+          "fileName": "IMG_1467.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1ZALUCHs1V5EYsSdgj_PeP9j8c8kGFAGb/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Q9HfxZBALEFgfIjqHIA6Lh01OxDaV5sk",
+          "fileName": "IMG_1468.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1Q9HfxZBALEFgfIjqHIA6Lh01OxDaV5sk/view?usp=drive_web"
+        },
+        {
+          "fileId": "1KRoBq5FAcSalcF5bC_Mnik9GhCsy9HT1",
+          "fileName": "IMG_1469.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1KRoBq5FAcSalcF5bC_Mnik9GhCsy9HT1/view?usp=drive_web"
+        },
+        {
+          "fileId": "10YLD9BBw3HVXAKz5EUlpGasvTGcjjJ99",
+          "fileName": "IMG_1470.JPG",
+          "viewUrl": "https://drive.google.com/file/d/10YLD9BBw3HVXAKz5EUlpGasvTGcjjJ99/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|ho_tuyen_lam|phuong_xuan_huong_da_lat": {
+      "key": "check_in|ho_tuyen_lam|phuong_xuan_huong_da_lat",
+      "sectionKey": "check_in",
+      "name": "Hồ Tuyền Lâm",
+      "address": "phường Xuân Hương – Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1CP9NmlPKGIqtga-kB4FtbFHzSsfwvrS8",
+      "fileId": "1fBCMr1DEV715mb7_6RurmqrXiyovfxPI",
+      "fileName": "htl.png",
+      "candidateImages": [
+        {
+          "fileId": "1fBCMr1DEV715mb7_6RurmqrXiyovfxPI",
+          "fileName": "htl.png",
+          "viewUrl": "https://drive.google.com/file/d/1fBCMr1DEV715mb7_6RurmqrXiyovfxPI/view?usp=drive_web"
+        },
+        {
+          "fileId": "1qRJdmQShTBZl25nMPW8owbxqcNq4hptw",
+          "fileName": "htl1.png",
+          "viewUrl": "https://drive.google.com/file/d/1qRJdmQShTBZl25nMPW8owbxqcNq4hptw/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Op4CEnIB3iz5En5ZZt6V3hh97PCvKfPE",
+          "fileName": "htl3.png",
+          "viewUrl": "https://drive.google.com/file/d/1Op4CEnIB3iz5En5ZZt6V3hh97PCvKfPE/view?usp=drive_web"
+        },
+        {
+          "fileId": "17BtwXHTY4TAD3Kmtylt9NGYOqBh-QWz3",
+          "fileName": "htl4.png",
+          "viewUrl": "https://drive.google.com/file/d/17BtwXHTY4TAD3Kmtylt9NGYOqBh-QWz3/view?usp=drive_web"
+        },
+        {
+          "fileId": "1nfrvRYYgc9WBi4ILOQF4z46HjeAkZNwY",
+          "fileName": "htl5.png",
+          "viewUrl": "https://drive.google.com/file/d/1nfrvRYYgc9WBi4ILOQF4z46HjeAkZNwY/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|ho_xuan_huong|trung_tam_tp_da_lat": {
+      "key": "check_in|ho_xuan_huong|trung_tam_tp_da_lat",
+      "sectionKey": "check_in",
+      "name": "Hồ Xuân Hương",
+      "address": "Trung tâm TP. Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1DXPiwlYNuciI1Xej5vZtQXS6CXw7q4eP",
+      "fileId": "1kUZWaP0PRCu3GL1uF2bFnFV6GVACAJYI",
+      "fileName": "IMG_1759.JPG",
+      "candidateImages": [
+        {
+          "fileId": "1kUZWaP0PRCu3GL1uF2bFnFV6GVACAJYI",
+          "fileName": "IMG_1759.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1kUZWaP0PRCu3GL1uF2bFnFV6GVACAJYI/view?usp=drive_web"
+        },
+        {
+          "fileId": "15Lrv1gRUNu0poRfUGRcR6RGaPX8LABij",
+          "fileName": "IMG_1760.JPG",
+          "viewUrl": "https://drive.google.com/file/d/15Lrv1gRUNu0poRfUGRcR6RGaPX8LABij/view?usp=drive_web"
+        },
+        {
+          "fileId": "1h4QoTMpNUbn8I0e__XRr7kJHxT5gy1gD",
+          "fileName": "IMG_1761.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1h4QoTMpNUbn8I0e__XRr7kJHxT5gy1gD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1WgddGGsnJPMyr1Xy5BITiyQxPD9ymeof",
+          "fileName": "IMG_1762.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1WgddGGsnJPMyr1Xy5BITiyQxPD9ymeof/view?usp=drive_web"
+        },
+        {
+          "fileId": "1h_fY4OrtJsZ3p9dVv90nR8zw9qVnt8_z",
+          "fileName": "IMG_1763.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1h_fY4OrtJsZ3p9dVv90nR8zw9qVnt8_z/view?usp=drive_web"
+        },
+        {
+          "fileId": "1lJjELipRz8JiYOpv6QocEaN4eUmj0VuK",
+          "fileName": "IMG_1764.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1lJjELipRz8JiYOpv6QocEaN4eUmj0VuK/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|suoi_tia|phia_dong_nam_ho_tuyen_lam": {
+      "key": "check_in|suoi_tia|phia_dong_nam_ho_tuyen_lam",
+      "sectionKey": "check_in",
+      "name": "Suối Tía",
+      "address": "phía Đông Nam Hồ Tuyền Lâm",
+      "sourceLink": "https://drive.google.com/drive/folders/1gi8oOJjaMg8CPT90SM2ltcFaCdJwB1FE",
+      "fileId": "1JOB4T9OgixQkysd7HyETkt1BTNrsb7z1",
+      "fileName": "IMG_1734.JPG",
+      "candidateImages": [
+        {
+          "fileId": "1JOB4T9OgixQkysd7HyETkt1BTNrsb7z1",
+          "fileName": "IMG_1734.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1JOB4T9OgixQkysd7HyETkt1BTNrsb7z1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1vR_D5UqxBoGCCvlOCvrIyXkyLl_2PdG1",
+          "fileName": "IMG_1735.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1vR_D5UqxBoGCCvlOCvrIyXkyLl_2PdG1/view?usp=drive_web"
+        },
+        {
+          "fileId": "1O6ynYAivyNjt-RXBDvUmcMFheZcBNn4w",
+          "fileName": "IMG_1736.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1O6ynYAivyNjt-RXBDvUmcMFheZcBNn4w/view?usp=drive_web"
+        },
+        {
+          "fileId": "1fW1IKweW7MWg6zKptslcWX6anRUzv2_K",
+          "fileName": "IMG_1737.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1fW1IKweW7MWg6zKptslcWX6anRUzv2_K/view?usp=drive_web"
+        },
+        {
+          "fileId": "19KZbI-shsNcZiBsWGt8aFJL3O6MALg2X",
+          "fileName": "IMG_1738.JPG",
+          "viewUrl": "https://drive.google.com/file/d/19KZbI-shsNcZiBsWGt8aFJL3O6MALg2X/view?usp=drive_web"
+        },
+        {
+          "fileId": "1LiTQxysAKj2Ooft1YzYXxgl-Z94ftQVm",
+          "fileName": "IMG_1739.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1LiTQxysAKj2Ooft1YzYXxgl-Z94ftQVm/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|thap_truyen_hinh|14b_dong_da_phuong_xuan_huong_da_lat": {
+      "key": "check_in|thap_truyen_hinh|14b_dong_da_phuong_xuan_huong_da_lat",
+      "sectionKey": "check_in",
+      "name": "Tháp Truyền Hình",
+      "address": "14B Đống Đa, phường Xuân Hương – Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1imdB-a0etI35hWKl--KJRNmoTSNvzPPk",
+      "fileId": "1UyDy_7sYvJA21NzjL18d9WJC6gfTisQ4",
+      "fileName": "IMG_1695.JPG",
+      "candidateImages": [
+        {
+          "fileId": "1UyDy_7sYvJA21NzjL18d9WJC6gfTisQ4",
+          "fileName": "IMG_1695.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1UyDy_7sYvJA21NzjL18d9WJC6gfTisQ4/view?usp=drive_web"
+        },
+        {
+          "fileId": "1pJfYrnzep7-CSUtLvkpFwgF2MKJI0B0N",
+          "fileName": "IMG_1696.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1pJfYrnzep7-CSUtLvkpFwgF2MKJI0B0N/view?usp=drive_web"
+        },
+        {
+          "fileId": "1wkrBW0fiXrDGgsFJc9rnv6o7bs6cYv_f",
+          "fileName": "IMG_1697.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1wkrBW0fiXrDGgsFJc9rnv6o7bs6cYv_f/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ygaRfIpyc_WPWn1lDdbbLbQzv6XfEtJf",
+          "fileName": "IMG_1698.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1ygaRfIpyc_WPWn1lDdbbLbQzv6XfEtJf/view?usp=drive_web"
+        },
+        {
+          "fileId": "1VrQrMKrptI_41XipoouS1PtoTefoJd4e",
+          "fileName": "IMG_1699.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1VrQrMKrptI_41XipoouS1PtoTefoJd4e/view?usp=drive_web"
+        },
+        {
+          "fileId": "1arwlxmF2YDv_MbCYt0HR947JHvGVtRtJ",
+          "fileName": "IMG_1700.JPG",
+          "viewUrl": "https://drive.google.com/file/d/1arwlxmF2YDv_MbCYt0HR947JHvGVtRtJ/view?usp=drive_web"
+        }
+      ]
+    },
+    "check_in|thap_vinaphone|8_tran_phu_phuong_xuan_huong_da_lat": {
+      "key": "check_in|thap_vinaphone|8_tran_phu_phuong_xuan_huong_da_lat",
+      "sectionKey": "check_in",
+      "name": "Tháp Vinaphone",
+      "address": "8 Trần Phú, phường Xuân Hương – Đà Lạt",
+      "sourceLink": "https://drive.google.com/drive/folders/1OFfWeUZ0bA8wHoHpejb8C3E0e83OfpK-",
+      "fileId": "1w9tRT91tcQw2X166jV_CpENWKucAFhqT",
+      "fileName": "539475419_1757987852259810_4342289574842545654_n.jpg",
+      "candidateImages": [
+        {
+          "fileId": "1w9tRT91tcQw2X166jV_CpENWKucAFhqT",
+          "fileName": "539475419_1757987852259810_4342289574842545654_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1w9tRT91tcQw2X166jV_CpENWKucAFhqT/view?usp=drive_web"
+        },
+        {
+          "fileId": "1YsYPBPNt4P8lbxjlhKLkffhhYlHks_GQ",
+          "fileName": "540678123_1757987875593141_2942113070823852886_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1YsYPBPNt4P8lbxjlhKLkffhhYlHks_GQ/view?usp=drive_web"
+        },
+        {
+          "fileId": "1plLaHngK8rCm71F4avetiKmOhK5al7KD",
+          "fileName": "561346663_853262087385394_6578180255540886796_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1plLaHngK8rCm71F4avetiKmOhK5al7KD/view?usp=drive_web"
+        },
+        {
+          "fileId": "1dIZC07ZEfMBjMQfx5fUbR2C2U12hx7u6",
+          "fileName": "646385335_1593573085227290_5381834730626915800_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1dIZC07ZEfMBjMQfx5fUbR2C2U12hx7u6/view?usp=drive_web"
+        },
+        {
+          "fileId": "1uYcB2e3Wf8diaJf-GBJgl1AUuDGL1vOH",
+          "fileName": "673881980_1004739548904313_3294962027147497883_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1uYcB2e3Wf8diaJf-GBJgl1AUuDGL1vOH/view?usp=drive_web"
+        },
+        {
+          "fileId": "105dxOiUguW1KyKlSycJ9KHkdYzAvNy9c",
+          "fileName": "673885412_1004739332237668_4592950385370219777_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/105dxOiUguW1KyKlSycJ9KHkdYzAvNy9c/view?usp=drive_web"
         }
       ]
     },
@@ -17017,13 +18160,23 @@
       "name": "Langbiang Land",
       "address": "93A Đường Biđoup",
       "sourceLink": "https://drive.google.com/drive/folders/1miFVKNwIGqc2pcIg2Bn3nIKhemerUujp",
-      "fileId": "112H7neefl5n54dj1Wbla1zqqOugPt1xG",
-      "fileName": "706930815_122172147644616055_965167299651428433_n.jpg",
+      "fileId": "1-bzFVzTkMz0i1OeZzh7TEpNnw2H3R81G",
+      "fileName": "711369564_2046336463432854_3590997806113121177_n.jpg",
       "candidateImages": [
         {
-          "fileId": "112H7neefl5n54dj1Wbla1zqqOugPt1xG",
-          "fileName": "706930815_122172147644616055_965167299651428433_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/112H7neefl5n54dj1Wbla1zqqOugPt1xG/view?usp=drive_web"
+          "fileId": "1-bzFVzTkMz0i1OeZzh7TEpNnw2H3R81G",
+          "fileName": "711369564_2046336463432854_3590997806113121177_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1-bzFVzTkMz0i1OeZzh7TEpNnw2H3R81G/view?usp=drive_web"
+        },
+        {
+          "fileId": "1Czy4pVpqHDmNIjGLaNXZIIgOxYP0fKHF",
+          "fileName": "713423789_977425331942703_8756762351265134975_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1Czy4pVpqHDmNIjGLaNXZIIgOxYP0fKHF/view?usp=drive_web"
+        },
+        {
+          "fileId": "1ICuYKXMoGP0cmtyF6Rgvw75V3xqxa6RM",
+          "fileName": "713724357_977425521942684_7959184977451850348_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1ICuYKXMoGP0cmtyF6Rgvw75V3xqxa6RM/view?usp=drive_web"
         },
         {
           "fileId": "177NsacouiNMMd4NVGYYSVUqqvdiKwvqL",
@@ -17031,24 +18184,14 @@
           "viewUrl": "https://drive.google.com/file/d/177NsacouiNMMd4NVGYYSVUqqvdiKwvqL/view?usp=drive_web"
         },
         {
-          "fileId": "1EL3Rp9o-Cxe4Qvhx7PSuzlsRn0D1tq50",
-          "fileName": "714084848_122172812300616055_1576616551761657339_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1EL3Rp9o-Cxe4Qvhx7PSuzlsRn0D1tq50/view?usp=drive_web"
+          "fileId": "1_ooM1BsHSqEDoE5yz0v3nmWZVFO798_Z",
+          "fileName": "716550390_980297114988858_1047603551148937866_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1_ooM1BsHSqEDoE5yz0v3nmWZVFO798_Z/view?usp=drive_web"
         },
         {
-          "fileId": "1CalZLyPRHWBg_X5WeVAEZcqXSCs0dji8",
-          "fileName": "714264665_122172822866616055_45475439379258118_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1CalZLyPRHWBg_X5WeVAEZcqXSCs0dji8/view?usp=drive_web"
-        },
-        {
-          "fileId": "1JL9IRawKwoYLxJjD8KsgVLACmlkXu8lO",
-          "fileName": "714343343_122172823094616055_3640809197782499807_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1JL9IRawKwoYLxJjD8KsgVLACmlkXu8lO/view?usp=drive_web"
-        },
-        {
-          "fileId": "1HYONC_gJrU2KmHgm59BPxxyBo84rodea",
-          "fileName": "714450202_122172822842616055_5639194811482182416_n.jpg",
-          "viewUrl": "https://drive.google.com/file/d/1HYONC_gJrU2KmHgm59BPxxyBo84rodea/view?usp=drive_web"
+          "fileId": "1H6NOiQkyY9PRLMboyL6H6F36HHVUP6-v",
+          "fileName": "716550614_122172812432616055_6324037814458431205_n.jpg",
+          "viewUrl": "https://drive.google.com/file/d/1H6NOiQkyY9PRLMboyL6H6F36HHVUP6-v/view?usp=drive_web"
         }
       ]
     },
@@ -24202,6 +25345,11 @@
       "viewUrl": "https://drive.google.com/file/d/1ooFSlYPAMeqsGimxNi8S3zelRtGlbIUj/view?usp=drive_web"
     },
     {
+      "fileId": "1hwVue1NV8ix53PxbzD5bVgxa5_xtD97Y",
+      "fileName": "17.jpg",
+      "viewUrl": "https://drive.google.com/file/d/1hwVue1NV8ix53PxbzD5bVgxa5_xtD97Y/view?usp=drive_web"
+    },
+    {
       "fileId": "1SBU6V_wO59olq7S5SVk6c7SvpP4KkReS",
       "fileName": "17.png",
       "viewUrl": "https://drive.google.com/file/d/1SBU6V_wO59olq7S5SVk6c7SvpP4KkReS/view?usp=drive_web"
@@ -24370,11 +25518,6 @@
       "fileId": "1BnPFV5x8_KQP1lvlngqJeiCJFfD93i4q",
       "fileName": "47.png",
       "viewUrl": "https://drive.google.com/file/d/1BnPFV5x8_KQP1lvlngqJeiCJFfD93i4q/view?usp=drive_web"
-    },
-    {
-      "fileId": "1V7gPBcTmaQnv8HhMtiyHQ-9aVRrNbL1M",
-      "fileName": "48.png",
-      "viewUrl": "https://drive.google.com/file/d/1V7gPBcTmaQnv8HhMtiyHQ-9aVRrNbL1M/view?usp=drive_web"
     },
     {
       "fileId": "1XcS1x1ZmlytrMqlK78HQEYaIj78ZwBW7",
@@ -24672,19 +25815,19 @@
       "viewUrl": "https://drive.google.com/file/d/1j4eNO4KV0ZIsLtQxqPfVl0LapdtRBEt2/view?usp=drive_web"
     },
     {
-      "fileId": "1OMZabARfdjwTngMYvRBvUX4za83VjE4i",
+      "fileId": "1qOaMps7zo8V6csHmz2i5ljVTKbx0QuMz",
       "fileName": "11.png",
-      "viewUrl": "https://drive.google.com/file/d/1OMZabARfdjwTngMYvRBvUX4za83VjE4i/view?usp=drive_web"
+      "viewUrl": "https://drive.google.com/file/d/1qOaMps7zo8V6csHmz2i5ljVTKbx0QuMz/view?usp=drive_web"
     },
     {
-      "fileId": "1DM_xYYC1tij5rH9Ztf4q3S449AcHd7ug",
+      "fileId": "1G6yPU6rWBnhx1WIBoztZyl93ntZXjEeV",
       "fileName": "12.png",
-      "viewUrl": "https://drive.google.com/file/d/1DM_xYYC1tij5rH9Ztf4q3S449AcHd7ug/view?usp=drive_web"
+      "viewUrl": "https://drive.google.com/file/d/1G6yPU6rWBnhx1WIBoztZyl93ntZXjEeV/view?usp=drive_web"
     },
     {
-      "fileId": "18NymhGLosbdWGI-fgoMwOPkjihnKjngl",
+      "fileId": "1IPENek4t2_dH6QZ2iTuMsaz45j_Z0_zB",
       "fileName": "13.png",
-      "viewUrl": "https://drive.google.com/file/d/18NymhGLosbdWGI-fgoMwOPkjihnKjngl/view?usp=drive_web"
+      "viewUrl": "https://drive.google.com/file/d/1IPENek4t2_dH6QZ2iTuMsaz45j_Z0_zB/view?usp=drive_web"
     },
     {
       "fileId": "1aJ_04_mJUgUsh_ZP7puNcpJLPTzqRMeK",
@@ -24762,11 +25905,6 @@
       "viewUrl": "https://drive.google.com/file/d/1dXtNV0t4SwxTnDwQVykSk9-d-9GbsRA_/view?usp=drive_web"
     },
     {
-      "fileId": "1uT1OWxznhvcvl2S-tgx33UM_YrHVJ1RC",
-      "fileName": "28.png",
-      "viewUrl": "https://drive.google.com/file/d/1uT1OWxznhvcvl2S-tgx33UM_YrHVJ1RC/view?usp=drive_web"
-    },
-    {
       "fileId": "13_zP7onSo20kto5OyRzh-sSTMTYtswl0",
       "fileName": "29.png",
       "viewUrl": "https://drive.google.com/file/d/13_zP7onSo20kto5OyRzh-sSTMTYtswl0/view?usp=drive_web"
@@ -24822,9 +25960,9 @@
       "viewUrl": "https://drive.google.com/file/d/101bofJpD2BPLJNylS50j9vzIkeGJXC66/view?usp=drive_web"
     },
     {
-      "fileId": "1YasO15aUPwb1htb-aAM51odKvBUdNvJp",
+      "fileId": "1jYR-mfu4weamZNX9iUpV0lJ6XjUTUsQr",
       "fileName": "39.png",
-      "viewUrl": "https://drive.google.com/file/d/1YasO15aUPwb1htb-aAM51odKvBUdNvJp/view?usp=drive_web"
+      "viewUrl": "https://drive.google.com/file/d/1jYR-mfu4weamZNX9iUpV0lJ6XjUTUsQr/view?usp=drive_web"
     },
     {
       "fileId": "1xsnli0i3CNW9p5tPXOI9o1no7kxxKadW",
@@ -24852,9 +25990,9 @@
       "viewUrl": "https://drive.google.com/file/d/1bmMMf16B6jLmQmW5tBZ7CbH5UIhxgFPz/view?usp=drive_web"
     },
     {
-      "fileId": "1iQkdqrn8eNh9C9kNNQSYOh0EQ-3koMHw",
+      "fileId": "123ucLir4O-h852ZIC2GsmpmQ3cJgYd25",
       "fileName": "44.png",
-      "viewUrl": "https://drive.google.com/file/d/1iQkdqrn8eNh9C9kNNQSYOh0EQ-3koMHw/view?usp=drive_web"
+      "viewUrl": "https://drive.google.com/file/d/123ucLir4O-h852ZIC2GsmpmQ3cJgYd25/view?usp=drive_web"
     },
     {
       "fileId": "1kRyCMr6s25lzOjLdBt_P9DYK1rOrf2PO",
@@ -24920,6 +26058,11 @@
       "fileId": "1jxpZ-CZJMd-GBQm6KkPyqt1jqw4CKPM6",
       "fileName": "10.png",
       "viewUrl": "https://drive.google.com/file/d/1jxpZ-CZJMd-GBQm6KkPyqt1jqw4CKPM6/view?usp=drive_web"
+    },
+    {
+      "fileId": "1FhU_7K2YgWDx53G2LU-52HIazYMOt59U",
+      "fileName": "11 (2).png",
+      "viewUrl": "https://drive.google.com/file/d/1FhU_7K2YgWDx53G2LU-52HIazYMOt59U/view?usp=drive_web"
     },
     {
       "fileId": "1x2LVYb5mJ78iHTlFNaKmBVRHthLqA8je",
@@ -25047,9 +26190,9 @@
       "viewUrl": "https://drive.google.com/file/d/1TizPFKE_r27iw2bAsDZLGReobPtzak0b/view?usp=drive_web"
     },
     {
-      "fileId": "1eEGHwoVxGKvE02Ttd9fnfHjWSFZenKN2",
+      "fileId": "1Uc2F6mYoZ3oxDeFOi3xD7nhaDV-LkOun",
       "fileName": "35.png",
-      "viewUrl": "https://drive.google.com/file/d/1eEGHwoVxGKvE02Ttd9fnfHjWSFZenKN2/view?usp=drive_web"
+      "viewUrl": "https://drive.google.com/file/d/1Uc2F6mYoZ3oxDeFOi3xD7nhaDV-LkOun/view?usp=drive_web"
     },
     {
       "fileId": "1klsccNhSlERqrYbLGaiSezXfV3-zUMQu",

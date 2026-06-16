@@ -28,6 +28,8 @@ export interface GuideItem {
   highlight: string;
   partnerFlag: string;
   isPartner: boolean;
+  /** Giá đầu người — cột sheet `gia_dau_nguoi`, dùng cho bảng chi phí 72H. */
+  headPrice: string;
   price: string;
   phone: string;
   imageUrl: string;

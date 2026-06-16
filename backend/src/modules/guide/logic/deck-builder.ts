@@ -30,12 +30,13 @@ export const POV_3_DAY_TEMPLATE_VERSION = 12;
 export const GRID_4_TEMPLATE_VERSION = 17;
 export const GRID_4_MUTANT_TEMPLATE_VERSION = 1;
 export const GRID_5_TEMPLATE_VERSION = 3;
-export const GRID_6_TEMPLATE_VERSION = 16;
+export const GRID_6_TEMPLATE_VERSION = 18;
 export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 1;
 export const GRID_8_TEMPLATE_VERSION = 15;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
-export const BUDGET_3N2D_TEMPLATE_VERSION = 4;
+export const BUDGET_3N2D_TEMPLATE_VERSION = 5;
 export const BUDGET_3N2D_STORY_TEMPLATE_VERSION = 4;
+export const BUDGET_72H_SUMMARY_TEMPLATE_VERSION = 3;
 const budget72StoryText = {
   coverTitle: '\u002272H\u0022 \u1ede \u0110\u00c0 L\u1ea0T V\u1edaI 3TR',
   coverSubtitle: 'L\u1ecbch tr\u00ecnh 3 ng\u00e0y 2 \u0111\u00eam g\u1ecdn h\u01a1n: xem theo t\u1eebng ng\u00e0y, c\u00f3 chi ph\u00ed v\u00e0 c\u00e1c \u0111i\u1ec3m n\u00ean l\u01b0u.',
@@ -171,12 +172,16 @@ function ensureGuideItemCount(selectedItems: GuideItem[], sourceItems: GuideItem
 }
 
 export function metaText(item: GuideItem): [string, string] {
-  const primary = item.address || 'Đang cập nhật địa chỉ';
   const secondaryParts: string[] = [];
   if (item.openHours) secondaryParts.push(`Khung giờ: ${item.openHours}`);
   if (item.price) secondaryParts.push(`Giá: ${item.price}`);
   else if (item.phone) secondaryParts.push(`Liên hệ: ${item.phone}`);
-  return [primary, secondaryParts.join(' · ')];
+  const secondary = secondaryParts.join(' · ');
+  if (item.sectionKey === 'hoat_dong') {
+    return ['', secondary];
+  }
+  const primary = item.address || 'Đang cập nhật địa chỉ';
+  return [primary, secondary];
 }
 
 function serviceMetaText(item: GuideItem): [string, string] {
@@ -457,6 +462,7 @@ function isImageBackedNightlifeItem(item: GuideItem): boolean {
 }
 
 function photomodeMetaPrimary(item: GuideItem): string {
+  if (item.sectionKey === 'hoat_dong') return '';
   return item.address || item.phone || 'Đang cập nhật';
 }
 
@@ -1557,11 +1563,162 @@ function lowBudgetPriceForItem(item: GuideItem): string {
   return '~30k';
 }
 
-function budgetDisplayPrice(item: GuideItem, fallbackPrice?: string): string {
-  const cleanPrice = String(item.price || '').replace(/\s+/g, ' ').trim();
+type BudgetVndRange = { min: number; max: number };
+
+function budgetTableCostOnly(raw: string): string {
+  let text = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  text = text
+    .replace(/(?:Khung giờ|Open|Hoạt động):\s*[^·]+(?:\s*·\s*)?/gi, '')
+    .replace(/^Giá:\s*/i, '')
+    .trim();
+  const inlinePrice = text.match(/Giá:\s*([^·]+)/i);
+  if (inlinePrice) return inlinePrice[1].trim();
+  const segments = text.split('·').map((part) => part.trim()).filter(Boolean);
+  if (segments.length > 1) {
+    const priceSegment = segments.find((part) => /~?\d/.test(part) && /(?:k|tr|đ\b)/i.test(part));
+    if (priceSegment) return priceSegment.replace(/^Giá:\s*/i, '').trim();
+  }
+  return text.replace(/^·\s*/, '').trim();
+}
+
+function parseBudgetVndNumber(raw: string): number {
+  const normalized = String(raw || '').trim().replace(',', '.');
+  if (!normalized) return 0;
+  if (normalized.includes('.') && normalized.split('.')[1]?.length === 3) {
+    return Number(normalized.replace('.', '')) || 0;
+  }
+  return Number(normalized) || 0;
+}
+
+function parseBudgetVndCost(raw: string): BudgetVndRange {
+  const cleaned = budgetTableCostOnly(raw).toLowerCase();
+  if (!cleaned || /đã tính|miễn phí|free|^0\s*đ?$/.test(cleaned)) {
+    return { min: 0, max: 0 };
+  }
+
+  const trRange = cleaned.match(/([\d.,]+)\s*tr\s*-\s*([\d.,]+)\s*tr/);
+  if (trRange) {
+    return {
+      min: parseBudgetVndNumber(trRange[1]) * 1_000_000,
+      max: parseBudgetVndNumber(trRange[2]) * 1_000_000,
+    };
+  }
+
+  const singleTr = cleaned.match(/~?\s*([\d.,]+)\s*tr/);
+  if (singleTr) {
+    const value = parseBudgetVndNumber(singleTr[1]) * 1_000_000;
+    return { min: value, max: value };
+  }
+
+  const kRange = cleaned.match(/([\d.,]+)\s*k\s*-\s*([\d.,]+)\s*k/);
+  if (kRange) {
+    return {
+      min: parseBudgetVndNumber(kRange[1]) * 1_000,
+      max: parseBudgetVndNumber(kRange[2]) * 1_000,
+    };
+  }
+
+  const singleK = cleaned.match(/~?\s*([\d.,]+)\s*k/);
+  if (singleK) {
+    const value = parseBudgetVndNumber(singleK[1]) * 1_000;
+    return { min: value, max: value };
+  }
+
+  const plainVnd = cleaned.match(/([\d.,]+)\s*(?:đ|vnd|vnđ)/);
+  if (plainVnd) {
+    const value = parseBudgetVndNumber(plainVnd[1]);
+    return { min: value, max: value };
+  }
+
+  return { min: 0, max: 0 };
+}
+
+function addBudgetVndRanges(left: BudgetVndRange, right: BudgetVndRange): BudgetVndRange {
+  return { min: left.min + right.min, max: left.max + right.max };
+}
+
+function formatBudgetVndSingle(vnd: number): string {
+  if (vnd <= 0) return '';
+  if (vnd >= 1_000_000) {
+    const tr = vnd / 1_000_000;
+    const rounded = Math.round(tr * 10) / 10;
+    return `~${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}tr`;
+  }
+  return `~${Math.round(vnd / 1000)}k`;
+}
+
+function formatBudgetVndRange(range: BudgetVndRange): string {
+  if (range.min <= 0 && range.max <= 0) return '';
+  if (range.min === range.max) return formatBudgetVndSingle(range.min);
+  if (Math.abs(range.max - range.min) <= Math.max(range.min, range.max) * 0.08) {
+    return formatBudgetVndSingle(Math.round((range.min + range.max) / 2));
+  }
+  return `${formatBudgetVndSingle(range.min)} - ${formatBudgetVndSingle(range.max)}`;
+}
+
+function budgetTableCost(item: GuideItem, fallbackPrice?: string): string {
+  const headPrice = budgetTableCostOnly(String(item.headPrice || ''));
+  if (headPrice && !/^0\s*đ?$/i.test(headPrice)) return headPrice;
+
+  const cleanPrice = budgetTableCostOnly(String(item.price || ''));
   if (item.isPartner && cleanPrice) return cleanPrice;
-  if (!cleanPrice || isFreePrice(cleanPrice)) return fallbackPrice || lowBudgetPriceForItem(item);
-  return cleanPrice;
+  if (cleanPrice && !isFreePrice(cleanPrice)) return cleanPrice;
+  return fallbackPrice || lowBudgetPriceForItem(item);
+}
+
+function budgetRowIsTransport(row: BudgetScheduleRow): boolean {
+  const text = normalizeText(`${row.activity} ${row.address} ${row.cost}`);
+  return text.includes('di_chuyen')
+    || text.includes('xe_phuong_trang')
+    || text.includes('ben_xe')
+    || text.includes('check_out')
+    || text.includes('len_xe_ve');
+}
+
+function budgetSummaryItemsFromRows(
+  rows: BudgetScheduleRow[],
+  pools: DeckBuildPools,
+  seedPrefix: string,
+  tableFallbackImage: string,
+): PageItem[] {
+  let foodRange: BudgetVndRange = { min: 0, max: 0 };
+  let transportRange: BudgetVndRange = { min: 0, max: 0 };
+
+  rows.forEach((row) => {
+    const costRange = parseBudgetVndCost(row.cost);
+    if (budgetRowIsTransport(row)) {
+      transportRange = addBudgetVndRanges(transportRange, costRange);
+      return;
+    }
+    foodRange = addBudgetVndRanges(foodRange, costRange);
+  });
+
+  const stayItem = pools.stayItems[0];
+  const hotelRange = parseBudgetVndCost(stayItem ? budgetTableCost(stayItem, '~500k') : '~500k');
+  const bikeItem = pools.serviceItems.find((item) => /thue_xe|thue xe|xe_may|xe may/.test(normalizeText(`${item.type} ${item.name}`)));
+  const bikeRange = parseBudgetVndCost(bikeItem ? budgetTableCost(bikeItem, '~150k') : '~150k');
+  const hotelFormatted = formatBudgetVndRange(hotelRange) || '~500k';
+  const bikeFormatted = formatBudgetVndRange(bikeRange) || '~150k';
+  const foodFormatted = formatBudgetVndRange(foodRange) || '~0k';
+  const transportFormatted = formatBudgetVndRange(transportRange) || '~540k';
+  const totalRange = addBudgetVndRanges(
+    addBudgetVndRanges(parseBudgetVndCost(hotelFormatted), parseBudgetVndCost(bikeFormatted)),
+    addBudgetVndRanges(parseBudgetVndCost(foodFormatted), parseBudgetVndCost(transportFormatted)),
+  );
+  const totalFormatted = formatBudgetVndRange(totalRange) || '~0k';
+
+  return [
+    budgetSummaryPageItem('Khách sạn', hotelFormatted, '1 đêm phòng đôi/nhóm nhỏ', `${seedPrefix}-summary-stay`, tableFallbackImage),
+    budgetSummaryPageItem('Thuê xe', bikeFormatted, 'Xe máy 1 ngày rưỡi', `${seedPrefix}-summary-bike`, tableFallbackImage),
+    budgetSummaryPageItem('Quán ăn', foodFormatted, 'Các bữa chính, cafe, ăn vặt', `${seedPrefix}-summary-food`, tableFallbackImage),
+    budgetSummaryPageItem('Di chuyển', transportFormatted, 'Xe khách khứ hồi', `${seedPrefix}-summary-bus`, tableFallbackImage),
+    budgetSummaryPageItem('Tổng cộng', totalFormatted, 'Tổng các khoản trên', `${seedPrefix}-summary-total`, tableFallbackImage),
+  ];
+}
+
+function budgetDisplayPrice(item: GuideItem, fallbackPrice?: string): string {
+  return budgetTableCost(item, fallbackPrice);
 }
 
 function budgetDisplayHours(item: GuideItem): string {
@@ -1748,7 +1905,7 @@ function buildBudget3N2DPages(
       time,
       activity: budgetActivityName(prefix, item),
       address: item.address || 'Đang cập nhật',
-      cost: budgetDisplayPrice(item, fallbackPrice),
+      cost: budgetTableCost(item, fallbackPrice),
       item,
       id: `${seed}-${item.id}`,
     });
@@ -1778,13 +1935,10 @@ function buildBudget3N2DPages(
   rows.push(createBudgetStaticRow('Ngày 03', '14:30', 'Check out, lên xe về lại SG', 'Bến xe liên tỉnh Đà Lạt', 'Đã tính vé xe', `${seedPrefix}-bus-out`));
 
   const tableFallbackImage = background(`${seedPrefix}-table-fallback`);
+  const summaryItems = budgetSummaryItemsFromRows(rows, pools, seedPrefix, tableFallbackImage);
   const tableItems = withoutBudgetTableImages([
     ...rows.map((row) => budgetRowPageItem(row, imageResolver, tableFallbackImage)),
-    budgetSummaryPageItem('Khách sạn', '~500k', '1 đêm phòng đôi/nhóm nhỏ', `${seedPrefix}-summary-stay`, tableFallbackImage),
-    budgetSummaryPageItem('Thuê xe', '~150k', 'Xe máy 1 ngày rưỡi', `${seedPrefix}-summary-bike`, tableFallbackImage),
-    budgetSummaryPageItem('Ăn uống', '~1.270k', 'Các bữa chính, cafe, ăn vặt', `${seedPrefix}-summary-food`, tableFallbackImage),
-    budgetSummaryPageItem('Di chuyển', '~540k', 'Xe khách khứ hồi', `${seedPrefix}-summary-bus`, tableFallbackImage),
-    budgetSummaryPageItem('Tổng cộng', '~2.5tr - 3tr', 'Tùy nhóm và mức chi tại từng điểm', `${seedPrefix}-summary-total`, tableFallbackImage),
+    ...summaryItems,
   ]);
 
   const selectedFood = selectedGuideItems.filter((item) => item.sectionKey === 'quan_an');
@@ -1830,6 +1984,26 @@ function buildBudget3N2DPages(
       ? { ...page, layoutVariant: 'budget-3n2d-gallery' as const }
       : page
   ));
+}
+
+export function buildBudget72HSummaryPages(
+  pools: DeckBuildPools,
+  imageUrls: string[],
+  libraryEntries: ImageLibraryFolderEntry[],
+  seedPrefix: string,
+  globalUsedItemIds?: Set<string>,
+  globalUsedImageUrls?: Set<string>,
+  coverImageUrls: string[] = [],
+): DeckPage[] {
+  return buildBudget3N2DPages(
+    pools,
+    imageUrls,
+    libraryEntries,
+    seedPrefix,
+    globalUsedItemIds,
+    globalUsedImageUrls,
+    coverImageUrls,
+  ).slice(0, 2);
 }
 
 const BUDGET_STORY_FILLER_TIMES = ['15:30', '16:30', '17:30', '19:00'];
@@ -2755,12 +2929,12 @@ export function buildItinerary4N3DStackPages(
       ),
       layoutVariant: 'itinerary-4n3d-stack-cover',
     },
-    stackPage('Ăn sáng', 'terracotta', 'ĂN SÁNG · 4 NGÀY', 'Gợi ý quán sáng theo nhịp 4 ngày — lưu để khỏi mò từng buổi.', breakfastItems, `${seedPrefix}-stack-breakfast`),
-    stackPage('Ăn trưa', 'gold', 'ĂN TRƯA · 4 NGÀY', 'Mỗi ngày một quán trưa gọn — dễ ghép vào lịch đi chậm.', lunchItems, `${seedPrefix}-stack-lunch`),
-    stackPage('Ăn tối', 'berry', 'ĂN TỐI · 4 NGÀY', 'Chốt bữa tối theo từng ngày, ưu tiên quán có địa chỉ rõ.', dinnerItems, `${seedPrefix}-stack-dinner`),
-    stackPage('Cafe', 'slate', 'CAFE · 4 NGÀY', 'Cafe nghỉ chân và góc chill — chia theo nhịp 4 ngày.', pools.dayCafeItems, `${seedPrefix}-stack-cafe`),
-    stackPage('Check-in', 'pine', 'CHECK-IN · 4 NGÀY', 'Điểm chụp và view đẹp — gom theo ngày cho dễ lưu.', checkinItems, `${seedPrefix}-stack-checkin`),
-    stackPage(activitySlot.label, 'terracotta', `${activitySlot.label} · 4 NGÀY`, 'Hoạt động và trải nghiệm nên thử — mỗi ngày một gợi ý.', activitySlot.items, `${seedPrefix}-stack-activity`),
+    stackPage('Ăn sáng', 'terracotta', 'ĂN SÁNG', 'Gợi ý quán sáng theo từng buổi — lưu để khỏi mò từng ngày.', breakfastItems, `${seedPrefix}-stack-breakfast`),
+    stackPage('Ăn trưa', 'gold', 'ĂN TRƯA', 'Mỗi ngày một quán trưa gọn — dễ ghép vào lịch đi chậm.', lunchItems, `${seedPrefix}-stack-lunch`),
+    stackPage('Ăn tối', 'berry', 'ĂN TỐI', 'Chốt bữa tối theo từng ngày, ưu tiên quán có địa chỉ rõ.', dinnerItems, `${seedPrefix}-stack-dinner`),
+    stackPage('Cafe', 'slate', 'CAFE', 'Cafe nghỉ chân và góc chill — chia theo từng ngày.', pools.dayCafeItems, `${seedPrefix}-stack-cafe`),
+    stackPage('Check-in', 'pine', 'CHECK-IN', 'Điểm chụp và view đẹp — gom theo ngày cho dễ lưu.', checkinItems, `${seedPrefix}-stack-checkin`),
+    stackPage(activitySlot.label, 'terracotta', activitySlot.label, 'Hoạt động và trải nghiệm nên thử — mỗi ngày một gợi ý.', activitySlot.items, `${seedPrefix}-stack-activity`),
     stackPage('Dịch vụ', 'gold', 'DỊCH VỤ · LƯU TRÚ & ĐÊM', 'Homestay, chơi đêm và dịch vụ cần lưu trước chuyến đi.', servicePool, `${seedPrefix}-stack-service`),
   ];
 }
@@ -4662,6 +4836,7 @@ export function buildPagesForDeck(
   const pools = createDeckBuildPools(itemsBySection);
   if (deckId === 'itinerary-3n2d') return buildItineraryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'budget-3n2d') return buildBudget3N2DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
+  if (deckId === 'budget-72h-summary') return buildBudget72HSummaryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'budget-3n2d-story') return buildBudget3N2DStoryPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'itinerary-4n3d') return buildItinerary4N3DPages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
   if (deckId === 'itinerary-4n2d-grid8') return buildItinerary4N2DGrid8Pages(pools, imageUrls, libraryEntries, seedPrefix, globalUsedItemIds, globalUsedImageUrls, coverImageUrls);
@@ -4701,6 +4876,13 @@ export function buildDecks(
       title: 'Bộ trang 72H ở Đà Lạt với 3tr',
       description: 'Mẫu đang làm trước: cover theo style TikTok tham chiếu, 1 trang bảng lịch trình chi phí, 3 trang lưới 4 ảnh phía sau tập trung quán/đối tác.',
       lists: [buildDeckList('budget-3n2d', 'main', 'List chính', 'List 72H 3N2Đ', 'Danh sách ảnh chính cho mẫu 72H ngân sách 3N2Đ.', buildPagesForDeck('budget-3n2d', common.itemsBySection, common.imageUrls, common.libraryEntries, 'budget-3n2d-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
+    },
+    {
+      id: 'budget-72h-summary',
+      navTitle: '72H Tổng hợp',
+      title: 'Bộ 72H — cover + bảng tổng hợp',
+      description: 'Chỉ 2 trang: cover “72H ở Đà Lạt với 3tr” và bảng lịch trình 3N2Đ (ngày, giờ, hoạt động, địa chỉ, chi phí + tổng bill).',
+      lists: [buildDeckList('budget-72h-summary', 'main', 'List chính', 'List 72H tổng hợp', 'Danh sách 2 trang: cover và bảng chi phí 3N2Đ.', buildPagesForDeck('budget-72h-summary', common.itemsBySection, common.imageUrls, common.libraryEntries, 'budget-72h-summary-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
     {
       id: 'budget-3n2d-story',

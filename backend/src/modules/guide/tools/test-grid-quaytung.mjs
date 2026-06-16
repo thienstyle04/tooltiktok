@@ -38,7 +38,7 @@ const DECK_SPECS = {
   },
   'grid-6-quaytung': {
     label: 'Lưới 6 Quaytung',
-    expectedVersion: 4,
+    expectedVersion: 5,
     expectedPages: 8,
     coverVariant: 'grid-6-quaytung-cover',
     coverPageClass: 'grid6-quaytung-cover',
@@ -50,7 +50,7 @@ const DECK_SPECS = {
     coverMustHave: ['grid6qt-cover-photo', 'grid6qt-cover-tag'],
     coverMustNotHave: ['grid8-quaytung-cover-photo', 'grid8-quaytung-dalat-badge'],
     listMustHave: ['grid6qt-stack', 'grid6qt-band', 'vài địa điểm', 'is-labels-bottom', 'is-labels-top'],
-    listMustNotHave: ['grid8-quaytung-matrix', 'grid6-quaytung-center-float', '🎟'],
+    listMustNotHave: ['grid8-quaytung-matrix', 'grid6-quaytung-center-float', '🎟', 'grid6qt-band-bg'],
     slotCellClass: 'grid6qt-cell',
     bandClass: 'grid6qt-band',
   },

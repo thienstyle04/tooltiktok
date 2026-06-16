@@ -1371,7 +1371,11 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
 
   try {
     const visiblePageNode = findVisibleSelectedPageNode(list, selectedPageIndex);
-    const pageNodes = visiblePageNode
+    const page = list.pages?.[selectedPageIndex];
+    const preferFreshRender = page?.layoutVariant === 'budget-3n2d-table'
+      || page?.layoutVariant === 'budget-3n2d'
+      || page?.type === 'cover' && String(page?.layoutVariant || '').startsWith('budget');
+    const pageNodes = (!preferFreshRender && visiblePageNode)
       ? [cloneVisiblePageForExport(visiblePageNode)]
       : renderPagesForExport(list, { pageIndex: selectedPageIndex });
     await waitForExportLayout();

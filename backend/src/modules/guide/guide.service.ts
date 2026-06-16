@@ -50,7 +50,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
+import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { DriveFileAsset, fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
@@ -464,7 +464,7 @@ export class GuideService {
       headline: this.sanitizeContentText(caption.headline),
       body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
     };
-    const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story'
+    const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story' || deckId === 'budget-72h-summary'
       ? this.budget3N2DCoverCaption(safeCaption, requestedTone, seed, generatedNumber)
       : safeCaption;
     let generatedPages = applyCaptionToPages(basePages, finalCaption);
@@ -766,7 +766,11 @@ export class GuideService {
   private mergeGeneratedLists(decks: GuideDeck[], coverImageUrls: string[] = []): GuideDeck[] {
     const usedCoverUrls = new Set<string>();
     return decks.map((deck) => {
-      const baseLists = deck.lists.map((list) => this.sanitizeBaseListForDisplay(list, coverImageUrls));
+      const templateVersion = this.templateVersionForDeck(deck.id);
+      const baseLists = deck.lists.map((list) => {
+        const sanitized = this.sanitizeBaseListForDisplay(list, coverImageUrls);
+        return templateVersion ? { ...sanitized, templateVersion } : sanitized;
+      });
       const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => this.sanitizeGeneratedListText(list));
       const displayLists = generatedLists.length === 0
         ? baseLists
@@ -852,6 +856,7 @@ export class GuideService {
   private templateVersionForDeck(deckId: string): number | undefined {
     if (deckId === 'itinerary-3n2d') return ITINERARY_3N2D_TEMPLATE_VERSION;
     if (deckId === 'budget-3n2d') return BUDGET_3N2D_TEMPLATE_VERSION;
+    if (deckId === 'budget-72h-summary') return BUDGET_72H_SUMMARY_TEMPLATE_VERSION;
     if (deckId === 'budget-3n2d-story') return BUDGET_3N2D_STORY_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n3d') return ITINERARY_4N3D_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n2d-grid8') return ITINERARY_4N2D_GRID8_TEMPLATE_VERSION;
@@ -1330,7 +1335,7 @@ export class GuideService {
           headline: this.sanitizeContentText(caption.headline),
           body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
         };
-        const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story'
+        const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story' || deckId === 'budget-72h-summary'
           ? this.budget3N2DCoverCaption(safeCaption, this.toneForGeneratedList(list, listIndex), refreshSeed, this.generatedListOrdinal(list, listIndex))
           : safeCaption;
         const regeneratedPages = applyCaptionToPages(basePages, finalCaption);
@@ -1675,6 +1680,7 @@ export class GuideService {
     const highlight = firstValue(row, 'mo_ta', 'mota', 'mo_ta_dia_diem', 'mon_an_noi_bat', 'mon_noi_bat', 'noi_bat');
     const partner = firstValue(row, 'doi_tac', 'doi_tac_cong_ty');
     const phone = firstValue(row, 'sdt');
+    const headPrice = firstValue(row, 'gia_dau_nguoi');
     const price = firstValue(row, 'gia');
     const imageHint = firstValue(row, 'anh', 'hinh_anh', 'hinh', 'ten_anh', 'thu_muc_anh', 'folder_anh', 'link_anh', 'url', 'link');
     const mappingKey = itemMappingKey(sectionKey, rawName, address);
@@ -1739,6 +1745,7 @@ export class GuideService {
       openHours, style, highlight,
       partnerFlag: partner,
       isPartner: normalizeText(partner) === 'x',
+      headPrice,
       price, phone,
       imageUrl: resolvedImage.imageUrl,
       imageMapped: resolvedImage.imageMapped,
@@ -2250,16 +2257,28 @@ export class GuideService {
       return key.includes('summary_total') || key.includes('tong_cong') || key.includes('tong_thanh_toan');
     });
 
+    const categoryItems = items.filter((item) => {
+      const label = String(item.label || '');
+      if (!label.startsWith('Tổng|')) return false;
+      const key = normalizeText(`${item.id || ''} ${item.label || ''} ${item.name || ''}`);
+      return !key.includes('summary_total') && !key.includes('tong_cong') && !key.includes('tong_thanh_toan');
+    });
+
+    const computedTotal = categoryItems.length >= 4
+      ? this.sumBudgetSummaryCategories(categoryItems.map((item) => item.metaSecondary || ''))
+      : '';
+
     if (totalIndex >= 0) {
       const currentTotal = items[totalIndex];
-      if (currentTotal.metaSecondary) return page;
+      const nextSecondary = computedTotal || currentTotal.metaSecondary;
+      if (nextSecondary === currentTotal.metaSecondary) return page;
       const nextItems = [...items];
       nextItems[totalIndex] = {
         ...currentTotal,
         label: currentTotal.label || 'Tổng|Tổng cộng',
         name: currentTotal.name || 'Tổng cộng',
-        metaPrimary: currentTotal.metaPrimary || 'Tùy nhóm và mức chi tại từng điểm',
-        metaSecondary: '~2.5tr - 3tr',
+        metaPrimary: currentTotal.metaPrimary || 'Tổng các khoản trên',
+        metaSecondary: nextSecondary,
       };
       return { ...page, items: nextItems };
     }
@@ -2268,8 +2287,8 @@ export class GuideService {
       id: 'budget-3n2d-summary-total',
       label: 'Tổng|Tổng cộng',
       name: 'Tổng cộng',
-      metaPrimary: 'Tùy nhóm và mức chi tại từng điểm',
-      metaSecondary: '~2.5tr - 3tr',
+      metaPrimary: 'Tổng các khoản trên',
+      metaSecondary: computedTotal || '~0k',
       imageUrl: '',
       imageMapped: false,
       imageNote: '',
@@ -2278,6 +2297,70 @@ export class GuideService {
     };
 
     return { ...page, items: [...items, totalItem] };
+  }
+
+  private sumBudgetSummaryCategories(amounts: string[]): string {
+    let min = 0;
+    let max = 0;
+    for (const amount of amounts) {
+      const range = this.parseBudgetCostRange(amount);
+      min += range.min;
+      max += range.max;
+    }
+    if (min <= 0 && max <= 0) return '';
+    if (min === max) return this.formatBudgetCostAmount(min);
+    if (Math.abs(max - min) <= Math.max(min, max) * 0.08) {
+      return this.formatBudgetCostAmount(Math.round((min + max) / 2));
+    }
+    return `${this.formatBudgetCostAmount(min)} - ${this.formatBudgetCostAmount(max)}`;
+  }
+
+  private parseBudgetCostRange(raw: string): { min: number; max: number } {
+    const cleaned = String(raw || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!cleaned || /đã tính|miễn phí|free|^0\s*đ?$/.test(cleaned)) {
+      return { min: 0, max: 0 };
+    }
+    const parseNum = (value: string) => {
+      const normalized = value.trim().replace(',', '.');
+      if (normalized.includes('.') && normalized.split('.')[1]?.length === 3) {
+        return Number(normalized.replace('.', '')) || 0;
+      }
+      return Number(normalized) || 0;
+    };
+    const trRange = cleaned.match(/([\d.,]+)\s*tr\s*-\s*([\d.,]+)\s*tr/);
+    if (trRange) {
+      return { min: parseNum(trRange[1]) * 1_000_000, max: parseNum(trRange[2]) * 1_000_000 };
+    }
+    const singleTr = cleaned.match(/~?\s*([\d.,]+)\s*tr/);
+    if (singleTr) {
+      const value = parseNum(singleTr[1]) * 1_000_000;
+      return { min: value, max: value };
+    }
+    const kRange = cleaned.match(/([\d.,]+)\s*k\s*-\s*([\d.,]+)\s*k/);
+    if (kRange) {
+      return { min: parseNum(kRange[1]) * 1_000, max: parseNum(kRange[2]) * 1_000 };
+    }
+    const singleK = cleaned.match(/~?\s*([\d.,]+)\s*k/);
+    if (singleK) {
+      const value = parseNum(singleK[1]) * 1_000;
+      return { min: value, max: value };
+    }
+    const plainVnd = cleaned.match(/([\d.,]+)\s*(?:đ|vnd|vnđ)/);
+    if (plainVnd) {
+      const value = parseNum(plainVnd[1]);
+      return { min: value, max: value };
+    }
+    return { min: 0, max: 0 };
+  }
+
+  private formatBudgetCostAmount(vnd: number): string {
+    if (vnd <= 0) return '';
+    if (vnd >= 1_000_000) {
+      const tr = vnd / 1_000_000;
+      const rounded = Math.round(tr * 10) / 10;
+      return `~${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}tr`;
+    }
+    return `~${Math.round(vnd / 1000)}k`;
   }
 
   private sanitizePageItemText(item: PageItem, page?: DeckPage): PageItem {
