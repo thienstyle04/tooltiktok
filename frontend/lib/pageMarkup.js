@@ -666,6 +666,7 @@ function sanitizeSubtitleForDisplay(value, pages) {
 }
 
 const V2_COVER_VARIANTS = new Set([
+  'grid-6-quaytung-cover',
   'grid-8-feed',
   'grid-8-quaytung-cover',
   'spotlight-v2',
@@ -673,9 +674,12 @@ const V2_COVER_VARIANTS = new Set([
   'pov-maikem',
   'pov-3-v2-cover',
   'budget-wallet-cover',
+  'itinerary-4n3d-stack-cover',
+  'itinerary-timeline-cover',
 ]);
 
 const V2_LIST_VARIANTS = new Set([
+  'grid-6-quaytung',
   'grid-8-feed',
   'grid-8-quaytung',
   'grid-8-quaytung-menu',
@@ -686,6 +690,8 @@ const V2_LIST_VARIANTS = new Set([
   'pov-maikem',
   'pov-3-v2-stack',
   'pov-3-v2-grid',
+  'itinerary-4n3d-stack-page',
+  'itinerary-timeline-day',
   'budget-wallet-day',
   'budget-wallet-fixed',
   'budget-wallet-bill',
@@ -908,6 +914,188 @@ function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, ba
   `;
 }
 
+function itinerary4N3DStackCoverGridImages(page, backgroundImage, listId = '', coverImageUrls = []) {
+  const fromPage = Array.isArray(page?.coverImages) ? page.coverImages.filter(Boolean) : [];
+  const uniqueFromPage = [...new Set(fromPage)];
+  if (uniqueFromPage.length >= 4) return uniqueFromPage.slice(0, 4);
+
+  const pool = (coverImageUrls.length > 0 ? coverImageUrls : spotlightV2CoverImagePool).filter(Boolean);
+  const seed = `${listId || page?.title || 'itinerary-4n3d-stack-cover'}|cover-grid`;
+  const fromPool = pickUniqueCoverGridImages(pool, seed, 4);
+  const merged = [...new Set([...uniqueFromPage, backgroundImage, ...fromPool].filter(Boolean))];
+  if (merged.length >= 4) return merged.slice(0, 4);
+  if (merged.length > 0) {
+    const padded = [...merged];
+    while (padded.length < 4) padded.push(padded[padded.length % merged.length]);
+    return padded.slice(0, 4);
+  }
+  return backgroundImage ? [backgroundImage] : [];
+}
+
+function formatItinerary4N3DStackCoverHero(title) {
+  const raw = String(title || '4N3Đ ĐÀ LẠT').replace(/\s+/g, ' ').trim();
+  const upper = raw.toUpperCase();
+  const words = upper.split(' ');
+  if (words.length <= 4) return escapeHtml(upper);
+  const splitAt = Math.ceil(words.length / 2);
+  return `${escapeHtml(words.slice(0, splitAt).join(' '))}<br>${escapeHtml(words.slice(splitAt).join(' '))}`;
+}
+
+function renderItinerary4N3DStackCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
+  const hero = formatItinerary4N3DStackCoverHero(coverTitle);
+  const tagline = escapeHtml(String(coverSubtitle || 'Gom gọn gợi ý theo từng nhóm — đi chậm, chill từng ngày').replace(/\s+/g, ' ').trim());
+  let tiles = itinerary4N3DStackCoverGridImages(page, backgroundImage, listId, coverImageUrls);
+  while (tiles.length < 4) tiles.push('');
+  tiles = tiles.slice(0, 4);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'itinerary-4n3d-stack-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="itinerary-4n3d-stack-cover-grid">
+        ${tiles.map((url, tileIndex) => `
+          <div class="itinerary-4n3d-stack-cover-cell">
+            ${url ? renderPreviewImage(url, `${coverTitle || 'cover'} ${tileIndex + 1}`) : ''}
+          </div>
+        `).join('')}
+      </div>
+      <div class="itinerary-4n3d-stack-cover-dim" aria-hidden="true"></div>
+      <div class="itinerary-4n3d-stack-cover-center">
+        <div class="itinerary-4n3d-stack-cover-kicker">LỊCH TRÌNH 4N3Đ</div>
+        <h1 class="itinerary-4n3d-stack-cover-hero">${hero}</h1>
+        <p class="itinerary-4n3d-stack-cover-tagline">${tagline}</p>
+      </div>
+    </article>
+  `;
+}
+
+function itinerary4N3DStackRowFocusClass(item) {
+  const name = String(item?.name || item?.rawName || '').toLowerCase();
+  if (/phong\s*m|stell|studio|nhà xe|nha xe/.test(name)) return ' is-people-focus';
+  if (item?.sourceSectionKey === 'dich_vu' || item?.sourceSectionKey === 'homestay') return ' is-people-focus';
+  return '';
+}
+
+function renderItinerary4N3DStackRow(item) {
+  const dayLabel = String(item.label || '').trim();
+  const name = gridDisplayName(item);
+  const address = cleanGridAddress(item.metaPrimary);
+  const focusClass = itinerary4N3DStackRowFocusClass(item);
+  return `
+    <section class="itinerary-4n3d-stack-row${focusClass} ${escapeHtml(imageSourceClass(item))}">
+      ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+      <div class="itinerary-4n3d-stack-row-shade"></div>
+      <div class="itinerary-4n3d-stack-row-copy">
+        ${dayLabel ? `<div class="itinerary-4n3d-stack-day">${escapeHtml(dayLabel)}</div>` : ''}
+        <h3 class="itinerary-4n3d-stack-name">${escapeHtml(name)}</h3>
+        ${address ? `<p class="itinerary-4n3d-stack-address">${escapeHtml(address)}</p>` : ''}
+      </div>
+    </section>
+  `;
+}
+
+function renderItinerary4N3DStackPage(page, index, listId, pageSubtitle = '') {
+  const items = (page.items || []).slice(0, 4);
+  const heading = String(page.title || page.chipText || '').trim();
+  const lead = String(pageSubtitle || page.subtitle || '').trim();
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'itinerary-4n3d-stack-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <header class="itinerary-4n3d-stack-head">
+        <h2 class="itinerary-4n3d-stack-head-title">${escapeHtml(heading)}</h2>
+        ${lead ? `<p class="itinerary-4n3d-stack-head-lead">${escapeHtml(lead)}</p>` : ''}
+      </header>
+      <div class="itinerary-4n3d-stack-feed">
+        ${items.map((item) => renderItinerary4N3DStackRow(item)).join('')}
+      </div>
+    </article>
+  `;
+}
+
+function formatItineraryTimelineCoverHero(coverTitle) {
+  const raw = String(coverTitle || 'Đà Lạt 3N2Đ').replace(/\s+/g, ' ').trim();
+  return escapeHtml(raw);
+}
+
+function renderItineraryTimelineCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  const hero = formatItineraryTimelineCoverHero(coverTitle);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'itinerary-timeline-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="itl-cover-photo">
+        ${renderPreviewImage(backgroundImage, coverTitle)}
+      </div>
+      <div class="itl-cover-shade" aria-hidden="true"></div>
+      <div class="itl-cover-copy">
+        <p class="itl-cover-serif">Lịch trình</p>
+        <p class="itl-cover-script">${hero}</p>
+        <p class="itl-cover-serif">đi đâu?</p>
+        <div class="itl-cover-spark">— ✦ —</div>
+      </div>
+    </article>
+  `;
+}
+
+function renderItineraryTimelineRow(item) {
+  const time = String(item?.label || '').trim();
+  const activity = String(item?.metaSecondary || '').trimEnd();
+  const place = String(item?.name || '').trim();
+  const address = cleanGridAddress(item?.metaPrimary) || String(item?.metaPrimary || '').trim();
+  const placeHtml = place
+    ? `${activity ? ' ' : ''}<strong class="itl-day-place">${escapeHtml(place)}</strong>`
+    : '';
+  return `
+    <div class="itl-day-row ${escapeHtml(imageSourceClass(item))}">
+      <div class="itl-day-thumb">
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+      </div>
+      <div class="itl-day-track"><span class="itl-day-dot" aria-hidden="true"></span></div>
+      <div class="itl-day-copy">
+        <p class="itl-day-line">
+          ${time ? `<span class="itl-day-time">${escapeHtml(time)}</span>` : ''}${time && (activity || place) ? ' - ' : ''}${activity ? `<span class="itl-day-activity">${escapeHtml(activity)}</span>` : ''}${placeHtml}
+        </p>
+        ${address ? `<p class="itl-day-address"><span class="itl-day-pin">📍</span>${escapeHtml(address)}</p>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function computeItineraryTimelineMetrics(itemCount) {
+  const rows = Math.max(1, itemCount || 8);
+  // 8 mốc ref — hàng cao hơn, dễ đọc và chọn địa điểm.
+  return {
+    rows,
+    rowH: 54,
+    thumb: 48,
+    lineSize: 10.5,
+    addrSize: 9,
+    feedW: 318,
+  };
+}
+
+function renderItineraryTimelineDay(page, index, listId) {
+  const dayTitle = String(page.chipText || page.title || 'Ngày 01').trim();
+  const backgroundImage = page.backgroundImage || page.items?.[0]?.imageUrl || '';
+  const items = page.items || [];
+  const metrics = computeItineraryTimelineMetrics(items.length);
+  const feedStyle = [
+    `--itl-row-count:${metrics.rows}`,
+    `--itl-row-h:${metrics.rowH}px`,
+    `--itl-thumb:${metrics.thumb}px`,
+    `--itl-line-size:${metrics.lineSize}px`,
+    `--itl-addr-size:${metrics.addrSize}px`,
+    `--itl-feed-w:${metrics.feedW}px`,
+  ].join(';');
+  const rows = items.map((item) => renderItineraryTimelineRow(item)).join('');
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'itinerary-timeline-day'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+      <div class="itl-day-bg">${backgroundImage ? renderPreviewImage(backgroundImage, dayTitle) : ''}</div>
+      <div class="itl-day-card">
+        <header class="itl-day-head">
+          <span class="itl-day-head-spark">— ✦ —</span>
+          <h2 class="itl-day-head-title">${escapeHtml(dayTitle)}</h2>
+        </header>
+        <div class="itl-day-feed" style="${feedStyle}">${rows}</div>
+      </div>
+    </article>
+  `;
+}
+
 function renderGrid8QuaytungDalatBadge() {
   return '<span class="grid8-quaytung-dalat-badge">dalat</span>';
 }
@@ -942,6 +1130,83 @@ function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle
   `;
 }
 
+function formatGrid6QuaytungCoverTitle(title) {
+  const raw = String(title || 'List này toàn địa điểm "vuýp"')
+    .replace(/\bĐà\s*Lạt\s+VN\b/giu, 'Đà Lạt')
+    .replace(/\s+\/\s*VN\b/giu, '')
+    .replace(/\s+\bVN\b(?=\s|$|[./])/giu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+  const words = raw.split(' ');
+  if (words.length <= 4) return escapeHtml(raw);
+  const splitAt = Math.ceil(words.length / 2);
+  return `${escapeHtml(words.slice(0, splitAt).join(' '))}<br>${escapeHtml(words.slice(splitAt).join(' '))}`;
+}
+
+function renderGrid6QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
+  const subtitle = String(coverSubtitle || 'Lưu list này cho chuyến đi thành công').replace(/^\[+|\]+$/g, '').trim();
+  const tag = String(page?.chipText || 'loanh quanh phố phường').trim().toLowerCase();
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'grid6-quaytung-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="grid6qt-cover-photo">
+        ${renderPreviewImage(backgroundImage, coverTitle)}
+      </div>
+      <div class="grid6qt-cover-dim"></div>
+      <div class="grid6qt-cover-copy">
+        <span class="grid6qt-cover-tag">${escapeHtml(tag)}</span>
+        <h1 class="grid6qt-cover-title">${formatGrid6QuaytungCoverTitle(coverTitle)}</h1>
+        <p class="grid6qt-cover-sub">[ ${escapeHtml(subtitle)} ]</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderGrid6QuaytungCell(item, labelsAt = 'bottom') {
+  const displayName = gridDisplayName(item);
+  const address = cleanGridAddress(item?.metaPrimary) || String(item?.metaPrimary || '').trim();
+  const labelClass = labelsAt === 'top' ? 'is-labels-top' : 'is-labels-bottom';
+  return `
+    <div class="grid6qt-cell ${labelClass} ${escapeHtml(imageSourceClass(item))}">
+      <div class="grid6qt-photo">
+        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
+        <div class="grid6qt-shade"></div>
+        <div class="grid6qt-labels">
+          <div class="grid6qt-name">${escapeHtml(displayName)}</div>
+          ${address ? `<div class="grid6qt-address">${escapeHtml(address)}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderGrid6QuaytungBand(page, backgroundImage) {
+  const hook = String(page.title || '').trim().toUpperCase();
+  return `
+    <div class="grid6qt-band">
+      ${backgroundImage ? `<div class="grid6qt-band-bg">${renderPreviewImage(backgroundImage, hook)}</div>` : ''}
+      <div class="grid6qt-band-dim"></div>
+      <div class="grid6qt-band-copy">
+        <div class="grid6qt-band-script">vài địa điểm</div>
+        <div class="grid6qt-band-title">${escapeHtml(hook)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderGrid6QuaytungPageBody(page, items, backgroundImage) {
+  const cells = (items || []).slice(0, 6);
+  const top = cells.slice(0, 3).map((item) => renderGrid6QuaytungCell(item, 'bottom')).join('');
+  const bottom = cells.slice(3, 6).map((item) => renderGrid6QuaytungCell(item, 'top')).join('');
+  return `
+    <div class="grid6qt-stack">
+      <div class="grid6qt-row">${top}</div>
+      ${renderGrid6QuaytungBand(page, backgroundImage)}
+      <div class="grid6qt-row">${bottom}</div>
+    </div>
+  `;
+}
+
 function grid8QuaytungExtractPrice(item) {
   const secondary = String(item?.metaSecondary || '').replace(/\s+/g, ' ').trim();
   const priceMatch = secondary.match(/Giá:\s*([^·]+)/i);
@@ -960,11 +1225,12 @@ function grid8QuaytungDefaultPrice(item) {
   return 'Liên hệ';
 }
 
-function grid8QuaytungUnifiedPrices(items) {
+function grid8QuaytungUnifiedPrices(items, page = null) {
+  const preferFree = /mảng xanh|check-in|checkin/i.test(`${page?.chipText || ''} ${page?.title || ''}`);
   const labels = (items || []).map((item) => grid8QuaytungExtractPrice(item));
-  const showForAll = labels.some(Boolean);
+  const showForAll = labels.some(Boolean) || preferFree;
   if (!showForAll) return labels;
-  return (items || []).map((item, index) => labels[index] || grid8QuaytungDefaultPrice(item));
+  return (items || []).map((item, index) => labels[index] || (preferFree ? 'FREE' : grid8QuaytungDefaultPrice(item)));
 }
 
 function renderGrid8QuaytungSlot(item, priceLabel = '') {
@@ -1006,7 +1272,7 @@ function renderGrid8QuaytungCenterSlot(page, backgroundImage) {
 
 function renderGrid8QuaytungItems(page, items, backgroundImage) {
   const cells = (items || []).slice(0, 8);
-  const priceLabels = grid8QuaytungUnifiedPrices(cells);
+  const priceLabels = grid8QuaytungUnifiedPrices(cells, page);
   const centerHtml = renderGrid8QuaytungCenterSlot(page, backgroundImage);
   const ordered = [
     ...cells.slice(0, 3).map((item, index) => renderGrid8QuaytungSlot(item, priceLabels[index])),
@@ -1545,6 +1811,15 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
   if (page.layoutVariant === 'grid-8-feed') {
     return renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls);
   }
+  if (page.layoutVariant === 'itinerary-4n3d-stack-cover') {
+    return renderItinerary4N3DStackCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls);
+  }
+  if (page.layoutVariant === 'itinerary-timeline-cover') {
+    return renderItineraryTimelineCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
+  if (page.layoutVariant === 'grid-6-quaytung-cover') {
+    return renderGrid6QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
+  }
   if (page.layoutVariant === 'grid-8-quaytung-cover') {
     return renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
   }
@@ -1584,6 +1859,14 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
       </article>
     `;
   }
+  if (page.layoutVariant === 'grid-6-quaytung') {
+    const bg = page.backgroundImage || page.items?.[0]?.imageUrl || coverBackgroundImage(page, list);
+    return `
+      <article class="${escapeHtml(storyPageClass(listId, 'grid6-quaytung-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
+        ${renderGrid6QuaytungPageBody(page, page.items, bg)}
+      </article>
+    `;
+  }
   if (page.layoutVariant === 'grid-8-quaytung') {
     const bg = page.backgroundImage || page.items?.[0]?.imageUrl || coverBackgroundImage(page, list);
     return `
@@ -1620,6 +1903,12 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   }
   if (page.layoutVariant === 'pov-3-v2-grid' || page.layoutVariant === 'pov-3-v2-grid-food') {
     return renderPov3V2GridPage(page, index, listId, pageSubtitle);
+  }
+  if (page.layoutVariant === 'itinerary-4n3d-stack-page') {
+    return renderItinerary4N3DStackPage(page, index, listId, pageSubtitle);
+  }
+  if (page.layoutVariant === 'itinerary-timeline-day') {
+    return renderItineraryTimelineDay(page, index, listId);
   }
   if (page.layoutVariant === 'budget-wallet-day') {
     return renderBudgetWalletDayPage(page, index, listId, list);

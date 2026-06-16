@@ -108,10 +108,13 @@ function sanitizeCaptionBody(body, list) {
 }
 
 const V2_TEMPLATE_DECK_IDS = [
+  'grid-6-quaytung',
   'grid-8-feed',
   'grid-8-quaytung',
   'spotlight-v2',
   'pov-3-v2',
+  'itinerary-4n3d-stack',
+  'itinerary-timeline',
 ];
 
 const REQUIRED_CATALOG_DECK_IDS = [
@@ -142,12 +145,23 @@ function needsSpotlightCoverRefresh(dataset) {
   return new Set(images).size < 4;
 }
 
+function needsGrid6QuaytungCatalogRefresh(dataset) {
+  const deck = (dataset?.decks || []).find((item) => item.id === 'grid-6-quaytung');
+  if (!deck) return true;
+  const main = (deck.lists || []).find((list) => listIsMain(list));
+  if (!main) return true;
+  if (Number(main.templateVersion || 0) < 4) return true;
+  if ((main.pages || []).length < 8) return true;
+  const cover = main.pages.find((page) => page.type === 'cover');
+  return cover?.layoutVariant !== 'grid-6-quaytung-cover';
+}
+
 function needsGrid8QuaytungCatalogRefresh(dataset) {
   const deck = (dataset?.decks || []).find((item) => item.id === 'grid-8-quaytung');
   if (!deck) return true;
   const main = (deck.lists || []).find((list) => listIsMain(list));
   if (!main) return true;
-  if (Number(main.templateVersion || 0) < 1) return true;
+  if (Number(main.templateVersion || 0) < 3) return true;
   if ((main.pages || []).length < 7) return true;
   const cover = main.pages.find((page) => page.type === 'cover');
   return cover?.layoutVariant !== 'grid-8-quaytung-cover';
@@ -180,6 +194,7 @@ function needsTemplateCatalogRefresh(dataset) {
     || hasRetiredCatalogDecks(dataset)
     || missingCatalogDecks(dataset).length > 0
     || needsSpotlightCoverRefresh(dataset)
+    || needsGrid6QuaytungCatalogRefresh(dataset)
     || needsGrid8QuaytungCatalogRefresh(dataset);
 }
 

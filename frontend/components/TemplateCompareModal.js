@@ -6,6 +6,7 @@ export const TEMPLATE_COMPARE_PAIRS = [
   { id: 'grid8', label: 'Lưới 8 Ô ↔ Feed', a: 'grid-8', b: 'grid-8-feed' },
   { id: 'grid5', label: 'Lưới 4 Ô ↔ Lưới 5 Ô', a: 'grid-4', b: 'grid-5' },
   { id: 'spotlight', label: 'Spotlight ↔ V2', a: 'spotlight-guide', b: 'spotlight-v2' },
+  { id: '4n3d', label: '4N3Đ Journal ↔ Stack', a: 'itinerary-4n3d', b: 'itinerary-4n3d-stack' },
 ];
 
 function mainListForDeck(deck) {

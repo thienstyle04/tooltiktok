@@ -12,7 +12,10 @@ import type {
 import {
   buildDeckList,
   buildGrid5Pages,
+  buildGrid6QuaytungPages,
   buildGrid8QuaytungPages,
+  buildItinerary4N3DStackPages,
+  buildItineraryTimelinePages,
   buildListPage,
   buildPagesForDeck,
   buildPov3V2Pages,
@@ -34,16 +37,22 @@ export function normalizeGrid8FeedPostCaption(value: string): string {
   }
   return clean;
 }
+export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 4;
 export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V2_TEMPLATE_VERSION = 16;
 export const POV_3_V2_TEMPLATE_VERSION = 8;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
+export const ITINERARY_4N3D_STACK_TEMPLATE_VERSION = 2;
+export const ITINERARY_TIMELINE_TEMPLATE_VERSION = 7;
 
 export const V2_DECK_IDS = [
+  'grid-6-quaytung',
   'grid-8-feed',
   'grid-8-quaytung',
   'spotlight-v2',
   'pov-3-v2',
+  'itinerary-4n3d-stack',
+  'itinerary-timeline',
 ] as const;
 
 export type V2DeckId = typeof V2_DECK_IDS[number];
@@ -151,6 +160,13 @@ export function tuneSpotlightV2Cover(
         backgroundImage: coverGridImages[0] || page.backgroundImage,
       };
     }
+    if (variant === 'itinerary-4n3d-stack-cover') {
+      return {
+        ...page,
+        coverImages: coverGridImages,
+        backgroundImage: coverGridImages[0] || page.backgroundImage,
+      };
+    }
     return page;
   });
 }
@@ -251,6 +267,19 @@ export function buildGrid8FeedPages(common: DeckBuildCommon, seedPrefix: string)
   const remapped = remapDeckLayouts(pages, { 'grid-8': 'grid-8-feed' });
   const tuned = tuneV2ListPageTitles(remapped);
   return tuneGrid8FeedCover(tuned, common.coverImageUrls, seedPrefix);
+}
+
+export function buildGrid6QuaytungDeckPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
+  const pools = createDeckBuildPools(common.itemsBySection);
+  return buildGrid6QuaytungPages(
+    pools,
+    common.imageUrls,
+    common.libraryEntries,
+    seedPrefix,
+    common.globalUsedItemIds,
+    common.globalUsedImageUrls,
+    common.coverImageUrls,
+  );
 }
 
 export function buildGrid8QuaytungDeckPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
@@ -386,13 +415,22 @@ export function buildBudget4N3DWalletPages(common: DeckBuildCommon, seedPrefix: 
 }
 
 const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
+  'grid-6-quaytung': GRID_6_QUAYTUNG_TEMPLATE_VERSION,
   'grid-8-feed': GRID_8_FEED_TEMPLATE_VERSION,
   'grid-8-quaytung': GRID_8_QUAYTUNG_TEMPLATE_VERSION,
   'spotlight-v2': SPOTLIGHT_V2_TEMPLATE_VERSION,
   'pov-3-v2': POV_3_V2_TEMPLATE_VERSION,
+  'itinerary-4n3d-stack': ITINERARY_4N3D_STACK_TEMPLATE_VERSION,
+  'itinerary-timeline': ITINERARY_TIMELINE_TEMPLATE_VERSION,
 };
 
 const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: string; listName: string }> = {
+  'grid-6-quaytung': {
+    nav: 'Lưới 6 Quaytung',
+    title: 'Bộ lưới 6 ô — bản Quaytung (V2)',
+    description: 'Song song Lưới 6 Ô: cover xếp đôi + lưới 3×3 overlay (6 địa điểm + hook giữa). Tham chiếu @quaytungdalat.hihi.',
+    listName: 'List lưới 6 quaytung V2',
+  },
   'grid-8-feed': {
     nav: 'Lưới 8 Feed',
     title: 'Bộ trang 8 ô — bản Feed (V2)',
@@ -417,7 +455,46 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     description: 'Cover script vàng + trang 3 hàng check-in + grid 3×3 cafe & quán ăn. Tham chiếu dalat.maikem.',
     listName: 'List POV 3 V2',
   },
+  'itinerary-4n3d-stack': {
+    nav: '4N3Đ Stack',
+    title: 'Bộ 4N3Đ theo nhóm (V2)',
+    description: 'Cover nền mờ tone vàng + 7 trang x 4 gợi ý theo ngày (sáng/trưa/tối/cafe/check-in/hoạt động/dịch vụ). Homestay & chơi đêm gộp trang dịch vụ.',
+    listName: 'List 4N3Đ stack V2',
+  },
+  'itinerary-timeline': {
+    nav: 'Lịch trình Timeline',
+    title: 'Bộ lịch trình timeline 3 ngày (V2)',
+    description: 'Cover serif + script trên ảnh; mỗi ngày một thẻ timeline dọc: thumb | chấm | giờ + hoạt động + tên địa điểm + địa chỉ. Ref @rongchoidalattala.',
+    listName: 'List lịch trình timeline 3N2Đ',
+  },
 };
+
+export function buildItineraryTimelineDeckPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
+  const pools = createDeckBuildPools(common.itemsBySection);
+  return buildItineraryTimelinePages(
+    pools,
+    common.imageUrls,
+    common.libraryEntries,
+    seedPrefix,
+    common.globalUsedItemIds,
+    common.globalUsedImageUrls,
+    common.coverImageUrls,
+  );
+}
+
+export function buildItinerary4N3DStackDeckPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
+  const pools = createDeckBuildPools(common.itemsBySection);
+  const pages = buildItinerary4N3DStackPages(
+    pools,
+    common.imageUrls,
+    common.libraryEntries,
+    seedPrefix,
+    common.globalUsedItemIds,
+    common.globalUsedImageUrls,
+    common.coverImageUrls,
+  );
+  return tuneSpotlightV2Cover(pages, common.coverImageUrls, `${seedPrefix}|cover-grid`);
+}
 
 export function buildPagesForDeckV2(
   deckId: V2DeckId,
@@ -439,6 +516,8 @@ export function buildPagesForDeckV2(
   };
 
   switch (deckId) {
+    case 'grid-6-quaytung':
+      return buildGrid6QuaytungDeckPages(common, seedPrefix);
     case 'grid-8-feed':
       return buildGrid8FeedPages(common, seedPrefix);
     case 'grid-8-quaytung':
@@ -447,6 +526,10 @@ export function buildPagesForDeckV2(
       return buildSpotlightV2Pages(common, seedPrefix);
     case 'pov-3-v2':
       return buildPov3V2DeckPages(common, seedPrefix);
+    case 'itinerary-4n3d-stack':
+      return buildItinerary4N3DStackDeckPages(common, seedPrefix);
+    case 'itinerary-timeline':
+      return buildItineraryTimelineDeckPages(common, seedPrefix);
     default:
       throw new Error(`Không hỗ trợ deck V2: ${deckId}`);
   }
