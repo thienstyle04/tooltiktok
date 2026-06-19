@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { listIsMain } from '../lib/utils';
+import { formatListSetLabel, listIsMain, parseListSetIndex } from '../lib/utils';
 
 const EXPORT_QUALITY_OPTIONS = [
   {
@@ -48,7 +48,10 @@ export default function ExportModal({
           <button id="closeExportModalBtn" className="modal-close-btn" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
-          <p className="modal-description">Chọn các list cần xuất. Mỗi list sẽ là một folder bên trong file ZIP.</p>
+          <p className="modal-description">
+            Chọn các list cần xuất. Folder trong ZIP đặt tên <strong>set1 01 grid6</strong> (set trước, rồi thứ tự mẫu)
+            để Windows sắp đúng: set1 mẫu A → set1 mẫu B → set2 mẫu A → set2 mẫu B.
+          </p>
 
           <section className="export-quality-panel">
             <div>
@@ -96,23 +99,28 @@ export default function ExportModal({
                     </label>
                   </div>
                   <div className="export-group-lists">
-                    {deck.exportLists.map((list) => (
-                      <label key={list.id} className="export-list-item" data-list-id={list.id}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(list.id)}
-                          onChange={(event) => setSelectedIds((prev) => {
-                            const next = new Set(prev);
-                            event.target.checked ? next.add(list.id) : next.delete(list.id);
-                            return next;
-                          })}
-                        />
-                        <div className="export-list-info">
-                          <p className="export-list-title">{list.title}</p>
-                          <p className="export-list-meta">AI · {list.pages.length} trang</p>
-                        </div>
-                      </label>
-                    ))}
+                    {[...deck.exportLists]
+                      .sort((a, b) => parseListSetIndex(a) - parseListSetIndex(b))
+                      .map((list) => {
+                        const setLabel = formatListSetLabel(parseListSetIndex(list));
+                        return (
+                          <label key={list.id} className="export-list-item" data-list-id={list.id}>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(list.id)}
+                              onChange={(event) => setSelectedIds((prev) => {
+                                const next = new Set(prev);
+                                event.target.checked ? next.add(list.id) : next.delete(list.id);
+                                return next;
+                              })}
+                            />
+                            <div className="export-list-info">
+                              <p className="export-list-title">{list.title}</p>
+                              <p className="export-list-meta">AI · {setLabel} · {list.pages.length} trang</p>
+                            </div>
+                          </label>
+                        );
+                      })}
                   </div>
                 </div>
               );

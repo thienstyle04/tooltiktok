@@ -1374,12 +1374,10 @@ function renderGrid8QuaytungMenuPage(page, index, listId, list) {
     sectionMap.get(key).push(item);
   }
   const sections = sectionOrder.map((title) => ({ title, items: sectionMap.get(title) || [] }));
-  const backgroundImage = page.backgroundImage || coverBackgroundImage(page, list);
+  const backgroundImage = String(page.backgroundImage || '').trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-menu-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || 'menu')}.png">
-      <div class="grid8-quaytung-menu-bg">
-        ${renderPreviewImage(backgroundImage, page.title)}
-      </div>
+      ${backgroundImage ? `<div class="grid8-quaytung-menu-bg">${renderPreviewImage(backgroundImage, page.title)}</div>` : ''}
       <div class="grid8-quaytung-menu-dim"></div>
       <div class="grid8-quaytung-menu-head">
         ${renderGrid8QuaytungDalatBadge()}

@@ -45,6 +45,20 @@ export function listIsMain(list) {
   return /-main$/i.test(String(list?.id || ''));
 }
 
+/** 1-based caption/set index from list id (caption-01-…) or navTitle (AI 01). */
+export function parseListSetIndex(list) {
+  const id = String(list?.id || '');
+  const captionMatch = id.match(/caption-(\d+)/i);
+  if (captionMatch) return Number(captionMatch[1]);
+  const navMatch = String(list?.navTitle || '').match(/AI\s*0*(\d+)/i);
+  if (navMatch) return Number(navMatch[1]);
+  return 1;
+}
+
+export function formatListSetLabel(setIndex) {
+  return `set${Number(setIndex) || 1}`;
+}
+
 export function countDeckPages(deck) {
   return (deck?.lists || []).reduce((total, list) => total + (list.pages?.length || 0), 0);
 }

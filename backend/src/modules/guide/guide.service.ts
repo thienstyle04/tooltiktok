@@ -24,6 +24,7 @@ import {
   GuideItem,
   ImageLibraryFolderEntry,
   ImageMappingFile,
+  ListPage,
   PageItem,
   ReferenceSet,
   SectionKey,
@@ -435,10 +436,7 @@ export class GuideService {
     this.ensureInventoryLoaded();
     const deckUsage = this.createUsageScope();
     currentDeck.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
-    // Mark images from ALL previously generated lists. The image resolver uses
-    // the seed (which includes generatedNumber + timestamp) to sort candidates
-    // differently each time, so even when all 6 images are "used", the resolver
-    // picks them in a different order → different image per list.
+    // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
     for (const prevList of existing) {
       for (const page of prevList.pages) {
         if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
@@ -1002,7 +1000,15 @@ export class GuideService {
         subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(cleanPage.subtitle || list.description)),
       };
     }
-    if (cleanPage.type !== 'list' || cleanPage.layoutVariant !== 'journey-4n3d') return cleanPage;
+    if (cleanPage.type !== 'list' || cleanPage.layoutVariant !== 'journey-4n3d') {
+      if (cleanPage.type === 'list' && cleanPage.layoutVariant === 'grid-8-quaytung-menu') {
+        return this.enforceGrid8QuaytungMenuPage({
+          ...cleanPage,
+          items: cleanPage.items.map((item) => this.sanitizePageItemText(item, cleanPage)),
+        });
+      }
+      return cleanPage;
+    }
 
     const rawSubtitle = String(cleanPage.subtitle ?? '').trim();
     const pageSubtitle = rawSubtitle ? this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanPage.subtitle, [cleanPage])) : '';
@@ -1099,7 +1105,7 @@ export class GuideService {
       page.layoutVariant === 'grid-8' ||
       this.samePlainText(pageSubtitle, safeDescription) ||
       this.samePlainText(pageSubtitle, GENERATED_CAPTION_BODY_FALLBACK);
-    return {
+    const sanitizedPage = {
       ...page,
       title: this.sanitizeContentText(sanitizeDeckHeadline(page.title)),
       chipText: this.sanitizeContentText(page.chipText),
@@ -1108,6 +1114,10 @@ export class GuideService {
         ? this.sanitizeContentText(this.contextualGeneratedPageSubtitle(page, list))
         : pageSubtitle,
     };
+    if (page.layoutVariant === 'grid-8-quaytung-menu') {
+      return this.enforceGrid8QuaytungMenuPage(sanitizedPage);
+    }
+    return sanitizedPage;
   }
 
   private samePlainText(left: string, right: string): boolean {
@@ -1488,7 +1498,7 @@ export class GuideService {
         ...list,
         pages: list.pages.map((page) => {
           if (page.type !== 'list') return page;
-          return {
+          const mappedPage = {
             ...page,
             items: page.items.map((pageItem) => {
               const sourceItem = findSourceItem(pageItem);
@@ -1498,6 +1508,8 @@ export class GuideService {
                 ? this.budgetGalleryItemMetaFromSource(sourceItem)
                 : this.pageItemMetaFromSource(sourceItem);
               const isPov3V2Stack = page.layoutVariant === 'pov-3-v2-stack';
+              const isMenuTextOnly = page.layoutVariant === 'grid-8-quaytung-menu'
+                && !String(pageItem.imageUrl || '').trim();
               const highlight = String(sourceItem.highlight || sourceItem.style || '')
                 .replace(/\s+/g, ' ')
                 .trim();
@@ -1520,10 +1532,10 @@ export class GuideService {
                 imageNote: isPov3V2Stack && highlight
                   ? truncatePov3V2StackTagline(highlight)
                   : mappingNote,
-                candidateImageUrls: sourceItem.imageSource === 'manual'
+                candidateImageUrls: sourceItem.imageSource === 'manual' && !isMenuTextOnly
                   ? sourceItem.candidateImageUrls
                   : pageItem.candidateImageUrls,
-                ...(sourceItem.imageSource === 'manual'
+                ...(sourceItem.imageSource === 'manual' && !isMenuTextOnly
                   ? {
                       imageUrl: sourceItem.imageUrl,
                       imageMapped: true,
@@ -1536,6 +1548,10 @@ export class GuideService {
               return nextPageItem;
             }),
           };
+          if (page.layoutVariant === 'grid-8-quaytung-menu') {
+            return this.enforceGrid8QuaytungMenuPage(mappedPage as ListPage);
+          }
+          return mappedPage;
         }),
       }));
       const sanitizedLists = refreshedLists.map((list) => {
@@ -2384,6 +2400,32 @@ export class GuideService {
         imageNote: '',
         candidateImageUrls: [],
       } : {}),
+    };
+  }
+
+  private stripPageItemImage(item: PageItem): PageItem {
+    return {
+      ...item,
+      imageUrl: '',
+      imageMapped: false,
+      imageSource: 'fallback',
+      imageNote: '',
+      candidateImageUrls: undefined,
+    };
+  }
+
+  private enforceGrid8QuaytungMenuPage(page: ListPage): ListPage {
+    const photoKeptBySection = new Set<string>();
+    return {
+      ...page,
+      backgroundImage: '',
+      items: page.items.map((item) => {
+        const sectionKey = String(item.label || '').trim();
+        if (!String(item.imageUrl || '').trim()) return this.stripPageItemImage(item);
+        if (photoKeptBySection.has(sectionKey)) return this.stripPageItemImage(item);
+        photoKeptBySection.add(sectionKey);
+        return item;
+      }),
     };
   }
 

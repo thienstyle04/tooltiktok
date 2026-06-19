@@ -23,6 +23,9 @@ import { buildPagesForDeckV2, getV2DeckDefinitions, isV2DeckId } from './deck-bu
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
 const DEFAULT_PARTNER_TARGET_PER_PAGE = 3;
+/** Cap DL riêng cho pov-3-v2 (lưới 9 ô) và grid-8-quaytung. */
+const POV_3_V2_GRID_PARTNER_CAP = 4;
+const GRID_8_QUAYTUNG_PARTNER_CAP = 4;
 export const ITINERARY_3N2D_TEMPLATE_VERSION = 17;
 export const ITINERARY_4N3D_TEMPLATE_VERSION = 13;
 export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 16;
@@ -766,6 +769,27 @@ export function pageItemWithResolver(
   };
 }
 
+function pageItemMenuTextOnly(item: GuideItem, label: string): PageItem {
+  const [metaPrimary, metaSecondary] = item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu'
+    ? serviceMetaText(item)
+    : metaText(item);
+  return {
+    label,
+    id: item.id,
+    sourceKey: itemUsageKey(item),
+    sourceSectionKey: item.sectionKey,
+    name: item.name,
+    metaPrimary,
+    metaSecondary,
+    imageUrl: '',
+    imageMapped: false,
+    imageSource: 'fallback',
+    imageNote: '',
+    isPartner: item.isPartner,
+    rawName: item.name,
+  };
+}
+
 export function schedulePageItemWithResolver(
   time: string,
   prefix: string,
@@ -1272,9 +1296,16 @@ function pickGridItemsWithPartnerQuota(primaryItems: GuideItem[], fallbackItems:
   return pickPartnerBalancedItems(primaryItems, fallbackItems, count, targetPartnerCount, seed, pick);
 }
 
-function pickGrid8ItemsWithPartnerQuota(primaryItems: GuideItem[], fallbackItems: GuideItem[], count: number, seed: string, pick: PickFn): GuideItem[] {
+function pickGrid8ItemsWithPartnerQuota(
+  primaryItems: GuideItem[],
+  fallbackItems: GuideItem[],
+  count: number,
+  seed: string,
+  pick: PickFn,
+  partnerCap = DEFAULT_PARTNER_TARGET_PER_PAGE,
+): GuideItem[] {
   const primaryPartnerCount = dedupeItems(primaryItems).filter((i) => i.isPartner).length;
-  const targetPartnerCount = partnerTargetCount(count, primaryPartnerCount);
+  const targetPartnerCount = partnerTargetCount(count, primaryPartnerCount, partnerCap);
   const selected = pickPartnerBalancedItems(primaryItems, fallbackItems, count, targetPartnerCount, seed, pick, true);
   const currentPartnerCount = selected.filter((item) => item.isPartner).length;
   if (currentPartnerCount >= targetPartnerCount) return selected;
@@ -3270,8 +3301,9 @@ function buildGrid8PageItems(
   pick: PickFn,
   imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   labelForItem: (item: GuideItem) => string,
+  partnerCap = DEFAULT_PARTNER_TARGET_PER_PAGE,
 ): PageItem[] {
-  return pickGrid8ItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick).map((item) =>
+  return pickGrid8ItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick, partnerCap).map((item) =>
     photomodePageItemWithResolver(item, labelForItem(item), imageResolver),
   );
 }
@@ -4316,7 +4348,7 @@ export function buildGrid8QuaytungPages(
   const gridPages = gridConfigs.map((cfg) => {
     const items = cfg.checkin
       ? buildBalancedCheckinGrid8Items(pools.checkinItems, 8, `${seedPrefix}${cfg.seed}`, pick, imageResolver)
-      : buildGrid8PageItems(cfg.pool, cfg.pool, 8, `${seedPrefix}${cfg.seed}`, pick, imageResolver, cfg.label || mealLabelForItem);
+      : buildGrid8PageItems(cfg.pool, cfg.pool, 8, `${seedPrefix}${cfg.seed}`, pick, imageResolver, cfg.label || mealLabelForItem, GRID_8_QUAYTUNG_PARTNER_CAP);
     return buildListPage(
       cfg.chipText,
       cfg.chipTone,
@@ -4336,10 +4368,18 @@ export function buildGrid8QuaytungPages(
   ];
   const menuItems: PageItem[] = [];
   for (const section of menuSections) {
-    const picked = pickWithUsedFallback(section.pool, section.count, `${seedPrefix}${section.seed}`, pick);
-    for (const item of picked) {
-      menuItems.push(pageItemWithResolver(item, section.title, imageResolver));
-    }
+    const picked = pickMixedItemsWithPartnerQuota(
+      section.pool,
+      section.count,
+      `${seedPrefix}${section.seed}`,
+      pick,
+      GRID_8_QUAYTUNG_PARTNER_CAP,
+    );
+    const sectionPages = picked.map((item) => pageItemWithResolver(item, section.title, imageResolver));
+    const photoIndex = sectionPages.findIndex((item) => hasDisplayText(item.imageUrl));
+    sectionPages.forEach((item, index) => {
+      menuItems.push(index === photoIndex ? item : pageItemMenuTextOnly(picked[index], section.title));
+    });
   }
 
   const menuPage = buildListPage(
@@ -4348,7 +4388,7 @@ export function buildGrid8QuaytungPages(
     'ĐỊA ĐIỂM ĂN UỐNG NGON',
     'Tổng hợp quán ăn theo buổi để lưu nhanh.',
     menuItems,
-    coverBackground(`${seedPrefix}-menu-bg`),
+    '',
     'grid-8-quaytung-menu',
   );
 
@@ -4690,7 +4730,7 @@ function buildPov3V2GridItems(
   resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   foodGrid = false,
 ): PageItem[] {
-  return pickGridItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick).map((item) =>
+  return pickGrid8ItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick, POV_3_V2_GRID_PARTNER_CAP).map((item) =>
     pov3V2PageItem(item, resolveImage, { foodGrid }),
   );
 }

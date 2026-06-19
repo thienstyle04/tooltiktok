@@ -38,9 +38,9 @@ export function normalizeGrid8FeedPostCaption(value: string): string {
   return clean;
 }
 export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 5;
-export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 3;
+export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 7;
 export const SPOTLIGHT_V2_TEMPLATE_VERSION = 16;
-export const POV_3_V2_TEMPLATE_VERSION = 8;
+export const POV_3_V2_TEMPLATE_VERSION = 9;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
 export const ITINERARY_4N3D_STACK_TEMPLATE_VERSION = 7;
 export const ITINERARY_TIMELINE_TEMPLATE_VERSION = 8;

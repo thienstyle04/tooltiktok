@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
-import { listIsMain, sanitizeFilePart } from './utils';
+import { formatListSetLabel, listIsMain, parseListSetIndex, sanitizeFilePart } from './utils';
 
 function coverImageUrlsForExport() {
   const cached = readCachedDataset();
@@ -1091,8 +1091,25 @@ function exportNameWithExtension(pageNode, index, extension = 'png') {
   return renamed === exportName ? `${exportName}.${extension}` : renamed;
 }
 
-function createListFolder(zip, list, zipInstance, deckId) {
-  return zip.folder(zipInstance ? sanitizeFilePart(list.id) : `${deckId}-${sanitizeFilePart(list.id)}`);
+function createListFolder(zip, list, zipInstance, deckId, dataset = null) {
+  const folderName = batchFolderName(deckId, parseListSetIndex(list), dataset);
+  return zip.folder(folderName);
+}
+
+function deckOrderIndex(dataset, deckId) {
+  const decks = dataset?.decks || [];
+  const idx = decks.findIndex((deck) => deck.id === deckId);
+  return idx >= 0 ? idx : Number.MAX_SAFE_INTEGER;
+}
+
+/** Group by caption set first, then deck order in dataset (A set1, B set1, A set2, B set2). */
+function orderListsForBatchExport(items, dataset) {
+  return [...items].sort((a, b) => {
+    const setA = parseListSetIndex(a.list);
+    const setB = parseListSetIndex(b.list);
+    if (setA !== setB) return setA - setB;
+    return deckOrderIndex(dataset, a.deck.id) - deckOrderIndex(dataset, b.deck.id);
+  });
 }
 
 function deckShortName(deckId) {
@@ -1118,10 +1135,15 @@ function deckShortName(deckId) {
   return map[String(deckId || '')] || sanitizeFilePart(deckId || 'mau');
 }
 
-function batchFolderName(deckId, listIndexInDeck) {
+function batchFolderName(deckId, setIndex, dataset = null) {
   const short = deckShortName(deckId);
-  const num = String(listIndexInDeck + 1).padStart(2, '0');
-  return `${short} mau ${num}`;
+  const setLabel = formatListSetLabel(setIndex);
+  // Set prefix so Explorer alphabetical sort = set1 all decks, then set2…
+  if (dataset?.decks?.length) {
+    const orderTag = String(deckOrderIndex(dataset, deckId) + 1).padStart(2, '0');
+    return `${setLabel} ${orderTag} ${short}`;
+  }
+  return `${setLabel} ${short}`;
 }
 
 function todayDateTag() {
@@ -1135,7 +1157,8 @@ function todayDateTag() {
   return `${dd}-${mm}-${yyyy}_${hh}-${min}-${ss}`;
 }
 
-async function addListMetadataFiles(folder, list) {
+async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(list)) {
+  const setLabel = formatListSetLabel(setIndex);
   const coverTitle = String(list.coverTitle || list.title || list.navTitle || '').trim();
   const isSpotlightPartnerList = Array.isArray(list?.pages)
     && list.pages.some((page) => page?.layoutVariant === 'spotlight-partner' || page?.layoutVariant === 'spotlight-partner-info');
@@ -1146,8 +1169,8 @@ async function addListMetadataFiles(folder, list) {
     ? list.captionHashtags.join(' ')
     : (isSpotlightPartnerList ? SPOTLIGHT_PARTNER_CAPTION_HASHTAGS.join(' ') : '');
   const captionParts = [postCaption, body, hashtags].filter(Boolean);
-  folder.file('caption.txt', captionParts.join('\n\n').trim() || coverTitle);
-  folder.file('partners.xlsx', await createHorizontalXlsx(collectPartnerNames(list)));
+  folder.file(`caption-${setLabel}.txt`, captionParts.join('\n\n').trim() || coverTitle);
+  folder.file(`partners-${setLabel}.xlsx`, await createHorizontalXlsx(collectPartnerNames(list)));
 }
 
 function renderBatchTaskPages(tasks) {
@@ -1529,7 +1552,8 @@ export async function exportActiveList(context, callbacks = {}) {
       },
     }, cb);
     cb.updateProgress(99, 'Đang lưu file ZIP...');
-    if (!downloadBlobFile(blob, `${deck.id}-${sanitizeFilePart(list.id)}.zip`)) {
+    const setLabel = formatListSetLabel(parseListSetIndex(list));
+    if (!downloadBlobFile(blob, `${deckShortName(deck.id)}-${setLabel}.zip`)) {
       throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
     }
     cb.completeProgress(`Đã xuất xong ZIP cho "${list.title}".`);
@@ -1566,32 +1590,29 @@ export async function exportBatch(context, callbacks = {}) {
     return { success: false, exportedLists: [] };
   }
 
+  const orderedLists = orderListsForBatchExport(allLists, dataset);
+
   cb.setBusy(true);
-  cb.setStatus(`Đang chuẩn bị xuất ${allLists.length} list (${qualityProfile.label})...`);
-  cb.showProgress(`Chuẩn bị xuất ${allLists.length} list (${qualityProfile.label})...`, 2);
+  cb.setStatus(`Đang chuẩn bị xuất ${orderedLists.length} list (${qualityProfile.label})...`);
+  cb.showProgress(`Chuẩn bị xuất ${orderedLists.length} list (${qualityProfile.label})...`, 2);
   resetBatchImageCache();
 
   try {
     const mainZip = new JSZip();
     await requestExportWakeLock();
-    const totalPages = Math.max(allLists.reduce((total, item) => total + (item.list.pages?.length || 0), 0), 1);
+    const totalPages = Math.max(orderedLists.reduce((total, item) => total + (item.list.pages?.length || 0), 0), 1);
     let renderedPages = 0;
-    cb.updateProgress(3, `Đang chuẩn bị ${allLists.length} folder ${qualityProfile.label}...`);
+    cb.updateProgress(3, `Đang chuẩn bị ${orderedLists.length} folder ${qualityProfile.label}...`);
     await ensureExportFontsReady(document.documentElement, { decodeImages: false, embedFonts: true });
 
-    // Build per-deck index counters for folder naming (e.g. "3n2d mau 01", "3n2d mau 02")
-    const deckListCounters = new Map();
-    const folders = allLists.map((item) => {
-      const deckId = item.deck.id;
-      const idx = deckListCounters.get(deckId) ?? 0;
-      deckListCounters.set(deckId, idx + 1);
-      const folderName = batchFolderName(deckId, idx);
-      return mainZip.folder(folderName);
+    const folders = orderedLists.map((item) => {
+      const setIndex = parseListSetIndex(item.list);
+      return mainZip.folder(batchFolderName(item.deck.id, setIndex, dataset));
     });
-    await mapWithConcurrency(allLists, 6, (item, index) => addListMetadataFiles(folders[index], item.list));
+    await mapWithConcurrency(orderedLists, 6, (item, index) => addListMetadataFiles(folders[index], item.list));
 
     const pageTasks = [];
-    allLists.forEach((item, listIndex) => {
+    orderedLists.forEach((item, listIndex) => {
       const pages = item.list.pages || [];
       if (pages.length === 0) {
         console.warn(`[export] Bỏ qua list "${item.list.id}" vì không có trang.`);
@@ -1694,11 +1715,11 @@ export async function exportBatch(context, callbacks = {}) {
     if (!downloadStarted) {
       throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
     }
-    cb.completeProgress(`Đã xuất xong ${allLists.length} list.`);
-    cb.setStatus(`Đã xuất xong ${allLists.length} list.`);
+    cb.completeProgress(`Đã xuất xong ${orderedLists.length} list.`);
+    cb.setStatus(`Đã xuất xong ${orderedLists.length} list.`);
     return {
       success: true,
-      exportedLists: allLists.map(({ deck, list }) => ({
+      exportedLists: orderedLists.map(({ deck, list }) => ({
         deckId: deck.id,
         listId: list.id,
       })),
