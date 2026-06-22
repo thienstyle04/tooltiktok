@@ -50,34 +50,11 @@ pause
 exit /b 0
 
 :cleanup_unfinished_git
-if exist ".git\MERGE_HEAD" (
-  echo [git] Phat hien merge dang do — dang huy merge cu...
-  git merge --abort >nul 2>&1
-  if errorlevel 1 (
-    echo [LOI] Khong huy duoc merge. Chay thu cong: git merge --abort
-    exit /b 1
-  )
-  echo ^> Da huy merge cu. Tiep tuc cap nhat...
-)
-
-if exist ".git\rebase-merge" (
-  echo [git] Phat hien rebase dang do — dang huy rebase cu...
-  git rebase --abort >nul 2>&1
-  if errorlevel 1 (
-    echo [LOI] Khong huy duoc rebase. Chay thu cong: git rebase --abort
-    exit /b 1
-  )
-  echo ^> Da huy rebase cu. Tiep tuc cap nhat...
-)
-
-if exist ".git\rebase-apply" (
-  echo [git] Phat hien rebase dang do — dang huy rebase cu...
-  git rebase --abort >nul 2>&1
-)
-
-if exist ".git\CHERRY_PICK_HEAD" (
-  echo [git] Phat hien cherry-pick dang do — dang huy...
-  git cherry-pick --abort >nul 2>&1
-)
-
+echo [git] Kiem tra merge/rebase dang do...
+git merge --abort >nul 2>&1
+if not errorlevel 1 echo ^> Da huy merge cu.
+git rebase --abort >nul 2>&1
+if not errorlevel 1 echo ^> Da huy rebase cu.
+git cherry-pick --abort >nul 2>&1
+if not errorlevel 1 echo ^> Da huy cherry-pick cu.
 exit /b 0

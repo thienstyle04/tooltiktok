@@ -7,23 +7,13 @@ echo SUA LOI GIT (merge/rebase dang do)
 echo ==============================================================
 echo.
 
-if exist ".git\MERGE_HEAD" (
-  echo Dang huy merge cu...
-  git merge --abort
-)
-
-if exist ".git\rebase-merge" (
-  echo Dang huy rebase cu...
-  git rebase --abort
-)
-
-if exist ".git\rebase-apply" (
-  git rebase --abort
-)
-
-if exist ".git\CHERRY_PICK_HEAD" (
-  git cherry-pick --abort
-)
+echo Dang huy merge/rebase/cherry-pick dang do (neu co)...
+git merge --abort >nul 2>&1
+if not errorlevel 1 echo ^> Da huy merge cu.
+git rebase --abort >nul 2>&1
+if not errorlevel 1 echo ^> Da huy rebase cu.
+git cherry-pick --abort >nul 2>&1
+if not errorlevel 1 echo ^> Da huy cherry-pick cu.
 
 echo.
 echo Trang thai Git hien tai:
