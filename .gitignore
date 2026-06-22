@@ -6,3 +6,13 @@ release/
 *.log
 .omx/
 backend/src/modules/guide/tools/export-quality-test-output/
+
+# Cache / build tren may — khong day len git
+frontend/.next/
+**/.next/
+
+# Thu muc test/sim local
+dalat-sim-old-machine/
+
+# Dev scripts trong backend/tools — chi chay local
+backend/src/modules/guide/tools/

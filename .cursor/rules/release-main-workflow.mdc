@@ -1,40 +1,38 @@
 ---
-description: Nhắc release fearch lên main sau commit/push và kiểm tra nhánh chưa đồng bộ
+description: Chi push fearch; user tu release main. Chi commit file tool, khong test/cache.
 alwaysApply: true
 ---
 
 # Quy trình fearch → main
 
-Nhánh **`fearch`**: test trên máy dev. Nhánh **`main`**: bản phát hành — các máy khác chạy `update.bat` (pull `main`).
+- **`fearch`**: test trên máy dev — **AI chỉ commit/push nhánh này**.
+- **`main`**: bản phát hành — **user tự merge** (`release-to-main.bat`). Máy khác: `update.bat` (pull `main`).
 
-## Sau mỗi commit hoặc push lên fearch
+## AI được / không được
 
-Cuối phản hồi, **bắt buộc nhắc** (nếu vừa sửa code/fix):
+- **Được:** commit, push `origin fearch`.
+- **Không tự làm:** merge/push `main`, trừ khi user yêu cầu rõ.
 
-> Đã push/commit lên **fearch**. Khi test ổn, chạy **`release-to-main.bat`** (máy dev) hoặc tạo PR **fearch → main**, rồi các máy khác chạy **`update.bat`**.
+## Chỉ commit file tool quan trọng
 
-## Trước khi kết thúc task (commit/push)
+**Được đẩy lên git:**
+- Code app: `backend/src/**` (trừ `backend/src/modules/guide/tools/`)
+- Frontend: `frontend/app`, `frontend/lib`, `frontend/components`, CSS
+- Script vận hành: `scripts/dev.js`, `scripts/check-release-status.js`, `sync-version.js`, …
+- Batch: `start.bat`, `update.bat`, `setup.bat`, `fix-git.bat`, `release-to-main.bat`, `check-release.bat`
+- Cấu hình: `package.json`, `VERSION`, `.env.example`
+- Seed dữ liệu dùng chung: `backend/data/sheet-drive-images.seed.json`
 
-Chạy kiểm tra:
+**Không commit / không push:**
+- `backend/src/modules/guide/tools/**` (test, audit, preview HTML)
+- Cache: `.next/`, `frontend/.next/`, `*.log`, `dataset-context-cache.json`
+- Runtime từng máy: `sheet-drive-images.json`, `used-inventory.json`, `generated-caption-lists*.json`
+- Backup local, output preview, thư mục sim test
 
-```bat
-node scripts/check-release-status.js
-```
+Trước `git add`, kiểm tra `git status` — bỏ qua mọi file test/cache.
 
-hoặc `check-release.bat`.
+## Sau push fearch
 
-Nếu báo **cần release lên main**, nhắc user rõ ràng — kể cả khi user chưa hỏi.
+Nhắc ngắn: user tự **`release-to-main.bat`** khi test ổn → máy khác **`update.bat`**.
 
-## Khi user nói đã fix / đã push / xong
-
-1. Chạy `node scripts/check-release-status.js` (có quyền tự chạy).
-2. Nếu `fearch` có thay đổi chưa có trên `main` → nhắc release.
-3. Nếu còn file local chưa commit trên `fearch` → nhắc commit trước.
-
-## Lệnh release (máy dev)
-
-```bat
-release-to-main.bat
-```
-
-Không push thẳng lên `main` bỏ qua test trên `fearch`, trừ khi user yêu cầu rõ.
+Kiểm tra: `npm run check:release`
