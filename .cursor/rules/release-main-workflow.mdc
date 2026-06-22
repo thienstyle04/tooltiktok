@@ -1,0 +1,40 @@
+---
+description: Nhắc release fearch lên main sau commit/push và kiểm tra nhánh chưa đồng bộ
+alwaysApply: true
+---
+
+# Quy trình fearch → main
+
+Nhánh **`fearch`**: test trên máy dev. Nhánh **`main`**: bản phát hành — các máy khác chạy `update.bat` (pull `main`).
+
+## Sau mỗi commit hoặc push lên fearch
+
+Cuối phản hồi, **bắt buộc nhắc** (nếu vừa sửa code/fix):
+
+> Đã push/commit lên **fearch**. Khi test ổn, chạy **`release-to-main.bat`** (máy dev) hoặc tạo PR **fearch → main**, rồi các máy khác chạy **`update.bat`**.
+
+## Trước khi kết thúc task (commit/push)
+
+Chạy kiểm tra:
+
+```bat
+node scripts/check-release-status.js
+```
+
+hoặc `check-release.bat`.
+
+Nếu báo **cần release lên main**, nhắc user rõ ràng — kể cả khi user chưa hỏi.
+
+## Khi user nói đã fix / đã push / xong
+
+1. Chạy `node scripts/check-release-status.js` (có quyền tự chạy).
+2. Nếu `fearch` có thay đổi chưa có trên `main` → nhắc release.
+3. Nếu còn file local chưa commit trên `fearch` → nhắc commit trước.
+
+## Lệnh release (máy dev)
+
+```bat
+release-to-main.bat
+```
+
+Không push thẳng lên `main` bỏ qua test trên `fearch`, trừ khi user yêu cầu rõ.

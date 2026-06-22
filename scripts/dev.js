@@ -14,6 +14,8 @@ const defaultBackendPort = 3000;
 const defaultFrontendPort = 3001;
 let shuttingDown = false;
 let processes = [];
+let browserOpenRequested = false;
+let browserFrontendOrigin = '';
 
 main().catch((error) => {
   shuttingDown = true;
@@ -38,6 +40,7 @@ async function main() {
   const backendOrigin = `http://${backendOriginHost(host)}:${backendPort}`;
   const frontendOrigin = `http://${backendOriginHost(host)}:${frontendPort}`;
   const networkHost = firstNetworkHost();
+  browserFrontendOrigin = frontendOrigin;
 
   warnIfPortMoved('backend', requestedBackendPort, backendPort);
   warnIfPortMoved('frontend', requestedFrontendPort, frontendPort);
@@ -63,16 +66,34 @@ async function main() {
   ];
 
   if (shouldOpenBrowser()) {
-    waitForServer(frontendOrigin)
-      .then(() => {
-        console.log(`[dev] opening browser: ${frontendOrigin}/`);
-        openChrome(frontendOrigin);
-      })
-      .catch((error) => {
-        console.warn(`[dev] could not open browser automatically: ${error.message || error}`);
-        console.warn(`[dev] open manually: ${frontendOrigin}/`);
-      });
+    scheduleBrowserOpen(frontendOrigin);
   }
+}
+
+function scheduleBrowserOpen(origin) {
+  waitForServer(origin)
+    .then(() => openBrowserForOrigin(origin))
+    .catch((error) => {
+      if (browserOpenRequested) return;
+      console.warn(`[dev] could not open browser automatically: ${error.message || error}`);
+      console.warn(`[dev] open manually: ${origin}/`);
+    });
+}
+
+function openBrowserForOrigin(origin) {
+  if (browserOpenRequested) return;
+  browserOpenRequested = true;
+  console.log(`[dev] opening browser: ${origin}/`);
+  const opened = openChrome(`${origin}/`);
+  if (!opened) {
+    console.warn(`[dev] browser launch failed; open manually: ${origin}/`);
+  }
+}
+
+function maybeOpenBrowserFromFrontendLog(line) {
+  if (!shouldOpenBrowser() || browserOpenRequested || !browserFrontendOrigin) return;
+  if (!/ready in/i.test(line) && !/local:\s*http/i.test(line)) return;
+  setTimeout(() => openBrowserForOrigin(browserFrontendOrigin), 800);
 }
 
 function startNpmProcess(label, args, cwd, env) {
@@ -101,19 +122,15 @@ function shouldOpenBrowser() {
   return flag !== '0' && flag !== 'false' && flag !== 'no';
 }
 
-function waitForServer(origin, timeoutMs = 120000, intervalMs = 1000) {
+function waitForServer(origin, timeoutMs = 180000, intervalMs = 1000) {
   const url = new URL(origin);
   const deadline = Date.now() + timeoutMs;
+  const requestOptions = buildProbeRequestOptions(url);
 
   return new Promise((resolve, reject) => {
     const attempt = () => {
       const request = http.get(
-        {
-          hostname: url.hostname,
-          port: url.port,
-          path: '/',
-          timeout: 3000,
-        },
+        requestOptions,
         (response) => {
           response.resume();
           if (response.statusCode && response.statusCode >= 200 && response.statusCode < 500) {
@@ -145,6 +162,25 @@ function waitForServer(origin, timeoutMs = 120000, intervalMs = 1000) {
   });
 }
 
+function buildProbeRequestOptions(url) {
+  const hostname = url.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return {
+      hostname: '127.0.0.1',
+      port: url.port,
+      path: '/',
+      timeout: 5000,
+      family: 4,
+    };
+  }
+  return {
+    hostname: url.hostname,
+    port: url.port,
+    path: '/',
+    timeout: 5000,
+  };
+}
+
 function openChrome(url) {
   if (process.platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA || '';
@@ -156,21 +192,39 @@ function openChrome(url) {
 
     for (const chromePath of candidates) {
       if (!fs.existsSync(chromePath)) continue;
-      const child = spawn(chromePath, [url], { detached: true, stdio: 'ignore', shell: false });
-      child.unref();
-      return;
+      try {
+        const child = spawn(chromePath, [url], { detached: true, stdio: 'ignore', shell: false });
+        child.unref();
+        return true;
+      } catch {
+        // Try next path / fallback.
+      }
     }
 
-    spawn('cmd', ['/c', 'start', '', 'chrome', url], { detached: true, stdio: 'ignore', shell: false }).unref();
-    return;
+    return openDefaultBrowserWindows(url);
   }
 
   if (process.platform === 'darwin') {
-    spawn('open', ['-a', 'Google Chrome', url], { detached: true, stdio: 'ignore', shell: false }).unref();
-    return;
+    try {
+      spawn('open', ['-a', 'Google Chrome', url], { detached: true, stdio: 'ignore', shell: false }).unref();
+      return true;
+    } catch {
+      spawn('open', [url], { detached: true, stdio: 'ignore', shell: false }).unref();
+      return true;
+    }
   }
 
   spawn('xdg-open', [url], { detached: true, stdio: 'ignore', shell: false }).unref();
+  return true;
+}
+
+function openDefaultBrowserWindows(url) {
+  try {
+    spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore', shell: true }).unref();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function backendOriginHost(host) {
@@ -369,7 +423,10 @@ function writePrefixed(label, chunk, isError = false) {
   String(chunk)
     .split(/\r?\n/)
     .filter(Boolean)
-    .forEach((line) => stream.write(`[${label}] ${line}\n`));
+    .forEach((line) => {
+      stream.write(`[${label}] ${line}\n`);
+      if (label === 'frontend') maybeOpenBrowserFromFrontendLog(line);
+    });
 }
 
 function stopAll() {

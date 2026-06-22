@@ -1,9 +1,10 @@
 {
   "name": "dalat-tiktok-carousel-tool-workspace",
-  "version": "0.2.03",
+  "version": "0.2.04",
   "private": true,
   "scripts": {
     "dev": "node scripts/sync-version.js && node scripts/setup-git-hooks.js && node scripts/dev.js",
+    "check:release": "node scripts/check-release-status.js",
     "version:sync": "node scripts/sync-version.js",
     "version:bump": "node scripts/bump-version.js",
     "version:show": "node scripts/sync-version.js",
