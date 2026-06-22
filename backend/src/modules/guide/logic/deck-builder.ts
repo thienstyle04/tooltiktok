@@ -25,6 +25,8 @@ import { buildPagesForDeckV2, getV2DeckDefinitions, isV2DeckId } from './deck-bu
 const DEFAULT_PARTNER_TARGET_PER_PAGE = 3;
 /** Cap DL riêng cho pov-3-v2 (lưới 9 ô) và grid-8-quaytung. */
 const POV_3_V2_GRID_PARTNER_CAP = 4;
+/** Cap DL đối tác trang lưới 9 ô cafe & quán ăn (pov-3-v2). */
+const POV_3_V2_CAFE_FOOD_PARTNER_CAP = 6;
 const GRID_8_QUAYTUNG_PARTNER_CAP = 4;
 export const ITINERARY_3N2D_TEMPLATE_VERSION = 17;
 export const ITINERARY_4N3D_TEMPLATE_VERSION = 13;
@@ -4667,6 +4669,41 @@ export function buildGrid5Pages(
   );
 }
 
+const POV_3_V2_STACK_PARTNER_CAP = 2;
+const POV_3_V2_SERVICE_HOMESTAY_SLOTS = 2;
+
+const POV_3_V2_CAFE_GRID_TITLES = [
+  'Những chiếc quán cafe xinh',
+  'Quán cafe chill đáng ghé',
+  'Góc cafe Đà Lạt nên lưu',
+  'Các quán cafe có view đẹp',
+  'Cafe xinh nhất nên check-in',
+  'Quán cafe ấm cúng ở Đà Lạt',
+  'Những góc cafe dễ chụp',
+  'Cafe hidden gem ở Đà Lạt',
+  'Quán cafe vintage đáng thử',
+  'Top quán cafe nên ghé',
+];
+
+const POV_3_V2_FOOD_GRID_TITLES = [
+  'các quán ăn ngon',
+  'quán ăn đáng thử nhất',
+  'món ngon Đà Lạt nên ăn',
+  'những quán ăn nổi bật',
+  'quán ăn local đáng ghé',
+  'địa chỉ ăn uống không thể bỏ',
+  'quán ăn ngon giá hợp lý',
+  'top quán ăn nên check-in',
+  'quán ăn view đẹp ở Đà Lạt',
+  'những món ngon phải thử',
+];
+
+function pickPov3V2RotatingTitle(variants: string[], seed: string, slot: string): string {
+  if (!variants.length) return '';
+  const index = stableHash(`${seed}:${slot}`) % variants.length;
+  return variants[index] || variants[0];
+}
+
 function pov3V2PriceLabel(item: GuideItem): string {
   if (item.sectionKey === 'check_in' || item.sectionKey === 'khu_du_lich') {
     return isFreeCheckinItem(item) ? 'Free' : 'Có phí';
@@ -4721,6 +4758,53 @@ function buildPov3V2StackItems(
   return picked.slice(0, count).map((item) => pov3V2PageItem(item, resolveImage));
 }
 
+function buildPov3V2StackItemsWithPartner(
+  pool: GuideItem[],
+  count: number,
+  seed: string,
+  pick: PickFn,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  partnerCap = POV_3_V2_STACK_PARTNER_CAP,
+): PageItem[] {
+  const picked = ensureGuideItemCount(
+    pickMixedItemsWithPartnerQuota(pool, count, seed, pick, partnerCap),
+    pool,
+    count,
+    `${seed}-stack`,
+  );
+  return picked.slice(0, count).map((item) => pov3V2PageItem(item, resolveImage));
+}
+
+function buildPov3V2ServiceGridItems(
+  pools: DeckBuildPools,
+  count: number,
+  seed: string,
+  pick: PickFn,
+  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+): PageItem[] {
+  const stayPool = dedupeItems(pools.stayItems);
+  const homestayPicked = stayPool.length > 0
+    ? pickPartnerBalancedItems(
+      stayPool,
+      stayPool,
+      Math.min(POV_3_V2_SERVICE_HOMESTAY_SLOTS, count),
+      POV_3_V2_SERVICE_HOMESTAY_SLOTS,
+      `${seed}-homestay`,
+      pick,
+      true,
+    )
+    : [];
+  const homestayIds = new Set(homestayPicked.map((item) => item.id));
+  const remaining = count - homestayPicked.length;
+  const servicePool = dedupeItems(pools.serviceItems).filter((item) => !homestayIds.has(item.id));
+  const servicePicked = remaining > 0
+    ? pickMixedItemsWithPartnerQuota(servicePool, remaining, `${seed}-services`, pick, POV_3_V2_GRID_PARTNER_CAP)
+    : [];
+  return shuffleItems([...homestayPicked, ...servicePicked], `${seed}-mix`)
+    .slice(0, count)
+    .map((item) => pov3V2PageItem(item, resolveImage));
+}
+
 function buildPov3V2GridItems(
   primaryItems: GuideItem[],
   fallbackItems: GuideItem[],
@@ -4730,7 +4814,7 @@ function buildPov3V2GridItems(
   resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   foodGrid = false,
 ): PageItem[] {
-  return pickGrid8ItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick, POV_3_V2_GRID_PARTNER_CAP).map((item) =>
+  return pickGrid8ItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick, POV_3_V2_CAFE_FOOD_PARTNER_CAP).map((item) =>
     pov3V2PageItem(item, resolveImage, { foodGrid }),
   );
 }
@@ -4759,9 +4843,14 @@ export function buildPov3V2Pages(
   const pick = createListPicker(globalUsedItemIds);
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
-    12,
+    6,
     `${seedPrefix}-checkin-pool`,
   );
+  const tourismItems = dedupeItems(
+    pools.dayTourismItems.length > 0 ? pools.dayTourismItems : pools.tourismItems,
+  );
+  const cafeGridTitle = pickPov3V2RotatingTitle(POV_3_V2_CAFE_GRID_TITLES, seedPrefix, 'cafe-grid-title');
+  const foodGridTitle = pickPov3V2RotatingTitle(POV_3_V2_FOOD_GRID_TITLES, seedPrefix, 'food-grid-title');
   const coverItem = pickSingleContextualItem(
     checkinItems,
     checkinItems,
@@ -4784,11 +4873,11 @@ export function buildPov3V2Pages(
     },
   ];
 
-  for (let pageIndex = 0; pageIndex < 4; pageIndex += 1) {
+  for (let pageIndex = 0; pageIndex < 2; pageIndex += 1) {
     const stackItems = buildPov3V2StackItems(
       checkinItems,
       3,
-      `${seedPrefix}-stack-${pageIndex + 1}`,
+      `${seedPrefix}-checkin-stack-${pageIndex + 1}`,
       pick,
       resolveImage,
     );
@@ -4799,7 +4888,27 @@ export function buildPov3V2Pages(
       '',
       '',
       stackItems,
-      stackItems[0]?.imageUrl || background(`${seedPrefix}-stack-${pageIndex + 1}-bg`),
+      stackItems[0]?.imageUrl || background(`${seedPrefix}-checkin-stack-${pageIndex + 1}-bg`),
+      'pov-3-v2-stack',
+    ));
+  }
+
+  for (let pageIndex = 0; pageIndex < 2; pageIndex += 1) {
+    const stackItems = buildPov3V2StackItemsWithPartner(
+      tourismItems,
+      3,
+      `${seedPrefix}-tourism-stack-${pageIndex + 1}`,
+      pick,
+      resolveImage,
+    );
+    if (stackItems.length < 3) continue;
+    pages.push(buildListPage(
+      'Khu du lịch',
+      'pine',
+      '',
+      '',
+      stackItems,
+      stackItems[0]?.imageUrl || background(`${seedPrefix}-tourism-stack-${pageIndex + 1}-bg`),
       'pov-3-v2-stack',
     ));
   }
@@ -4817,7 +4926,7 @@ export function buildPov3V2Pages(
     pages.push(buildListPage(
       'Cafe',
       'gold',
-      'Những chiếc quán cafe xinh',
+      cafeGridTitle,
       '',
       cafeItems,
       cafeItems[0]?.imageUrl || background(`${seedPrefix}-cafe-grid-bg`),
@@ -4838,10 +4947,29 @@ export function buildPov3V2Pages(
     pages.push(buildListPage(
       'Quán ăn',
       'berry',
-      'các quán ăn ngon',
+      foodGridTitle,
       '',
       foodItems,
       foodItems[0]?.imageUrl || background(`${seedPrefix}-food-grid-bg`),
+      'pov-3-v2-grid',
+    ));
+  }
+
+  const serviceItems = buildPov3V2ServiceGridItems(
+    pools,
+    9,
+    `${seedPrefix}-service-grid`,
+    pick,
+    resolveImage,
+  );
+  if (serviceItems.length > 0) {
+    pages.push(buildListPage(
+      'Dịch vụ',
+      'slate',
+      'các dịch vụ cần lưu ý',
+      '',
+      serviceItems,
+      serviceItems[0]?.imageUrl || background(`${seedPrefix}-service-grid-bg`),
       'pov-3-v2-grid',
     ));
   }

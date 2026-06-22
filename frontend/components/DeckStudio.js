@@ -167,6 +167,26 @@ function needsGrid8QuaytungCatalogRefresh(dataset) {
   return cover?.layoutVariant !== 'grid-8-quaytung-cover';
 }
 
+const POV_3_V2_MIN_TEMPLATE_VERSION = 11;
+
+function isStalePov3V2List(list) {
+  if (!list) return true;
+  if (Number(list.templateVersion || 0) < POV_3_V2_MIN_TEMPLATE_VERSION) return true;
+  if ((list.pages || []).length < 8) return true;
+  const listPages = (list.pages || []).filter((page) => page.type === 'list');
+  const chips = listPages.map((page) => String(page.chipText || '').trim());
+  if (!chips.includes('Khu du lịch')) return true;
+  if (!chips.some((chip) => chip.includes('Dịch vụ'))) return true;
+  if (chips.filter((chip) => chip === 'Check-in').length > 2) return true;
+  return false;
+}
+
+function needsPov3V2CatalogRefresh(dataset) {
+  const deck = (dataset?.decks || []).find((item) => item.id === 'pov-3-v2');
+  if (!deck) return true;
+  return (deck.lists || []).some((list) => isStalePov3V2List(list));
+}
+
 function storedCatalogRevision() {
   if (typeof window === 'undefined') return '';
   try {
@@ -195,7 +215,8 @@ function needsTemplateCatalogRefresh(dataset) {
     || missingCatalogDecks(dataset).length > 0
     || needsSpotlightCoverRefresh(dataset)
     || needsGrid6QuaytungCatalogRefresh(dataset)
-    || needsGrid8QuaytungCatalogRefresh(dataset);
+    || needsGrid8QuaytungCatalogRefresh(dataset)
+    || needsPov3V2CatalogRefresh(dataset);
 }
 
 function listCountSignature(dataset) {

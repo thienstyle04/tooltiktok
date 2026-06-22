@@ -40,7 +40,7 @@ export function normalizeGrid8FeedPostCaption(value: string): string {
 export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 5;
 export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 7;
 export const SPOTLIGHT_V2_TEMPLATE_VERSION = 16;
-export const POV_3_V2_TEMPLATE_VERSION = 9;
+export const POV_3_V2_TEMPLATE_VERSION = 11;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
 export const ITINERARY_4N3D_STACK_TEMPLATE_VERSION = 7;
 export const ITINERARY_TIMELINE_TEMPLATE_VERSION = 8;
@@ -452,7 +452,7 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
   'pov-3-v2': {
     nav: 'POV 3 V2',
     title: 'Bộ POV dalat.maikem (V2)',
-    description: 'Cover script vàng + trang 3 hàng check-in + grid 3×3 cafe & quán ăn. Tham chiếu dalat.maikem.',
+    description: 'Cover script vàng + 2 trang check-in + 2 trang khu du lịch + grid 3×3 cafe, quán ăn & dịch vụ. Tham chiếu dalat.maikem.',
     listName: 'List POV 3 V2',
   },
   'itinerary-4n3d-stack': {

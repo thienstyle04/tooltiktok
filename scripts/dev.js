@@ -1,5 +1,6 @@
 const { execFileSync, spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
+const http = require('node:http');
 const net = require('node:net');
 const path = require('node:path');
 
@@ -8,7 +9,7 @@ const backendDir = path.join(rootDir, 'backend');
 const frontendDir = path.join(rootDir, 'frontend');
 const npmCliPath = resolveNpmCliPath();
 const defaultHost = '0.0.0.0';
-const displayHost = '127.0.0.1';
+const displayHost = 'localhost';
 const defaultBackendPort = 3000;
 const defaultFrontendPort = 3001;
 let shuttingDown = false;
@@ -60,6 +61,18 @@ async function main() {
       NEXT_PUBLIC_BACKEND_ORIGIN: backendOrigin,
     }),
   ];
+
+  if (shouldOpenBrowser()) {
+    waitForServer(frontendOrigin)
+      .then(() => {
+        console.log(`[dev] opening browser: ${frontendOrigin}/`);
+        openChrome(frontendOrigin);
+      })
+      .catch((error) => {
+        console.warn(`[dev] could not open browser automatically: ${error.message || error}`);
+        console.warn(`[dev] open manually: ${frontendOrigin}/`);
+      });
+  }
 }
 
 function startNpmProcess(label, args, cwd, env) {
@@ -81,6 +94,83 @@ function startFrontendProcess(port, env) {
   }
 
   return startNpmProcess('frontend', ['run', 'dev', '--', '-H', env.HOST || defaultHost, '-p', String(port)], frontendDir, env);
+}
+
+function shouldOpenBrowser() {
+  const flag = String(process.env.DALAT_OPEN_BROWSER ?? '1').trim().toLowerCase();
+  return flag !== '0' && flag !== 'false' && flag !== 'no';
+}
+
+function waitForServer(origin, timeoutMs = 120000, intervalMs = 1000) {
+  const url = new URL(origin);
+  const deadline = Date.now() + timeoutMs;
+
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      const request = http.get(
+        {
+          hostname: url.hostname,
+          port: url.port,
+          path: '/',
+          timeout: 3000,
+        },
+        (response) => {
+          response.resume();
+          if (response.statusCode && response.statusCode >= 200 && response.statusCode < 500) {
+            resolve();
+            return;
+          }
+          retry(new Error(`Unexpected status ${response.statusCode}`));
+        },
+      );
+
+      request.on('timeout', () => {
+        request.destroy(new Error('Request timed out'));
+      });
+
+      request.on('error', (error) => {
+        retry(error);
+      });
+    };
+
+    const retry = (error) => {
+      if (Date.now() >= deadline) {
+        reject(error);
+        return;
+      }
+      setTimeout(attempt, intervalMs);
+    };
+
+    attempt();
+  });
+}
+
+function openChrome(url) {
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA || '';
+    const candidates = [
+      path.join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    ].filter(Boolean);
+
+    for (const chromePath of candidates) {
+      if (!fs.existsSync(chromePath)) continue;
+      const child = spawn(chromePath, [url], { detached: true, stdio: 'ignore', shell: false });
+      child.unref();
+      return;
+    }
+
+    spawn('cmd', ['/c', 'start', '', 'chrome', url], { detached: true, stdio: 'ignore', shell: false }).unref();
+    return;
+  }
+
+  if (process.platform === 'darwin') {
+    spawn('open', ['-a', 'Google Chrome', url], { detached: true, stdio: 'ignore', shell: false }).unref();
+    return;
+  }
+
+  spawn('xdg-open', [url], { detached: true, stdio: 'ignore', shell: false }).unref();
 }
 
 function backendOriginHost(host) {

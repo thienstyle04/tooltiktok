@@ -14,9 +14,12 @@ if exist "backend\data\generated-caption-lists.json" (
 )
 
 echo Dang khoi dong Backend va Frontend cung luc...
-echo Vui long doi trong giay lat, ung dung se chay o http://localhost:3001
+echo Sau khi san sang, Chrome se tu mo tool (mac dinh http://localhost:3001)
+echo Neu port bi doi, xem dong [dev] frontend trong cua so nay.
 echo (Ban co the nhan Ctrl+C de tat tool khi khong su dung)
 echo.
+
+set DALAT_OPEN_BROWSER=1
 
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr /r /c:":3000 .*LISTENING" /c:":3001 .*LISTENING"') do (
   echo Canh bao: Port 3000 hoac 3001 dang duoc su dung boi PID %%a.
