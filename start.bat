@@ -13,13 +13,25 @@ if exist "backend\data\generated-caption-lists.json" (
   echo ^> Da backup list AI vao generated-caption-lists.backup.json
 )
 
+if not exist "backend\data\sheet-drive-images.json" (
+  if exist "backend\data\sheet-drive-images.seed.json" (
+    copy /y "backend\data\sheet-drive-images.seed.json" "backend\data\sheet-drive-images.json" >nul
+    echo ^> Da tao cache anh Drive tu seed (anh hien ngay, khong can doi sync).
+  ) else (
+    echo Canh bao: Chua co cache anh Drive. Anh co the khong hien cho den khi sync xong.
+    echo Neu may khac bi loi anh, chay update.bat hoac copy sheet-drive-images.json tu may chinh.
+  )
+)
+
 echo Dang khoi dong Backend va Frontend cung luc...
-echo Sau khi san sang, Chrome se tu mo tool (mac dinh http://localhost:3001)
-echo Neu port bi doi, xem dong [dev] frontend trong cua so nay.
+echo Sau khi san sang, trinh duyet se tu mo http://localhost:3001
+echo Neu port bi doi, script se thu port 3001-3005.
 echo (Ban co the nhan Ctrl+C de tat tool khi khong su dung)
 echo.
 
-set DALAT_OPEN_BROWSER=1
+rem Mo trinh duyet bang PowerShell (on dinh hon tren may moi / khong co Chrome)
+set DALAT_OPEN_BROWSER=0
+start "" /b powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\wait-and-open-browser.ps1"
 
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr /r /c:":3000 .*LISTENING" /c:":3001 .*LISTENING"') do (
   echo Canh bao: Port 3000 hoac 3001 dang duoc su dung boi PID %%a.

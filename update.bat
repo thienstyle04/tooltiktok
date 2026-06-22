@@ -6,8 +6,8 @@ echo ==============================================================
 echo CAP NHAT TOOL TU GITHUB (branch fearch)
 echo ==============================================================
 echo.
-echo Git se chi cap nhat code. Du lieu runtime (sheet-drive, used-inventory)
-echo moi may tu tao khi chay tool — khong bi xung dot khi pull nua.
+echo Git se chi cap nhat code. used-inventory moi may tu tao khi chay tool.
+echo Cache anh Drive: neu chua co tren may, update.bat tu copy tu file seed.
 echo.
 
 git fetch origin fearch
@@ -25,6 +25,13 @@ if errorlevel 1 (
   echo [LOI] Pull that bai. Chay "git status" va gui anh man hinh neu can ho tro.
   pause
   exit /b 1
+)
+
+if not exist "backend\data\sheet-drive-images.json" (
+  if exist "backend\data\sheet-drive-images.seed.json" (
+    copy /y "backend\data\sheet-drive-images.seed.json" "backend\data\sheet-drive-images.json" >nul
+    echo ^> Da tao cache anh Drive tu seed.
+  )
 )
 
 echo.
