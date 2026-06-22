@@ -9,7 +9,8 @@ import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 import { SectionKey } from '../../../common/interfaces/guide.types';
 
 export const SHEET_DRIVE_MANIFEST_FILE = 'sheet-drive-images.json';
-const DRIVE_MANIFEST_CONCURRENCY = 6;
+export const SHEET_DRIVE_SEED_FILE = 'sheet-drive-images.seed.json';
+const DRIVE_MANIFEST_CONCURRENCY = 4;
 
 export interface SheetDriveImageManifestEntry {
   key: string;
@@ -120,26 +121,65 @@ export function emptySheetDriveManifest(): SheetDriveImageManifest {
   };
 }
 
-export function readSheetDriveManifest(dataRoot: string, workbookName?: string): SheetDriveImageManifest {
-  const manifestPath = getSheetDriveManifestPath(dataRoot);
-  if (!fs.existsSync(manifestPath)) return emptySheetDriveManifest();
+function parseSheetDriveManifest(raw: string, fallbackWorkbookName = PREFERRED_WORKBOOK_NAME): SheetDriveImageManifest {
+  const parsed = JSON.parse(raw) as Partial<SheetDriveImageManifest>;
+  return {
+    version: Number(parsed.version ?? 1),
+    generatedAt: String(parsed.generatedAt ?? new Date(0).toISOString()),
+    workbookName: String(parsed.workbookName ?? fallbackWorkbookName),
+    workbookMtimeMs: Number(parsed.workbookMtimeMs ?? 0),
+    items: parsed.items && typeof parsed.items === 'object' ? parsed.items as Record<string, SheetDriveImageManifestEntry> : {},
+    coverImages: Array.isArray(parsed.coverImages) ? parsed.coverImages as DriveFolderEntry[] : [],
+  };
+}
+
+function readManifestFile(filePath: string, fallbackWorkbookName = PREFERRED_WORKBOOK_NAME): SheetDriveImageManifest {
+  if (!fs.existsSync(filePath)) return emptySheetDriveManifest();
 
   try {
-    const raw = fs.readFileSync(manifestPath, 'utf-8');
-    const parsed = JSON.parse(raw) as Partial<SheetDriveImageManifest>;
-    const manifest: SheetDriveImageManifest = {
-      version: Number(parsed.version ?? 1),
-      generatedAt: String(parsed.generatedAt ?? new Date(0).toISOString()),
-      workbookName: String(parsed.workbookName ?? PREFERRED_WORKBOOK_NAME),
-      workbookMtimeMs: Number(parsed.workbookMtimeMs ?? 0),
-      items: parsed.items && typeof parsed.items === 'object' ? parsed.items as Record<string, SheetDriveImageManifestEntry> : {},
-      coverImages: Array.isArray(parsed.coverImages) ? parsed.coverImages as DriveFolderEntry[] : [],
-    };
-
-    return manifest;
+    return parseSheetDriveManifest(fs.readFileSync(filePath, 'utf-8'), fallbackWorkbookName);
   } catch {
     return emptySheetDriveManifest();
   }
+}
+
+export function readSheetDriveSeedManifest(dataRoot: string, workbookName?: string): SheetDriveImageManifest {
+  return readManifestFile(path.join(dataRoot, SHEET_DRIVE_SEED_FILE), workbookName);
+}
+
+export function readSheetDriveManifest(dataRoot: string, workbookName?: string): SheetDriveImageManifest {
+  return readManifestFile(getSheetDriveManifestPath(dataRoot), workbookName);
+}
+
+export function mergeSheetDriveManifests(
+  primary: SheetDriveImageManifest,
+  fallback: SheetDriveImageManifest,
+): SheetDriveImageManifest {
+  const coverById = new Map<string, DriveFolderEntry>();
+  for (const entry of fallback.coverImages) {
+    if (entry.fileId) coverById.set(entry.fileId, entry);
+  }
+  for (const entry of primary.coverImages) {
+    if (entry.fileId) coverById.set(entry.fileId, entry);
+  }
+
+  return {
+    version: Math.max(primary.version, fallback.version),
+    generatedAt: primary.generatedAt > fallback.generatedAt ? primary.generatedAt : fallback.generatedAt,
+    workbookName: primary.workbookName || fallback.workbookName,
+    workbookMtimeMs: Math.max(primary.workbookMtimeMs, fallback.workbookMtimeMs),
+    items: { ...fallback.items, ...primary.items },
+    coverImages: [...coverById.values()],
+  };
+}
+
+export function resolveSheetDriveManifestWithSeedFallback(
+  dataRoot: string,
+  workbookName = PREFERRED_WORKBOOK_NAME,
+): SheetDriveImageManifest {
+  const local = readSheetDriveManifest(dataRoot, workbookName);
+  const seed = readSheetDriveSeedManifest(dataRoot, workbookName);
+  return mergeSheetDriveManifests(local, seed);
 }
 
 export async function buildSheetDriveManifest(
@@ -217,13 +257,21 @@ export async function buildSheetDriveManifest(
 
   await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY);
 
+  const mergedCoverImages = new Map<string, DriveFolderEntry>();
+  for (const entry of previousManifest.coverImages) {
+    if (entry.fileId) mergedCoverImages.set(entry.fileId, entry);
+  }
+  for (const entry of coverImages.values()) {
+    if (entry.fileId) mergedCoverImages.set(entry.fileId, entry);
+  }
+
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
     workbookName: source.workbookName,
     workbookMtimeMs: source.fetchedAt,
     items,
-    coverImages: [...coverImages.values()],
+    coverImages: [...mergedCoverImages.values()],
   };
 }
 

@@ -13,17 +13,9 @@ if exist "backend\data\generated-caption-lists.json" (
   echo ^> Da backup list AI vao generated-caption-lists.backup.json
 )
 
-if not exist "backend\data\sheet-drive-images.json" (
-  if exist "backend\data\sheet-drive-images.seed.json" (
-    copy /y "backend\data\sheet-drive-images.seed.json" "backend\data\sheet-drive-images.json" >nul
-    echo ^> Da tao cache anh Drive tu seed (anh hien ngay, khong can doi sync).
-  ) else (
-    echo Canh bao: Chua co cache anh Drive. Anh co the khong hien cho den khi sync xong.
-    echo Neu may khac bi loi anh, chay update.bat hoac copy sheet-drive-images.json tu may chinh.
-  )
-)
-
 echo Dang khoi dong Backend va Frontend cung luc...
+echo Lan dau tren may moi: tool tu tai Google Sheet + dong bo anh Drive.
+echo Co the mat 3-8 phut; xem log [sync] trong cua so nay.
 echo Sau khi san sang, trinh duyet se tu mo http://localhost:3001
 echo Neu port bi doi, script se thu port 3001-3005.
 echo (Ban co the nhan Ctrl+C de tat tool khi khong su dung)

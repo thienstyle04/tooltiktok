@@ -52,14 +52,9 @@ if %ERRORLEVEL% neq 0 (
 )
 echo.
 
-echo [5/5] Kiem tra cache anh Drive...
+echo [5/5] Kiem tra du lieu khoi tao...
 if not exist "backend\data\sheet-drive-images.json" (
-  if exist "backend\data\sheet-drive-images.seed.json" (
-    copy /y "backend\data\sheet-drive-images.seed.json" "backend\data\sheet-drive-images.json" >nul
-    echo ^> Da tao cache anh Drive tu file seed (giup hien anh ngay tren may moi).
-  ) else (
-    echo ^> Chua co cache anh. Lan dau chay start.bat can doi sync Drive 5-10 phut.
-  )
+  echo ^> May moi se tu tai Google Sheet + anh Drive khi chay start.bat lan dau.
 ) else (
   echo ^> Da co cache anh Drive tren may nay.
 )

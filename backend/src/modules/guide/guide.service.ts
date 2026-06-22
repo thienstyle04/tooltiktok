@@ -54,7 +54,7 @@ import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { DriveFileAsset, fetchDriveFileAsset, getDriveImageProxyUrl } from './sync/drive-images';
-import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
+import { buildSheetDriveManifest, readSheetDriveManifest, resolveSheetDriveManifestWithSeedFallback, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
 
@@ -1626,7 +1626,7 @@ export class GuideService {
   }
 
   private loadSheetDriveManifest(workbookName: string): SheetDriveImageManifest {
-    return readSheetDriveManifest(this.dataRoot, workbookName);
+    return resolveSheetDriveManifestWithSeedFallback(this.dataRoot, workbookName);
   }
 
   private loadCoverImageUrls(sheetDriveManifest: SheetDriveImageManifest): string[] {
@@ -2590,6 +2590,9 @@ export class GuideService {
       try {
         const result = await fetchWorkbookFromSheet();
         this.workbookSource = result;
+        if (Object.keys(readSheetDriveManifest(this.dataRoot, result.workbookName).items).length === 0) {
+          console.log('[sync] May moi: dang dong bo anh Drive nen (3-8 phut). Anh tam dung tu seed trong repo.');
+        }
         void this.refreshSheetDriveManifest(result);
         this.lastSyncTime = Date.now();
         this.invalidateDatasetCache();

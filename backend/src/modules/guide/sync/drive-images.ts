@@ -2,7 +2,7 @@ const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FETCH_TIMEOUT_MS = 15_000;
-const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 750, 1_500];
+const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 750, 1_500, 3_000];
 const DRIVE_BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
@@ -240,6 +240,73 @@ async function fetchTextWithRetry(url: string): Promise<string> {
   throw lastError instanceof Error ? lastError : new Error('Drive fetch failed.');
 }
 
+function parseDriveFolderEntriesFromHtml(html: string): DriveFolderEntry[] {
+  const seenFileIds = new Set<string>();
+  const entries: DriveFolderEntry[] = [];
+
+  const addEntry = (fileId: string, fileName: string) => {
+    if (!fileId || seenFileIds.has(fileId)) return;
+    seenFileIds.add(fileId);
+    entries.push({
+      fileId,
+      fileName: String(fileName ?? '').trim(),
+      viewUrl: getDriveFileViewUrl(fileId),
+    });
+  };
+
+  const anchorMatches = Array.from(html.matchAll(/<a [^>]*href="([^"]*\/file\/d\/[a-zA-Z0-9_-]+\/view[^"]*)"[^>]*>(.*?)<\/a>/gs));
+  for (const match of anchorMatches) {
+    const viewUrl = decodeHtmlEntities(match[1]);
+    addEntry(extractDriveFileId(viewUrl), stripHtml(match[2]));
+  }
+
+  const jsonNameMatches = Array.from(html.matchAll(/\[\s*"([a-zA-Z0-9_-]{10,})"\s*,\s*"([^"]+\.(?:jpg|jpeg|png|webp|gif|jfif|bmp))"/gi));
+  for (const match of jsonNameMatches) {
+    addEntry(match[1], match[2]);
+  }
+
+  const bareIdMatches = Array.from(html.matchAll(/\/file\/d\/([a-zA-Z0-9_-]{10,})/g));
+  for (const match of bareIdMatches) {
+    addEntry(match[1], '');
+  }
+
+  return entries;
+}
+
+function driveFolderListUrls(folderId: string): string[] {
+  const encodedFolderId = encodeURIComponent(folderId);
+  return [
+    `https://drive.google.com/embeddedfolderview?id=${encodedFolderId}#list`,
+    `https://drive.google.com/embeddedfolderview?id=${encodedFolderId}&authuser=0#list`,
+    `https://drive.google.com/drive/folders/${encodedFolderId}`,
+    `https://drive.google.com/drive/u/0/folders/${encodedFolderId}`,
+  ];
+}
+
+async function listDriveFolderEntriesViaApi(folderId: string, apiKey: string): Promise<DriveFolderEntry[]> {
+  const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+  const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,mimeType)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(apiKey)}`;
+  const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
+  const response = await fetch(url, {
+    headers: createDriveHeaders(),
+    signal: timeout.signal,
+  }).finally(timeout.cancel);
+
+  if (!response.ok) {
+    throw new Error(`Drive API HTTP ${response.status}`);
+  }
+
+  const payload = await response.json() as { files?: Array<{ id?: string; name?: string; mimeType?: string }> };
+  return (payload.files ?? [])
+    .filter((file) => String(file.mimeType ?? '').startsWith('image/') || looksLikeImageName(String(file.name ?? '')))
+    .map((file) => ({
+      fileId: String(file.id ?? ''),
+      fileName: String(file.name ?? ''),
+      viewUrl: getDriveFileViewUrl(String(file.id ?? '')),
+    }))
+    .filter((entry) => entry.fileId);
+}
+
 async function fetchDriveResponseWithRetry(url: string): Promise<Response | null> {
   for (const delayMs of DRIVE_FETCH_RETRY_DELAYS_MS) {
     if (delayMs > 0) await wait(delayMs);
@@ -269,25 +336,41 @@ export async function listDriveFolderEntries(folderId: string): Promise<DriveFol
     return cached.entries;
   }
 
-  const html = await fetchTextWithRetry(`https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folderId)}#list`);
-  const matches = Array.from(html.matchAll(/<a [^>]*href="([^"]*\/file\/d\/[a-zA-Z0-9_-]+\/view[^"]*)"[^>]*>(.*?)<\/a>/gs));
-  const seenFileIds = new Set<string>();
-  const entries = matches
-    .map((match) => {
-      const viewUrl = decodeHtmlEntities(match[1]);
-      const fileId = extractDriveFileId(viewUrl);
-      const fileName = stripHtml(match[2]);
-      if (!fileId || seenFileIds.has(fileId)) return null;
-      seenFileIds.add(fileId);
-      return { fileId, fileName, viewUrl };
-    })
-    .filter((entry): entry is DriveFolderEntry => Boolean(entry));
+  let lastError: unknown = null;
 
-  folderEntriesCache.set(folderId, {
-    expiresAt: now + DRIVE_FOLDER_CACHE_TTL_MS,
-    entries,
-  });
-  return entries;
+  for (const url of driveFolderListUrls(folderId)) {
+    try {
+      const html = await fetchTextWithRetry(url);
+      const entries = parseDriveFolderEntriesFromHtml(html);
+      if (entries.length > 0) {
+        folderEntriesCache.set(folderId, {
+          expiresAt: now + DRIVE_FOLDER_CACHE_TTL_MS,
+          entries,
+        });
+        return entries;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const apiKey = String(process.env.GOOGLE_DRIVE_API_KEY ?? '').trim();
+  if (apiKey) {
+    try {
+      const entries = await listDriveFolderEntriesViaApi(folderId, apiKey);
+      if (entries.length > 0) {
+        folderEntriesCache.set(folderId, {
+          expiresAt: now + DRIVE_FOLDER_CACHE_TTL_MS,
+          entries,
+        });
+        return entries;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Drive folder listing failed.');
 }
 
 export async function resolveDriveLinkToEntry(link: string, placeName: string, address: string): Promise<DriveFolderEntry | null> {

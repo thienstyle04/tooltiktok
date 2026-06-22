@@ -1,5 +1,5 @@
 import { resolveBackendDataDir, resolveBackendRoot } from '../../../config';
-import { buildSheetDriveManifest, readSheetDriveManifest, writeSheetDriveManifest } from './sheet-drive-manifest';
+import { buildSheetDriveManifest, resolveSheetDriveManifestWithSeedFallback, writeSheetDriveManifest } from './sheet-drive-manifest';
 import { fetchWorkbookFromSheet } from './workbook-source';
 
 async function main(): Promise<void> {
@@ -7,7 +7,7 @@ async function main(): Promise<void> {
   const dataRoot = resolveBackendDataDir(toolRoot);
 
   const source = await fetchWorkbookFromSheet();
-  const previousManifest = readSheetDriveManifest(dataRoot, source.workbookName);
+  const previousManifest = resolveSheetDriveManifestWithSeedFallback(dataRoot, source.workbookName);
   const manifest = await buildSheetDriveManifest(source, previousManifest);
   const manifestPath = writeSheetDriveManifest(dataRoot, manifest);
 
