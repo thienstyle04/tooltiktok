@@ -30,6 +30,8 @@ export interface GuideItem {
   isPartner: boolean;
   /** Giá đầu người — cột sheet `gia_dau_nguoi`, dùng cho bảng chi phí 72H. */
   headPrice: string;
+  /** Sheet có cột giá đầu người (kể cả khi ô trống). */
+  hasHeadPriceColumn: boolean;
   price: string;
   phone: string;
   imageUrl: string;

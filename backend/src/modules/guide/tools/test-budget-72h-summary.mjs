@@ -14,7 +14,7 @@ const cssPath = join(rootDir, 'frontend/app/styles/grid-templates.css');
 
 const API = process.env.TEST_API_URL || 'http://127.0.0.1:3000/api/guide-data?refresh=1';
 const DECK_ID = 'budget-72h-summary';
-const EXPECTED_VERSION = 3;
+const EXPECTED_VERSION = 5;
 
 let pass = 0;
 let fail = 0;
@@ -131,6 +131,17 @@ function testTableData(tablePage) {
   const withHours = schedule.filter((item) => /khung giờ|open:|hoạt động:/i.test(String(item.metaSecondary || '')));
   if (withHours.length === 0) ok('cột chi phí không có Khung giờ', 'sạch');
   else bad('cột chi phí không có Khung giờ', `${withHours.length} dòng: ${withHours[0]?.name}`);
+
+  const syntheticFallbacks = schedule.filter((item) => /^~(?:30|35|40|50|60|70|80|120)k$/i.test(String(item.metaSecondary || '').trim()));
+  if (syntheticFallbacks.length === 0) ok('cột chi phí không dùng fallback ~30k-120k', 'ưu tiên gia_dau_nguoi → Free (không fallback gia khi có cột)');
+  else bad('cột chi phí không dùng fallback ~30k-120k', `${syntheticFallbacks.length} dòng: ${syntheticFallbacks[0]?.name} = ${syntheticFallbacks[0]?.metaSecondary}`);
+
+  const giaRangeFallbacks = schedule.filter((item) => /~\s*[\d.,]+\s*k\s*-\s*~?\s*[\d.,]+\s*k/i.test(String(item.metaSecondary || '').trim()));
+  if (giaRangeFallbacks.length === 0) ok('cột chi phí không dùng dải giá cột gia (~45k-65k)', 'chỉ gia_dau_nguoi hoặc Free');
+  else bad('cột chi phí không dùng dải giá cột gia (~45k-65k)', `${giaRangeFallbacks.length} dòng: ${giaRangeFallbacks[0]?.name} = ${giaRangeFallbacks[0]?.metaSecondary}`);
+
+  const freeRows = schedule.filter((item) => /^free$/i.test(String(item.metaSecondary || '').trim()));
+  if (freeRows.length > 0) ok('có dòng Free khi thiếu giá', `${freeRows.length} dòng`);
 
   const categories = summary.filter((item) => !/tổng cộng/i.test(String(item.name || '')));
   const totalItem = summary.find((item) => /tổng cộng/i.test(String(item.name || '')));

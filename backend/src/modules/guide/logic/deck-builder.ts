@@ -41,7 +41,7 @@ export const GRID_8_TEMPLATE_VERSION = 15;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
 export const BUDGET_3N2D_TEMPLATE_VERSION = 5;
 export const BUDGET_3N2D_STORY_TEMPLATE_VERSION = 4;
-export const BUDGET_72H_SUMMARY_TEMPLATE_VERSION = 3;
+export const BUDGET_72H_SUMMARY_TEMPLATE_VERSION = 5;
 const budget72StoryText = {
   coverTitle: '\u002272H\u0022 \u1ede \u0110\u00c0 L\u1ea0T V\u1edaI 3TR',
   coverSubtitle: 'L\u1ecbch tr\u00ecnh 3 ng\u00e0y 2 \u0111\u00eam g\u1ecdn h\u01a1n: xem theo t\u1eebng ng\u00e0y, c\u00f3 chi ph\u00ed v\u00e0 c\u00e1c \u0111i\u1ec3m n\u00ean l\u01b0u.',
@@ -1690,13 +1690,39 @@ function formatBudgetVndRange(range: BudgetVndRange): string {
   return `${formatBudgetVndSingle(range.min)} - ${formatBudgetVndSingle(range.max)}`;
 }
 
-function budgetTableCost(item: GuideItem, fallbackPrice?: string): string {
-  const headPrice = budgetTableCostOnly(String(item.headPrice || ''));
-  if (headPrice && !/^0\s*đ?$/i.test(headPrice)) return headPrice;
+type BudgetTableCostMode = 'default' | 'head-price-then-free';
+
+function formatBudgetTableHeadPrice(raw: string): string {
+  const cleaned = budgetTableCostOnly(raw);
+  if (!cleaned || isFreePrice(cleaned) || /^0\s*đ?$/i.test(cleaned)) return '';
+  if (/(?:đ|vnd|vnđ)/i.test(cleaned)) return cleaned;
+  const digits = cleaned.replace(/[^\d.,]/g, '');
+  const vnd = parseBudgetVndNumber(digits);
+  if (vnd <= 0) return cleaned;
+  return `${vnd.toLocaleString('vi-VN')} đ`;
+}
+
+function budgetTableCost(
+  item: GuideItem,
+  fallbackPrice?: string,
+  mode: BudgetTableCostMode = 'default',
+): string {
+  const headPrice = formatBudgetTableHeadPrice(String(item.headPrice || ''));
+  const hasHeadPrice = Boolean(headPrice);
 
   const cleanPrice = budgetTableCostOnly(String(item.price || ''));
+  const hasPrice = Boolean(cleanPrice && !isFreePrice(cleanPrice) && !/^0\s*đ?$/i.test(cleanPrice));
+
+  if (mode === 'head-price-then-free') {
+    if (hasHeadPrice) return headPrice;
+    if (item.hasHeadPriceColumn) return 'Free';
+    if (hasPrice) return cleanPrice;
+    return 'Free';
+  }
+
+  if (hasHeadPrice) return headPrice;
   if (item.isPartner && cleanPrice) return cleanPrice;
-  if (cleanPrice && !isFreePrice(cleanPrice)) return cleanPrice;
+  if (hasPrice) return cleanPrice;
   return fallbackPrice || lowBudgetPriceForItem(item);
 }
 
@@ -1714,6 +1740,7 @@ function budgetSummaryItemsFromRows(
   pools: DeckBuildPools,
   seedPrefix: string,
   tableFallbackImage: string,
+  costMode: BudgetTableCostMode = 'default',
 ): PageItem[] {
   let foodRange: BudgetVndRange = { min: 0, max: 0 };
   let transportRange: BudgetVndRange = { min: 0, max: 0 };
@@ -1728,9 +1755,9 @@ function budgetSummaryItemsFromRows(
   });
 
   const stayItem = pools.stayItems[0];
-  const hotelRange = parseBudgetVndCost(stayItem ? budgetTableCost(stayItem, '~500k') : '~500k');
+  const hotelRange = parseBudgetVndCost(stayItem ? budgetTableCost(stayItem, '~500k', costMode) : '~500k');
   const bikeItem = pools.serviceItems.find((item) => /thue_xe|thue xe|xe_may|xe may/.test(normalizeText(`${item.type} ${item.name}`)));
-  const bikeRange = parseBudgetVndCost(bikeItem ? budgetTableCost(bikeItem, '~150k') : '~150k');
+  const bikeRange = parseBudgetVndCost(bikeItem ? budgetTableCost(bikeItem, '~150k', costMode) : '~150k');
   const hotelFormatted = formatBudgetVndRange(hotelRange) || '~500k';
   const bikeFormatted = formatBudgetVndRange(bikeRange) || '~150k';
   const foodFormatted = formatBudgetVndRange(foodRange) || '~0k';
@@ -1907,6 +1934,10 @@ function buildBudgetGalleryItems(
   return chosen.slice(0, count).map((item) => budgetGalleryPageItemWithResolver(item, labelForItem(item), resolveImage));
 }
 
+type Budget3N2DBuildOptions = {
+  costMode?: BudgetTableCostMode;
+};
+
 function buildBudget3N2DPages(
   pools: DeckBuildPools,
   imageUrls: string[],
@@ -1915,7 +1946,9 @@ function buildBudget3N2DPages(
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
   coverImageUrls: string[] = [],
+  options: Budget3N2DBuildOptions = {},
 ): DeckPage[] {
+  const costMode = options.costMode ?? 'default';
   const mappedImageUrls = collectMappedImageUrls(pools);
   const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:budget-3n2d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
@@ -1938,7 +1971,7 @@ function buildBudget3N2DPages(
       time,
       activity: budgetActivityName(prefix, item),
       address: item.address || 'Đang cập nhật',
-      cost: budgetTableCost(item, fallbackPrice),
+      cost: budgetTableCost(item, fallbackPrice, costMode),
       item,
       id: `${seed}-${item.id}`,
     });
@@ -1968,7 +2001,7 @@ function buildBudget3N2DPages(
   rows.push(createBudgetStaticRow('Ngày 03', '14:30', 'Check out, lên xe về lại SG', 'Bến xe liên tỉnh Đà Lạt', 'Đã tính vé xe', `${seedPrefix}-bus-out`));
 
   const tableFallbackImage = background(`${seedPrefix}-table-fallback`);
-  const summaryItems = budgetSummaryItemsFromRows(rows, pools, seedPrefix, tableFallbackImage);
+  const summaryItems = budgetSummaryItemsFromRows(rows, pools, seedPrefix, tableFallbackImage, costMode);
   const tableItems = withoutBudgetTableImages([
     ...rows.map((row) => budgetRowPageItem(row, imageResolver, tableFallbackImage)),
     ...summaryItems,
@@ -2036,6 +2069,7 @@ export function buildBudget72HSummaryPages(
     globalUsedItemIds,
     globalUsedImageUrls,
     coverImageUrls,
+    { costMode: 'head-price-then-free' },
   ).slice(0, 2);
 }
 

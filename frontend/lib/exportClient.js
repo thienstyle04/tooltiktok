@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
-import { formatListSetLabel, listIsMain, parseListSetIndex, sanitizeFilePart } from './utils';
+import { budget72HListHasLegacyScheduleCosts, formatListSetLabel, listIsMain, parseListSetIndex, resolveBudget72HExportList, sanitizeFilePart } from './utils';
 
 function coverImageUrlsForExport() {
   const cached = readCachedDataset();
@@ -1381,11 +1381,28 @@ function createFallbackPageBlob(pageNode, pixelRatio = 1, imageFormat = 'image/p
   });
 }
 
+function resolveExportList(deck, list, dataset = null) {
+  return resolveBudget72HExportList(deck, list, dataset);
+}
+
+function assertBudget72HExportReady(deck, list) {
+  if (deck?.id !== 'budget-72h-summary') return;
+  if (budget72HListHasLegacyScheduleCosts(list)) {
+    throw new Error('Bảng chi phí 72H đang dùng dữ liệu giá cũ (~30k / ~200k-600k). Bấm 「Làm mới」 rồi xuất lại.');
+  }
+}
+
 export async function exportSelectedPagePng(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { deck, list, selectedPageIndex, quality = 'optimized' } = context;
+  const { deck, list, selectedPageIndex, quality = 'optimized', dataset = null } = context;
   const qualityProfile = exportQualityProfile(quality);
   if (!deck || !list) return;
+
+  const exportList = resolveExportList(deck, list, dataset);
+  const page = exportList.pages?.[selectedPageIndex];
+  if (page?.layoutVariant === 'budget-3n2d-table') {
+    assertBudget72HExportReady(deck, exportList);
+  }
 
   cb.setBusy(true);
   cb.setStatus(`Đang xuất PNG cho trang ${selectedPageIndex + 1}/${list.pages.length}...`);
@@ -1394,13 +1411,12 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
 
   try {
     const visiblePageNode = findVisibleSelectedPageNode(list, selectedPageIndex);
-    const page = list.pages?.[selectedPageIndex];
     const preferFreshRender = page?.layoutVariant === 'budget-3n2d-table'
       || page?.layoutVariant === 'budget-3n2d'
       || page?.type === 'cover' && String(page?.layoutVariant || '').startsWith('budget');
     const pageNodes = (!preferFreshRender && visiblePageNode)
       ? [cloneVisiblePageForExport(visiblePageNode)]
-      : renderPagesForExport(list, { pageIndex: selectedPageIndex });
+      : renderPagesForExport(exportList, { pageIndex: selectedPageIndex });
     await waitForExportLayout();
     cb.updateProgress(18, `Đang dựng layout trang ${selectedPageIndex + 1}/${list.pages.length}...`);
     const pageNode = pageNodes.find((node) => Number(node.dataset.pageIndex) === selectedPageIndex);
@@ -1511,9 +1527,12 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
 
 export async function exportActiveList(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { deck, list, quality = 'optimized' } = context;
+  const { deck, list, quality = 'optimized', dataset = null } = context;
   const qualityProfile = exportQualityProfile(quality);
   if (!deck || !list) return;
+
+  const exportList = resolveExportList(deck, list, dataset);
+  assertBudget72HExportReady(deck, exportList);
 
   cb.setBusy(true);
   cb.setStatus(`Đang chuẩn bị ZIP cho list "${list.title}"...`);
@@ -1521,12 +1540,12 @@ export async function exportActiveList(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
-    const pageNodes = renderPagesForExport(list);
+    const pageNodes = renderPagesForExport(exportList);
     await waitForExportLayout();
     cb.updateProgress(8, `Đang dựng layout ${pageNodes.length} trang...`);
     let renderedPages = 0;
     const totalPages = Math.max(pageNodes.length, 1);
-    const blob = await generateZipForList(list, null, {
+    const blob = await generateZipForList(exportList, null, {
       pageNodes,
       deckId: deck.id,
       pixelRatio: qualityProfile.pixelRatio,
@@ -1590,7 +1609,12 @@ export async function exportBatch(context, callbacks = {}) {
     return { success: false, exportedLists: [] };
   }
 
-  const orderedLists = orderListsForBatchExport(allLists, dataset);
+  const orderedLists = orderListsForBatchExport(allLists, dataset).map((item) => ({
+    ...item,
+    list: resolveExportList(item.deck, item.list, dataset),
+  }));
+
+  orderedLists.forEach(({ deck, list }) => assertBudget72HExportReady(deck, list));
 
   cb.setBusy(true);
   cb.setStatus(`Đang chuẩn bị xuất ${orderedLists.length} list (${qualityProfile.label})...`);
