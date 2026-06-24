@@ -1,6 +1,6 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
-export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v76';
-export const STUDIO_CATALOG_REVISION = '2026-06-19-pov-3-v2-v11';
+export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v79';
+export const STUDIO_CATALOG_REVISION = '2026-06-24-budget-72h-export-sync';
 export const STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
 
 /** Deck đã gỡ khỏi app — lọc khỏi cache/dataset cũ. */
@@ -12,6 +12,52 @@ export const RETIRED_DECK_IDS = new Set([
   'spotlight-partner-v2',
   'pov-maikem',
 ]);
+
+export function isLegacyBudget72HScheduleCost(cost) {
+  const value = String(cost || '').trim();
+  if (/khứ hồi|đã tính/i.test(value)) return false;
+  if (!value) return true;
+  if (/^free$/i.test(value)) return false;
+  if (/[\d.,]+\s*(?:đ|vnd|vnđ)\b/i.test(value)) return false;
+  if (/~/.test(value) && /\bk\b/i.test(value)) return true;
+  if (/giá:/i.test(value)) return true;
+  if (/khung giờ:/i.test(value)) return true;
+  return false;
+}
+
+export function budget72HListHasLegacyScheduleCosts(list) {
+  const tablePage = (list?.pages || []).find((page) => page.layoutVariant === 'budget-3n2d-table');
+  if (!tablePage) return true;
+  const scheduleRows = (tablePage.items || []).filter((item) => !String(item.label || '').startsWith('Tổng|'));
+  return scheduleRows.some((item) => isLegacyBudget72HScheduleCost(item.metaSecondary));
+}
+
+export function resolveBudget72HExportList(deck, list, dataset = null) {
+  if (!deck || !list || deck.id !== 'budget-72h-summary') return list;
+  const deckEntry = dataset?.decks?.find((entry) => entry.id === deck.id) || deck;
+  const mainList = (deckEntry.lists || []).find((entry) => listIsMain(entry));
+  if (!mainList || mainList.id === list.id) return list;
+
+  const mainTable = (mainList.pages || []).find((page) => page.layoutVariant === 'budget-3n2d-table');
+  if (!mainTable) return list;
+
+  return {
+    ...list,
+    templateVersion: mainList.templateVersion ?? list.templateVersion,
+    pages: (list.pages || []).map((page) => (
+      page.layoutVariant === 'budget-3n2d-table'
+        ? {
+          ...page,
+          chipText: mainTable.chipText ?? page.chipText,
+          chipTone: mainTable.chipTone ?? page.chipTone,
+          title: mainTable.title ?? page.title,
+          subtitle: mainTable.subtitle ?? page.subtitle,
+          items: mainTable.items,
+        }
+        : page
+    )),
+  };
+}
 
 export function sanitizeDataset(dataset) {
   if (!dataset?.decks?.length) return dataset;

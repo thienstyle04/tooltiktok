@@ -772,9 +772,50 @@ export class GuideService {
       const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => this.sanitizeGeneratedListText(list));
       const displayLists = generatedLists.length === 0
         ? baseLists
-        : [...baseLists, ...this.cloneJson(generatedLists).map((list) => this.sanitizeGeneratedListForDisplay(list, coverImageUrls, usedCoverUrls))];
+        : [
+          ...baseLists,
+          ...this.cloneJson(generatedLists).map((list) => {
+            const synced = deck.id === 'budget-72h-summary'
+              ? this.syncBudget72HGeneratedList(list, baseLists)
+              : list;
+            return this.sanitizeGeneratedListForDisplay(synced, coverImageUrls, usedCoverUrls);
+          }),
+        ];
       return { ...deck, lists: this.applyRecentImageReuseGuard(displayLists) };
     });
+  }
+
+  private budget72HMainList(lists: GuideDeckList[]): GuideDeckList | undefined {
+    return lists.find((list) => /-main$/i.test(String(list.id || '')));
+  }
+
+  private syncBudget72HTablePagesFromMain(pages: DeckPage[], mainList?: GuideDeckList): DeckPage[] {
+    const mainTable = mainList?.pages.find(
+      (page) => page.type === 'list' && page.layoutVariant === 'budget-3n2d-table',
+    ) as ListPage | undefined;
+    if (!mainTable) return pages;
+    return pages.map((page) => (
+      page.type === 'list' && page.layoutVariant === 'budget-3n2d-table'
+        ? {
+          ...page,
+          chipText: mainTable.chipText,
+          chipTone: mainTable.chipTone,
+          title: mainTable.title,
+          subtitle: mainTable.subtitle,
+          items: mainTable.items,
+        }
+        : page
+    ));
+  }
+
+  private syncBudget72HGeneratedList(list: GuideDeckList, baseLists: GuideDeckList[]): GuideDeckList {
+    const mainList = this.budget72HMainList(baseLists);
+    if (!mainList || mainList.id === list.id) return list;
+    return {
+      ...list,
+      templateVersion: mainList.templateVersion ?? list.templateVersion,
+      pages: this.syncBudget72HTablePagesFromMain(list.pages, mainList),
+    };
   }
 
   private applyRecentImageReuseGuard(lists: GuideDeckList[]): GuideDeckList[] {
@@ -1348,7 +1389,13 @@ export class GuideService {
         const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story' || deckId === 'budget-72h-summary'
           ? this.budget3N2DCoverCaption(safeCaption, this.toneForGeneratedList(list, listIndex), refreshSeed, this.generatedListOrdinal(list, listIndex))
           : safeCaption;
-        const regeneratedPages = applyCaptionToPages(basePages, finalCaption);
+        let regeneratedPages = applyCaptionToPages(basePages, finalCaption);
+        if (deckId === 'budget-72h-summary') {
+          regeneratedPages = this.syncBudget72HTablePagesFromMain(
+            regeneratedPages,
+            this.budget72HMainList(baseDeck?.lists ?? []),
+          );
+        }
         this.markUsedInDeck(regeneratedPages, deckUsage);
         this.markUsedInDeck(regeneratedPages, renderUsage);
         if (
@@ -1503,6 +1550,18 @@ export class GuideService {
             items: page.items.map((pageItem) => {
               const sourceItem = findSourceItem(pageItem);
               if (!sourceItem) return pageItem;
+              if (page.layoutVariant === 'budget-3n2d-table') {
+                return {
+                  ...pageItem,
+                  id: sourceItem.id,
+                  sourceKey: itemUsageKey(sourceItem),
+                  sourceSectionKey: sourceItem.sectionKey,
+                  name: this.refreshedPageItemName(pageItem, sourceItem.name),
+                  rawName: this.normalizeDisplayName(sourceItem.name),
+                  metaPrimary: pageItem.metaPrimary || sourceItem.address || 'Đang cập nhật',
+                  isPartner: sourceItem.isPartner,
+                };
+              }
 
               const [metaPrimary, metaSecondary] = page.layoutVariant === 'budget-3n2d-gallery'
                 ? this.budgetGalleryItemMetaFromSource(sourceItem)
@@ -1696,7 +1755,10 @@ export class GuideService {
     const highlight = firstValue(row, 'mo_ta', 'mota', 'mo_ta_dia_diem', 'mon_an_noi_bat', 'mon_noi_bat', 'noi_bat');
     const partner = firstValue(row, 'doi_tac', 'doi_tac_cong_ty');
     const phone = firstValue(row, 'sdt');
-    const headPrice = firstValue(row, 'gia_dau_nguoi');
+    const headPrice = firstValue(row, 'gia_dau_nguoi', 'head_price', 'per_person_price');
+    const hasHeadPriceColumn = 'gia_dau_nguoi' in row
+      || 'head_price' in row
+      || 'per_person_price' in row;
     const price = firstValue(row, 'gia');
     const imageHint = firstValue(row, 'anh', 'hinh_anh', 'hinh', 'ten_anh', 'thu_muc_anh', 'folder_anh', 'link_anh', 'url', 'link');
     const mappingKey = itemMappingKey(sectionKey, rawName, address);
@@ -1762,6 +1824,7 @@ export class GuideService {
       partnerFlag: partner,
       isPartner: normalizeText(partner) === 'x',
       headPrice,
+      hasHeadPriceColumn,
       price, phone,
       imageUrl: resolvedImage.imageUrl,
       imageMapped: resolvedImage.imageMapped,

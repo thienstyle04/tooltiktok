@@ -11,7 +11,7 @@ import {
   writeCachedDataset,
 } from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
-import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, listIsMain, sanitizeDataset } from '../lib/utils';
+import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, budget72HListHasLegacyScheduleCosts, listIsMain, sanitizeDataset } from '../lib/utils';
 import { setSpotlightV2CoverImagePool } from '../lib/pageMarkup';
 import CaptionTools from './CaptionTools';
 import DataStatsPanel from './DataStatsPanel';
@@ -187,6 +187,20 @@ function needsPov3V2CatalogRefresh(dataset) {
   return (deck.lists || []).some((list) => isStalePov3V2List(list));
 }
 
+const BUDGET_72H_SUMMARY_MIN_TEMPLATE_VERSION = 5;
+
+function isStaleBudget72HSummaryList(list) {
+  if (!list) return true;
+  if (Number(list.templateVersion || 0) < BUDGET_72H_SUMMARY_MIN_TEMPLATE_VERSION) return true;
+  return budget72HListHasLegacyScheduleCosts(list);
+}
+
+function needsBudget72HSummaryCatalogRefresh(dataset) {
+  const deck = (dataset?.decks || []).find((item) => item.id === 'budget-72h-summary');
+  if (!deck) return true;
+  return (deck.lists || []).some((list) => isStaleBudget72HSummaryList(list));
+}
+
 function storedCatalogRevision() {
   if (typeof window === 'undefined') return '';
   try {
@@ -216,7 +230,8 @@ function needsTemplateCatalogRefresh(dataset) {
     || needsSpotlightCoverRefresh(dataset)
     || needsGrid6QuaytungCatalogRefresh(dataset)
     || needsGrid8QuaytungCatalogRefresh(dataset)
-    || needsPov3V2CatalogRefresh(dataset);
+    || needsPov3V2CatalogRefresh(dataset)
+    || needsBudget72HSummaryCatalogRefresh(dataset);
 }
 
 function listCountSignature(dataset) {
@@ -942,18 +957,20 @@ export default function DeckStudio({ initialDataset = null }) {
     await exportSelectedPagePng({
       deck: activeDeck,
       list: activeList,
+      dataset,
       selectedPageIndex,
       quality: exportQuality,
     }, exportCb);
-  }, [activeDeck, activeList, exportCb, exportQuality, selectedPageIndex]);
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, selectedPageIndex]);
 
   const handleExportList = useCallback(async () => {
     await exportActiveList({
       deck: activeDeck,
       list: activeList,
+      dataset,
       quality: exportQuality,
     }, exportCb);
-  }, [activeDeck, activeList, exportCb, exportQuality]);
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality]);
 
   const handleExportBatch = useCallback(async (options = {}) => {
     const shouldDelete = options.deleteAfterExport !== false;
@@ -986,6 +1003,7 @@ export default function DeckStudio({ initialDataset = null }) {
           exportSelectedPagePng({
             deck: activeDeck,
             list: activeList,
+            dataset,
             selectedPageIndex,
             quality: exportQuality,
           }, exportCb);
@@ -1025,6 +1043,7 @@ export default function DeckStudio({ initialDataset = null }) {
     activeList,
     busy,
     captionToolsVisible,
+    dataset,
     exportCb,
     exportQuality,
     pushSelectionSnapshot,
