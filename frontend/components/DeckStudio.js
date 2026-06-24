@@ -167,6 +167,19 @@ function needsGrid8QuaytungCatalogRefresh(dataset) {
   return cover?.layoutVariant !== 'grid-8-quaytung-cover';
 }
 
+const GRID_5_MIN_TEMPLATE_VERSION = 4;
+
+function needsGrid5CatalogRefresh(dataset) {
+  const deck = (dataset?.decks || []).find((item) => item.id === 'grid-5');
+  if (!deck) return true;
+  const main = (deck.lists || []).find((list) => listIsMain(list));
+  if (!main) return true;
+  if (Number(main.templateVersion || 0) < GRID_5_MIN_TEMPLATE_VERSION) return true;
+  if ((main.pages || []).length < 8) return true;
+  const cover = main.pages.find((page) => page.type === 'cover');
+  return cover?.layoutVariant !== 'grid-5';
+}
+
 const POV_3_V2_MIN_TEMPLATE_VERSION = 11;
 
 function isStalePov3V2List(list) {
@@ -230,6 +243,7 @@ function needsTemplateCatalogRefresh(dataset) {
     || needsSpotlightCoverRefresh(dataset)
     || needsGrid6QuaytungCatalogRefresh(dataset)
     || needsGrid8QuaytungCatalogRefresh(dataset)
+    || needsGrid5CatalogRefresh(dataset)
     || needsPov3V2CatalogRefresh(dataset)
     || needsBudget72HSummaryCatalogRefresh(dataset);
 }

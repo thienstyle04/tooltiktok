@@ -1,6 +1,6 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
 export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v79';
-export const STUDIO_CATALOG_REVISION = '2026-06-24-budget-72h-export-sync';
+export const STUDIO_CATALOG_REVISION = '2026-06-10-grid5-vn-font';
 export const STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
 
 /** Deck đã gỡ khỏi app — lọc khỏi cache/dataset cũ. */
