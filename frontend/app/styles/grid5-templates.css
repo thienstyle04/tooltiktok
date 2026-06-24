@@ -5,7 +5,9 @@
   --grid5-cream: #f3efe6;
   --grid5-brown: #6b3f2f;
   --grid5-script: "Caveat", cursive;
+  --grid5-display: "Quicksand", "Be Vietnam Pro", Arial, sans-serif;
   --grid5-meta-font: "Be Vietnam Pro", Arial, sans-serif;
+  font-family: var(--grid5-meta-font) !important;
 }
 
 .story-page.grid5-cover {
@@ -58,10 +60,11 @@
 
 .story-page.grid5-cover .grid5-cover-dalat {
   margin: 0;
-  font-family: var(--grid5-script) !important;
-  font-size: 2.35rem;
+  font-family: var(--grid5-display) !important;
+  font-size: 2.08rem;
   font-weight: 700;
-  line-height: 0.92;
+  line-height: 1.06;
+  letter-spacing: 0.02em;
   color: var(--grid5-yellow);
   text-shadow: 0 3px 14px rgba(0, 0, 0, 0.55);
 }
@@ -71,9 +74,10 @@
   flex: 1 1 8.5em;
   min-width: 0;
   font-family: var(--grid5-meta-font);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.28;
+  letter-spacing: 0.02em;
   color: #fff;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
@@ -81,9 +85,10 @@
 .story-page.grid5-cover .grid5-cover-bracket {
   margin: 10px 0 0;
   font-family: var(--grid5-meta-font);
-  font-size: 0.58rem;
+  font-size: 0.54rem;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.32;
+  letter-spacing: 0.015em;
   text-align: center;
   color: #fff;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
@@ -161,10 +166,11 @@
 }
 
 .story-page.grid5-page .grid5-title-text {
-  font-family: var(--grid5-script) !important;
-  font-size: 1.12rem;
+  font-family: var(--grid5-display) !important;
+  font-size: 0.98rem;
   font-weight: 700;
-  line-height: 1.08;
+  line-height: 1.24;
+  letter-spacing: 0.025em;
   text-align: center;
   color: var(--grid5-brown);
   text-wrap: balance;
@@ -197,10 +203,11 @@
 }
 
 .story-page.grid5-page .grid5-photo-name {
-  font-family: var(--grid5-script) !important;
-  font-size: 0.82rem;
+  font-family: var(--grid5-display) !important;
+  font-size: 0.74rem;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.22;
+  letter-spacing: 0.02em;
   color: var(--grid5-yellow);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   display: -webkit-box;
@@ -211,11 +218,12 @@
 }
 
 .story-page.grid5-page .grid5-photo-meta {
-  margin-top: 2px;
+  margin-top: 3px;
   font-family: var(--grid5-meta-font);
-  font-size: 0.5rem;
+  font-size: 0.47rem;
   font-weight: 600;
-  line-height: 1.12;
+  line-height: 1.24;
+  letter-spacing: 0.015em;
   color: #fff;
   display: -webkit-box;
   -webkit-line-clamp: 2;
