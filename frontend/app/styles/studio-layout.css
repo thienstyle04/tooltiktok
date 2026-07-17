@@ -218,3 +218,13 @@ body::before {
   line-height: 1.45;
 }
 
+.studio-boot-loading {
+  display: grid;
+  place-items: center;
+  grid-template-columns: 1fr;
+  background: #151715;
+  color: #9aa39a;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+

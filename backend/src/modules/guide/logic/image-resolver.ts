@@ -10,6 +10,7 @@ import {
   PageItem,
   SectionKey,
 } from '../../../common/interfaces/guide.types';
+import { filterKnownAccessibleDriveProxyUrls, isKnownInaccessibleDriveProxyUrl } from '../sync/drive-images';
 
 // ─── Pure utility helpers ─────────────────────────────────────────────────────
 
@@ -512,8 +513,10 @@ export function scoreImageLibraryMatch(
   let score = 0;
   if (entry.normalizedSubDir === normalizedName) score += 100;
   else if (entry.normalizedSubDir.includes(normalizedName) || normalizedName.includes(entry.normalizedSubDir)) score += 70;
-  for (const token of nameTokens) if (token.length >= 3 && entryTokens.has(token)) score += 18;
-  for (const token of addressTokens) if (token.length >= 3 && entryTokens.has(token)) score += 6;
+  // Bỏ qua từ khoá quá chung (vd. "dốc", "nhà", "quán"...) khi cộng điểm theo từng từ, tránh khớp nhầm
+  // địa điểm khác chỉ vì trùng 1-2 từ phổ biến (vd. "Dốc nhà làng" ↔ thư mục "Dốc nhà bò").
+  for (const token of nameTokens) if (token.length >= 3 && !isGenericToken(token) && entryTokens.has(token)) score += 18;
+  for (const token of addressTokens) if (token.length >= 3 && !isGenericToken(token) && entryTokens.has(token)) score += 6;
 
   const topDir = normalizeText(entry.topDir);
   const kind = topDirKind(entry.topDir);
@@ -684,9 +687,7 @@ export function createListImageResolver(
   const pickUnused = (candidates: string[]): string => {
     if (candidates.length === 0) return '';
     const fresh = candidates.find((e) => e && !localUsedUrls.has(e) && !softUsedUrls.has(e));
-    const previouslyUsed = candidates.find((e) => e && !localUsedUrls.has(e));
-    const picked = fresh || previouslyUsed || '';
-    return rememberPicked(picked);
+    return rememberPicked(fresh || '');
   };
 
   return (
@@ -699,16 +700,18 @@ export function createListImageResolver(
       const manualCandidates = preferImageUrlsForResolverOptions(
         preferredImageCandidates(
           item.name,
-          item.candidateImageUrls && item.candidateImageUrls.length > 0
-            ? item.candidateImageUrls
-            : (item.imageUrl ? [item.imageUrl] : []),
+          filterKnownAccessibleDriveProxyUrls(
+            item.candidateImageUrls && item.candidateImageUrls.length > 0
+              ? item.candidateImageUrls
+              : (item.imageUrl ? [item.imageUrl] : []),
+          ),
         ),
         libraryEntries,
         resolverOptions,
       ).sort(
         (a, b) => stableHash(`${seed}:${item.id}:manual:${a}`) - stableHash(`${seed}:${item.id}:manual:${b}`),
       );
-      const pickedManual = pickUnused(manualCandidates.filter((url) => url && !shouldAvoidImageForItem(item.name, url)));
+      const pickedManual = pickUnused(manualCandidates.filter((url) => url && !shouldAvoidImageForItem(item.name, url) && !isKnownInaccessibleDriveProxyUrl(url)));
       if (pickedManual) {
         return { ...common, imageUrl: pickedManual, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm từ sheet' };
       }
@@ -726,7 +729,8 @@ export function createListImageResolver(
       if (
         item.imageUrl &&
         !shouldAvoidImageForItem(item.name, item.imageUrl) &&
-        !localUsedUrls.has(item.imageUrl)
+        !localUsedUrls.has(item.imageUrl) &&
+        !isKnownInaccessibleDriveProxyUrl(item.imageUrl)
       ) {
         rememberPicked(item.imageUrl);
         return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm' };
@@ -803,12 +807,14 @@ export function createListImageResolver(
     if (resolverOptions.strictMapping) {
       const strictCandidates = preferredImageCandidates(
         item.name,
-        [
-          ...(item.candidateImageUrls || []),
-          item.imageUrl,
-        ].filter(Boolean),
-      );
-      const strictUrl = strictCandidates.find((url) => url && !shouldAvoidImageForItem(item.name, url)) || '';
+        filterKnownAccessibleDriveProxyUrls(
+          [
+            ...(item.candidateImageUrls || []),
+            item.imageUrl,
+          ].filter(Boolean),
+        ),
+      ).filter((url) => url && !shouldAvoidImageForItem(item.name, url) && !isKnownInaccessibleDriveProxyUrl(url));
+      const strictUrl = strictCandidates[0] || '';
       if (strictUrl) {
         rememberPicked(strictUrl);
         return {

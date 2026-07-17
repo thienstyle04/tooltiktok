@@ -70,7 +70,7 @@ const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
 });
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
 const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
-const SPOTLIGHT_PARTNER_CAPTION_HASHTAGS = ['#riviudalat', '#dalat', '#dalatreview', '#72hdalat', '#dulich31'];
+const SPOTLIGHT_PARTNER_CAPTION_HASHTAGS = ['#riviudalat', '#dalat', '#dalatreview', '#spotlightdalat', '#dichvudalat'];
 const BATCH_CACHE_TRIM_INTERVAL = 50;
 const EXPORT_QUALITY_PROFILES = Object.freeze({
   optimized: {
@@ -763,7 +763,10 @@ async function prepareImageTarget(target, options = {}) {
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
     const sources = candidateSourcesForTarget(target);
-    const fallbackSources = fallbackSourcesForTarget(target, options.fallbackContext, sources);
+    // Không fallback sang ảnh trang/ô khác — tránh menu quaytung xuất 4 ô cùng 1 ảnh cafe.
+    const fallbackSources = options.allowCrossImageFallback === true
+      ? fallbackSourcesForTarget(target, options.fallbackContext, sources)
+      : [];
     const { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);
     let selectedBlob = blob;
     let selectedBlobUrl = blobUrl;
@@ -804,12 +807,15 @@ async function prepareImageTarget(target, options = {}) {
 
   const { element, originalBackgroundImage, originalSrc } = target;
   const sources = candidateSourcesForTarget(target);
-  const fallbackSources = fallbackSourcesForTarget(target, options.fallbackContext, sources);
-  let { blob, blobUrl } = await getCachedImageBlobUrl(originalSrc, blobOptions);
+  const fallbackSources = options.allowCrossImageFallback === true
+    ? fallbackSourcesForTarget(target, options.fallbackContext, sources)
+    : [];
+  let { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);
   if (!blob || !blobUrl) {
     const fallbackResult = await firstAvailableImageBlobUrl(fallbackSources, blobOptions);
     blob = fallbackResult.blob;
     blobUrl = fallbackResult.blobUrl;
+    source = fallbackResult.source;
   }
   const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
   if (!preparedBlobUrl) {
@@ -1413,6 +1419,7 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
     const visiblePageNode = findVisibleSelectedPageNode(list, selectedPageIndex);
     const preferFreshRender = page?.layoutVariant === 'budget-3n2d-table'
       || page?.layoutVariant === 'budget-3n2d'
+      || page?.layoutVariant === 'grid-8-quaytung-menu'
       || page?.type === 'cover' && String(page?.layoutVariant || '').startsWith('budget');
     const pageNodes = (!preferFreshRender && visiblePageNode)
       ? [cloneVisiblePageForExport(visiblePageNode)]
@@ -1428,6 +1435,7 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
       maxImageDimension: qualityProfile.sourceImageMaxDimension,
       sourceImageFormat: qualityProfile.sourceImageFormat,
       sourceImageQuality: qualityProfile.sourceImageQuality,
+      uniqueObjectUrl: true,
     });
     let blob;
     try {
@@ -1487,6 +1495,7 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
       maxImageDimension: options.maxImageDimension,
       sourceImageFormat: options.sourceImageFormat,
       sourceImageQuality: options.sourceImageQuality,
+      uniqueObjectUrl: true,
     })))).flat();
     try {
       await Promise.all(chunk.map(async (pageNode, chunkIdx) => {

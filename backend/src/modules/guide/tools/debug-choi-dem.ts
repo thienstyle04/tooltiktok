@@ -1,9 +1,10 @@
 import * as XLSX from 'xlsx';
 import { fetchWorkbookFromSheet } from '../sync/workbook-source';
+import { getDestinationConfig } from '../sync/destination-config';
 import { firstValue, normalizeText } from '../logic/image-resolver';
 
 async function main() {
-  const src = await fetchWorkbookFromSheet();
+  const src = await fetchWorkbookFromSheet(getDestinationConfig('dalat'));
   console.log('All sheets:', src.workbook.SheetNames.map((n) => JSON.stringify(n)).join(', '));
 
   for (const sheetName of src.workbook.SheetNames) {

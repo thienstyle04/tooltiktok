@@ -22,7 +22,9 @@ const API = process.env.TEST_API_URL || 'http://127.0.0.1:3000/api/guide-data?re
 const DECK_SPECS = {
   'grid-8-quaytung': {
     label: 'Lưới 8 Quaytung',
-    expectedVersion: 3,
+    expectedVersion: 8,
+    expectedGridHooks: ['CAFE SÁNG', 'MẢNG XANH', 'CHƠI ĐÊM', 'CHỖ NGHỈ XINH', 'ĂN VẶT'],
+    forbiddenGridHooks: ['CHẤT LIỆU', 'CAFE ĐẸP'],
     expectedPages: 7,
     coverVariant: 'grid-8-quaytung-cover',
     listVariant: 'grid-8-quaytung',
@@ -38,7 +40,7 @@ const DECK_SPECS = {
   },
   'grid-6-quaytung': {
     label: 'Lưới 6 Quaytung',
-    expectedVersion: 5,
+    expectedVersion: 6,
     expectedPages: 8,
     coverVariant: 'grid-6-quaytung-cover',
     coverPageClass: 'grid6-quaytung-cover',
@@ -132,6 +134,38 @@ function testDeckApi(deckId, spec, deck) {
     else bad('không có trang menu', String(menu.layoutVariant));
   }
 
+  if (spec.expectedGridHooks) {
+    const hooks = listPages.map((page) => String(page.title || '').trim());
+    const hooksKey = hooks.join('|');
+    const expectedKey = spec.expectedGridHooks.join('|');
+    if (hooksKey === expectedKey) ok('chủ đề 5 trang lưới', hooks.join(' · '));
+    else bad('chủ đề 5 trang lưới', `expected ${expectedKey}, got ${hooksKey}`);
+    for (const forbidden of spec.forbiddenGridHooks || []) {
+      if (!hooks.some((hook) => hook.includes(forbidden))) ok(`không còn trang "${forbidden}"`, 'đúng');
+      else bad(`không còn trang "${forbidden}"`, 'vẫn còn trong list');
+    }
+  }
+
+  const normalizeName = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+  const allItemNames = pages
+    .filter((page) => page.type === 'list' && Array.isArray(page.items))
+    .flatMap((page) => page.items.map((item) => normalizeName(item.rawName || item.name)));
+  const duplicateNames = allItemNames.filter((name, index) => name && allItemNames.indexOf(name) !== index);
+  const uniqueDupes = [...new Set(duplicateNames)];
+  if (uniqueDupes.length === 0) ok('không lặp tên địa điểm', 'unique trong list');
+  else bad('không lặp tên địa điểm', uniqueDupes.join(', '));
+
+  const cafeHooks = listPages.filter((page) => /cafe/i.test(String(page.title || ''))).length;
+  if (deckId === 'grid-8-quaytung' && cafeHooks === 1) ok('số trang cafe', '1 trang (CAFE SÁNG)');
+  else if (deckId === 'grid-8-quaytung') bad('số trang cafe', `expected 1, got ${cafeHooks}`);
+
   for (const page of listPages) {
     const chip = page.chipText || page.title || '?';
     const items = Array.isArray(page.items) ? page.items : [];
@@ -222,6 +256,15 @@ async function testDeckRender(deckId, spec, list, markup) {
     const menuHtml = renderListPage(menuPage, idx, `${deckId}-main`, list, menuPage.subtitle);
     if (menuHtml.includes('grid8-quaytung-menu-section')) ok('render menu sections', 'có');
     else bad('render menu sections', 'thiếu');
+
+    const sectionPhotos = [...menuHtml.matchAll(/grid8-quaytung-menu-section-photo[\s\S]*?<img[^>]+src="([^"]+)"/g)]
+      .map((match) => match[1]);
+    const uniquePhotos = [...new Set(sectionPhotos)];
+    if (sectionPhotos.length >= 4 && uniquePhotos.length === sectionPhotos.length) {
+      ok('menu: ảnh 4 section khác nhau', `${uniquePhotos.length} URL`);
+    } else if (sectionPhotos.length > 0) {
+      bad('menu: ảnh 4 section khác nhau', `${uniquePhotos.length} unique / ${sectionPhotos.length} total`);
+    }
   }
 }
 

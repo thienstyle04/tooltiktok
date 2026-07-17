@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { exportActiveList, exportBatch, exportSelectedPagePng } from '../lib/exportClient';
-import { apiFetch } from '../lib/apiClient';
+import { apiFetch, fetchGuideDataset, formatApiError } from '../lib/apiClient';
 import {
   clearCachedDataset,
   markDatasetBackgroundChecked,
@@ -11,7 +11,7 @@ import {
   writeCachedDataset,
 } from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
-import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, budget72HListHasLegacyScheduleCosts, listIsMain, sanitizeDataset } from '../lib/utils';
+import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, budget72HListHasLegacyScheduleCosts, budget72HTableMatchesMain, listIsMain, sanitizeDataset } from '../lib/utils';
 import { setSpotlightV2CoverImagePool } from '../lib/pageMarkup';
 import CaptionTools from './CaptionTools';
 import DataStatsPanel from './DataStatsPanel';
@@ -150,7 +150,7 @@ function needsGrid6QuaytungCatalogRefresh(dataset) {
   if (!deck) return true;
   const main = (deck.lists || []).find((list) => listIsMain(list));
   if (!main) return true;
-  if (Number(main.templateVersion || 0) < 4) return true;
+  if (Number(main.templateVersion || 0) < 6) return true;
   if ((main.pages || []).length < 8) return true;
   const cover = main.pages.find((page) => page.type === 'cover');
   return cover?.layoutVariant !== 'grid-6-quaytung-cover';
@@ -200,18 +200,23 @@ function needsPov3V2CatalogRefresh(dataset) {
   return (deck.lists || []).some((list) => isStalePov3V2List(list));
 }
 
-const BUDGET_72H_SUMMARY_MIN_TEMPLATE_VERSION = 5;
+const BUDGET_72H_SUMMARY_MIN_TEMPLATE_VERSION = 7;
 
-function isStaleBudget72HSummaryList(list) {
+function isStaleBudget72HSummaryList(list, deck = null) {
   if (!list) return true;
   if (Number(list.templateVersion || 0) < BUDGET_72H_SUMMARY_MIN_TEMPLATE_VERSION) return true;
-  return budget72HListHasLegacyScheduleCosts(list);
+  if (budget72HListHasLegacyScheduleCosts(list)) return true;
+  if (!listIsMain(list) && deck) {
+    const mainList = (deck.lists || []).find((entry) => listIsMain(entry));
+    if (mainList && budget72HTableMatchesMain(list, mainList)) return true;
+  }
+  return false;
 }
 
 function needsBudget72HSummaryCatalogRefresh(dataset) {
   const deck = (dataset?.decks || []).find((item) => item.id === 'budget-72h-summary');
   if (!deck) return true;
-  return (deck.lists || []).some((list) => isStaleBudget72HSummaryList(list));
+  return (deck.lists || []).some((list) => isStaleBudget72HSummaryList(list, deck));
 }
 
 function storedCatalogRevision() {
@@ -299,6 +304,8 @@ export default function DeckStudio({ initialDataset = null }) {
   const [partners, setPartners] = useState([]);
   const [savingCoverText, setSavingCoverText] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [destinationInfo, setDestinationInfo] = useState(null);
+  const [switchingDestination, setSwitchingDestination] = useState(false);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const v2CatalogRefreshAttemptedRef = useRef(false);
   const selectionHistoryRef = useRef([]);
@@ -383,18 +390,75 @@ export default function DeckStudio({ initialDataset = null }) {
     try {
       const endpoint = forceRefresh ? '/api/guide-data?refresh=1' : '/api/guide-data';
       if (forceRefresh) clearCachedDataset();
-      const response = await apiFetch(endpoint, forceRefresh ? { cache: 'no-store' } : {});
-      if (!response.ok) throw new Error(`Không tải được dữ liệu: HTTP ${response.status}`);
+      const response = await fetchGuideDataset(endpoint, forceRefresh ? { cache: 'no-store' } : {});
+      if (!response.ok) throw new Error(await formatApiError(response, 'Không tải được dữ liệu'));
       const nextDataset = await response.json();
       writeCachedDataset(nextDataset);
       markCatalogRevisionStored();
       applyDataset(nextDataset, preferredSelection);
-      setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm.`);
+      const label = nextDataset?.source?.destinationLabel || 'Sheet';
+      setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm (${label}).`);
       return nextDataset;
     } finally {
       if (forceRefresh) setRefreshing(false);
     }
   }, [applyDataset]);
+
+  const loadDestinations = useCallback(async () => {
+    const response = await apiFetch('/api/destinations', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Không tải được danh sách điểm đến: HTTP ${response.status}`);
+    const payload = await response.json();
+    setDestinationInfo(payload);
+    return payload;
+  }, []);
+
+  const switchDestination = useCallback(async (destinationId) => {
+    if (!destinationId || destinationId === destinationInfo?.active?.id || switchingDestination) return;
+    setSwitchingDestination(true);
+    setRefreshing(true);
+    clearCachedDataset();
+    setStatus('Đang chuyển nguồn Google Sheet...');
+    try {
+      const response = await apiFetch('/api/destination', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: destinationId }),
+        cache: 'no-store',
+      });
+      const payload = await readApiPayload(response);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Không chuyển được nguồn Sheet: HTTP ${response.status}`));
+      setDestinationInfo({
+        active: {
+          ...payload.active,
+          totalItems: payload.dataset?.source?.totalItems,
+          syncedAt: payload.dataset?.generatedAt,
+        },
+        destinations: destinationInfo?.destinations?.length
+          ? destinationInfo.destinations.map((entry) => (
+            entry.id === payload.active?.id
+              ? {
+                ...entry,
+                totalItems: payload.dataset?.source?.totalItems,
+                syncedAt: payload.dataset?.generatedAt,
+              }
+              : entry
+          ))
+          : [{
+            ...payload.active,
+            totalItems: payload.dataset?.source?.totalItems,
+            syncedAt: payload.dataset?.generatedAt,
+          }],
+      });
+      writeCachedDataset(payload.dataset);
+      markCatalogRevisionStored();
+      applyDataset(payload.dataset, currentSelectionRef.current);
+      const label = payload?.active?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
+      setStatus(`Đã chuyển sang ${label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
+    } finally {
+      setSwitchingDestination(false);
+      setRefreshing(false);
+    }
+  }, [applyDataset, destinationInfo, switchingDestination]);
 
   useEffect(() => {
     const stored = readStoredSelection();
@@ -403,33 +467,59 @@ export default function DeckStudio({ initialDataset = null }) {
     setActiveListId(stored.activeListId);
     setSelectedPageIndex(stored.selectedPageIndex);
 
-    const cached = initialDataset ? null : readCachedDataset();
-    if (cached?.dataset) {
-      applyDataset(cached.dataset, stored);
-      setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm).`);
-      if (needsTemplateCatalogRefresh(cached.dataset)) {
-        clearCachedDataset();
-        loadDataset('Đang nạp lại thư viện mẫu V2...', stored, true, { silent: true }).catch((error) => {
-          console.error(error);
-          setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được mẫu mới: ${error.message}`);
-        });
-      } else if (shouldCheckDatasetInBackground()) {
-        markDatasetBackgroundChecked();
-        loadDataset('Đang kiểm tra dữ liệu mới...', {}, false, { silent: true }).catch((error) => {
-          console.error(error);
-          setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được cập nhật mới: ${error.message}`);
-        });
-      }
-    } else if (initialDataset) {
-      writeCachedDataset(initialDataset);
-      applyDataset(initialDataset, stored);
-      setStatus(`Đã tải ${initialDataset.source?.totalItems || 0} địa điểm.`);
-    } else {
-      loadDataset('Đang tải dữ liệu workbook...').catch((error) => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      let destinations = null;
+      try {
+        destinations = await loadDestinations();
+      } catch (error) {
         console.error(error);
-        setStatus(error.message);
+      }
+
+      const cached = initialDataset ? null : readCachedDataset();
+      const activeDestinationId = destinations?.active?.id || cached?.dataset?.source?.destinationId || null;
+      if (cached?.dataset && activeDestinationId && cached.dataset?.source?.destinationId !== activeDestinationId) {
+        clearCachedDataset();
+      } else if (cached?.dataset) {
+        if (!cancelled) {
+          applyDataset(cached.dataset, stored);
+          setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm${cached.dataset.source?.destinationLabel ? ` — ${cached.dataset.source.destinationLabel}` : ''}).`);
+        }
+        if (needsTemplateCatalogRefresh(cached.dataset)) {
+          clearCachedDataset();
+          loadDataset('Đang nạp lại thư viện mẫu V2...', stored, true, { silent: true }).catch((error) => {
+            console.error(error);
+            if (!cancelled) setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được mẫu mới: ${error.message}`);
+          });
+        } else if (shouldCheckDatasetInBackground()) {
+          markDatasetBackgroundChecked();
+          loadDataset('Đang kiểm tra dữ liệu mới...', {}, false, { silent: true }).catch((error) => {
+            console.error(error);
+            if (!cancelled) setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được cập nhật mới: ${error.message}`);
+          });
+        }
+        return;
+      }
+
+      if (initialDataset) {
+        writeCachedDataset(initialDataset);
+        applyDataset(initialDataset, stored);
+        setStatus(`Đã tải ${initialDataset.source?.totalItems || 0} địa điểm.`);
+        return;
+      }
+
+      loadDataset('Đang tải dữ liệu workbook...', stored).catch((error) => {
+        console.error(error);
+        if (!cancelled) setStatus(error.message);
       });
-    }
+    };
+
+    bootstrap().catch((error) => {
+      console.error(error);
+      if (!cancelled) setStatus(error.message);
+    });
+
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
@@ -437,7 +527,11 @@ export default function DeckStudio({ initialDataset = null }) {
     apiFetch('/api/partners').then(async (res) => {
       if (res.ok) setPartners(await res.json());
     }).catch(() => {});
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyDataset, initialDataset, loadDataset, loadDestinations]);
 
   useEffect(() => {
     const refreshIfServerChanged = async () => {
@@ -447,7 +541,7 @@ export default function DeckStudio({ initialDataset = null }) {
       focusRefreshRef.current = now;
 
       try {
-        const response = await apiFetch('/api/guide-data?refresh=1', { cache: 'no-store' });
+        const response = await apiFetch('/api/guide-data', { cache: 'no-store' });
         if (!response.ok) return;
         const nextDataset = await response.json();
         if (
@@ -733,11 +827,13 @@ export default function DeckStudio({ initialDataset = null }) {
         throw new Error(message || `Tạo list AI thất bại: HTTP ${response.status}`);
       }
       const payload = await response.json();
+      // Không cần refresh=1: list AI mới đã được lưu ở backend và luôn được merge tươi mỗi lần đọc,
+      // nên chỉ cần nạp lại dataset thường (không ép đồng bộ lại Google Sheet) là đủ và nhanh hơn nhiều.
       await loadDataset('Đang nạp lại deck sau khi tạo list AI...', {
         activeDeckId: payload.deckId,
         activeListId: payload.listId,
         selectedPageIndex: 0,
-      }, true);
+      }, false);
       setStatus(`Đã tạo list mới "${payload.navTitle}" ngay trong deck "${activeDeck.navTitle}".`);
     } catch (error) {
       setStatus(error?.message || 'Không tạo được list AI mới.');
@@ -770,7 +866,7 @@ export default function DeckStudio({ initialDataset = null }) {
         activeDeckId: activeDeck.id,
         activeListId: payload.lists?.[0]?.listId || activeListId,
         selectedPageIndex: 0,
-      }, true);
+      }, false);
       const msg = payload.failCount > 0
         ? `Đã tạo ${payload.successCount}/${safeCount} list (${payload.failCount} lỗi).`
         : `Đã tạo xong ${payload.successCount} list AI.`;
@@ -804,7 +900,7 @@ export default function DeckStudio({ initialDataset = null }) {
         activeDeckId: payload.deckId,
         activeListId: payload.listId,
         selectedPageIndex: 0,
-      }, true);
+      }, false);
       setStatus(`Đã tạo spotlight "${payload.partnerName}" (${payload.pageCount} trang).`);
     } catch (error) {
       setStatus(error?.message || 'Không tạo được spotlight đối tác.');
@@ -1138,6 +1234,34 @@ export default function DeckStudio({ initialDataset = null }) {
     activeView === 'data' ? 'data-mode' : '',
   ].filter(Boolean).join(' ');
 
+  const activeDestinationId = destinationInfo?.active?.id || dataset?.source?.destinationId || 'dalat';
+  const destinationOptions = destinationInfo?.destinations?.length
+    ? destinationInfo.destinations
+    : [
+      { id: 'dalat', label: 'Đà Lạt', shortLabel: 'ĐL' },
+      { id: 'phanthiet', label: 'Phan Thiết', shortLabel: 'PT' },
+      { id: 'greenland', label: 'Green Land', shortLabel: 'GL' },
+    ];
+  const studioTitle = destinationInfo?.active?.label || dataset?.source?.destinationLabel || 'Carousel Studio';
+  const studioShort = destinationInfo?.active?.shortLabel
+    || destinationOptions.find((entry) => entry.id === activeDestinationId)?.shortLabel
+    || 'CS';
+  const destinationScrollBusy = busy || refreshing || switchingDestination;
+  const activeDestinationIndex = Math.max(0, destinationOptions.findIndex((entry) => entry.id === activeDestinationId));
+  const destinationCount = Math.max(destinationOptions.length, 1);
+
+  const resolveDestinationCount = (entry) => {
+    if (entry.id === activeDestinationId && dataset?.source?.totalItems) {
+      return dataset.source.totalItems;
+    }
+    return entry.totalItems;
+  };
+
+  const formatDestinationCount = (count) => {
+    if (typeof count === 'number' && Number.isFinite(count)) return `${count} địa điểm`;
+    return 'Chưa sync';
+  };
+
   return (
     <main className="app-shell">
       <Sidebar
@@ -1155,12 +1279,12 @@ export default function DeckStudio({ initialDataset = null }) {
         <header className="studio-topbar deck-toolbar">
           <div className="deck-heading">
             <div className="studio-breadcrumb">
-              <span>Dalat Studio</span>
+              <span>{studioTitle} Studio</span>
               <span className="breadcrumb-separator">/</span>
               <span>{activeDeck?.navTitle || 'Đang tải'}</span>
             </div>
             <div className="studio-title-row">
-              <span className="deck-avatar" aria-hidden="true">DS</span>
+              <span className="deck-avatar" aria-hidden="true">{studioShort}</span>
               <div>
                 <h2 id="deckTitle" className="section-title">{activeDeck?.title || 'Đang tải...'}</h2>
                 <p id="deckSubtitle" className="deck-subtitle">{activeDeck?.description || 'Tool đang đọc workbook và dựng các bộ ảnh mẫu.'}</p>
@@ -1174,18 +1298,67 @@ export default function DeckStudio({ initialDataset = null }) {
             </div>
           </div>
           <div className="toolbar-actions">
-            <span className="sync-meta" title={dataset?.generatedAt || ''}>
-              {refreshing ? 'Đang sync Sheet...' : `Sheet: ${formatSheetSyncTime(dataset?.generatedAt)}`}
-            </span>
-            <button
-              id="refreshBtn"
-              className="toolbar-button"
-              type="button"
-              disabled={busy || refreshing}
-              onClick={() => loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message))}
+            <div
+              className="destination-slider"
+              aria-label="Chọn nguồn Google Sheet"
+              style={{
+                '--dest-count': destinationCount,
+                '--active-index': activeDestinationIndex,
+              }}
             >
-              {refreshing ? 'Đang sync...' : 'Làm mới'}
-            </button>
+              <p className="destination-slider-label">Chọn dữ liệu</p>
+              <div
+                className="destination-slider-switch"
+                role="listbox"
+                aria-label="Danh sách điểm đến"
+                data-active={activeDestinationId}
+              >
+                <span className="destination-slider-thumb" aria-hidden="true" />
+                {destinationOptions.map((entry) => {
+                  const isActive = entry.id === activeDestinationId;
+                  const itemCount = resolveDestinationCount(entry);
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      role="option"
+                      aria-selected={isActive}
+                      className={`destination-slider-option${isActive ? ' is-active' : ''}`}
+                      data-destination={entry.id}
+                      disabled={destinationScrollBusy}
+                      onClick={() => switchDestination(entry.id).catch((error) => setStatus(error.message))}
+                      title={`Dùng Google Sheet ${entry.label}${typeof itemCount === 'number' ? ` (${itemCount} địa điểm)` : ''}`}
+                    >
+                      <span className="destination-slider-badge">{entry.shortLabel || entry.label.slice(0, 2)}</span>
+                      <span className="destination-slider-copy">
+                        <span className="destination-slider-name">{entry.label}</span>
+                        <span className="destination-slider-count">{formatDestinationCount(itemCount)}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="destination-slider-rail" aria-hidden="true">
+                <span className="destination-slider-rail-track" />
+                <span className="destination-slider-rail-thumb" />
+              </div>
+              <div className="destination-slider-meta">
+                <span className="sync-meta" title={dataset?.generatedAt || ''}>
+                  {destinationScrollBusy
+                    ? 'Đang sync Sheet...'
+                    : `Cập nhật ${formatSheetSyncTime(dataset?.generatedAt)}`}
+                </span>
+                <button
+                  id="refreshBtn"
+                  className="toolbar-button"
+                  type="button"
+                  disabled={destinationScrollBusy}
+                  onClick={() => loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message))}
+                >
+                  {refreshing ? 'Đang sync...' : 'Làm mới'}
+                </button>
+              </div>
+            </div>
           </div>
         </header>
 

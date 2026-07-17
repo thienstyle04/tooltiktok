@@ -2,10 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as XLSX from 'xlsx';
 
-import { DriveFolderEntry, resolveDriveLinkToEntries } from './drive-images';
+import { DriveFolderEntry, filterAccessibleDriveEntries, resolveDriveLinkToEntries } from './drive-images';
 import { firstValue, itemMappingKey, normalizeText } from '../logic/image-resolver';
+import { DestinationId } from './destination-config';
 import { PREFERRED_WORKBOOK_NAME, SheetWorkbookSource } from './workbook-source';
-import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
+import { resolveSectionKeyFromSheetName } from './sheet-section';
 import { SectionKey } from '../../../common/interfaces/guide.types';
 
 export const SHEET_DRIVE_MANIFEST_FILE = 'sheet-drive-images.json';
@@ -105,7 +106,11 @@ async function runLimited<T>(tasks: Array<() => Promise<T>>, concurrency: number
   return results;
 }
 
-export function getSheetDriveManifestPath(dataRoot: string): string {
+export function getSheetDriveManifestPath(dataRoot: string, destinationId: DestinationId = 'dalat'): string {
+  return path.join(dataRoot, `sheet-drive-images.${destinationId}.json`);
+}
+
+function legacySheetDriveManifestPath(dataRoot: string): string {
   return path.join(dataRoot, SHEET_DRIVE_MANIFEST_FILE);
 }
 
@@ -120,12 +125,17 @@ export function emptySheetDriveManifest(): SheetDriveImageManifest {
   };
 }
 
-export function readSheetDriveManifest(dataRoot: string, workbookName?: string): SheetDriveImageManifest {
-  const manifestPath = getSheetDriveManifestPath(dataRoot);
-  if (!fs.existsSync(manifestPath)) return emptySheetDriveManifest();
+export function readSheetDriveManifest(dataRoot: string, destinationId: DestinationId = 'dalat'): SheetDriveImageManifest {
+  const manifestPath = getSheetDriveManifestPath(dataRoot, destinationId);
+  const resolvedPath = fs.existsSync(manifestPath)
+    ? manifestPath
+    : (destinationId === 'dalat' && fs.existsSync(legacySheetDriveManifestPath(dataRoot))
+      ? legacySheetDriveManifestPath(dataRoot)
+      : manifestPath);
+  if (!fs.existsSync(resolvedPath)) return emptySheetDriveManifest();
 
   try {
-    const raw = fs.readFileSync(manifestPath, 'utf-8');
+    const raw = fs.readFileSync(resolvedPath, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<SheetDriveImageManifest>;
     const manifest: SheetDriveImageManifest = {
       version: Number(parsed.version ?? 1),
@@ -153,7 +163,7 @@ export async function buildSheetDriveManifest(
   const coverTasks: Array<() => Promise<void>> = [];
 
   for (const sheetName of workbook.SheetNames) {
-    const sectionKey = normalizeText(sheetName) as SectionKey;
+    const sectionKey = resolveSectionKeyFromSheetName(sheetName);
     const sheet = workbook.Sheets[sheetName];
 
     if (normalizeText(sheetName) === 'hinh_nen') {
@@ -175,7 +185,7 @@ export async function buildSheetDriveManifest(
       continue;
     }
 
-    if (!(sectionKey in SECTION_CONFIG)) continue;
+    if (!sectionKey) continue;
 
     for (const row of workbookRowsWithLinks(sheet)) {
       const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
@@ -191,15 +201,22 @@ export async function buildSheetDriveManifest(
           console.warn(`[sync] Skip Drive image for "${name}": ${error instanceof Error ? error.message : String(error)}`);
           return [];
         });
-        if (candidateImages.length === 0) {
-          const previousEntry = previousManifest.items[key];
-          if (previousEntry?.sourceLink === imageLink && previousEntry.fileId) {
-            items[key] = previousEntry;
+        const accessibleImages = candidateImages.length > 0
+          ? await filterAccessibleDriveEntries(candidateImages)
+          : [];
+        if (accessibleImages.length === 0) {
+          if (candidateImages.length > 0) {
+            console.warn(`[sync] Bo qua "${name}" — ${candidateImages.length} anh Drive khong truy cap duoc (can quyen public).`);
+          } else {
+            const previousEntry = previousManifest.items[key];
+            if (previousEntry?.sourceLink === imageLink && previousEntry.fileId) {
+              items[key] = previousEntry;
+            }
           }
           return;
         }
 
-        const resolvedEntry = candidateImages[0];
+        const resolvedEntry = accessibleImages[0];
 
         items[key] = {
           key,
@@ -209,7 +226,7 @@ export async function buildSheetDriveManifest(
           sourceLink: imageLink,
           fileId: resolvedEntry.fileId,
           fileName: resolvedEntry.fileName,
-          candidateImages,
+          candidateImages: accessibleImages,
         };
       });
     }
@@ -227,9 +244,13 @@ export async function buildSheetDriveManifest(
   };
 }
 
-export function writeSheetDriveManifest(dataRoot: string, manifest: SheetDriveImageManifest): string {
+export function writeSheetDriveManifest(
+  dataRoot: string,
+  manifest: SheetDriveImageManifest,
+  destinationId: DestinationId = 'dalat',
+): string {
   fs.mkdirSync(dataRoot, { recursive: true });
-  const manifestPath = getSheetDriveManifestPath(dataRoot);
+  const manifestPath = getSheetDriveManifestPath(dataRoot, destinationId);
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
   return manifestPath;
 }

@@ -1,0 +1,84 @@
+export type DestinationId = 'dalat' | 'phanthiet' | 'greenland';
+
+export interface DestinationConfig {
+  id: DestinationId;
+  label: string;
+  shortLabel: string;
+  sheetUrl: string;
+  exportUrl: string;
+  workbookName: string;
+  /** Khi true: mẫu ưu tiên hiển thị hết dữ liệu đối tác (isPartner) trước, chỉ dùng dữ liệu thường để bổ sung khi thiếu. */
+  partnerFirst?: boolean;
+}
+
+export interface DestinationInfo {
+  id: DestinationId;
+  label: string;
+  shortLabel: string;
+  sheetUrl: string;
+}
+
+export const DEFAULT_DESTINATION_ID: DestinationId = 'dalat';
+
+export const DESTINATIONS: Record<DestinationId, DestinationConfig> = {
+  dalat: {
+    id: 'dalat',
+    label: 'Đà Lạt',
+    shortLabel: 'ĐL',
+    sheetUrl:
+      process.env.DALAT_FNB_SHEET_URL
+      || 'https://docs.google.com/spreadsheets/d/1-ECVLtuySSlCO5AShcJle1uP9j8XCA4l/edit?gid=1236724598#gid=1236724598',
+    exportUrl:
+      process.env.DALAT_FNB_EXPORT_URL
+      || 'https://docs.google.com/spreadsheets/d/1-ECVLtuySSlCO5AShcJle1uP9j8XCA4l/export?format=xlsx',
+    workbookName: 'Google Sheet - Da Lat',
+  },
+  phanthiet: {
+    id: 'phanthiet',
+    label: 'Phan Thiết',
+    shortLabel: 'PT',
+    sheetUrl:
+      process.env.PHAN_THIET_FNB_SHEET_URL
+      || 'https://docs.google.com/spreadsheets/d/1l1HUVSkqVgj1udZmjtmjqZ3AeWEMgp0PI9kyBd-4CVw/edit?gid=0#gid=0',
+    exportUrl:
+      process.env.PHAN_THIET_FNB_EXPORT_URL
+      || 'https://docs.google.com/spreadsheets/d/1l1HUVSkqVgj1udZmjtmjqZ3AeWEMgp0PI9kyBd-4CVw/export?format=xlsx',
+    workbookName: 'Google Sheet - Phan Thiet',
+  },
+  greenland: {
+    id: 'greenland',
+    label: 'Green Land',
+    shortLabel: 'GL',
+    sheetUrl:
+      process.env.GREEN_LAND_FNB_SHEET_URL
+      || 'https://docs.google.com/spreadsheets/d/1MfoS4Rg73vF0xbBaMb2EUG48DUINlxr8aDbq1cM_MjQ/edit?gid=160176225#gid=160176225',
+    exportUrl:
+      process.env.GREEN_LAND_FNB_EXPORT_URL
+      || 'https://docs.google.com/spreadsheets/d/1MfoS4Rg73vF0xbBaMb2EUG48DUINlxr8aDbq1cM_MjQ/export?format=xlsx',
+    workbookName: 'Google Sheet - Green Land',
+    partnerFirst: true,
+  },
+};
+
+export const DESTINATION_LIST: DestinationConfig[] = Object.values(DESTINATIONS);
+
+export function isDestinationId(value: string): value is DestinationId {
+  return value === 'dalat' || value === 'phanthiet' || value === 'greenland';
+}
+
+export function getDestinationConfig(id: DestinationId): DestinationConfig {
+  return DESTINATIONS[id];
+}
+
+export function isPartnerFirstDestination(id: DestinationId): boolean {
+  return !!DESTINATIONS[id]?.partnerFirst;
+}
+
+export function toDestinationInfo(config: DestinationConfig): DestinationInfo {
+  return {
+    id: config.id,
+    label: config.label,
+    shortLabel: config.shortLabel,
+    sheetUrl: config.sheetUrl,
+  };
+}

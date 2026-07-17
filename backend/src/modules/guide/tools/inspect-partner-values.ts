@@ -3,6 +3,7 @@
 import 'dotenv/config';
 import * as XLSX from 'xlsx';
 import { fetchWorkbookFromSheet } from '../sync/workbook-source';
+import { getDestinationConfig } from '../sync/destination-config';
 
 function normalizeText(value: unknown): string {
   return String(value ?? '')
@@ -30,7 +31,7 @@ const SUPPORTED_SHEETS = new Set([
 
 async function main(): Promise<void> {
   console.log('Đang tải workbook từ Google Sheet...');
-  const source = await fetchWorkbookFromSheet();
+  const source = await fetchWorkbookFromSheet(getDestinationConfig('dalat'));
   console.log(`✓ Tải xong: ${source.workbookName} (${source.bytes} bytes)\n`);
 
   const allRowSummary: Array<{

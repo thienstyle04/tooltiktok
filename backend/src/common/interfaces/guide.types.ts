@@ -1,3 +1,28 @@
+export type DestinationId = 'dalat' | 'phanthiet' | 'greenland';
+
+export interface DestinationSummary {
+  id: DestinationId;
+  label: string;
+  shortLabel: string;
+  sheetUrl: string;
+  totalItems?: number;
+  syncedAt?: string;
+}
+
+export interface DestinationListResponse {
+  active: DestinationSummary;
+  destinations: DestinationSummary[];
+}
+
+export interface SetDestinationRequest {
+  id: DestinationId;
+}
+
+export interface SetDestinationResponse {
+  active: DestinationSummary;
+  dataset: GuideDataset;
+}
+
 export type SectionKey =
   | 'quan_an'
   | 'cafe'
@@ -128,6 +153,8 @@ export interface GuideDataset {
   };
   source: {
     workbook: string;
+    destinationId: DestinationId;
+    destinationLabel: string;
     imageCount: number;
     coverImageCount: number;
     coverImageUrls: string[];

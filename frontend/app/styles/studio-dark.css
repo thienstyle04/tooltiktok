@@ -423,6 +423,57 @@ body {
 .toolbar-actions {
   max-width: 680px;
   gap: 8px;
+  align-items: stretch;
+}
+
+.destination-slider-label {
+  color: var(--studio-muted);
+}
+
+.destination-slider-switch {
+  border-color: var(--studio-line-strong);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.destination-slider-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.destination-slider-option {
+  color: var(--studio-muted);
+}
+
+.destination-slider-option:hover:not(:disabled),
+.destination-slider-option.is-active {
+  color: var(--studio-ink);
+}
+
+.destination-slider-badge {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.destination-slider-option[data-destination="dalat"].is-active .destination-slider-badge {
+  background: rgba(111, 174, 136, 0.16);
+  color: #9fd4b3;
+}
+
+.destination-slider-option[data-destination="phanthiet"].is-active .destination-slider-badge {
+  background: rgba(240, 127, 90, 0.16);
+  color: #ffc09a;
+}
+
+.destination-slider-count {
+  color: var(--studio-muted);
+}
+
+.destination-slider-rail-track {
+  border-color: var(--studio-line-strong);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.destination-slider-rail-thumb {
+  background: linear-gradient(90deg, rgba(111, 174, 136, 0.95), rgba(240, 127, 90, 0.95));
 }
 
 .toolbar-button {
