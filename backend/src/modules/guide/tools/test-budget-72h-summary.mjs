@@ -14,7 +14,7 @@ const cssPath = join(rootDir, 'frontend/app/styles/grid-templates.css');
 
 const API = process.env.TEST_API_URL || 'http://127.0.0.1:3000/api/guide-data?refresh=1';
 const DECK_ID = 'budget-72h-summary';
-const EXPECTED_VERSION = 5;
+const EXPECTED_VERSION = 7;
 
 let pass = 0;
 let fail = 0;

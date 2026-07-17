@@ -5,6 +5,7 @@ import { GuideService } from './guide.service';
 import {
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
+  DestinationListResponse,
   GenerateBatchListsRequest,
   GenerateBatchListsResponse,
   GenerateCaptionDeckRequest,
@@ -12,6 +13,8 @@ import {
   GeneratePartnerSpotlightRequest,
   GeneratePartnerSpotlightResponse,
   GuideDataset,
+  SetDestinationRequest,
+  SetDestinationResponse,
   UpdateGeneratedListCoverRequest,
   UpdateGeneratedListCoverResponse,
 } from '../../common/interfaces/guide.types';
@@ -80,6 +83,16 @@ export class GuideController {
   getGuideData(@Query('refresh') refresh?: string): Promise<GuideDataset> {
     const shouldRefresh = ['1', 'true', 'yes'].includes(String(refresh ?? '').trim().toLowerCase());
     return this.guideService.getDataset({ refresh: shouldRefresh });
+  }
+
+  @Get('api/destinations')
+  getDestinations(): DestinationListResponse {
+    return this.guideService.getDestinations();
+  }
+
+  @Post('api/destination')
+  setDestination(@Body() request: SetDestinationRequest): Promise<SetDestinationResponse> {
+    return this.guideService.setActiveDestination(request);
   }
 
   @Get('api/partners')

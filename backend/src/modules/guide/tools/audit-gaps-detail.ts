@@ -3,6 +3,7 @@ import { resolveBackendDataDir, resolveBackendRoot } from '../../../config';
 import { firstValue, itemMappingKey, normalizeText } from '../logic/image-resolver';
 import { readSheetDriveManifest } from '../sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet } from '../sync/workbook-source';
+import { getDestinationConfig } from '../sync/destination-config';
 
 function rowsWithLinks(sheet: XLSX.WorkSheet): Array<Record<string, string>> {
   const rows = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, { header: 1, raw: false, defval: '' });
@@ -23,7 +24,7 @@ function rowsWithLinks(sheet: XLSX.WorkSheet): Array<Record<string, string>> {
 }
 
 async function main() {
-  const src = await fetchWorkbookFromSheet();
+  const src = await fetchWorkbookFromSheet(getDestinationConfig('dalat'));
   const manifest = readSheetDriveManifest(resolveBackendDataDir(resolveBackendRoot()));
 
   console.log('=== QUAN_AN: 5 item parser có nhưng manifest thiếu ===\n');

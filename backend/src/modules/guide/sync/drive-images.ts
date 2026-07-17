@@ -8,6 +8,7 @@ const DRIVE_BROWSER_USER_AGENT =
 
 const folderEntriesCache = new Map<string, { expiresAt: number; entries: DriveFolderEntry[] }>();
 const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFileAsset }>();
+const driveFileAccessibilityCache = new Map<string, boolean>();
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.jfif', '.bmp']);
 
@@ -199,6 +200,75 @@ export function getDriveImageProxyUrl(fileId: string): string {
   return `/assets/drive-file?id=${encodeURIComponent(fileId)}`;
 }
 
+export function extractDriveFileIdFromProxyUrl(url: string): string {
+  const text = String(url ?? '').trim();
+  if (!text) return '';
+  const direct = extractDriveFileId(text);
+  if (direct) return direct;
+  const match = text.match(/[?&]id=([^&]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+export function clearDriveAccessibilityCache(): void {
+  driveFileAccessibilityCache.clear();
+}
+
+export function getCachedDriveFileAccessibility(fileId: string): boolean | undefined {
+  const normalized = String(fileId ?? '').trim();
+  if (!normalized) return undefined;
+  return driveFileAccessibilityCache.get(normalized);
+}
+
+export function setCachedDriveFileAccessibility(fileId: string, accessible: boolean): void {
+  const normalized = String(fileId ?? '').trim();
+  if (!normalized) return;
+  driveFileAccessibilityCache.set(normalized, accessible);
+}
+
+export function isKnownInaccessibleDriveProxyUrl(url: string): boolean {
+  const fileId = extractDriveFileIdFromProxyUrl(url);
+  if (!fileId) return false;
+  return getCachedDriveFileAccessibility(fileId) === false;
+}
+
+export function filterKnownAccessibleDriveProxyUrls(urls: string[]): string[] {
+  return urls.filter((url) => !isKnownInaccessibleDriveProxyUrl(url));
+}
+
+export function filterVerifiedAccessibleDriveProxyUrls(urls: string[]): string[] {
+  return urls.filter((url) => {
+    const fileId = extractDriveFileIdFromProxyUrl(url);
+    if (!fileId) return Boolean(String(url || '').trim());
+    return getCachedDriveFileAccessibility(fileId) === true;
+  });
+}
+
+export async function probeDriveFileAccessible(fileId: string): Promise<boolean> {
+  const normalized = String(fileId ?? '').trim();
+  if (!normalized) return false;
+
+  const cached = getCachedDriveFileAccessibility(normalized);
+  if (cached !== undefined) return cached;
+
+  try {
+    const asset = await fetchDriveFileAssetUnsafe(normalized);
+    const accessible = !asset.isFallback;
+    setCachedDriveFileAccessibility(normalized, accessible);
+    return accessible;
+  } catch {
+    setCachedDriveFileAccessibility(normalized, false);
+    return false;
+  }
+}
+
+export async function filterAccessibleDriveEntries(entries: DriveFolderEntry[]): Promise<DriveFolderEntry[]> {
+  const results = await Promise.all(entries.map(async (entry) => ({
+    entry,
+    accessible: entry.fileId ? await probeDriveFileAccessible(entry.fileId) : false,
+  })));
+  return results.filter((result) => result.accessible).map((result) => result.entry);
+}
+
 async function fetchText(url: string): Promise<string> {
   const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
   const response = await fetch(url, {
@@ -325,6 +395,17 @@ export async function resolveDriveLinkToEntries(link: string, placeName: string,
 }
 
 export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsset> {
+  try {
+    return await fetchDriveFileAssetUnsafe(fileId);
+  } catch (error) {
+    // An toàn cuối cùng: mọi lỗi mạng bất ngờ (ECONNRESET, DNS, v.v...) đều phải rơi về ảnh fallback,
+    // tuyệt đối không để lộ ra thành lỗi 500 cho /assets/drive-file — ảnh lỗi không nên làm sập cả trang.
+    console.warn(`[drive-image] Loi khong luong truoc, dung anh fallback: ${fileId}`, error instanceof Error ? error.message : error);
+    return createDriveFallbackAsset(fileId);
+  }
+}
+
+async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset> {
   const cached = driveFileAssetCache.get(fileId);
   const now = Date.now();
   if (cached && cached.expiresAt > now) {
@@ -341,7 +422,16 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
     const response = await fetchDriveResponseWithRetry(url);
     if (!response?.ok) continue;
 
-    const body = Buffer.from(await response.arrayBuffer());
+    // Google Drive có thể tự reset kết nối ngay giữa lúc đang đọc nội dung ảnh (ECONNRESET) dù header
+    // đã trả 200 OK trước đó. Bọc try/catch ở đây để lỗi mạng rơi qua URL kế tiếp / ảnh fallback,
+    // thay vì ném thẳng ra ngoài thành lỗi 500 chưa xử lý cho request /assets/drive-file.
+    let body: Buffer;
+    try {
+      body = Buffer.from(await response.arrayBuffer());
+    } catch (error) {
+      console.warn(`[drive-image] Doc noi dung anh loi (se thu URL/fallback khac): ${fileId}`, error instanceof Error ? error.message : error);
+      continue;
+    }
     const headerContentType = String(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
     const sniffedContentType = sniffImageContentType(body);
     const contentType = headerContentType.startsWith('image/') ? headerContentType : sniffedContentType;
@@ -353,6 +443,7 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
       contentType,
       isFallback: false,
     };
+    setCachedDriveFileAccessibility(fileId, true);
     driveFileAssetCache.set(fileId, {
       expiresAt: now + DRIVE_FILE_CACHE_TTL_MS,
       asset,
@@ -361,6 +452,7 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
   }
 
   const fallbackAsset = createDriveFallbackAsset(fileId);
+  setCachedDriveFileAccessibility(fileId, false);
   driveFileAssetCache.set(fileId, {
     expiresAt: now + DRIVE_FILE_FALLBACK_CACHE_TTL_MS,
     asset: fallbackAsset,

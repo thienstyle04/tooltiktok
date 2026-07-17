@@ -145,6 +145,13 @@
   --deck-title-weight: 850;
 }
 .story-page[data-list-id^="pov-3-day"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
+
+.story-page[data-list-id^="pov-3-day"] .photomode-name {
+  color: #ffe566 !important;
+  text-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.82),
+    0 0 12px rgba(255, 229, 102, 0.38);
+}
 .story-page[data-list-id^="must-go"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="first-time"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }
 .story-page[data-list-id^="grid-6"] { --deck-title-font: "Be Vietnam Pro", Arial, sans-serif; }

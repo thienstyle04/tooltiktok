@@ -31,7 +31,40 @@ function shouldTryBackendFallback(path) {
 }
 
 function shouldFallbackResponse(response) {
-  return [404, 502, 503, 504].includes(Number(response?.status));
+  return [404, 500, 502, 503, 504].includes(Number(response?.status));
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function fetchGuideDataset(endpoint, init = {}, attempts = 3) {
+  let lastResponse = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const response = await apiFetch(endpoint, init);
+    lastResponse = response;
+    if (response.ok) return response;
+    const retryable = [500, 502, 503, 504].includes(response.status);
+    if (!retryable || attempt >= attempts - 1) return response;
+    await sleep(1200 * (attempt + 1));
+  }
+  return lastResponse;
+}
+
+export async function formatApiError(response, prefix = 'Yêu cầu thất bại') {
+  const detail = await readApiErrorMessage(response);
+  return `${prefix}: ${detail}`;
+}
+
+async function readApiErrorMessage(response) {
+  try {
+    const payload = await response.clone().json();
+    const message = String(payload?.message || payload?.error || '').trim();
+    if (message) return message;
+  } catch {
+    // Ignore non-JSON error bodies.
+  }
+  return `HTTP ${response.status}`;
 }
 
 function toBackendUrl(path, origin) {

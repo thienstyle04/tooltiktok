@@ -10,6 +10,7 @@ import { resolveBackendDataDir, resolveBackendRoot } from '../../../config';
 import { firstValue, itemMappingKey, normalizeText } from '../logic/image-resolver';
 import { readSheetDriveManifest } from '../sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet } from '../sync/workbook-source';
+import { getDestinationConfig } from '../sync/destination-config';
 
 const NAME_KEYS = ['ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten'] as const;
 const IMAGE_KEYS = [
@@ -100,7 +101,7 @@ async function main() {
     manifestBySection.set(entry.sectionKey, (manifestBySection.get(entry.sectionKey) ?? 0) + 1);
   }
 
-  const source = await fetchWorkbookFromSheet();
+  const source = await fetchWorkbookFromSheet(getDestinationConfig('dalat'));
   const workbook = source.workbook;
   const audits: SheetAudit[] = [];
   const configuredSections = Object.keys(SECTION_CONFIG) as SectionKey[];

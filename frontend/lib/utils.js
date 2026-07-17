@@ -1,6 +1,7 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
-export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v79';
-export const STUDIO_CATALOG_REVISION = '2026-06-10-grid5-vn-font';
+export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v82';
+export const DESTINATION_STORAGE_KEY = 'dalat-carousel-active-destination-v1';
+export const STUDIO_CATALOG_REVISION = '2026-07-03-destination-titles';
 export const STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
 
 /** Deck đã gỡ khỏi app — lọc khỏi cache/dataset cũ. */
@@ -34,29 +35,27 @@ export function budget72HListHasLegacyScheduleCosts(list) {
 
 export function resolveBudget72HExportList(deck, list, dataset = null) {
   if (!deck || !list || deck.id !== 'budget-72h-summary') return list;
+  if (listIsMain(list)) return list;
   const deckEntry = dataset?.decks?.find((entry) => entry.id === deck.id) || deck;
   const mainList = (deckEntry.lists || []).find((entry) => listIsMain(entry));
-  if (!mainList || mainList.id === list.id) return list;
-
-  const mainTable = (mainList.pages || []).find((page) => page.layoutVariant === 'budget-3n2d-table');
-  if (!mainTable) return list;
-
+  if (!mainList) return list;
   return {
     ...list,
     templateVersion: mainList.templateVersion ?? list.templateVersion,
-    pages: (list.pages || []).map((page) => (
-      page.layoutVariant === 'budget-3n2d-table'
-        ? {
-          ...page,
-          chipText: mainTable.chipText ?? page.chipText,
-          chipTone: mainTable.chipTone ?? page.chipTone,
-          title: mainTable.title ?? page.title,
-          subtitle: mainTable.subtitle ?? page.subtitle,
-          items: mainTable.items,
-        }
-        : page
-    )),
   };
+}
+
+function budget72HTablePage(list) {
+  return (list?.pages || []).find((page) => page.layoutVariant === 'budget-3n2d-table') || null;
+}
+
+/** List AI bị ghi đè bảng từ main (bug cũ) — cần refresh để mỗi list có lịch trình riêng. */
+export function budget72HTableMatchesMain(list, mainList) {
+  if (!list || !mainList || listIsMain(list)) return false;
+  const table = budget72HTablePage(list);
+  const mainTable = budget72HTablePage(mainList);
+  if (!table?.items?.length || !mainTable?.items?.length) return false;
+  return JSON.stringify(table.items) === JSON.stringify(mainTable.items);
 }
 
 export function sanitizeDataset(dataset) {

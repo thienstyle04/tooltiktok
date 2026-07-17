@@ -30,9 +30,8 @@ function titleFontClass(listId) {
   const raw = String(listId || '');
   const captionNumber = raw.match(/^(.*?)-caption-(\d+)/i);
   if (captionNumber) {
-    const baseVariant = titleFontVariantFromId(`${captionNumber[1]}-main`);
-    const generatedOffset = Number(captionNumber[2]) || 1;
-    return `title-font-${((baseVariant - 1 + generatedOffset) % TITLE_FONT_VARIANT_COUNT) + 1}`;
+    // Caption lists inherit the parent deck main typography so AI lists match the template design.
+    return `title-font-${titleFontVariantFromId(`${captionNumber[1]}-main`)}`;
   }
 
   return `title-font-${titleFontVariantFromId(raw)}`;
@@ -471,7 +470,9 @@ function renderGrid4MutantCover(page, index, listId) {
 function renderGrid4MutantItems(items, position = 'bottom', showAddress = true) {
   return items.map((item) => {
     const displayName = compactGridItemName(item?.rawName || item?.name);
-    const cleanAddress = shouldShowItemAddress(item, showAddress) ? cleanGridAddress(item?.metaPrimary) : '';
+    const cleanAddress = shouldShowItemAddress(item, showAddress)
+      ? truncateMenuLine(cleanGridAddress(item?.metaPrimary), 52)
+      : '';
     const addressHtml = cleanAddress ? `
       <div class="grid4-mutant-address">
         <span class="grid4-mutant-address-pin">${renderPhotomodePin()}</span>
@@ -485,7 +486,7 @@ function renderGrid4MutantItems(items, position = 'bottom', showAddress = true) 
         ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
         <div class="grid4-mutant-overlay">
           ${labelHtml}
-          <div class="grid4-mutant-name story-image-title">${escapeHtml(displayName)}</div>
+          <div class="grid4-mutant-name">${escapeHtml(truncateMenuLine(displayName, 36))}</div>
           ${addressHtml}
         </div>
       </div>
@@ -547,26 +548,42 @@ function renderZigzagCover(page, index, listId) {
   `;
 }
 
+function zigzagThirdLineHtml(item) {
+  const label = String(item?.label || '').trim();
+  const price = gridPriceMetaFromSecondary(item?.metaSecondary);
+  const sectionKey = String(item?.sourceSectionKey || '').trim();
+
+  if (sectionKey === 'quan_an' && label) {
+    return `<span class="zigzag-label">${escapeHtml(label)}</span>`;
+  }
+  if (price) {
+    return `<span class="zigzag-price">${escapeHtml(price)}</span>`;
+  }
+  if (label) {
+    return `<span class="zigzag-label">${escapeHtml(label)}</span>`;
+  }
+  return '';
+}
+
 function renderZigzagItems(items, { showAddress = true } = {}) {
   return items.map((item) => {
     const displayName = compactGridItemName(item?.rawName || item?.name);
-    const address = String(item?.metaPrimary || '').replace(/\s+/g, ' ').trim();
-    const price = String(item?.metaSecondary || '').trim();
-    const label = String(item?.label || '').trim();
-    const addressHtml = shouldShowItemAddress(item, showAddress) && address
+    const address = shouldShowItemAddress(item, showAddress)
+      ? cleanGridAddress(item?.metaPrimary)
+      : '';
+    const addressHtml = address
       ? `<div class="zigzag-address">${escapeHtml(address)}</div>`
       : '';
-    const priceHtml = price ? `<span class="zigzag-price">${escapeHtml(price)}</span>` : '';
-    const labelHtml = (!price && label) ? `<span class="zigzag-label">${escapeHtml(label)}</span>` : '';
+    const thirdHtml = zigzagThirdLineHtml(item);
     return `
       <div class="zigzag-item">
         <div class="zigzag-thumb ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
           ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
         </div>
         <div class="zigzag-copy">
-          <div class="zigzag-name story-image-title">${escapeHtml(displayName)}</div>
+          <div class="zigzag-name">${escapeHtml(displayName)}</div>
           ${addressHtml}
-          ${priceHtml}${labelHtml}
+          ${thirdHtml}
         </div>
       </div>
     `;
@@ -738,14 +755,30 @@ function grid8FeedCenterHook(page, list) {
   return String(page.chipText || 'Đà Lạt').trim();
 }
 
+/** Grid8: chỉ giá (đã ưu tiên gia_dau_nguoi từ backend), bỏ khung giờ. */
+function gridPriceMetaFromSecondary(value) {
+  const secondary = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!secondary) return '';
+  const parts = secondary.split('·').map((part) => part.trim()).filter(Boolean);
+  const pricePart = parts.find((part) => /^Giá:/i.test(part));
+  if (pricePart) return pricePart;
+  const withoutHours = parts.filter((part) => !/^Khung giờ:/i.test(part)).join(' · ');
+  return withoutHours.replace(/(?:^|\s*·\s*)Khung giờ:\s*[^·]+/gi, '').replace(/^[\s·]+|[\s·]+$/g, '').trim();
+}
+
 function grid8FeedItemMeta(item, showAddress = true) {
-  if (!shouldShowItemAddress(item, showAddress)) return String(item?.metaSecondary || '').trim();
-  const address = cleanGridAddress(item?.metaPrimary);
-  if (address) return address;
+  const parts = [];
+  if (shouldShowItemAddress(item, showAddress)) {
+    const address = cleanGridAddress(item?.metaPrimary);
+    if (address) parts.push(address);
+  }
+  const price = gridPriceMetaFromSecondary(item?.metaSecondary);
+  if (price) parts.push(price);
+  if (parts.length > 0) return parts.join(' · ');
   const raw = String(item?.metaPrimary || '').trim();
   const phone = raw.match(/(?:\+?84|0)\d[\d\s.]{7,12}\d/);
   if (phone) return phone[0].replace(/\s+/g, ' ').trim();
-  return String(item?.metaSecondary || '').trim();
+  return '';
 }
 
 function stripChipPrefixFromTitle(chipText, title) {
@@ -785,10 +818,10 @@ function grid5TitleCard(page, list) {
 }
 
 function grid5ItemMeta(item, showAddress = true) {
-  if (!shouldShowItemAddress(item, showAddress)) return String(item?.metaSecondary || '').trim();
+  if (!shouldShowItemAddress(item, showAddress)) return gridPriceMetaFromSecondary(item?.metaSecondary);
   const address = cleanGridAddress(item?.metaPrimary);
   if (address) return address;
-  return String(item?.metaSecondary || '').trim();
+  return gridPriceMetaFromSecondary(item?.metaSecondary);
 }
 
 function renderGrid8FeedSlot(item, showAddress = true) {
@@ -1339,6 +1372,7 @@ function renderGrid8QuaytungItems(page, items, backgroundImage) {
 function renderGrid8QuaytungMenuSection(section, reverse) {
   const photoItem = section.items.find((item) => item.imageUrl) || section.items[0];
   const photoUrl = photoItem?.imageUrl || '';
+  const photoCandidates = photoItem?.candidateImageUrls || [];
   const rows = section.items.map((item) => {
     const address = cleanGridAddress(item.metaPrimary) || String(item.metaPrimary || '').trim();
     const shortAddress = address ? truncateMenuLine(address, 36) : '';
@@ -1356,7 +1390,7 @@ function renderGrid8QuaytungMenuSection(section, reverse) {
         <ul class="grid8-quaytung-menu-list">${rows}</ul>
       </div>
       <div class="grid8-quaytung-menu-section-photo">
-        ${photoUrl ? renderPreviewImage(photoUrl, section.title) : ''}
+        ${photoUrl ? renderPreviewImage(photoUrl, section.title, '', photoCandidates) : ''}
       </div>
     </section>
   `;
@@ -1628,19 +1662,55 @@ function isImageMappingNote(value) {
   return /^(?:Ảnh (?:đã map|tự map|minh họa|đối tác)|Thông tin đối tác)/i.test(String(value || '').trim());
 }
 
-const POV_3_V2_STACK_TAGLINE_MAX = 78;
+const POV_3_V2_STACK_TAGLINE_MAX = 92;
+
+function trimIncompleteTaglineTail(text) {
+  let result = String(text || '').replace(/\s+/g, ' ').trim();
+  const trailing = /\s+(?:khi|va|và|và|cua|của|cho|với|với|mà|nên|để|de|trong|tại|tại|ở|o|là|la|còn|con|như|nhu|nếu|neu|sau|trước|trước)$/i;
+  for (let i = 0; i < 4 && trailing.test(result); i += 1) {
+    result = result.replace(trailing, '').trim();
+  }
+  return result;
+}
 
 function truncatePov3V2StackTagline(value, maxLen = POV_3_V2_STACK_TAGLINE_MAX) {
-  const clean = String(value || '')
-    .replace(/^\[+|\]+$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const clean = trimIncompleteTaglineTail(
+    String(value || '')
+      .replace(/^\[+|\]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
   if (!clean) return '';
-  if (clean.length <= maxLen) return clean;
+  if (clean.length <= maxLen) {
+    return /[.!?…]$/.test(clean) ? clean : `${clean}.`;
+  }
+  const slice = clean.slice(0, maxLen + 1);
+  const sentenceEnd = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf('!'), slice.lastIndexOf('?'));
+  if (sentenceEnd >= maxLen * 0.35) {
+    return clean.slice(0, sentenceEnd + 1).trim();
+  }
   const cut = clean.slice(0, maxLen);
   const sp = cut.lastIndexOf(' ');
-  if (sp > maxLen * 0.45) return cut.slice(0, sp).trim();
-  return cut.trim();
+  const wordCut = (sp > maxLen * 0.45 ? cut.slice(0, sp) : cut).trim();
+  const trimmed = trimIncompleteTaglineTail(wordCut);
+  if (!trimmed) return '';
+  return /[.!?…]$/.test(trimmed) ? trimmed : `${trimmed}…`;
+}
+
+function portraitFocusClass(item) {
+  const section = String(item?.sourceSectionKey || '').trim();
+  if (['check_in', 'khu_du_lich', 'dich_vu', 'hoat_dong', 'homestay'].includes(section)) {
+    return ' is-portrait-focus';
+  }
+  const name = String(item?.name || item?.rawName || '').toLowerCase();
+  if (/tháp|thap|vinaphone|nhà thờ|nha tho|con gà|con ga|chụp|check.?in|thuê|thue|spa|nail|tóc|toc|makeup|photo|chụp hình|đồ|ao|váy|vay/.test(name)) {
+    return ' is-portrait-focus';
+  }
+  return '';
+}
+
+function pov3V2StackRowFocusClass(item) {
+  return portraitFocusClass(item);
 }
 
 function truncateMenuLine(value, maxLen = 42) {
@@ -1651,12 +1721,47 @@ function truncateMenuLine(value, maxLen = 42) {
   return `${(sp > maxLen * 0.45 ? cut.slice(0, sp) : cut).trim()}…`;
 }
 
-function pov3V2StackTagline(item) {
+function isCompletePov3V2Tagline(text) {
+  const t = String(text || '').trim();
+  if (t.length < 18) return false;
+  if (!/[.!?…]$/.test(t)) return false;
+  return !/\s+(?:khi|va|và|của|cho|với|mà|nên|để|trong|tại|ở|là|còn|như|nếu|sau|trước|đà|dalat|lối|qua|chủ|duy|nào|đâu|trôi|vô)\s*[.…]?$/i.test(t);
+}
+
+function buildFallbackPov3V2Tagline(item) {
+  const name = String(item?.name || 'địa điểm này').trim();
+  const section = String(item?.sourceSectionKey || '').trim();
+  if (section === 'check_in') {
+    return `${name} là góc check-in nổi bật ở Đà Lạt, dễ chụp và dễ ghép vào lịch đi.`;
+  }
+  if (section === 'khu_du_lich' || section === 'hoat_dong') {
+    return `${name} — điểm tham quan đáng ghé nếu bạn thích view rộng và không gian chill.`;
+  }
+  return `Ghé ${name} nếu muốn thêm một điểm dừng gọn trong chuyến đi Đà Lạt.`;
+}
+
+function highlightLooksTruncated(raw) {
+  const t = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!t) return true;
+  if (!/[.!?…]$/.test(t)) return true;
+  return /\s+(?:khi|va|và|của|cho|với|mà|nên|để|trong|tại|ở|là|còn|như|nếu|sau|trước)$/i.test(t);
+}
+
+function finalizePov3V2StackTagline(item) {
   const label = String(item.label || '').trim();
   const note = String(item.imageNote || '').trim();
   const raw = (label && !isImageMappingNote(label) ? label : '')
     || (note && !isImageMappingNote(note) ? note : '');
-  return truncatePov3V2StackTagline(raw);
+  if (highlightLooksTruncated(raw)) {
+    return truncatePov3V2StackTagline(buildFallbackPov3V2Tagline(item));
+  }
+  const fromHighlight = truncatePov3V2StackTagline(raw);
+  if (isCompletePov3V2Tagline(fromHighlight)) return fromHighlight;
+  return truncatePov3V2StackTagline(buildFallbackPov3V2Tagline(item));
+}
+
+function pov3V2StackTagline(item) {
+  return finalizePov3V2StackTagline(item);
 }
 
 function renderPov3V2StackRow(item) {
@@ -1666,7 +1771,7 @@ function renderPov3V2StackRow(item) {
     ? (taglineTextRaw.startsWith('[') ? taglineTextRaw : `[ ${taglineTextRaw.replace(/^[\[(\s]+|[\]\)\s]+$/g, '')} ]`)
     : '';
   return `
-    <section class="pov-3-v2-stack-row ${escapeHtml(imageSourceClass(item))}">
+    <section class="pov-3-v2-stack-row${pov3V2StackRowFocusClass(item)} ${escapeHtml(imageSourceClass(item))}">
       ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       <div class="pov-3-v2-stack-shade"></div>
       <div class="pov-3-v2-stack-copy">
@@ -2153,7 +2258,7 @@ export function renderListItems(items) {
         ${item.label ? `<div class="item-label">${escapeHtml(item.label)}</div>` : ''}
         <div class="item-name story-image-title">${escapeHtml(item.name)}</div>
         <p class="item-meta story-image-meta">${escapeHtml(item.metaPrimary)}</p>
-        ${item.metaSecondary ? `<p class="item-meta story-image-meta secondary">${escapeHtml(item.metaSecondary)}</p>` : ''}
+        ${(() => { const secondary = gridPriceMetaFromSecondary(item.metaSecondary); return secondary ? `<p class="item-meta story-image-meta secondary">${escapeHtml(secondary)}</p>` : ''; })()}
         <div class="mapping-chip compact ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
           ${item.imageSource === 'manual' ? 'Đúng ảnh' : item.imageSource === 'auto' ? 'Tự map' : 'Minh họa'}
         </div>
@@ -2195,7 +2300,8 @@ function renderGridAddress(value) {
 }
 
 function renderGridSecondary(value) {
-  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
+  // Dùng cùng bộ lọc với zigzag: chỉ hiện Giá/Liên hệ, không để "Khung giờ" trộn lẫn vào dòng giá.
+  const cleanValue = gridPriceMetaFromSecondary(value);
   if (!cleanValue) return '';
 
   return `
@@ -2294,8 +2400,9 @@ function renderSpotlightListItems(items, options = {}) {
   const showSecondary = options.showSecondary !== false;
   return (items || []).map((item) => {
     const isHomestay = item.sourceSectionKey === 'homestay';
+    // Lọc "Khung giờ" ra khỏi dòng phụ giống zigzag/grid, chỉ giữ Giá/Liên hệ.
     const metaSecondary = showSecondary
-      ? (item.metaSecondary || (isHomestay && item.price ? `Giá: ${item.price}` : ''))
+      ? (gridPriceMetaFromSecondary(item.metaSecondary) || (isHomestay && item.price ? `Giá: ${item.price}` : ''))
       : '';
     return `
     <article class="spotlight-list-row ${escapeHtml(imageSourceClass(item))}">
@@ -2419,6 +2526,7 @@ function budgetTableParts(item) {
 function budget72CostDisplay(value) {
   const raw = String(value || '').replace(/\s+/g, ' ').trim();
   if (!raw) return '';
+  if (/^free$/i.test(raw) || /miễn\s*phí/i.test(raw)) return 'Free';
   let text = raw
     .replace(/(?:Khung giờ|Open|Hoạt động):\s*[^·]+(?:\s*·\s*)?/gi, '')
     .replace(/^Giá:\s*/i, '')
@@ -2693,7 +2801,8 @@ function renderBudget3N2DDayPage(page, index, listId, list) {
         <div class="budget72-story-timeline">
           ${items.map((item) => {
             const { time } = budgetStoryParts(item);
-            const secondary = String(item.metaSecondary || '').trim();
+            // Dòng "time" ở trên đã là giờ ghé theo lịch trình — không lặp lại "Khung giờ" (giờ mở cửa quán) ở đây, chỉ giữ Giá/Liên hệ.
+            const secondary = gridPriceMetaFromSecondary(item.metaSecondary);
             return `
               <article class="budget72-story-stop">
                 <div class="budget72-story-time">${escapeHtml(time)}</div>
@@ -2780,7 +2889,7 @@ function gridDisplayName(item) {
 
 export function renderPhotomodeItems(items) {
   return items.map((item) => `
-    <section class="photomode-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
+    <section class="photomode-item${portraitFocusClass(item)} ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
       ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       <div class="photomode-copy">
         <div class="photomode-name-row">
@@ -2829,8 +2938,11 @@ function renderGrid8Meta(value) {
   `;
 }
 
-function renderGrid8Secondary(value) {
-  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
+function renderGrid8Secondary(value, options = {}) {
+  const includeOpenHours = options.includeOpenHours === true;
+  const cleanValue = includeOpenHours
+    ? String(value || '').replace(/\s+/g, ' ').trim()
+    : gridPriceMetaFromSecondary(value);
   if (!cleanValue) return '';
   return `<div class="grid8-meta grid8-meta-extra story-image-meta"><span>${escapeHtml(cleanValue)}</span></div>`;
 }
@@ -2885,7 +2997,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
             ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
             <strong class="story-image-title">${escapeHtml(displayName)}</strong>
             ${showMeta && shouldShowItemAddress(item, showAddress) ? renderGrid8Meta(item.metaPrimary) : ''}
-            ${showMeta ? renderGrid8Secondary(item.metaSecondary) : ''}
+            ${showMeta ? renderGrid8Secondary(item.metaSecondary, { includeOpenHours: options.includeOpenHours === true }) : ''}
           </div>
         </article>
       `;
@@ -2906,7 +3018,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
               ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
               <strong class="story-image-title">${escapeHtml(displayName)}</strong>
               ${showMeta && shouldShowItemAddress(item, showAddress) ? renderGrid8Meta(item.metaPrimary) : ''}
-              ${showMeta ? renderGrid8Secondary(item.metaSecondary) : ''}
+              ${showMeta ? renderGrid8Secondary(item.metaSecondary, { includeOpenHours: options.includeOpenHours === true }) : ''}
             </div>
           </article>
         `;

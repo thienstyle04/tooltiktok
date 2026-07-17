@@ -1,5 +1,5 @@
-import DeckStudio from '../components/DeckStudio';
+import DeckStudioLoader from '../components/DeckStudioLoader';
 
 export default function HomePage() {
-  return <DeckStudio />;
+  return <DeckStudioLoader />;
 }

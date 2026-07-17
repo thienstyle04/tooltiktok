@@ -19,8 +19,18 @@ import { hasItemKey, itemUsageKey, markItemKey } from './data-allocator';
 import { allowedImageKindsForItem, createListImageResolver, stableHash, topDirKind } from './image-resolver';
 import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 import { buildPagesForDeckV2, getV2DeckDefinitions, isV2DeckId } from './deck-builder-v2';
+import { cityLabel, cityLabelUpper, getMarketingCopy, buildCaptionHashtags, getActiveDestinationLocalize } from '../sync/destination-localize';
+import { isPartnerFirstDestination } from '../sync/destination-config';
 
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
+
+/**
+ * Green Land (và các điểm đến "partnerFirst" tương lai): mẫu ưu tiên hiển thị hết dữ liệu đối tác (isPartner)
+ * trước, chỉ dùng dữ liệu thường để bổ sung khi thiếu — không giới hạn số đối tác/trang như Đà Lạt/Phan Thiết.
+ */
+function partnerFirstActive(): boolean {
+  return isPartnerFirstDestination(getActiveDestinationLocalize());
+}
 
 const DEFAULT_PARTNER_TARGET_PER_PAGE = 3;
 /** Cap DL riêng cho pov-3-v2 (lưới 9 ô) và grid-8-quaytung. */
@@ -31,17 +41,17 @@ const GRID_8_QUAYTUNG_PARTNER_CAP = 4;
 export const ITINERARY_3N2D_TEMPLATE_VERSION = 17;
 export const ITINERARY_4N3D_TEMPLATE_VERSION = 13;
 export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 16;
-export const POV_3_DAY_TEMPLATE_VERSION = 12;
-export const GRID_4_TEMPLATE_VERSION = 17;
-export const GRID_4_MUTANT_TEMPLATE_VERSION = 1;
+export const POV_3_DAY_TEMPLATE_VERSION = 13;
+export const GRID_4_TEMPLATE_VERSION = 18;
+export const GRID_4_MUTANT_TEMPLATE_VERSION = 2;
 export const GRID_5_TEMPLATE_VERSION = 4;
 export const GRID_6_TEMPLATE_VERSION = 18;
-export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 1;
-export const GRID_8_TEMPLATE_VERSION = 15;
+export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 3;
+export const GRID_8_TEMPLATE_VERSION = 16;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
-export const BUDGET_3N2D_TEMPLATE_VERSION = 5;
-export const BUDGET_3N2D_STORY_TEMPLATE_VERSION = 4;
-export const BUDGET_72H_SUMMARY_TEMPLATE_VERSION = 5;
+export const BUDGET_3N2D_TEMPLATE_VERSION = 7;
+export const BUDGET_3N2D_STORY_TEMPLATE_VERSION = 5;
+export const BUDGET_72H_SUMMARY_TEMPLATE_VERSION = 7;
 const budget72StoryText = {
   coverTitle: '\u002272H\u0022 \u1ede \u0110\u00c0 L\u1ea0T V\u1edaI 3TR',
   coverSubtitle: 'L\u1ecbch tr\u00ecnh 3 ng\u00e0y 2 \u0111\u00eam g\u1ecdn h\u01a1n: xem theo t\u1eebng ng\u00e0y, c\u00f3 chi ph\u00ed v\u00e0 c\u00e1c \u0111i\u1ec3m n\u00ean l\u01b0u.',
@@ -66,7 +76,9 @@ const budget72StoryText = {
 const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
-  return Math.min(Math.max(count, 0), Math.max(availablePartners, 0), Math.max(cap, 0));
+  // partnerFirst: bỏ mọi cap, chỉ giới hạn bởi số chỗ trống trên trang và số đối tác thực có sẵn.
+  const effectiveCap = partnerFirstActive() ? Math.max(count, availablePartners) : cap;
+  return Math.min(Math.max(count, 0), Math.max(availablePartners, 0), Math.max(effectiveCap, 0));
 }
 
 export function normalizeItemType(item: GuideItem, ...needles: string[]): boolean {
@@ -100,6 +112,7 @@ function hasUsableImage(item: GuideItem): boolean {
 }
 
 function hasMappedImage(item: GuideItem): boolean {
+  if (!hasUsableImage(item)) return false;
   return item.imageSource === 'manual' || item.imageSource === 'auto' || Boolean(item.imageMapped);
 }
 
@@ -123,7 +136,7 @@ function finalActivityPagePool(pools: DeckBuildPools, seed: string): { chip: str
     const items = preferMappedImageItems(pools.activityItems);
     return {
       chip: 'Hoạt động',
-      title: 'HOẠT ĐỘNG ĐÀ LẠT',
+      title: `HOẠT ĐỘNG ${cityLabelUpper()}`,
       items: items.length > 0 ? items : pools.historyItems,
       isActivity: true,
     };
@@ -131,7 +144,7 @@ function finalActivityPagePool(pools: DeckBuildPools, seed: string): { chip: str
 
   return {
     chip: 'Khu du lịch',
-    title: 'KHU DU LỊCH ĐÀ LẠT',
+    title: `KHU DU LỊCH ${cityLabelUpper()}`,
     items: preferMappedImageItems(pools.tourismItems),
     isActivity: false,
   };
@@ -146,13 +159,33 @@ function itineraryActivitySlotPool(pools: DeckBuildPools, seed: string): { label
   };
 }
 
+/** Giá hiển thị trên slide: ưu tiên `gia_dau_nguoi`, fallback `gia`. */
+export function displayPrice(item: GuideItem): string {
+  const headPrice = String(item.headPrice || '').replace(/\s+/g, ' ').trim();
+  if (headPrice) return headPrice;
+  return String(item.price || '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Sheet nhiều dòng ghi "0" cho mục miễn phí (check-in, hoạt động...) thay vì để trống. Giá trị này vẫn
+ * là chuỗi non-empty nên `if (price)` coi là "có giá" và hiển thị badge xấu "Giá: 0 đ". Dùng hàm này ở
+ * mọi nơi build badge giá (cả list chính và list AI dùng chung logic này) để ẩn badge khi giá = 0/miễn phí,
+ * thay vì hiển thị "0 đ".
+ */
+function isDisplayablePrice(price: string): boolean {
+  const cleaned = String(price || '').trim();
+  if (!cleaned) return false;
+  if (isFreePrice(cleaned)) return false;
+  return !/^0+\s*(đ|d|vnd|vnđ)?$/i.test(cleaned);
+}
+
 function isDisplayReadyItem(item: GuideItem): boolean {
   return hasDisplayText(item.name)
     && hasUsableImage(item)
     && (
       hasDisplayText(item.address)
       || hasDisplayText(item.openHours)
-      || hasDisplayText(item.price)
+      || hasDisplayText(displayPrice(item))
       || hasDisplayText(item.phone)
       || hasDisplayText(item.type)
       || hasDisplayText(item.highlight)
@@ -179,7 +212,8 @@ function ensureGuideItemCount(selectedItems: GuideItem[], sourceItems: GuideItem
 export function metaText(item: GuideItem): [string, string] {
   const secondaryParts: string[] = [];
   if (item.openHours) secondaryParts.push(`Khung giờ: ${item.openHours}`);
-  if (item.price) secondaryParts.push(`Giá: ${item.price}`);
+  const price = displayPrice(item);
+  if (isDisplayablePrice(price)) secondaryParts.push(`Giá: ${price}`);
   else if (item.phone) secondaryParts.push(`Liên hệ: ${item.phone}`);
   const secondary = secondaryParts.join(' · ');
   if (item.sectionKey === 'hoat_dong') {
@@ -193,7 +227,8 @@ function serviceMetaText(item: GuideItem): [string, string] {
   const primary = item.address || 'Đang cập nhật địa chỉ';
   if (item.sectionKey === 'homestay') {
     const secondaryParts: string[] = [];
-    if (item.price) secondaryParts.push(`Giá: ${item.price}`);
+    const price = displayPrice(item);
+    if (isDisplayablePrice(price)) secondaryParts.push(`Giá: ${price}`);
     if (item.phone) secondaryParts.push(`SĐT: ${item.phone}`);
     return [primary, secondaryParts.join(' · ')];
   }
@@ -450,6 +485,41 @@ function isLightMealItem(item: GuideItem): boolean {
     'bun',
     'mi',
   ].some((token) => normalized.includes(token));
+}
+
+/** Kem, chè, ăn vặt — không dùng cho trang ĂN TRƯA / bữa chính. */
+function isSnackOrDessertItem(item: GuideItem): boolean {
+  if (isGrillOrHotpotItem(item)) return false;
+  const normalized = normalizeText(`${item.name} ${item.type} ${item.highlight}`);
+  if (normalized.includes('an_vat')) return true;
+  return [
+    'kem_bo',
+    'kembo',
+    'kem',
+    'che',
+    'snack',
+    'tra_sua',
+    'trasua',
+    'waffle',
+    'matcha',
+    'sua_chua',
+    'nuoc_ep',
+    'banh_flan',
+    'smoothie',
+    'cham_kem',
+  ].some((token) => normalized.includes(token));
+}
+
+function buildLunchFoodItems(daytimeFoodItems: GuideItem[]): GuideItem[] {
+  const lunchTyped = daytimeFoodItems.filter(
+    (item) => normalizeItemType(item, 'trua') && !isSnackOrDessertItem(item),
+  );
+  const mainMeals = daytimeFoodItems.filter(
+    (item) => !isSnackOrDessertItem(item) && !isMorningFoodItem(item),
+  );
+  const merged = dedupeItems([...lunchTyped, ...mainMeals]);
+  if (merged.length >= 4) return merged;
+  return dedupeItems(daytimeFoodItems.filter((item) => !isSnackOrDessertItem(item)));
 }
 
 function isImageBackedNightlifeItem(item: GuideItem): boolean {
@@ -714,7 +784,7 @@ function isFreePrice(value: string): boolean {
 }
 
 function isFreeCheckinItem(item: GuideItem): boolean {
-  return isFreePrice(item.price);
+  return isFreePrice(displayPrice(item));
 }
 
 function photomodePageItemWithResolver(
@@ -821,48 +891,49 @@ export function schedulePageItemWithResolver(
 }
 
 const HEADLINE_ACCENT_REPLACEMENTS: Array<[RegExp, string]> = [
-  [/\bKHONG\s+THE\s+BO\s+QUA\b/gi, 'không thể bỏ qua'],
-  [/\bSANG\s+MO\s+SOM\b/gi, 'sáng mơ sớm'],
-  [/\bKHO\s+BAU\s+AN\s+GIAU\b/gi, 'kho báu ẩn giấu'],
-  [/\bCHOT\s+DON\b/gi, 'chốt đơn'],
-  [/\bDANH\s+THUC\b/gi, 'đánh thức'],
-  [/\bDANH\s+SACH\b/gi, 'danh sách'],
-  [/\bDIA\s+DIEM\b/gi, 'địa điểm'],
-  [/\bDIEM\b/gi, 'điểm'],
-  [/\bGOI\s+GON\b/gi, 'gói gọn'],
-  [/\bGON\s+VI\b/gi, 'gọn ví'],
-  [/\bDICH\s+VU\b/gi, 'dịch vụ'],
-  [/\bDOI\s+TAC\b/gi, 'đối tác'],
-  [/\bTHUE\s+XE\b/gi, 'thuê xe'],
-  [/\bXE\s+MAY\b/gi, 'xe máy'],
-  [/\bDAT\s+XE\b/gi, 'đặt xe'],
-  [/\bAN\s+SANG\b/gi, 'ăn sáng'],
-  [/\bDI\s+DA\s+LAT\b/gi, 'đi Đà Lạt'],
-  [/\bDA\s+LAT\b/gi, 'Đà Lạt'],
-  [/\bDALAT\b/gi, 'Đà Lạt'],
-  [/\bGOI\s+Y\b/gi, 'gợi ý'],
-  [/\bQUAN\s+CAFE\b/gi, 'quán cafe'],
-  [/\bBUC\s+ANH\b/gi, 'bức ảnh'],
-  [/\bSU\s+THAT\b/gi, 'sự thật'],
-  [/\bBAT\s+NGO\b/gi, 'bất ngờ'],
-  [/\bCHAY\s+HET\s+MINH\b/gi, 'cháy hết mình'],
-  [/\bPHA\s+DAO\b/gi, 'phá đảo'],
-  [/\bGOM\s+TRON\b/gi, 'gom trọn'],
-  [/\bLOP\s+SUONG\b/gi, 'lớp sương'],
-  [/\bCAM\s+NANG\b/gi, 'cẩm nang'],
-  [/\bCHAM\s+SAU\b/gi, 'chạm sâu'],
-  [/\bHET\s+NAC\b/gi, 'hết nấc'],
-  [/\bNHIP\s+DIEU\b/gi, 'nhịp điệu'],
-  [/\bDIU\s+DANG\b/gi, 'dịu dàng'],
-  [/\bDI\s+CHAM\b/gi, 'đi chậm'],
-  [/\bSIEU\s+CHILL\b/gi, 'siêu chill'],
-  [/\bCHAM\s+MA\s+NGAM\b/gi, 'chậm mà ngấm'],
-  [/\bMOI\s+GHIEN\b/gi, 'mới ghiền'],
-  [/\bMA\s+GHIEN\b/gi, 'mà ghiền'],
-  [/\bDEP\b/gi, 'đẹp'],
-  [/\bLUU\b/gi, 'lưu'],
-  [/\bTHI\b/gi, 'thì'],
-  [/\bNAY\b/gi, 'này'],
+  [/\bKHONG\s+THE\s+BO\s+QUA\b/giu, 'không thể bỏ qua'],
+  [/\bSANG\s+MO\s+SOM\b/giu, 'sáng mơ sớm'],
+  [/\bKHO\s+BAU\s+AN\s+GIAU\b/giu, 'kho báu ẩn giấu'],
+  [/\bCHOT\s+DON\b/giu, 'chốt đơn'],
+  [/\bDANH\s+THUC\b/giu, 'đánh thức'],
+  [/\bDANH\s+SACH\b/giu, 'danh sách'],
+  [/\bDIA\s+DIEM\b/giu, 'địa điểm'],
+  [/\bDIEM\b/giu, 'điểm'],
+  [/\bGOI\s+GON\b/giu, 'gói gọn'],
+  [/\bGON\s+VI\b/giu, 'gọn ví'],
+  [/\bDICH\s+VU\b/giu, 'dịch vụ'],
+  [/\bDOI\s+TAC\b/giu, 'đối tác'],
+  [/\bTHUE\s+XE\b/giu, 'thuê xe'],
+  [/\bXE\s+MAY\b/giu, 'xe máy'],
+  [/\bDAT\s+XE\b/giu, 'đặt xe'],
+  [/\bAN\s+SANG\b/giu, 'ăn sáng'],
+  [/\bDI\s+DA\s+LAT\b/giu, 'đi Đà Lạt'],
+  [/\bDA\s+LAT\b/giu, 'Đà Lạt'],
+  [/\bDALAT\b/giu, 'Đà Lạt'],
+  [/\bPHAN\s+THIET\b/giu, 'Phan Thiết'],
+  [/\bGOI\s+Y\b/giu, 'gợi ý'],
+  [/\bQUAN\s+CAFE\b/giu, 'quán cafe'],
+  [/\bBUC\s+ANH\b/giu, 'bức ảnh'],
+  [/\bSU\s+THAT\b/giu, 'sự thật'],
+  [/\bBAT\s+NGO\b/giu, 'bất ngờ'],
+  [/\bCHAY\s+HET\s+MINH\b/giu, 'cháy hết mình'],
+  [/\bPHA\s+DAO\b/giu, 'phá đảo'],
+  [/\bGOM\s+TRON\b/giu, 'gom trọn'],
+  [/\bLOP\s+SUONG\b/giu, 'lớp sương'],
+  [/\bCAM\s+NANG\b/giu, 'cẩm nang'],
+  [/\bCHAM\s+SAU\b/giu, 'chạm sâu'],
+  [/\bHET\s+NAC\b/giu, 'hết nấc'],
+  [/\bNHIP\s+DIEU\b/giu, 'nhịp điệu'],
+  [/\bDIU\s+DANG\b/giu, 'dịu dàng'],
+  [/\bDI\s+CHAM\b/giu, 'đi chậm'],
+  [/\bSIEU\s+CHILL\b/giu, 'siêu chill'],
+  [/\bCHAM\s+MA\s+NGAM\b/giu, 'chậm mà ngấm'],
+  [/\bMOI\s+GHIEN\b/giu, 'mới ghiền'],
+  [/\bMA\s+GHIEN\b/giu, 'mà ghiền'],
+  [/\bDEP\b/giu, 'đẹp'],
+  [/\bLUU\b/giu, 'lưu'],
+  [/\bTHI(?!\p{L})/giu, 'thì'],
+  [/\bNAY(?!\p{L})/giu, 'này'],
 ];
 
 function matchHeadlineCase(source: string, replacement: string): string {
@@ -877,11 +948,11 @@ function matchHeadlineCase(source: string, replacement: string): string {
 
 function restoreVietnameseHeadlineAccents(value: string): string {
   let result = value
-    .replace(/\b(\d+\s*N\s*\d+)(D)\b/gi, (_match, prefix: string, day: string) => `${prefix}${matchHeadlineCase(day, 'Đ')}`)
-    .replace(/\b(\d+\s*)(NGAY)\b/gi, (_match, prefix: string, word: string) => `${prefix}${matchHeadlineCase(word, 'ngày')}`)
-    .replace(/\b(NGAY)(\s+\d+)\b/gi, (_match, word: string, suffix: string) => `${matchHeadlineCase(word, 'ngày')}${suffix}`)
-    .replace(/\b(\d+\s*)(ANH)\b/gi, (_match, prefix: string, word: string) => `${prefix}${matchHeadlineCase(word, 'ảnh')}`)
-    .replace(/\b(DEM)\b/gi, (match) => matchHeadlineCase(match, 'đêm'));
+    .replace(/\b(\d+\s*N\s*\d+)(D)\b/giu, (_match, prefix: string, day: string) => `${prefix}${matchHeadlineCase(day, 'Đ')}`)
+    .replace(/\b(\d+\s*)(NGAY)\b/giu, (_match, prefix: string, word: string) => `${prefix}${matchHeadlineCase(word, 'ngày')}`)
+    .replace(/\b(NGAY)(\s+\d+)\b/giu, (_match, word: string, suffix: string) => `${matchHeadlineCase(word, 'ngày')}${suffix}`)
+    .replace(/\b(\d+\s*)(ANH)\b/giu, (_match, prefix: string, word: string) => `${prefix}${matchHeadlineCase(word, 'ảnh')}`)
+    .replace(/\b(DEM)\b/giu, (match) => matchHeadlineCase(match, 'đêm'));
 
   for (const [pattern, replacement] of HEADLINE_ACCENT_REPLACEMENTS) {
     result = result.replace(pattern, (match) => matchHeadlineCase(match, replacement));
@@ -896,15 +967,18 @@ export function buildCoverPage(title: string, subtitle: string, backgroundImage:
 
 export function sanitizeDeckHeadline(value: string): string {
   return restoreVietnameseHeadlineAccents(String(value || ''))
-    .replace(/\bFREE\b/g, 'ĐẸP')
-    .replace(/\bFree\b/g, 'Đẹp')
-    .replace(/\bfree\b/g, 'đẹp')
-    .replace(/miễn\s*phí/gi, 'dễ đi')
-    .replace(/\bĐà\s*Lạt\s*ẩn\s*mình\s*sau\s*vách\s*núi\b/gi, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
-    .replace(/\bĐà\s*Lạt\s*đủ\s*để\s*đi\s*ngay\b/gi, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
-    .replace(/\bĐà\s*Lạt\s+VN\b/gi, 'Đà Lạt')
-    .replace(/\s+\/\s*VN\b/gi, '')
-    .replace(/\s+\bVN\b(?=\s|$|[./])/gi, '')
+    .replace(/THÌẾT/g, 'THIẾT')
+    .replace(/Thìết/g, 'Thiết')
+    .replace(/thìết/g, 'thiết')
+    .replace(/\bFREE\b/giu, 'ĐẸP')
+    .replace(/\bFree\b/giu, 'Đẹp')
+    .replace(/\bfree\b/giu, 'đẹp')
+    .replace(/miễn\s*phí/giu, 'dễ đi')
+    .replace(/\bĐà\s*Lạt\s*ẩn\s*mình\s*sau\s*vách\s*núi\b/giu, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
+    .replace(/\bĐà\s*Lạt\s*đủ\s*để\s*đi\s*ngay\b/giu, 'Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
+    .replace(/\bĐà\s*Lạt\s+VN\b/giu, 'Đà Lạt')
+    .replace(/\s+\/\s*VN\b/giu, '')
+    .replace(/\s+\bVN\b(?=\s|$|[./])/giu, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -954,24 +1028,46 @@ function grid8FeedCoverSubtitleFromCaption(
   return truncateGrid8FeedCoverSubtitle(combined || body, fallback);
 }
 
-/** ~2 dòng tagline trên stack row (export 10px); cắt từ, không thêm … */
-export const POV_3_V2_STACK_TAGLINE_MAX = 78;
+/** ~2 dòng tagline trên stack row; cắt tại ranh giới câu/từ, không để cụt "khi/và/của". */
+export const POV_3_V2_STACK_TAGLINE_MAX = 92;
+
+const POV3_V2_TAGLINE_TRAILING_FRAGMENT = /\s+(?:khi|va|và|và|cua|của|cho|với|với|mà|nên|để|de|trong|tại|tại|ở|o|là|la|còn|con|mà|như|nhu|nếu|neu|sau|trước|trước)$/i;
+
+function trimIncompleteTaglineTail(text: string): string {
+  let result = String(text || '').replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < 4 && POV3_V2_TAGLINE_TRAILING_FRAGMENT.test(result); i += 1) {
+    result = result.replace(POV3_V2_TAGLINE_TRAILING_FRAGMENT, '').trim();
+  }
+  return result;
+}
 
 export function truncatePov3V2StackTagline(
   value: string,
   max = POV_3_V2_STACK_TAGLINE_MAX,
 ): string {
-  const clean = String(value || '')
-    .replace(/^\[+|\]+$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const clean = trimIncompleteTaglineTail(
+    String(value || '')
+      .replace(/^\[+|\]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
   if (!clean) return '';
-  if (clean.length <= max) return clean;
+  if (clean.length <= max) {
+    return /[.!?…]$/.test(clean) ? clean : `${clean}.`;
+  }
+
+  const slice = clean.slice(0, max + 1);
+  const sentenceEnd = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf('!'), slice.lastIndexOf('?'));
+  if (sentenceEnd >= max * 0.35) {
+    return clean.slice(0, sentenceEnd + 1).trim();
+  }
 
   const truncated = clean.slice(0, max);
   const lastSpace = truncated.lastIndexOf(' ');
-  if (lastSpace > max * 0.45) return truncated.slice(0, lastSpace).trim();
-  return truncated.trim();
+  const wordCut = (lastSpace > max * 0.45 ? truncated.slice(0, lastSpace) : truncated).trim();
+  const trimmed = trimIncompleteTaglineTail(wordCut);
+  if (!trimmed) return '';
+  return /[.!?…]$/.test(trimmed) ? trimmed : `${trimmed}…`;
 }
 
 export function truncateSpotlightV2CoverSubtitle(value: string, fallback = ''): string {
@@ -1044,7 +1140,7 @@ function seededRank(seed: string, value: string): number {
 function candidateScore(item: GuideItem, seed: string): { total: number; tieBreaker: number } {
   let infoScore = 0;
   if (item.openHours) infoScore += 15;
-  if (item.price) infoScore += 10;
+  if (displayPrice(item)) infoScore += 10;
   if (item.highlight) infoScore += 8;
   if (item.phone) infoScore += 8;
   const imageScore = item.imageSource === 'manual' ? 180 : item.imageSource === 'auto' ? 100 : 0;
@@ -1286,7 +1382,9 @@ function pickPartnerBalancedItems(
 function pickGrid4ItemsWithPartnerQuota(primaryItems: GuideItem[], fallbackItems: GuideItem[], count: number, seed: string, pick: PickFn): GuideItem[] {
   const partnerCount = primaryItems.filter((i) => i.isPartner).length;
   const combinedPartnerCount = dedupeItems([...primaryItems, ...fallbackItems]).filter((i) => i.isPartner).length;
-  const targetPartnerCount = partnerCount === 2 ? 1 : Math.min(2, combinedPartnerCount);
+  const targetPartnerCount = partnerFirstActive()
+    ? Math.min(count, combinedPartnerCount)
+    : (partnerCount === 2 ? 1 : Math.min(2, combinedPartnerCount));
   return pickPartnerBalancedItems(primaryItems, fallbackItems, count, targetPartnerCount, seed, pick);
 }
 
@@ -1294,7 +1392,9 @@ function pickGridItemsWithPartnerQuota(primaryItems: GuideItem[], fallbackItems:
   if (count === 4) return pickGrid4ItemsWithPartnerQuota(primaryItems, fallbackItems, count, seed, pick);
   const partnerCount = primaryItems.filter((i) => i.isPartner).length;
   const combinedPartnerCount = dedupeItems([...primaryItems, ...fallbackItems]).filter((i) => i.isPartner).length;
-  const targetPartnerCount = partnerCount === 2 ? 1 : Math.min(2, partnerTargetCount(count, combinedPartnerCount));
+  const targetPartnerCount = partnerFirstActive()
+    ? Math.min(count, combinedPartnerCount)
+    : (partnerCount === 2 ? 1 : Math.min(2, partnerTargetCount(count, combinedPartnerCount)));
   return pickPartnerBalancedItems(primaryItems, fallbackItems, count, targetPartnerCount, seed, pick);
 }
 
@@ -1368,7 +1468,7 @@ function pickItineraryPageItems(
       ...preferredPool.filter((item) => item.isPartner),
       ...(slot.allowFallbackPartner === false ? [] : fallbackPool.filter((item) => item.isPartner)),
     ]);
-    let selected = partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE && partnerPool.length > 0
+    let selected = (partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE) && partnerPool.length > 0
       ? pickWithUsedFallback(partnerPool, 1, `${slot.seed}-partner`, pick)[0]
       : undefined;
     if (!selected) {
@@ -1427,7 +1527,7 @@ export function createDeckBuildPools(itemsBySection: WorkbookItemsBySection): De
   const dayTourismItems = dedupeItems(withoutGrillOrHotpot(tourismItems));
   const dayFamousItems = dedupeItems(withoutGrillOrHotpot(famousItems));
   const breakfastItems = morningFoodItems;
-  const lunchItems = lightMealItems.length > 0 ? lightMealItems : daytimeFoodItems.filter((i) => normalizeItemType(i, 'trua'));
+  const lunchItems = buildLunchFoodItems(daytimeFoodItems);
   const dinnerItems = dedupeItems([...grillHotpotItems, ...foodItems.filter((i) => normalizeItemType(i, 'toi')), ...foodItems]);
   const morningScheduleItems = dedupeItems([
     ...dayCafeItems,
@@ -1723,6 +1823,7 @@ function budgetTableCost(
   if (hasHeadPrice) return headPrice;
   if (item.isPartner && cleanPrice) return cleanPrice;
   if (hasPrice) return cleanPrice;
+  if (item.sectionKey === 'check_in' || isFreeCheckinItem(item)) return 'Free';
   return fallbackPrice || lowBudgetPriceForItem(item);
 }
 
@@ -1806,12 +1907,11 @@ function createBudgetStaticRow(day: string, time: string, activity: string, addr
 
 function budgetRowPageItem(
   row: BudgetScheduleRow,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  _resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   fallbackImageUrl = '',
 ): PageItem {
-  const resolvedImage = row.item
-    ? resolveImage(row.item)
-    : { imageUrl: fallbackImageUrl, imageMapped: false, imageSource: 'fallback' as const, imageNote: '', candidateImageUrls: fallbackImageUrl ? [fallbackImageUrl] : [] };
+  // Bảng chi phí không hiển thị ảnh từng dòng — bỏ qua resolver để giữ pool ảnh cho gallery.
+  const resolvedImage = { imageUrl: '', imageMapped: false, imageSource: 'fallback' as const, imageNote: '', candidateImageUrls: [] as string[] };
   return {
     label: `${row.day}|${row.time}`,
     id: row.item?.id || row.id,
@@ -1861,7 +1961,7 @@ function withoutBudgetTableImages(items: PageItem[]): PageItem[] {
 function budgetGalleryPageItemWithResolver(
   item: GuideItem,
   label: string,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  resolveImage: ResolveListImageFn,
 ): PageItem {
   const resolvedImage = resolveImage(item);
   return {
@@ -1900,13 +2000,18 @@ function pickBudgetSlotItem(
   return selected;
 }
 
+type ResolveListImageFn = (
+  item: GuideItem,
+  options?: { forceFallback?: boolean },
+) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>;
+
 function buildBudgetGalleryItems(
   selectedItems: GuideItem[],
   fallbackItems: GuideItem[],
   count: number,
   seed: string,
   pick: PickFn,
-  resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  resolveImage: ResolveListImageFn,
   labelForItem: (item: GuideItem) => string,
 ): PageItem[] {
   const selectedKeys = new Set<string>();
@@ -1931,7 +2036,28 @@ function buildBudgetGalleryItems(
     pick,
   ).forEach(add);
 
-  return chosen.slice(0, count).map((item) => budgetGalleryPageItemWithResolver(item, labelForItem(item), resolveImage));
+  const pageUsedImageUrls = new Set<string>();
+  return chosen.slice(0, count).map((item) => {
+    let resolved = resolveImage(item);
+    if (resolved.imageUrl && pageUsedImageUrls.has(resolved.imageUrl)) {
+      const alternates = [
+        ...(item.candidateImageUrls || []),
+        item.imageUrl,
+      ].filter((url): url is string => Boolean(url) && !pageUsedImageUrls.has(url));
+      if (alternates.length > 0) {
+        resolved = {
+          ...resolved,
+          imageUrl: alternates[0],
+          imageMapped: true,
+          imageSource: resolved.imageSource === 'manual' ? 'manual' : 'auto',
+        };
+      } else {
+        resolved = resolveImage(item, { forceFallback: true });
+      }
+    }
+    if (resolved.imageUrl) pageUsedImageUrls.add(resolved.imageUrl);
+    return budgetGalleryPageItemWithResolver(item, labelForItem(item), () => resolved);
+  });
 }
 
 type Budget3N2DBuildOptions = {
@@ -1950,7 +2076,7 @@ function buildBudget3N2DPages(
 ): DeckPage[] {
   const costMode = options.costMode ?? 'default';
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:budget-3n2d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:budget-3n2d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const selectedKeys = new Set<string>();
@@ -1958,7 +2084,7 @@ function buildBudget3N2DPages(
   const rows: BudgetScheduleRow[] = [];
   const activitySlot = itineraryActivitySlotPool(pools, seedPrefix);
   const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.breakfastItems;
-  const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
+  const lunchItems = pools.lunchItems;
   const dinnerItems = pools.eveningScheduleItems.length > 0 ? pools.eveningScheduleItems : pools.dinnerItems;
   const checkinItems = balancedCheckinPool(pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems, 16, `${seedPrefix}-budget-checkin-pool`);
 
@@ -1977,17 +2103,18 @@ function buildBudget3N2DPages(
     });
   };
 
-  rows.push(createBudgetStaticRow('Ngày 01', '05:00', 'Di chuyển bằng xe Phương Trang SG - ĐL', 'Bến xe liên tỉnh Đà Lạt', '~540k/khứ hồi', `${seedPrefix}-bus-in`));
+  const copy = getMarketingCopy();
+  rows.push(createBudgetStaticRow('Ngày 01', '05:00', copy.budgetBusInActivity, copy.budgetBusInAddress, copy.budgetBusInCost, `${seedPrefix}-bus-in`));
   addPickedRow('Ngày 01', '07:00', 'Ăn sáng', breakfastItems, breakfastItems, `${seedPrefix}-d1-breakfast`, '~30k');
   addPickedRow('Ngày 01', '09:00', 'Cà phê', pools.dayCafeItems, pools.cafeItems, `${seedPrefix}-d1-cafe`, '~30k');
-  addPickedRow('Ngày 01', '10:30', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d1-checkin`, '~20k');
+  addPickedRow('Ngày 01', '10:30', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d1-checkin`);
   addPickedRow('Ngày 01', '12:00', 'Ăn trưa', lunchItems, pools.foodItems, `${seedPrefix}-d1-lunch`, '~50k');
   addPickedRow('Ngày 01', '15:00', activitySlot.label, activitySlot.items, pools.dayFamousItems, `${seedPrefix}-d1-activity`, '~50k');
   addPickedRow('Ngày 01', '18:30', 'Ăn tối', dinnerItems, pools.foodItems, `${seedPrefix}-d1-dinner`, '~120k');
   addPickedRow('Ngày 01', '20:00', 'Chơi đêm', pools.nightlifeItems, pools.nightlifeImageItems, `${seedPrefix}-d1-night`, '~40k');
   addPickedRow('Ngày 02', '07:30', 'Ăn sáng', breakfastItems, breakfastItems, `${seedPrefix}-d2-breakfast`, '~30k');
   addPickedRow('Ngày 02', '09:00', 'Cà phê', pools.dayCafeItems, pools.cafeItems, `${seedPrefix}-d2-cafe`, '~30k');
-  addPickedRow('Ngày 02', '10:30', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d2-checkin`, '~20k');
+  addPickedRow('Ngày 02', '10:30', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d2-checkin`);
   addPickedRow('Ngày 02', '12:00', 'Ăn trưa', lunchItems, pools.foodItems, `${seedPrefix}-d2-lunch`, '~60k');
   addPickedRow('Ngày 02', '15:00', activitySlot.label, activitySlot.items, pools.dayFamousItems, `${seedPrefix}-d2-activity`, '~70k');
   addPickedRow('Ngày 02', '17:00', 'Cà phê chiều', pools.dayCafeItems, pools.cafeItems, `${seedPrefix}-d2-cafe-2`, '~35k');
@@ -1995,10 +2122,10 @@ function buildBudget3N2DPages(
   addPickedRow('Ngày 02', '20:30', 'Chơi đêm', pools.nightlifeItems, pools.nightlifeImageItems, `${seedPrefix}-d2-night`, '~40k');
   addPickedRow('Ngày 03', '07:00', 'Ăn sáng', breakfastItems, breakfastItems, `${seedPrefix}-d3-breakfast`, '~30k');
   addPickedRow('Ngày 03', '08:30', 'Cà phê', pools.dayCafeItems, pools.cafeItems, `${seedPrefix}-d3-cafe`, '~30k');
-  addPickedRow('Ngày 03', '10:00', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d3-checkin`, '~20k');
+  addPickedRow('Ngày 03', '10:00', 'Check-in', checkinItems, pools.checkinItems, `${seedPrefix}-d3-checkin`);
   addPickedRow('Ngày 03', '11:30', 'Ăn trưa', lunchItems, pools.foodItems, `${seedPrefix}-d3-lunch`, '~70k');
   addPickedRow('Ngày 03', '13:00', 'Mua quà', pools.serviceItems, pools.serviceItems, `${seedPrefix}-d3-service`, '~80k');
-  rows.push(createBudgetStaticRow('Ngày 03', '14:30', 'Check out, lên xe về lại SG', 'Bến xe liên tỉnh Đà Lạt', 'Đã tính vé xe', `${seedPrefix}-bus-out`));
+  rows.push(createBudgetStaticRow('Ngày 03', '14:30', copy.budgetBusOutActivity, copy.budgetBusOutAddress, 'Đã tính vé xe', `${seedPrefix}-bus-out`));
 
   const tableFallbackImage = background(`${seedPrefix}-table-fallback`);
   const summaryItems = budgetSummaryItemsFromRows(rows, pools, seedPrefix, tableFallbackImage, costMode);
@@ -2015,10 +2142,10 @@ function buildBudget3N2DPages(
 
   const pages: DeckPage[] = [
     {
-      ...buildCoverPage('"72H" Ở ĐÀ LẠT VỚI 3TR', '/Gợi ý lịch trình du hí 3N2Đ/', background(`${seedPrefix}-cover`)),
+      ...buildCoverPage(copy.budgetCoverTitle, '/Gợi ý lịch trình du hí 3N2Đ/', background(`${seedPrefix}-cover`)),
       layoutVariant: 'budget-3n2d' as const,
     },
-    buildListPage('Bảng chi phí', 'gold', 'ĐÀ LẠT 3 NGÀY 2 ĐÊM', 'Bảng lịch trình dày thông tin: giờ đi, điểm ghé, địa chỉ và chi phí dự kiến.', tableItems, '', 'budget-3n2d-table'),
+    buildListPage('Bảng chi phí', 'gold', copy.budgetTableTitle, 'Bảng lịch trình dày thông tin: giờ đi, điểm ghé, địa chỉ và chi phí dự kiến.', tableItems, '', 'budget-3n2d-table'),
     buildListPage('Quán ăn', 'berry', 'QUÁN ĂN ĐÃ ĐI', '4 quán trong lịch trình, ưu tiên quán là đối tác để người xem dễ lưu và ghé đúng chỗ.', buildBudgetGalleryItems(selectedFood, pools.foodItems, 4, `${seedPrefix}-gallery-food`, pick, imageResolver, mealLabelForItem), background(`${seedPrefix}-gallery-food-bg`), 'grid-4'),
     buildListPage('Cà phê', 'gold', 'QUÁN CAFE ĐÃ GHÉ', '4 điểm cafe trong lịch trình, ưu tiên đối tác và điểm có đủ ảnh, địa chỉ, giá.', buildBudgetGalleryItems(selectedCafe, pools.cafeItems, 4, `${seedPrefix}-gallery-cafe`, pick, imageResolver, (item) => item.type || 'Cafe'), background(`${seedPrefix}-gallery-cafe-bg`), 'grid-4'),
     buildListPage('Đối tác', 'pine', 'ĐỐI TÁC NÊN LƯU', '4 địa điểm ưu tiên đối tác trong chuyến đi, giữ đúng giá nếu dữ liệu đối tác đã có giá.', buildBudgetGalleryItems(selectedSupport, partnerPlaces, 4, `${seedPrefix}-gallery-partners`, pick, imageResolver, photomodeServiceLabel), background(`${seedPrefix}-gallery-partners-bg`), 'grid-4'),
@@ -2165,7 +2292,7 @@ function buildBudget3N2DStoryPages(
 
   if (coverPage.type === 'cover') {
     coverPage.layoutVariant = 'budget-3n2d-story';
-    coverPage.title = budget72StoryText.coverTitle;
+    coverPage.title = getMarketingCopy().budgetCoverTitle;
     coverPage.subtitle = budget72StoryText.coverSubtitle;
   }
 
@@ -2195,13 +2322,13 @@ function buildItineraryPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:itinerary`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const displayItemCount = 8;
   const breakfastItems = pools.morningFoodItems;
-  const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
+  const lunchItems = pools.lunchItems;
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
     12,
@@ -2305,7 +2432,7 @@ function pickJourneySlots(
     const partnersInPool = pool.filter(item => item.isPartner);
     const regularsInPool = pool.filter(item => !item.isPartner);
 
-    if (partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE && partnersInPool.length > 0) {
+    if ((partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE) && partnersInPool.length > 0) {
       chosen = pick(partnersInPool, 1, `${seed}-slot${i}-partner`)[0];
       if (chosen) partnerCount++;
     }
@@ -2347,7 +2474,7 @@ function pickTimedJourneyGridItems(
     const regularsInPool = pool.filter((item) => !item.isPartner);
 
     let chosen: GuideItem | undefined;
-    if (partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE && partnersInPool.length > 0) {
+    if ((partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE) && partnersInPool.length > 0) {
       chosen = pick(partnersInPool, 1, `${slotSeed}-partner`)[0];
       if (chosen) partnerCount++;
     }
@@ -2448,12 +2575,16 @@ function buildTimelineDayItems(
   return items.map((item, index) => {
     const slot = slots[index];
     const activity = String(slot?.activity || '').trim();
+    const detail = String(item.metaSecondary || '').trim();
     const address = String(item.metaPrimary || '').trim();
     const note = String(item.imageNote || '').trim();
+    const metaSecondary = activity && detail
+      ? `${activity}${activity.endsWith(' ') ? '' : ' '}${detail}`
+      : activity || detail;
     return {
       ...item,
       label: slot?.time || item.label,
-      metaSecondary: activity,
+      metaSecondary,
       metaPrimary: address,
       imageNote: note,
     };
@@ -2476,13 +2607,13 @@ export function buildItineraryTimelinePages(
     `${seedPrefix}:itinerary-timeline`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'any' },
+    { orientation: 'any', strictMapping: true },
   );
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastItems = pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.breakfastItems;
-  const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
+  const lunchItems = pools.lunchItems;
   const dinnerItems = pools.eveningScheduleItems.length > 0 ? pools.eveningScheduleItems : pools.dinnerItems;
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
@@ -2573,7 +2704,7 @@ function buildItinerary4N2DGrid8Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n2d-grid8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -2585,7 +2716,7 @@ function buildItinerary4N2DGrid8Pages(
   const lightMealItems = pools.lightMealItems;
   const eveningFoodItems = pools.eveningScheduleItems;
   const breakfastItems = morningFoodItems;
-  const lunchItems = lightMealItems.length > 0 ? lightMealItems : pools.lunchScheduleItems;
+  const lunchItems = pools.lunchItems;
   const checkinItems = checkinDayItems.length > 0 ? checkinDayItems : balancedCheckinPool(pools.checkinItems, 16, `${seedPrefix}-4n2d-checkin-fallback`);
   const activitySlot = itineraryActivitySlotPool(pools, seedPrefix);
   const activityItems = activitySlot.items;
@@ -2725,12 +2856,12 @@ function buildItinerary4N3DPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:journey-4n3d`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
   const breakfastItems = pools.morningFoodItems;
-  const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
+  const lunchItems = pools.lunchItems;
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
     16,
@@ -2949,14 +3080,14 @@ export function buildItinerary4N3DStackPages(
     `${seedPrefix}:itinerary-4n3d-stack`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'any' },
+    { orientation: 'any', strictMapping: true },
   );
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
 
   const breakfastItems = pools.morningFoodItems;
-  const lunchItems = pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.lunchScheduleItems;
+  const lunchItems = pools.lunchItems;
   const dinnerItems = pools.eveningScheduleItems.length > 0 ? pools.eveningScheduleItems : pools.dinnerItems;
   const checkinItems = balancedCheckinPool(
     pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems,
@@ -3016,7 +3147,7 @@ function buildMustGoPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:must-go`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -3055,7 +3186,7 @@ function buildFirstTimePages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:first-time`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -3136,7 +3267,7 @@ function buildPov3DayPages(
     `${seedPrefix}:pov-3-day`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'any' },
+    { orientation: 'any', strictMapping: true },
   );
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
@@ -3154,15 +3285,16 @@ function buildPov3DayPages(
     `${seedPrefix}-cover`,
     pick,
   )[0];
+  const copy = getMarketingCopy();
   const coverImage = coverBackground(`${seedPrefix}-cover-bg`) || (coverItem
-    ? photomodePageItemWithResolver(coverItem, 'Đà Lạt', imageResolver).imageUrl
+    ? photomodePageItemWithResolver(coverItem, cityLabel(), imageResolver).imageUrl
     : '');
 
   return [
     {
       ...buildCoverPage(
-        'POV: có 3 ngày\nvi vu khắp Đà Lạt',
-        'dalat. [gợi ý local guide ngắn ngày]',
+        copy.povCoverTitle,
+        copy.povCoverSubtitle,
         coverImage,
       ),
       layoutVariant: 'photomode',
@@ -3435,7 +3567,7 @@ function buildSpotlightGuidePages(
     `${seedPrefix}:spotlight-guide`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'any' },
+    { orientation: 'any', strictMapping: true },
   );
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -3769,7 +3901,7 @@ function partnerInfoItems(item: GuideItem, imageUrl: string, candidateImageUrls:
   const rows: Array<{ label: string; name: string; value: string }> = [
     { label: 'ĐỊA CHỈ', name: 'Địa chỉ', value: item.address },
     { label: 'KHUNG GIỜ', name: 'Khung giờ', value: item.openHours },
-    { label: 'GIÁ', name: 'Giá tham khảo', value: item.price },
+    { label: 'GIÁ', name: 'Giá tham khảo', value: displayPrice(item) },
     { label: 'LIÊN HỆ', name: 'Số điện thoại', value: item.phone },
   ].filter((row) => hasDisplayText(row.value));
 
@@ -3934,7 +4066,7 @@ function buildSpotlightPartnerSampleLists(
   list.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
   list.postCaption = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
   list.description = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
-  list.captionHashtags = ['#riviudalat', '#dalat', '#dalatreview', '#72hdalat', '#dulich31'];
+  list.captionHashtags = buildCaptionHashtags([], 'lich_trinh_huu_ich', undefined, 'spotlight-partner');
   list.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
   return [list];
 }
@@ -3951,7 +4083,7 @@ function buildGrid6ZigzagPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6-zigzag`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6-zigzag`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -4028,7 +4160,7 @@ export function buildGrid6QuaytungPages(
     `${seedPrefix}:grid-6-quaytung`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'any' },
+    { orientation: 'any', strictMapping: true },
   );
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
@@ -4123,7 +4255,7 @@ function buildGrid6Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-6`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -4215,7 +4347,7 @@ function buildGrid8Pages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-8`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -4316,11 +4448,12 @@ export function buildGrid8QuaytungPages(
     `${seedPrefix}:grid-8-quaytung`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'any' },
+    { orientation: 'any', strictMapping: true },
   );
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
+  const nightlifeItems = pageReadyNightlifeItems(pools.nightlifeItems);
 
   type GridConfig = {
     chipText: string;
@@ -4333,6 +4466,11 @@ export function buildGrid8QuaytungPages(
     checkin?: boolean;
   };
 
+  // Trước đây 3/5 trang lưới (CAFE SÁNG, CHẤT LIỆU, CAFE ĐẸP) đều lấy từ cùng pools.cafeItems
+  // (chỉ khác tên hook, không lọc phân nhóm thật) → pool cà phê không đủ 24 chỗ riêng biệt nên
+  // bị lặp lại nhiều lần (vd. "1/2 Circle Coffee", "Mê Lá") và người dùng thấy mẫu "chỉ chuyên cà phê".
+  // Đổi 2 trang trùng cà phê sang Chơi đêm + Homestay để cân bằng chủ đề như các mẫu grid-6/grid-8 khác,
+  // đồng thời chỉ giữ 1 trang Cafe nên pool đủ lớn để không phải lặp ảnh/tên trong cùng 1 list.
   const gridConfigs: GridConfig[] = [
     {
       chipText: 'Cafe sáng',
@@ -4353,22 +4491,22 @@ export function buildGrid8QuaytungPages(
       checkin: true,
     },
     {
-      chipText: 'Cafe',
-      chipTone: 'gold',
-      hook: 'CHẤT LIỆU',
-      tagline: 'những quán mang đậm chất liệu dalat',
-      seed: '-chat-lieu',
-      pool: pools.cafeItems,
-      label: (item) => item.type || 'Cafe',
+      chipText: 'Chơi đêm',
+      chipTone: 'slate',
+      hook: 'CHƠI ĐÊM',
+      tagline: 'ăn đêm, nghe nhạc, quẩy nhẹ sau 20h',
+      seed: '-choi-dem',
+      pool: nightlifeItems,
+      label: photomodeServiceLabel,
     },
     {
-      chipText: 'Cafe đẹp',
-      chipTone: 'gold',
-      hook: 'CAFE ĐẸP',
-      tagline: 'toàn địa điểm cafe hot thu hút giới trẻ',
-      seed: '-cafe-dep',
-      pool: pools.cafeItems,
-      label: (item) => item.type || 'Cafe',
+      chipText: 'Homestay',
+      chipTone: 'pine',
+      hook: 'CHỖ NGHỈ XINH',
+      tagline: 'homestay đẹp nên ghim riêng để dễ chốt phòng',
+      seed: '-homestay',
+      pool: pools.stayItems,
+      label: photomodeServiceLabel,
     },
     {
       chipText: 'Ăn vặt',
@@ -4381,10 +4519,25 @@ export function buildGrid8QuaytungPages(
     },
   ];
 
+  // Không cho cùng tên địa điểm xuất hiện ở nhiều trang (vd. D'Lart vừa cafe vừa quán ăn — khác id sheet).
+  const listUsedKeys = new Set<string>();
+  const scopedPool = (pool: GuideItem[]) => pool.filter((item) => !hasItemKey(listUsedKeys, item));
+  const markPicked = (picked: GuideItem[]) => {
+    picked.forEach((item) => markItemKey(listUsedKeys, item));
+  };
+
   const gridPages = gridConfigs.map((cfg) => {
-    const items = cfg.checkin
-      ? buildBalancedCheckinGrid8Items(pools.checkinItems, 8, `${seedPrefix}${cfg.seed}`, pick, imageResolver)
-      : buildGrid8PageItems(cfg.pool, cfg.pool, 8, `${seedPrefix}${cfg.seed}`, pick, imageResolver, cfg.label || mealLabelForItem, GRID_8_QUAYTUNG_PARTNER_CAP);
+    const pageSeed = `${seedPrefix}${cfg.seed}`;
+    const basePool = cfg.checkin ? pools.checkinItems : cfg.pool;
+    const picked = cfg.checkin
+      ? pickWithUsedFallback(balancedCheckinPool(scopedPool(basePool), 8, pageSeed), 8, pageSeed, pick)
+      : pickGrid8ItemsWithPartnerQuota(scopedPool(basePool), scopedPool(basePool), 8, pageSeed, pick, GRID_8_QUAYTUNG_PARTNER_CAP);
+    markPicked(picked);
+    const items = picked.map((item) =>
+      cfg.checkin
+        ? photomodePageItemWithResolver(item, '', imageResolver)
+        : photomodePageItemWithResolver(item, (cfg.label || mealLabelForItem)(item), imageResolver),
+    );
     return buildListPage(
       cfg.chipText,
       cfg.chipTone,
@@ -4405,12 +4558,13 @@ export function buildGrid8QuaytungPages(
   const menuItems: PageItem[] = [];
   for (const section of menuSections) {
     const picked = pickMixedItemsWithPartnerQuota(
-      section.pool,
+      scopedPool(section.pool),
       section.count,
       `${seedPrefix}${section.seed}`,
       pick,
       GRID_8_QUAYTUNG_PARTNER_CAP,
     );
+    markPicked(picked);
     const sectionPages = picked.map((item) => pageItemWithResolver(item, section.title, imageResolver));
     const photoIndex = sectionPages.findIndex((item) => hasDisplayText(item.imageUrl));
     sectionPages.forEach((item, index) => {
@@ -4469,7 +4623,7 @@ function buildGrid4MutantPages(
   coverImageUrls: string[] = [],
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4-mutant`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4-mutant`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -4550,7 +4704,7 @@ export function buildGrid4Pages(
   itemsPerPage = 4,
 ): DeckPage[] {
   const mappedImageUrls = collectMappedImageUrls(pools);
-  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any' });
+  const imageResolver = createListImageResolver(imageUrls, libraryEntries, `${seedPrefix}:grid-4`, mappedImageUrls, globalUsedImageUrls || [], { orientation: 'any', strictMapping: true });
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const coverBackground = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);
   const pick = createListPicker(globalUsedItemIds);
@@ -4742,7 +4896,7 @@ function pov3V2PriceLabel(item: GuideItem): string {
   if (item.sectionKey === 'check_in' || item.sectionKey === 'khu_du_lich') {
     return isFreeCheckinItem(item) ? 'Free' : 'Có phí';
   }
-  const clean = String(item.price || '').replace(/\s+/g, ' ').trim();
+  const clean = displayPrice(item);
   if (!clean || isFreePrice(clean)) return 'Free';
   return 'Có phí';
 }
@@ -4751,13 +4905,51 @@ function pov3V2Tagline(item: GuideItem): string {
   return String(item.highlight || item.style || '').replace(/\s+/g, ' ').trim();
 }
 
+function isCompletePov3V2Tagline(text: string): boolean {
+  const t = String(text || '').trim();
+  if (t.length < 18) return false;
+  if (!/[.!?…]$/.test(t)) return false;
+  return !POV3_V2_TAGLINE_TRAILING_FRAGMENT.test(t);
+}
+
+function buildFallbackPov3V2Tagline(item: GuideItem): string {
+  const name = String(item.name || 'địa điểm này').trim();
+  if (item.sectionKey === 'check_in') {
+    return `${name} là góc check-in nổi bật ở Đà Lạt, dễ chụp và dễ ghép vào lịch đi.`;
+  }
+  if (item.sectionKey === 'khu_du_lich' || item.sectionKey === 'hoat_dong') {
+    return `${name} — điểm tham quan đáng ghé nếu bạn thích view rộng và không gian chill.`;
+  }
+  if (item.sectionKey === 'cafe') {
+    return `${name} hợp để ghé nghỉ chân, chụp vài tấm rồi tiếp tục lịch đi Đà Lạt.`;
+  }
+  return `Ghé ${name} nếu muốn thêm một điểm dừng gọn trong chuyến đi Đà Lạt.`;
+}
+
+function highlightLooksTruncated(raw: string): boolean {
+  const t = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!t) return true;
+  if (!/[.!?…]$/.test(t)) return true;
+  return POV3_V2_TAGLINE_TRAILING_FRAGMENT.test(t);
+}
+
+export function finalizePov3V2Tagline(item: GuideItem): string {
+  const raw = pov3V2Tagline(item);
+  if (highlightLooksTruncated(raw)) {
+    return truncatePov3V2StackTagline(buildFallbackPov3V2Tagline(item));
+  }
+  const fromHighlight = truncatePov3V2StackTagline(raw);
+  if (isCompletePov3V2Tagline(fromHighlight)) return fromHighlight;
+  return truncatePov3V2StackTagline(buildFallbackPov3V2Tagline(item));
+}
+
 function pov3V2PageItem(
   item: GuideItem,
   resolveImage: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
   options: { foodGrid?: boolean } = {},
 ): PageItem {
   const resolvedImage = resolveImage(item);
-  const tagline = pov3V2Tagline(item);
+  const tagline = finalizePov3V2Tagline(item);
   return {
     label: tagline,
     id: item.id,
@@ -4869,7 +5061,7 @@ export function buildPov3V2Pages(
     `${seedPrefix}:pov-3-v2`,
     mappedImageUrls,
     globalUsedImageUrls || [],
-    { orientation: 'any' },
+    { orientation: 'any', strictMapping: true },
   );
   const resolveImage = (item: GuideItem) => imageResolver(item);
   const background = (seed: string) => coverBackgroundFor(coverImageUrls, mappedImageUrls, imageUrls, seed, globalUsedImageUrls);

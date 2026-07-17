@@ -26,7 +26,7 @@ import {
 import { itemUsageKey } from './data-allocator';
 import { createListImageResolver, stableHash } from './image-resolver';
 
-export const GRID_8_FEED_TEMPLATE_VERSION = 15;
+export const GRID_8_FEED_TEMPLATE_VERSION = 16;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
 
 export function normalizeGrid8FeedPostCaption(value: string): string {
@@ -37,13 +37,13 @@ export function normalizeGrid8FeedPostCaption(value: string): string {
   }
   return clean;
 }
-export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 5;
-export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 7;
+export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 6;
+export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 8;
 export const SPOTLIGHT_V2_TEMPLATE_VERSION = 16;
-export const POV_3_V2_TEMPLATE_VERSION = 11;
+export const POV_3_V2_TEMPLATE_VERSION = 13;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
-export const ITINERARY_4N3D_STACK_TEMPLATE_VERSION = 7;
-export const ITINERARY_TIMELINE_TEMPLATE_VERSION = 8;
+export const ITINERARY_4N3D_STACK_TEMPLATE_VERSION = 8;
+export const ITINERARY_TIMELINE_TEMPLATE_VERSION = 10;
 
 export const V2_DECK_IDS = [
   'grid-6-quaytung',

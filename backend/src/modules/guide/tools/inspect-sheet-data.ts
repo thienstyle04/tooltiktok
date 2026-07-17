@@ -10,6 +10,7 @@ import { SectionKey } from '../../../common/interfaces/guide.types';
 import { firstValue, itemMappingKey, normalizeText, stableHash } from '../logic/image-resolver';
 import { buildSheetDriveManifest, readSheetDriveManifest } from '../sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet } from '../sync/workbook-source';
+import { getDestinationConfig } from '../sync/destination-config';
 import { getDriveImageProxyUrl } from '../sync/drive-images';
 
 function preferredImageLink(row: Record<string, string>): string {
@@ -65,7 +66,7 @@ async function main() {
   const dataRoot = resolveBackendDataDir(resolveBackendRoot());
   console.log('=== KIỂM TRA DỮ LIỆU GOOGLE SHEET ===\n');
 
-  const source = await fetchWorkbookFromSheet();
+  const source = await fetchWorkbookFromSheet(getDestinationConfig('dalat'));
   console.log(`Workbook : ${source.workbookName}`);
   console.log(`Kích thước: ${(source.bytes / 1024).toFixed(1)} KB`);
   console.log(`Sheets   : ${source.workbook.SheetNames.join(', ')}\n`);
@@ -139,7 +140,7 @@ async function main() {
     }
   }
 
-  const previousManifest = readSheetDriveManifest(dataRoot, source.workbookName);
+  const previousManifest = readSheetDriveManifest(dataRoot, source.destinationId);
   console.log('\n--- Đang resolve ảnh Drive (có thể mất 1-3 phút)... ---');
   const manifest = await buildSheetDriveManifest(source, previousManifest);
   const manifestPath = path.join(dataRoot, 'sheet-drive-images.json');
