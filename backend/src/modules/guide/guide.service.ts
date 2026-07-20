@@ -1157,10 +1157,15 @@ export class GuideService implements OnApplicationBootstrap {
       ...cleanList,
       description: safeDescription,
       pages: enrichedPages.map((page) => {
-        if (page.type !== 'cover') return page;
-        const grid = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
-        if (grid.length > 0) return { ...page, backgroundImage: grid[0] };
-        return portableCoverImage ? { ...page, backgroundImage: portableCoverImage } : page;
+        if (page.layoutVariant === 'grid-8-quaytung-menu') return page;
+        if (this.isPortableImageUrl(page.backgroundImage)) return page;
+        if (page.type === 'cover') {
+          const grid = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
+          if (grid.length > 0) return { ...page, backgroundImage: grid[0] };
+          return portableCoverImage ? { ...page, backgroundImage: portableCoverImage } : page;
+        }
+        const pageImage = this.firstPortableImageForPages([page]) || portableCoverImage;
+        return pageImage ? { ...page, backgroundImage: pageImage } : page;
       }),
     };
   }

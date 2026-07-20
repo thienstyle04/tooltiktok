@@ -55,9 +55,9 @@ const BATCH_IMAGE_EXTENSION = 'png';
 const BATCH_IMAGE_QUALITY = 1;
 const BATCH_SOURCE_IMAGE_MAX_DIMENSION = 0;
 const BATCH_SOURCE_IMAGE_QUALITY = 1;
-const BATCH_IMAGE_PREPARE_CONCURRENCY = 24;
-const IMAGE_FETCH_TIMEOUT_MS = 25000;
-const IMAGE_READY_TIMEOUT_MS = 5000;
+const BATCH_IMAGE_PREPARE_CONCURRENCY = 8;
+const IMAGE_FETCH_TIMEOUT_MS = 45000;
+const IMAGE_READY_TIMEOUT_MS = 8000;
 const PAGE_RENDER_TIMEOUT_MS = 45000;
 const BATCH_PAGE_RENDER_TIMEOUT_MS = 90000;
 const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 150000;
@@ -84,9 +84,9 @@ const EXPORT_QUALITY_PROFILES = Object.freeze({
     sourceImageMaxDimension: 3000,
     sourceImageFormat: 'image/jpeg',
     sourceImageQuality: 0.97,
-    imagePrepareConcurrency: 24,
-    renderChunkSize: 12,
-    captureConcurrency: 3,
+    imagePrepareConcurrency: 8,
+    renderChunkSize: 8,
+    captureConcurrency: 2,
     preferHtml2Canvas: true,
     renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
   },
@@ -323,14 +323,16 @@ function resetBatchImageCache() {
 }
 
 async function fetchImageBlob(src) {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  const maxAttempts = 3;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
     let timedOut = false;
+    const timeoutMs = IMAGE_FETCH_TIMEOUT_MS + (attempt * 15000);
     const timer = controller
       ? setTimeout(() => {
         timedOut = true;
         controller.abort();
-      }, IMAGE_FETCH_TIMEOUT_MS)
+      }, timeoutMs)
       : null;
 
     try {
@@ -340,7 +342,10 @@ async function fetchImageBlob(src) {
       });
       if (!response.ok) {
         if (timer) clearTimeout(timer);
-        if (attempt === 0) { await new Promise(r => setTimeout(r, 500)); continue; }
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+          continue;
+        }
         return { blob: null, timedOut };
       }
       if (timer) clearTimeout(timer);
@@ -350,7 +355,10 @@ async function fetchImageBlob(src) {
       return { blob: await response.blob(), timedOut: false };
     } catch {
       if (timer) clearTimeout(timer);
-      if (attempt === 0 && !timedOut) { await new Promise(r => setTimeout(r, 500)); continue; }
+      if (attempt < maxAttempts - 1) {
+        await new Promise((r) => setTimeout(r, timedOut ? 1200 * (attempt + 1) : 600 * (attempt + 1)));
+        continue;
+      }
       return { blob: null, timedOut };
     }
   }
@@ -552,6 +560,8 @@ async function getCachedImageBlobUrl(src, options = {}) {
   const result = await blobPromise;
   const blob = result?.blob || null;
   if (!blob) {
+    // Không cache thất bại — lần chuẩn bị sau vẫn thử lại được.
+    batchImageCache.delete(cacheKey);
     return { blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
   }
   entry.objectUrl = URL.createObjectURL(blob);
@@ -722,6 +732,16 @@ function buildImageFallbackContext(targets) {
   };
 }
 
+function isSharedBackgroundTarget(target) {
+  if (target?.kind === 'background') return true;
+  const img = target?.img;
+  if (!img) return false;
+  if (img.classList?.contains('grid8-center-bg')) return true;
+  return Boolean(img.closest?.(
+    '.grid8-cover-photo, .grid6-cover-bg, .grid4-feature-bg, .grid8-quaytung-cover-photo, .budget72-cover-bg, .budget72-story-bg, .grid5-cover-bg, .spotlight-cover, .grid4-feature-cover',
+  ));
+}
+
 function fallbackSourcesForTarget(target, context, ownSources) {
   if (!context) return [];
   const ownSourceSet = new Set(ownSources);
@@ -759,12 +779,15 @@ async function prepareImageTarget(target, options = {}) {
     imageFormat: options.sourceImageFormat,
     imageQuality: options.sourceImageQuality,
   };
+  // Cover / ô giữa: được lấy ảnh khác cùng trang khi Drive lỗi.
+  // Ô địa điểm: không fallback chéo (tránh sai ảnh quán).
+  const allowCrossImageFallback = options.allowCrossImageFallback === true
+    || (options.allowCrossImageFallback !== false && isSharedBackgroundTarget(target));
 
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
     const sources = candidateSourcesForTarget(target);
-    // Không fallback sang ảnh trang/ô khác — tránh menu quaytung xuất 4 ô cùng 1 ảnh cafe.
-    const fallbackSources = options.allowCrossImageFallback === true
+    const fallbackSources = allowCrossImageFallback
       ? fallbackSourcesForTarget(target, options.fallbackContext, sources)
       : [];
     const { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);
@@ -807,7 +830,7 @@ async function prepareImageTarget(target, options = {}) {
 
   const { element, originalBackgroundImage, originalSrc } = target;
   const sources = candidateSourcesForTarget(target);
-  const fallbackSources = options.allowCrossImageFallback === true
+  const fallbackSources = allowCrossImageFallback
     ? fallbackSourcesForTarget(target, options.fallbackContext, sources)
     : [];
   let { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);

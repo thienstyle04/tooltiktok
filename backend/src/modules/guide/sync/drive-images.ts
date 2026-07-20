@@ -2,7 +2,8 @@ const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FETCH_TIMEOUT_MS = 15_000;
-const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 750, 1_500];
+/** Backoff dài hơn cho 401/429 — Google hay rate-limit khi sync hàng trăm folder. */
+const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 1_500, 4_000, 8_000];
 const DRIVE_BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
@@ -364,22 +365,12 @@ export async function resolveDriveLinkToEntry(link: string, placeName: string, a
   return (await resolveDriveLinkToEntries(link, placeName, address))[0] ?? null;
 }
 
-export async function resolveDriveLinkToEntries(link: string, placeName: string, address: string, maxEntries = 6): Promise<DriveFolderEntry[]> {
-  const directFileId = extractDriveFileId(link);
-  if (directFileId) {
-    return [{
-      fileId: directFileId,
-      fileName: '',
-      viewUrl: getDriveFileViewUrl(directFileId),
-    }];
-  }
-
-  const folderId = extractDriveFolderId(link);
-  if (!folderId) return [];
-
-  const entries = await listDriveFolderEntries(folderId);
-  if (entries.length === 0) return [];
-
+function rankDriveEntries(
+  entries: DriveFolderEntry[],
+  placeName: string,
+  address: string,
+  maxEntries: number,
+): DriveFolderEntry[] {
   const imageEntries = entries.filter((entry) => looksLikeImageName(entry.fileName));
   const candidates = imageEntries.length > 0 ? imageEntries : entries;
 
@@ -392,6 +383,54 @@ export async function resolveDriveLinkToEntries(link: string, placeName: string,
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .slice(0, Math.max(1, maxEntries))
     .map((candidate) => candidate.entry);
+}
+
+/**
+ * Sheet Đà Lạt thường dùng `open?id=<FOLDER_ID>&usp=drive_copy` (folder),
+ * không phải `/file/d/...`. Nếu lấy nhầm ID folder làm fileId rồi gọi
+ * `uc?export=view` → Google 500 → placeholder, dù folder vẫn xem được trên Chrome
+ * và ảnh con bên trong vẫn tải được.
+ */
+export async function resolveDriveLinkToEntries(link: string, placeName: string, address: string, maxEntries = 6): Promise<DriveFolderEntry[]> {
+  const text = String(link ?? '').trim();
+  if (!text) return [];
+
+  // 1) Link file tường minh: /file/d/<id>
+  const explicitFileId = text.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || '';
+  if (explicitFileId) {
+    return [{
+      fileId: explicitFileId,
+      fileName: '',
+      viewUrl: getDriveFileViewUrl(explicitFileId),
+    }];
+  }
+
+  // 2) Link folder tường minh: /folders/<id>
+  const explicitFolderId = text.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1] || '';
+  if (explicitFolderId) {
+    const entries = await listDriveFolderEntries(explicitFolderId);
+    if (entries.length === 0) return [];
+    return rankDriveEntries(entries, placeName, address, maxEntries);
+  }
+
+  // 3) open?id= / ?id= — có thể là folder HOẶC file. Thử folder trước.
+  const ambiguousId = extractDriveFolderId(text) || extractDriveFileId(text);
+  if (!ambiguousId) return [];
+
+  try {
+    const folderEntries = await listDriveFolderEntries(ambiguousId);
+    if (folderEntries.length > 0) {
+      return rankDriveEntries(folderEntries, placeName, address, maxEntries);
+    }
+  } catch {
+    // Không phải folder (hoặc không list được) → thử như file bên dưới.
+  }
+
+  return [{
+    fileId: ambiguousId,
+    fileName: '',
+    viewUrl: getDriveFileViewUrl(ambiguousId),
+  }];
 }
 
 export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsset> {
