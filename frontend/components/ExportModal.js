@@ -5,7 +5,7 @@ const EXPORT_QUALITY_OPTIONS = [
   {
     id: 'optimized',
     title: 'Chất lượng cân bằng',
-    description: 'Mặc định, khuyên dùng cho 30-50 list. Nét cao hơn (~2.5–3 MB/ảnh) — JPEG 97%, ảnh nguồn tối đa 3000px, render 2.5x.',
+    description: 'Mặc định, khuyên dùng cho 30-50 list. Nhanh hơn bản trước (song song nhiều trang hơn), nét cao (~2.5–3 MB/ảnh).',
   },
   {
     id: 'original',

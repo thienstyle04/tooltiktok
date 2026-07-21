@@ -11,8 +11,32 @@ function targetListCount() {
   return Math.min(Math.max(Math.round(raw), 1), 50);
 }
 
-function buildBenchmarkDataset(dataset, targetLists) {
+function benchmarkMode() {
+  if (typeof window === 'undefined') return 'clone';
+  const mode = String(new URLSearchParams(window.location.search).get('mode') || 'clone').trim().toLowerCase();
+  return mode === 'caption' ? 'caption' : 'clone';
+}
+
+function buildBenchmarkDataset(dataset, targetLists, mode = 'clone') {
   const cloned = JSON.parse(JSON.stringify(dataset));
+  const selectedIds = new Set();
+
+  if (mode === 'caption') {
+    const captions = [];
+    for (const deck of cloned.decks || []) {
+      for (const list of deck.lists || []) {
+        if (/-caption-/i.test(String(list.id || '')) && list.pages?.length) {
+          captions.push(list.id);
+        }
+      }
+    }
+    // Lấy các list caption mới nhất
+    const picked = captions.slice(-targetLists);
+    if (!picked.length) throw new Error('Không có list caption AI để xuất. Hãy tạo list trước.');
+    picked.forEach((id) => selectedIds.add(id));
+    return { dataset: cloned, selectedIds };
+  }
+
   const mains = [];
   for (const deck of cloned.decks || []) {
     const main = (deck.lists || []).find((list) => listIsMain(list));
@@ -20,7 +44,6 @@ function buildBenchmarkDataset(dataset, targetLists) {
   }
   if (!mains.length) throw new Error('Không có list main để mô phỏng benchmark.');
 
-  const selectedIds = new Set();
   for (let i = 0; i < targetLists; i++) {
     const { deck, main } = mains[i % mains.length];
     const benchId = `${deck.id}-export-bench-${String(i + 1).padStart(2, '0')}`;
@@ -57,7 +80,8 @@ export default function ExportBenchmarkPage() {
         if (!res.ok) throw new Error(`API ${res.status}`);
         const dataset = await res.json();
         const listTarget = targetListCount();
-        const { dataset: benchDataset, selectedIds } = buildBenchmarkDataset(dataset, listTarget);
+        const mode = benchmarkMode();
+        const { dataset: benchDataset, selectedIds } = buildBenchmarkDataset(dataset, listTarget, mode);
         const totalPages = benchDataset.decks.flatMap((d) => d.lists)
           .filter((l) => selectedIds.has(l.id))
           .reduce((sum, l) => sum + (l.pages?.length || 0), 0);
