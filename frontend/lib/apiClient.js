@@ -31,7 +31,9 @@ function shouldTryBackendFallback(path) {
 }
 
 function shouldFallbackResponse(response) {
-  return [404, 500, 502, 503, 504].includes(Number(response?.status));
+  // Không fallback 404: Nest trả 404 JSON là lỗi nghiệp vụ thật (list/deck thiếu),
+  // không phải proxy miss. Fallback khiến UI hiện lỗi rối khi xóa list đã mất.
+  return [500, 502, 503, 504].includes(Number(response?.status));
 }
 
 function sleep(ms) {

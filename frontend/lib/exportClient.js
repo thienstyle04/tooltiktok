@@ -55,14 +55,15 @@ const BATCH_IMAGE_EXTENSION = 'png';
 const BATCH_IMAGE_QUALITY = 1;
 const BATCH_SOURCE_IMAGE_MAX_DIMENSION = 0;
 const BATCH_SOURCE_IMAGE_QUALITY = 1;
-const BATCH_IMAGE_PREPARE_CONCURRENCY = 24;
-const IMAGE_FETCH_TIMEOUT_MS = 25000;
-const IMAGE_READY_TIMEOUT_MS = 5000;
+const BATCH_IMAGE_PREPARE_CONCURRENCY = 12;
+const IMAGE_FETCH_TIMEOUT_MS = 22000;
+const IMAGE_READY_TIMEOUT_MS = 6000;
 const PAGE_RENDER_TIMEOUT_MS = 45000;
-const BATCH_PAGE_RENDER_TIMEOUT_MS = 90000;
-const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 150000;
+const BATCH_PAGE_RENDER_TIMEOUT_MS = 70000;
+const BATCH_PAGE_RETRY_RENDER_TIMEOUT_MS = 120000;
 const EXPORT_FALLBACK_SOURCE_LIMIT = 48;
 const DEFAULT_EXPORT_CORNER_RADIUS = 0;
+const BATCH_IMAGE_SETTLE_TIMEOUT_MS = 12000;
 const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
   cacheBust: false,
   // Drive proxy images are differentiated by ?id=..., so every template export must keep query params.
@@ -84,9 +85,9 @@ const EXPORT_QUALITY_PROFILES = Object.freeze({
     sourceImageMaxDimension: 3000,
     sourceImageFormat: 'image/jpeg',
     sourceImageQuality: 0.97,
-    imagePrepareConcurrency: 24,
+    imagePrepareConcurrency: 12,
     renderChunkSize: 12,
-    captureConcurrency: 3,
+    captureConcurrency: 4,
     preferHtml2Canvas: true,
     renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
   },
@@ -323,14 +324,16 @@ function resetBatchImageCache() {
 }
 
 async function fetchImageBlob(src) {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  const maxAttempts = 2;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
     let timedOut = false;
+    const timeoutMs = IMAGE_FETCH_TIMEOUT_MS + (attempt * 8000);
     const timer = controller
       ? setTimeout(() => {
         timedOut = true;
         controller.abort();
-      }, IMAGE_FETCH_TIMEOUT_MS)
+      }, timeoutMs)
       : null;
 
     try {
@@ -340,7 +343,10 @@ async function fetchImageBlob(src) {
       });
       if (!response.ok) {
         if (timer) clearTimeout(timer);
-        if (attempt === 0) { await new Promise(r => setTimeout(r, 500)); continue; }
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+          continue;
+        }
         return { blob: null, timedOut };
       }
       if (timer) clearTimeout(timer);
@@ -350,7 +356,10 @@ async function fetchImageBlob(src) {
       return { blob: await response.blob(), timedOut: false };
     } catch {
       if (timer) clearTimeout(timer);
-      if (attempt === 0 && !timedOut) { await new Promise(r => setTimeout(r, 500)); continue; }
+      if (attempt < maxAttempts - 1) {
+        await new Promise((r) => setTimeout(r, timedOut ? 600 * (attempt + 1) : 350 * (attempt + 1)));
+        continue;
+      }
       return { blob: null, timedOut };
     }
   }
@@ -552,6 +561,8 @@ async function getCachedImageBlobUrl(src, options = {}) {
   const result = await blobPromise;
   const blob = result?.blob || null;
   if (!blob) {
+    // Không cache thất bại — lần chuẩn bị sau vẫn thử lại được.
+    batchImageCache.delete(cacheKey);
     return { blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
   }
   entry.objectUrl = URL.createObjectURL(blob);
@@ -582,6 +593,28 @@ async function waitForImageReady(img) {
     img.addEventListener('load', done, { once: true });
     img.addEventListener('error', done, { once: true });
   });
+}
+
+/** Cho batch export: đợi ảnh trong trang load xong trước khi inline/fetch. */
+async function waitForPageImagesSettled(node, timeoutMs = 20000) {
+  const images = Array.from(node?.querySelectorAll?.('img') || []);
+  if (!images.length) return;
+  await Promise.all(images.map(async (img) => {
+    if (img.complete && img.naturalWidth > 0) return;
+    await new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        img.removeEventListener('load', done);
+        img.removeEventListener('error', done);
+        resolve();
+      };
+      const timer = setTimeout(done, timeoutMs);
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+      // Một số trình duyệt đã complete nhưng naturalWidth=0 (lỗi) — không treo.
+      if (img.complete) done();
+    });
+  }));
 }
 
 function extractCssUrl(value) {
@@ -722,6 +755,16 @@ function buildImageFallbackContext(targets) {
   };
 }
 
+function isSharedBackgroundTarget(target) {
+  if (target?.kind === 'background') return true;
+  const img = target?.img;
+  if (!img) return false;
+  if (img.classList?.contains('grid8-center-bg')) return true;
+  return Boolean(img.closest?.(
+    '.grid8-cover-photo, .grid6-cover-bg, .grid4-feature-bg, .grid8-quaytung-cover-photo, .budget72-cover-bg, .budget72-story-bg, .grid5-cover-bg, .spotlight-cover, .grid4-feature-cover',
+  ));
+}
+
 function fallbackSourcesForTarget(target, context, ownSources) {
   if (!context) return [];
   const ownSourceSet = new Set(ownSources);
@@ -751,6 +794,29 @@ async function firstAvailableImageBlobUrl(sources, options = {}) {
   return fallback;
 }
 
+/**
+ * Lấy ảnh đã render trong preview (DOM) — tránh fetch lại Drive lúc xuất
+ * (máy khác preview OK nhưng export bị xám vì fetch timeout/rate-limit).
+ */
+async function captureDomImageBlob(img) {
+  if (!img || img.tagName !== 'IMG') return null;
+  if (!img.complete || !(img.naturalWidth > 0) || !(img.naturalHeight > 0)) return null;
+  // Placeholder SVG / empty — bỏ
+  const currentSrc = String(img.currentSrc || img.src || '');
+  if (!currentSrc || currentSrc.startsWith('data:image/svg')) return null;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0);
+    return await canvasToBlob(canvas, 'image/png', 1);
+  } catch {
+    return null;
+  }
+}
+
 async function prepareImageTarget(target, options = {}) {
   const shouldWaitForReady = options.waitForReady !== false;
   const shouldUseUniqueObjectUrl = options.uniqueObjectUrl === true;
@@ -759,31 +825,63 @@ async function prepareImageTarget(target, options = {}) {
     imageFormat: options.sourceImageFormat,
     imageQuality: options.sourceImageQuality,
   };
+  // Cover / ô giữa: được lấy ảnh khác cùng trang khi Drive lỗi.
+  // Ô địa điểm: không fallback chéo (tránh sai ảnh quán).
+  const allowCrossImageFallback = options.allowCrossImageFallback === true
+    || (options.allowCrossImageFallback !== false && isSharedBackgroundTarget(target));
 
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
     const sources = candidateSourcesForTarget(target);
-    // Không fallback sang ảnh trang/ô khác — tránh menu quaytung xuất 4 ô cùng 1 ảnh cafe.
-    const fallbackSources = options.allowCrossImageFallback === true
+    const fallbackSources = allowCrossImageFallback
       ? fallbackSourcesForTarget(target, options.fallbackContext, sources)
       : [];
-    const { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);
-    let selectedBlob = blob;
-    let selectedBlobUrl = blobUrl;
-    let selectedSource = source;
+
+    // 1) Ưu tiên ảnh đã hiện trên preview
+    let selectedBlob = await captureDomImageBlob(img);
+    let selectedBlobUrl = selectedBlob ? URL.createObjectURL(selectedBlob) : null;
+    let selectedSource = selectedBlob ? (originalSrc || 'dom-capture') : '';
+    let ownedObjectUrl = selectedBlobUrl;
+
+    // 2) Nếu chưa có (trang mới render khi batch): fetch như cũ
+    if (!selectedBlob || !selectedBlobUrl) {
+      const fetched = await firstAvailableImageBlobUrl(sources, blobOptions);
+      selectedBlob = fetched.blob;
+      selectedBlobUrl = fetched.blobUrl;
+      selectedSource = fetched.source;
+      ownedObjectUrl = null;
+    }
     if (!selectedBlob || !selectedBlobUrl) {
       const fallbackResult = await firstAvailableImageBlobUrl(fallbackSources, blobOptions);
       selectedBlob = fallbackResult.blob;
       selectedBlobUrl = fallbackResult.blobUrl;
       selectedSource = fallbackResult.source;
+      ownedObjectUrl = null;
     }
+
+    // 3) Fetch fail nhưng DOM vẫn còn ảnh đã paint — thử chụp lại trước khi ra xám
+    if (!selectedBlob || !selectedBlobUrl) {
+      selectedBlob = await captureDomImageBlob(img);
+      if (selectedBlob) {
+        selectedBlobUrl = URL.createObjectURL(selectedBlob);
+        selectedSource = originalSrc || 'dom-capture-retry';
+        ownedObjectUrl = selectedBlobUrl;
+      }
+    }
+
     const displayBlob = await fitImageBlobToElement(selectedBlob, img, {
       ...blobOptions,
       fitImagesToElement: options.fitImagesToElement,
       fitPixelRatio: options.fitPixelRatio,
     });
-    const shouldUseTargetObjectUrl = Boolean(displayBlob && (shouldUseUniqueObjectUrl || displayBlob !== selectedBlob));
-    const preparedBlobUrl = shouldUseTargetObjectUrl ? URL.createObjectURL(displayBlob) : selectedBlobUrl;
+    const shouldUseTargetObjectUrl = Boolean(displayBlob && (shouldUseUniqueObjectUrl || displayBlob !== selectedBlob || ownedObjectUrl));
+    const preparedBlobUrl = shouldUseTargetObjectUrl && displayBlob
+      ? (displayBlob === selectedBlob && ownedObjectUrl ? ownedObjectUrl : URL.createObjectURL(displayBlob))
+      : selectedBlobUrl;
+    if (ownedObjectUrl && preparedBlobUrl !== ownedObjectUrl) {
+      URL.revokeObjectURL(ownedObjectUrl);
+      ownedObjectUrl = null;
+    }
     if (!preparedBlobUrl) {
       img.dataset.originalSrc = originalSrc;
       img.dataset.exportFallbackSrc = 'neutral-placeholder';
@@ -802,12 +900,16 @@ async function prepareImageTarget(target, options = {}) {
     if (shouldWaitForReady) {
       await waitForImageReady(img);
     }
-    return { img, originalSrc, objectUrl: shouldUseTargetObjectUrl ? preparedBlobUrl : null };
+    return {
+      img,
+      originalSrc,
+      objectUrl: (shouldUseTargetObjectUrl || ownedObjectUrl) ? preparedBlobUrl : null,
+    };
   }
 
   const { element, originalBackgroundImage, originalSrc } = target;
   const sources = candidateSourcesForTarget(target);
-  const fallbackSources = options.allowCrossImageFallback === true
+  const fallbackSources = allowCrossImageFallback
     ? fallbackSourcesForTarget(target, options.fallbackContext, sources)
     : [];
   let { blob, blobUrl, source } = await firstAvailableImageBlobUrl(sources, blobOptions);
@@ -1047,16 +1149,16 @@ function renderConcurrencyLimit() {
 
 function batchRenderConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 12;
-  if (cores >= 8) return 8;
-  return 6;
+  if (cores >= 12) return 14;
+  if (cores >= 8) return 10;
+  return 8;
 }
 
 function batchCaptureConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
-  if (cores >= 12) return 3;
-  if (cores >= 8) return 3;
-  return 2;
+  if (cores >= 12) return 5;
+  if (cores >= 8) return 4;
+  return 3;
 }
 
 function batchRenderChunkSize(profile) {
@@ -1429,6 +1531,7 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
     const pageNode = pageNodes.find((node) => Number(node.dataset.pageIndex) === selectedPageIndex);
     if (!pageNode) throw new Error(`Không tìm thấy trang ${selectedPageIndex + 1}/${list.pages.length} để xuất.`);
     cb.updateProgress(36, 'Đang chuẩn bị ảnh cho trang...');
+    await waitForPageImagesSettled(pageNode, BATCH_IMAGE_SETTLE_TIMEOUT_MS);
     const preparedImages = await inlineImagesAsBlobs(pageNode, {
       fitImagesToElement: true,
       fitPixelRatio: qualityProfile.pixelRatio,
@@ -1488,6 +1591,7 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
     const chunkEnd = i + chunk.length;
     cb.setStatus(`Đang chuẩn bị ảnh "${list.title}": ${chunkStart}-${chunkEnd}/${pageNodes.length}...`);
     options.onChunkPreparing?.({ list, chunkStart, chunkEnd, pageCount: pageNodes.length });
+    await Promise.all(chunk.map((pageNode) => waitForPageImagesSettled(pageNode, BATCH_IMAGE_SETTLE_TIMEOUT_MS)));
     const preparedImages = (await Promise.all(chunk.map((pageNode) => inlineImagesAsBlobs(pageNode, {
       waitForReady: options.waitForImageReady,
       fitImagesToElement: true,
@@ -1682,6 +1786,8 @@ export async function exportBatch(context, callbacks = {}) {
       if (validChunk.length < renderedChunk.length) {
         console.warn(`[export] ${renderedChunk.length - validChunk.length} trang không render được, bỏ qua.`);
       }
+      // Đợi ảnh preview/load xong trước khi inline — tránh fetch lại Drive rồi ra nền xám.
+      await Promise.all(validChunk.map((task) => waitForPageImagesSettled(task.pageNode, BATCH_IMAGE_SETTLE_TIMEOUT_MS)));
       const preparedImages = await inlineImagesForNodes(validChunk.map((task) => task.pageNode), {
         waitForReady: true,
         concurrency: qualityProfile.imagePrepareConcurrency,

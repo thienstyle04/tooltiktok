@@ -919,9 +919,8 @@ export default function DeckStudio({ initialDataset = null }) {
       const deckBeforeDelete = dataset?.decks?.find((deck) => deck.id === deckId);
       const listIndex = deckBeforeDelete?.lists?.findIndex((list) => list.id === listId) ?? -1;
       const response = await apiFetch(`/api/decks/${encodeURIComponent(deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
-      if (!response.ok && response.status !== 204) {
-        const message = await response.text();
-        throw new Error(message || `Xóa thất bại: HTTP ${response.status}`);
+      if (!response.ok && response.status !== 204 && response.status !== 404) {
+        throw new Error(await formatApiError(response, 'Xóa thất bại'));
       }
 
       const nextDataset = {
@@ -970,9 +969,8 @@ export default function DeckStudio({ initialDataset = null }) {
         focusIndexByDeck.set(group.deckId, deleteIndexes.length > 0 ? Math.min(...deleteIndexes) : 0);
         for (const listId of group.listIds) {
           const response = await apiFetch(`/api/decks/${encodeURIComponent(group.deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
-          if (!response.ok && response.status !== 204) {
-            const message = await response.text();
-            throw new Error(message || `Xóa thất bại: HTTP ${response.status}`);
+          if (!response.ok && response.status !== 204 && response.status !== 404) {
+            throw new Error(await formatApiError(response, 'Xóa thất bại'));
           }
         }
       }
@@ -1031,9 +1029,8 @@ export default function DeckStudio({ initialDataset = null }) {
 
       for (const listId of group.listIds) {
         const response = await apiFetch(`/api/decks/${encodeURIComponent(group.deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
-        if (!response.ok && response.status !== 204) {
-          const message = await response.text();
-          throw new Error(message || `Xóa list đã xuất thất bại: HTTP ${response.status}`);
+        if (!response.ok && response.status !== 204 && response.status !== 404) {
+          throw new Error(await formatApiError(response, 'Xóa list đã xuất thất bại'));
         }
       }
     }

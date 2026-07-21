@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-07-17T02:57:06.897Z",
-  "blockedItemCount": 27,
-  "blockedFolderCount": 27,
+  "generatedAt": "2026-07-17T04:39:23.151Z",
+  "destination": "greenland",
+  "blockedItemCount": 26,
+  "blockedFolderCount": 26,
   "folders": [
     {
       "folderLink": "https://drive.google.com/drive/folders/1nVGLPbzVG8tgg0kzyrCRTAVGsnQ_6n_L",
@@ -43,13 +44,6 @@
       "itemCount": 1,
       "items": [
         "Lưng Chừng Coffee"
-      ]
-    },
-    {
-      "folderLink": "https://drive.google.com/open?id=18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8",
-      "itemCount": 1,
-      "items": [
-        "AllinB cafe"
       ]
     },
     {
@@ -229,12 +223,6 @@
       "address": "31/8 Đ.3/4",
       "folder": "https://drive.google.com/drive/folders/1zgzYpMs-X7T7VjqWqLnkQyAehZ-Ql_EG",
       "file": "https://drive.google.com/file/d/1YqDRMOm6ULsKHF1MIPT1qYT6bzUwNGmW/view"
-    },
-    {
-      "name": "AllinB cafe",
-      "address": "22 Lý Nam Đế",
-      "folder": "https://drive.google.com/open?id=18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8",
-      "file": "https://drive.google.com/file/d/18cMZsneCgkPTm-VIUV3GooQJTZI1e7u8/view"
     },
     {
       "name": "Trải nghiệm nghe nhạc Acoustic vào lúc 5 gIờ sáng giữ thời tiết se lạnh của Đà Lạt",

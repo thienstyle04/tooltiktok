@@ -58,7 +58,7 @@ import {
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
-import { DriveFileAsset, clearDriveAccessibilityCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownInaccessibleDriveProxyUrl, setCachedDriveFileAccessibility } from './sync/drive-images';
+import { DriveFileAsset, clearDriveAccessibilityCache, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownInaccessibleDriveProxyUrl, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
   DEFAULT_DESTINATION_ID,
@@ -142,10 +142,16 @@ export class GuideService implements OnApplicationBootstrap {
   private driveAccessCacheLoadedFor: DestinationId | null = null;
   private readonly AUTO_SYNC_ENABLED = !['0', 'false', 'no'].includes(String(process.env.DALAT_AUTO_SYNC_SHEET ?? 'true').trim().toLowerCase());
   private readonly AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 phút
+  private readonly AUTO_WARM_DRIVE_CACHE = !['0', 'false', 'no'].includes(String(process.env.DALAT_AUTO_WARM_DRIVE_CACHE ?? 'true').trim().toLowerCase());
+  private driveCacheWarmToken = 0;
 
   constructor() {
     this.activeDestinationId = this.loadActiveDestinationId();
     setActiveDestinationLocalize(this.activeDestinationId);
+    const cacheDir = String(process.env.DALAT_DRIVE_FILE_CACHE_DIR || '').trim()
+      || path.join(this.dataRoot, 'drive-file-cache');
+    configureDriveFileDiskCache(cacheDir);
+    console.log(`[drive-cache] Disk cache dir: ${cacheDir}`);
   }
 
   // Chạy ngay khi backend khởi động (trước khi bất kỳ request nào tới) để "làm nóng" dữ liệu:
@@ -162,9 +168,46 @@ export class GuideService implements OnApplicationBootstrap {
       await this.prepareWorkbookForDataset(false);
       this.buildDatasetContext();
       console.log(`[warmup] Sẵn sàng phục vụ /api/guide-data (mất ${Date.now() - t0}ms).`);
+      this.scheduleWarmDriveFileDiskCache();
     } catch (error) {
       console.error('[warmup] Làm nóng dữ liệu trước thất bại, sẽ thử lại khi có request đầu tiên:', error);
     }
+  }
+
+  /** Máy mới: tự tải ảnh Drive còn thiếu vào backend/data/drive-file-cache (chạy nền). */
+  private scheduleWarmDriveFileDiskCache(): void {
+    if (!this.AUTO_WARM_DRIVE_CACHE) return;
+    const token = ++this.driveCacheWarmToken;
+    void this.runWarmDriveFileDiskCache(token);
+  }
+
+  private collectDriveFileIdsForCacheWarm(): string[] {
+    try {
+      const manifest = this.loadSheetDriveManifest();
+      const ids = new Set<string>();
+      for (const entry of Object.values(manifest.items || {})) {
+        const fileId = String(entry?.fileId || '').trim();
+        if (fileId) ids.add(fileId);
+      }
+      const coverLimit = Math.max(0, Number(process.env.DALAT_DRIVE_CACHE_COVER_LIMIT || 120));
+      for (const cover of (manifest.coverImages || []).slice(0, coverLimit)) {
+        const fileId = String(cover?.fileId || '').trim();
+        if (fileId) ids.add(fileId);
+      }
+      return [...ids];
+    } catch (error) {
+      console.warn('[drive-cache] Không đọc được manifest để warm:', error instanceof Error ? error.message : error);
+      return [];
+    }
+  }
+
+  private async runWarmDriveFileDiskCache(token: number): Promise<void> {
+    const fileIds = this.collectDriveFileIdsForCacheWarm();
+    if (!fileIds.length) return;
+    await warmDriveFileDiskCache(fileIds, {
+      concurrency: Math.min(Math.max(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 2), 1), 4),
+      shouldCancel: () => token !== this.driveCacheWarmToken,
+    });
   }
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -283,8 +326,10 @@ export class GuideService implements OnApplicationBootstrap {
       this.lastSyncTime = 0;
       this.invalidateDatasetCache({ immediate: true });
       await this.syncWorkbookNow('doi nguon Google Sheet');
+      this.scheduleWarmDriveFileDiskCache();
     } else if (!this.workbookSource) {
       await this.syncWorkbookNow('tai du lieu lan dau');
+      this.scheduleWarmDriveFileDiskCache();
     }
 
     const dataset = await this.getDataset({ refresh: true });
@@ -443,9 +488,10 @@ export class GuideService implements OnApplicationBootstrap {
   deleteGeneratedList(deckId: string, listId: string): void {
     this.ensureGeneratedListsLoaded();
     const existing = this.generatedListsByDeckId.get(deckId);
-    if (!existing) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
+    // Idempotent: list/deck đã mất (cache UI lệch, đã xóa trước đó) → coi như xóa thành công.
+    if (!existing) return;
     const filtered = existing.filter((l) => l.id !== listId);
-    if (filtered.length === existing.length) throw new NotFoundException(`Không tìm thấy list: ${listId}`);
+    if (filtered.length === existing.length) return;
     if (filtered.length === 0) {
       this.generatedListsByDeckId.delete(deckId);
     } else {
@@ -1157,10 +1203,15 @@ export class GuideService implements OnApplicationBootstrap {
       ...cleanList,
       description: safeDescription,
       pages: enrichedPages.map((page) => {
-        if (page.type !== 'cover') return page;
-        const grid = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
-        if (grid.length > 0) return { ...page, backgroundImage: grid[0] };
-        return portableCoverImage ? { ...page, backgroundImage: portableCoverImage } : page;
+        if (page.layoutVariant === 'grid-8-quaytung-menu') return page;
+        if (this.isPortableImageUrl(page.backgroundImage)) return page;
+        if (page.type === 'cover') {
+          const grid = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
+          if (grid.length > 0) return { ...page, backgroundImage: grid[0] };
+          return portableCoverImage ? { ...page, backgroundImage: portableCoverImage } : page;
+        }
+        const pageImage = this.firstPortableImageForPages([page]) || portableCoverImage;
+        return pageImage ? { ...page, backgroundImage: pageImage } : page;
       }),
     };
   }

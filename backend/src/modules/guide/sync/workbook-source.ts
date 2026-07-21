@@ -7,6 +7,8 @@ export const DALAT_FNB_EXPORT_URL = getDestinationConfig('dalat').exportUrl;
 export const PREFERRED_WORKBOOK_NAME = getDestinationConfig(DEFAULT_DESTINATION_ID).workbookName;
 
 const SHEET_FETCH_TIMEOUT_MS = 30_000;
+const SHEET_FETCH_MAX_ATTEMPTS = 3;
+const SHEET_FETCH_RETRY_DELAY_MS = 2_000;
 
 export interface SheetWorkbookSource {
   workbook: XLSX.WorkBook;
@@ -27,7 +29,25 @@ function createTimeoutSignal(ms: number): { signal: AbortSignal; cancel: () => v
   };
 }
 
-export async function fetchWorkbookFromSheet(destination: DestinationConfig): Promise<SheetWorkbookSource> {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientSheetFetchError(error: unknown): boolean {
+  const message = String(error instanceof Error ? error.message : error);
+  const cause = error && typeof error === 'object' && 'cause' in error
+    ? (error as { cause?: unknown }).cause
+    : null;
+  const causeCode = cause && typeof cause === 'object' && 'code' in cause
+    ? String((cause as { code?: unknown }).code || '')
+    : '';
+  const causeMessage = cause instanceof Error ? cause.message : String(cause || '');
+  return /fetch failed|aborted|timeout|ENOTFOUND|EAI_AGAIN|ECONNRESET|ETIMEDOUT|UND_ERR/i.test(
+    `${message} ${causeMessage} ${causeCode}`,
+  );
+}
+
+async function fetchWorkbookOnce(destination: DestinationConfig): Promise<SheetWorkbookSource> {
   const timeout = createTimeoutSignal(SHEET_FETCH_TIMEOUT_MS);
   const response = await fetch(destination.exportUrl, {
     headers: {
@@ -52,4 +72,26 @@ export async function fetchWorkbookFromSheet(destination: DestinationConfig): Pr
     fetchedAt: Date.now(),
     sourceUrl: destination.exportUrl,
   };
+}
+
+export async function fetchWorkbookFromSheet(destination: DestinationConfig): Promise<SheetWorkbookSource> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= SHEET_FETCH_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetchWorkbookOnce(destination);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= SHEET_FETCH_MAX_ATTEMPTS || !isTransientSheetFetchError(error)) {
+        break;
+      }
+      console.warn(
+        `[sync] Tai Google Sheet (${destination.label}) lan ${attempt}/${SHEET_FETCH_MAX_ATTEMPTS} that bai, thu lai...`,
+        error instanceof Error ? error.message : error,
+      );
+      await sleep(SHEET_FETCH_RETRY_DELAY_MS * attempt);
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Khong tai duoc du lieu tu Google Sheet (${destination.label}).`);
 }

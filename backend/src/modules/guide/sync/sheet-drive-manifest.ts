@@ -10,7 +10,8 @@ import { resolveSectionKeyFromSheetName } from './sheet-section';
 import { SectionKey } from '../../../common/interfaces/guide.types';
 
 export const SHEET_DRIVE_MANIFEST_FILE = 'sheet-drive-images.json';
-const DRIVE_MANIFEST_CONCURRENCY = 6;
+/** Giữ thấp để tránh Google trả HTTP 401 hàng loạt khi list embeddedfolderview. */
+const DRIVE_MANIFEST_CONCURRENCY = 2;
 
 export interface SheetDriveImageManifestEntry {
   key: string;
@@ -161,6 +162,16 @@ export async function buildSheetDriveManifest(
   const coverImages = new Map<string, DriveFolderEntry>();
   const itemTasks: Array<() => Promise<void>> = [];
   const coverTasks: Array<() => Promise<void>> = [];
+  let coverResolveErrors = 0;
+  const syncStats = {
+    resolved: 0,
+    keptPrevious: 0,
+    skippedNoPrevious: 0,
+    rateLimited: 0,
+    blockedPublic: 0,
+    otherErrors: 0,
+    otherErrorSamples: [] as string[],
+  };
 
   for (const sheetName of workbook.SheetNames) {
     const sectionKey = resolveSectionKeyFromSheetName(sheetName);
@@ -174,8 +185,13 @@ export async function buildSheetDriveManifest(
         coverTasks.push(async () => {
           const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', 50).catch((error) => {
             console.warn(`[sync] Bo qua anh nen Drive loi: ${error instanceof Error ? error.message : String(error)}`);
-            return [];
+            return null as DriveFolderEntry[] | null;
           });
+
+          if (candidateImages === null) {
+            coverResolveErrors += 1;
+            return;
+          }
 
           for (const entry of candidateImages) {
             if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
@@ -197,26 +213,56 @@ export async function buildSheetDriveManifest(
       const key = itemMappingKey(sectionKey, name, address);
 
       itemTasks.push(async () => {
+        const previousEntry = previousManifest.items[key];
+        let resolveError: unknown = null;
         const candidateImages = await resolveDriveLinkToEntries(imageLink, name, address).catch((error) => {
-          console.warn(`[sync] Skip Drive image for "${name}": ${error instanceof Error ? error.message : String(error)}`);
-          return [];
+          resolveError = error;
+          return null as DriveFolderEntry[] | null;
         });
-        const accessibleImages = candidateImages.length > 0
-          ? await filterAccessibleDriveEntries(candidateImages)
-          : [];
-        if (accessibleImages.length === 0) {
-          if (candidateImages.length > 0) {
-            console.warn(`[sync] Bo qua "${name}" — ${candidateImages.length} anh Drive khong truy cap duoc (can quyen public).`);
+
+        // Lỗi tạm (401/429/timeout): giữ entry cũ, không xóa ảnh đã map.
+        if (candidateImages === null) {
+          const message = resolveError instanceof Error ? resolveError.message : String(resolveError);
+          if (previousEntry?.fileId) {
+            items[key] = previousEntry.sourceLink === imageLink
+              ? previousEntry
+              : { ...previousEntry, sourceLink: imageLink, name, address, sectionKey, key };
+            syncStats.keptPrevious += 1;
           } else {
-            const previousEntry = previousManifest.items[key];
-            if (previousEntry?.sourceLink === imageLink && previousEntry.fileId) {
-              items[key] = previousEntry;
+            syncStats.skippedNoPrevious += 1;
+          }
+          if (/HTTP 401|HTTP 429|aborted|timeout|fetch failed/i.test(message)) {
+            syncStats.rateLimited += 1;
+          } else {
+            syncStats.otherErrors += 1;
+            if (syncStats.otherErrorSamples.length < 5) {
+              syncStats.otherErrorSamples.push(`${name}: ${message}`);
             }
           }
           return;
         }
 
+        const accessibleImages = candidateImages.length > 0
+          ? await filterAccessibleDriveEntries(candidateImages)
+          : [];
+        if (accessibleImages.length === 0) {
+          if (candidateImages.length > 0) {
+            // Probe ảnh fail — ưu tiên giữ previous thay vì mất ảnh vì rate-limit.
+            if (previousEntry?.fileId) {
+              items[key] = previousEntry;
+              syncStats.keptPrevious += 1;
+            } else {
+              syncStats.blockedPublic += 1;
+            }
+          } else if (previousEntry?.fileId) {
+            items[key] = previousEntry;
+            syncStats.keptPrevious += 1;
+          }
+          return;
+        }
+
         const resolvedEntry = accessibleImages[0];
+        syncStats.resolved += 1;
 
         items[key] = {
           key,
@@ -234,13 +280,39 @@ export async function buildSheetDriveManifest(
 
   await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY);
 
+  console.log(
+    `[sync] Drive manifest: resolved=${syncStats.resolved}`
+    + ` keptPrevious=${syncStats.keptPrevious}`
+    + ` rateLimited=${syncStats.rateLimited}`
+    + ` blockedPublic=${syncStats.blockedPublic}`
+    + ` skippedNoPrevious=${syncStats.skippedNoPrevious}`
+    + ` otherErrors=${syncStats.otherErrors}`,
+  );
+  for (const sample of syncStats.otherErrorSamples) {
+    console.warn(`[sync] ${sample}`);
+  }
+
+  let nextCoverImages = [...coverImages.values()];
+  if ((nextCoverImages.length === 0 || coverResolveErrors > 0) && (previousManifest.coverImages || []).length > 0) {
+    const merged = new Map(nextCoverImages.map((entry) => [entry.fileId, entry]));
+    for (const entry of previousManifest.coverImages) {
+      if (entry.fileId && !merged.has(entry.fileId)) merged.set(entry.fileId, entry);
+    }
+    nextCoverImages = [...merged.values()];
+    if (coverImages.size === 0) {
+      console.warn(`[sync] Pool anh nen trong: dung lai ${nextCoverImages.length} anh nen tu ban truoc.`);
+    } else if (coverResolveErrors > 0) {
+      console.warn(`[sync] Anh nen loi ${coverResolveErrors} link: gop them ban truoc -> ${nextCoverImages.length} anh.`);
+    }
+  }
+
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
     workbookName: source.workbookName,
     workbookMtimeMs: source.fetchedAt,
     items,
-    coverImages: [...coverImages.values()],
+    coverImages: nextCoverImages,
   };
 }
 

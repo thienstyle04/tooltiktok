@@ -3143,10 +3143,11 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     const grid8Title = isGeneratedCaptionList(list) ? contextualGrid8Title(page) : page.title;
     const grid8Intro = grid8IntroForPage(page, pageSubtitle, list);
     const showAddress = !isActivityListPage(page);
+    const grid8Background = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, grid8Title, page.chipText, page.backgroundImage, grid8Intro, { showLabel: isServiceOrStayListPage(page), showAddress })}
+          ${renderGrid8Items(page.items, grid8Title, page.chipText, grid8Background, grid8Intro, { showLabel: isServiceOrStayListPage(page), showAddress })}
         </div>
       </article>
     `;
@@ -3156,10 +3157,11 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     const hideCenterChip = page.chipText === 'Lưu trú' || page.chipText === 'Homestay' || page.chipText === 'Dịch vụ';
     const showJourneyServiceLabel = isServiceOrStayListPage(page) || hideCenterChip;
     const showAddress = !isActivityListPage(page);
+    const journeyBackground = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page', 'journey-grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: !hideCenterChip, showLabel: showJourneyServiceLabel, showAddress })}
+          ${renderGrid8Items(page.items, page.title, page.chipText, journeyBackground, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: !hideCenterChip, showLabel: showJourneyServiceLabel, showAddress })}
         </div>
       </article>
     `;

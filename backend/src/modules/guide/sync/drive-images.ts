@@ -1,8 +1,13 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 30 * 60 * 1000;
+const DRIVE_FILE_DISK_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DRIVE_FETCH_TIMEOUT_MS = 15_000;
-const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 750, 1_500];
+/** Backoff dài hơn cho 401/429 — Google hay rate-limit khi sync hàng trăm folder. */
+const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 1_500, 4_000, 8_000];
 const DRIVE_BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
@@ -11,6 +16,8 @@ const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFil
 const driveFileAccessibilityCache = new Map<string, boolean>();
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.jfif', '.bmp']);
+
+let driveFileDiskCacheDir = '';
 
 export interface DriveFolderEntry {
   fileId: string;
@@ -23,6 +30,171 @@ export interface DriveFileAsset {
   contentLength: number;
   contentType: string;
   isFallback?: boolean;
+}
+
+export function configureDriveFileDiskCache(dir: string): void {
+  driveFileDiskCacheDir = String(dir || '').trim();
+}
+
+function resolveDriveFileDiskCacheDir(): string {
+  if (driveFileDiskCacheDir) return driveFileDiskCacheDir;
+  // backend/src/modules/guide/sync -> backend/data/drive-file-cache
+  return path.join(__dirname, '../../../../data/drive-file-cache');
+}
+
+function safeDriveCacheFileId(fileId: string): string {
+  return String(fileId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function diskCachePaths(fileId: string): { binPath: string; metaPath: string } {
+  const dir = resolveDriveFileDiskCacheDir();
+  const key = safeDriveCacheFileId(fileId);
+  return {
+    binPath: path.join(dir, `${key}.bin`),
+    metaPath: path.join(dir, `${key}.json`),
+  };
+}
+
+function readDriveFileDiskCache(fileId: string): DriveFileAsset | null {
+  try {
+    const { binPath, metaPath } = diskCachePaths(fileId);
+    if (!fs.existsSync(binPath) || !fs.existsSync(metaPath)) return null;
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as {
+      contentType?: string;
+      savedAt?: number;
+    };
+    const savedAt = Number(meta.savedAt || 0);
+    if (!savedAt || Date.now() - savedAt > DRIVE_FILE_DISK_CACHE_TTL_MS) return null;
+    const body = fs.readFileSync(binPath);
+    if (!body.length) return null;
+    const contentType = String(meta.contentType || '').trim() || sniffImageContentType(body) || '';
+    if (!contentType.startsWith('image/') || contentType.includes('svg')) return null;
+    return {
+      body,
+      contentLength: body.byteLength,
+      contentType,
+      isFallback: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeDriveFileDiskCache(fileId: string, asset: DriveFileAsset): void {
+  if (!asset?.body?.length || asset.isFallback) return;
+  if (!String(asset.contentType || '').startsWith('image/') || String(asset.contentType).includes('svg')) return;
+  try {
+    const dir = resolveDriveFileDiskCacheDir();
+    fs.mkdirSync(dir, { recursive: true });
+    const { binPath, metaPath } = diskCachePaths(fileId);
+    fs.writeFileSync(binPath, asset.body);
+    fs.writeFileSync(metaPath, JSON.stringify({
+      fileId,
+      contentType: asset.contentType,
+      contentLength: asset.body.byteLength,
+      savedAt: Date.now(),
+    }), 'utf8');
+  } catch (error) {
+    console.warn(`[drive-image] Khong ghi duoc disk cache: ${fileId}`, error instanceof Error ? error.message : error);
+  }
+}
+
+/** True nếu đã có file cache disk còn hạn (không đọc body). */
+export function hasDriveFileDiskCache(fileId: string): boolean {
+  try {
+    const { binPath, metaPath } = diskCachePaths(fileId);
+    if (!fs.existsSync(binPath) || !fs.existsSync(metaPath)) return false;
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as { savedAt?: number };
+    const savedAt = Number(meta.savedAt || 0);
+    if (!savedAt || Date.now() - savedAt > DRIVE_FILE_DISK_CACHE_TTL_MS) return false;
+    return fs.statSync(binPath).size > 0;
+  } catch {
+    return false;
+  }
+}
+
+export interface WarmDriveFileDiskCacheResult {
+  total: number;
+  skipped: number;
+  ok: number;
+  fail: number;
+  cancelled: boolean;
+}
+
+/**
+ * Tải ảnh Drive còn thiếu vào disk cache (máy mới tự tạo cache).
+ * Chạy nền với concurrency thấp; truyền shouldCancel để dừng khi đổi destination.
+ */
+export async function warmDriveFileDiskCache(
+  fileIds: string[],
+  options: {
+    concurrency?: number;
+    shouldCancel?: () => boolean;
+  } = {},
+): Promise<WarmDriveFileDiskCacheResult> {
+  const concurrency = Math.min(Math.max(Number(options.concurrency) || 2, 1), 4);
+  const uniqueIds = [...new Set(fileIds.map((id) => String(id || '').trim()).filter(Boolean))];
+  const result: WarmDriveFileDiskCacheResult = {
+    total: uniqueIds.length,
+    skipped: 0,
+    ok: 0,
+    fail: 0,
+    cancelled: false,
+  };
+  if (!uniqueIds.length) return result;
+
+  const pending: string[] = [];
+  for (const fileId of uniqueIds) {
+    if (hasDriveFileDiskCache(fileId)) {
+      result.skipped += 1;
+    } else {
+      pending.push(fileId);
+    }
+  }
+
+  if (!pending.length) {
+    console.log(`[drive-cache] Đủ cache disk (${result.skipped}/${result.total}), bỏ qua warm.`);
+    return result;
+  }
+
+  console.log(`[drive-cache] Bắt đầu tự tạo cache: cần tải ${pending.length}/${result.total} ảnh (concurrency=${concurrency})...`);
+  let index = 0;
+  let done = 0;
+  const workers = Array.from({ length: Math.min(concurrency, pending.length) }, async () => {
+    while (index < pending.length) {
+      if (options.shouldCancel?.()) {
+        result.cancelled = true;
+        return;
+      }
+      const current = index;
+      index += 1;
+      const fileId = pending[current];
+      try {
+        const asset = await fetchDriveFileAsset(fileId);
+        if (asset?.body?.length && !asset.isFallback && hasDriveFileDiskCache(fileId)) {
+          result.ok += 1;
+        } else if (asset?.body?.length && !asset.isFallback) {
+          writeDriveFileDiskCache(fileId, asset);
+          result.ok += 1;
+        } else {
+          result.fail += 1;
+        }
+      } catch {
+        result.fail += 1;
+      }
+      done += 1;
+      if (done === pending.length || done % 25 === 0) {
+        console.log(`[drive-cache] Tiến độ ${done}/${pending.length} (ok=${result.ok} fail=${result.fail})`);
+      }
+    }
+  });
+  await Promise.all(workers);
+  if (result.cancelled) {
+    console.log(`[drive-cache] Dừng warm sớm (đổi destination). ok=${result.ok} fail=${result.fail} skip=${result.skipped}`);
+  } else {
+    console.log(`[drive-cache] Xong warm: ok=${result.ok} fail=${result.fail} skip=${result.skipped} total=${result.total}`);
+  }
+  return result;
 }
 
 function normalizeText(value: unknown): string {
@@ -364,22 +536,12 @@ export async function resolveDriveLinkToEntry(link: string, placeName: string, a
   return (await resolveDriveLinkToEntries(link, placeName, address))[0] ?? null;
 }
 
-export async function resolveDriveLinkToEntries(link: string, placeName: string, address: string, maxEntries = 6): Promise<DriveFolderEntry[]> {
-  const directFileId = extractDriveFileId(link);
-  if (directFileId) {
-    return [{
-      fileId: directFileId,
-      fileName: '',
-      viewUrl: getDriveFileViewUrl(directFileId),
-    }];
-  }
-
-  const folderId = extractDriveFolderId(link);
-  if (!folderId) return [];
-
-  const entries = await listDriveFolderEntries(folderId);
-  if (entries.length === 0) return [];
-
+function rankDriveEntries(
+  entries: DriveFolderEntry[],
+  placeName: string,
+  address: string,
+  maxEntries: number,
+): DriveFolderEntry[] {
   const imageEntries = entries.filter((entry) => looksLikeImageName(entry.fileName));
   const candidates = imageEntries.length > 0 ? imageEntries : entries;
 
@@ -392,6 +554,54 @@ export async function resolveDriveLinkToEntries(link: string, placeName: string,
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .slice(0, Math.max(1, maxEntries))
     .map((candidate) => candidate.entry);
+}
+
+/**
+ * Sheet Đà Lạt thường dùng `open?id=<FOLDER_ID>&usp=drive_copy` (folder),
+ * không phải `/file/d/...`. Nếu lấy nhầm ID folder làm fileId rồi gọi
+ * `uc?export=view` → Google 500 → placeholder, dù folder vẫn xem được trên Chrome
+ * và ảnh con bên trong vẫn tải được.
+ */
+export async function resolveDriveLinkToEntries(link: string, placeName: string, address: string, maxEntries = 6): Promise<DriveFolderEntry[]> {
+  const text = String(link ?? '').trim();
+  if (!text) return [];
+
+  // 1) Link file tường minh: /file/d/<id>
+  const explicitFileId = text.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || '';
+  if (explicitFileId) {
+    return [{
+      fileId: explicitFileId,
+      fileName: '',
+      viewUrl: getDriveFileViewUrl(explicitFileId),
+    }];
+  }
+
+  // 2) Link folder tường minh: /folders/<id>
+  const explicitFolderId = text.match(/\/folders\/([a-zA-Z0-9_-]+)/)?.[1] || '';
+  if (explicitFolderId) {
+    const entries = await listDriveFolderEntries(explicitFolderId);
+    if (entries.length === 0) return [];
+    return rankDriveEntries(entries, placeName, address, maxEntries);
+  }
+
+  // 3) open?id= / ?id= — có thể là folder HOẶC file. Thử folder trước.
+  const ambiguousId = extractDriveFolderId(text) || extractDriveFileId(text);
+  if (!ambiguousId) return [];
+
+  try {
+    const folderEntries = await listDriveFolderEntries(ambiguousId);
+    if (folderEntries.length > 0) {
+      return rankDriveEntries(folderEntries, placeName, address, maxEntries);
+    }
+  } catch {
+    // Không phải folder (hoặc không list được) → thử như file bên dưới.
+  }
+
+  return [{
+    fileId: ambiguousId,
+    fileName: '',
+    viewUrl: getDriveFileViewUrl(ambiguousId),
+  }];
 }
 
 export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsset> {
@@ -410,6 +620,16 @@ async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset
   const now = Date.now();
   if (cached && cached.expiresAt > now) {
     return cached.asset;
+  }
+
+  const diskCached = readDriveFileDiskCache(fileId);
+  if (diskCached) {
+    setCachedDriveFileAccessibility(fileId, true);
+    driveFileAssetCache.set(fileId, {
+      expiresAt: now + DRIVE_FILE_CACHE_TTL_MS,
+      asset: diskCached,
+    });
+    return diskCached;
   }
 
   const candidateUrls = [
@@ -448,6 +668,7 @@ async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset
       expiresAt: now + DRIVE_FILE_CACHE_TTL_MS,
       asset,
     });
+    writeDriveFileDiskCache(fileId, asset);
     return asset;
   }
 
