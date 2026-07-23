@@ -5,6 +5,7 @@ const V2_DECK_IDS = new Set([
   'grid-8-feed',
   'grid-8-quaytung',
   'spotlight-v2',
+  'spotlight-v3',
   'pov-3-v2',
   'itinerary-4n3d-stack',
   'itinerary-timeline',

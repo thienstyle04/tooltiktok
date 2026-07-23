@@ -814,9 +814,9 @@ export function createListImageResolver(
           ].filter(Boolean),
         ),
       ).filter((url) => url && !shouldAvoidImageForItem(item.name, url) && !isKnownInaccessibleDriveProxyUrl(url));
-      const strictUrl = strictCandidates[0] || '';
+      // Không tái dùng ảnh đã gán trong list — tránh lặp hình giữa các địa điểm.
+      const strictUrl = pickUnused(strictCandidates);
       if (strictUrl) {
-        rememberPicked(strictUrl);
         return {
           ...common,
           imageUrl: strictUrl,

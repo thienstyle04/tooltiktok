@@ -1,0 +1,36 @@
+---
+description: Xen kẽ font hỗ trợ tiếng Việt khi làm mẫu carousel mới — không mặc định spam Be Vietnam Pro
+alwaysApply: true
+---
+
+# Font chữ cho mẫu carousel (tiếng Việt)
+
+Khi thiết kế / chỉnh **mẫu deck mới** (cover, tên địa điểm, hook, caption trên slide):
+
+## Bắt buộc
+- **Không** mặc định mọi chữ về `"Be Vietnam Pro"` chỉ vì an toàn tiếng Việt.
+- **Xen kẽ** font display giữa các mẫu (và giữa cover vs body trong cùng mẫu) để mỗi mẫu có “giọng” riêng.
+- Luôn giữ **fallback** có dấu Việt đầy đủ: kết thúc stack bằng `"Be Vietnam Pro", Arial, sans-serif`.
+
+## Pool font đã có trong project (ưu tiên dùng lại)
+| Vai trò | Font | Ghi chú |
+|--------|------|--------|
+| Display / cover hook | `"Cormorant Garamond"` | Timeline — serif; fallback Be Vietnam Pro |
+| Display / script | `"Dancing Script"`, `"Caveat"` | Script; luôn fallback Be Vietnam Pro |
+| Display / rounded | `"Baloo 2"`, `"Quicksand"` | Chỉ khi đã kiểm tra dấu Việt trên preview |
+| Body / địa chỉ / meta | `"Be Vietnam Pro"` | Ổn cho dòng phụ, không dùng làm font “nhận diện” mọi mẫu |
+
+## Cách áp dụng mẫu mới
+1. Chọn **1 font display khác** mẫu gần nhất (đừng lặp lại Quicksand hoặc Be Vietnam Pro cho title nếu mẫu trước vừa dùng).
+2. Cover title và tên địa điểm: font display + `!important` nếu cần override rule chung.
+3. Địa chỉ / giờ / giá / caption phụ: Be Vietnam Pro (hoặc meta font của mẫu).
+4. Preview thật với hook dài có dấu (`ă â ê ô ơ ư đ`) trước khi chốt.
+
+## Ví dụ stack
+```css
+font-family: "Cormorant Garamond", "Be Vietnam Pro", Georgia, serif;
+font-family: "Baloo 2", "Be Vietnam Pro", sans-serif;
+font-family: "Dancing Script", "Be Vietnam Pro", cursive;
+```
+
+Tham chiếu tốt: `itinerary-timeline-templates.css` (`--itl-serif` / `--itl-script` / `--itl-body`).

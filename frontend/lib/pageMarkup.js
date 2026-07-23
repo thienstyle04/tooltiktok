@@ -703,6 +703,7 @@ const V2_COVER_VARIANTS = new Set([
   'grid-8-feed',
   'grid-8-quaytung-cover',
   'spotlight-v2',
+  'spotlight-v3',
   'spotlight-partner-v2',
   'pov-maikem',
   'pov-3-v2-cover',
@@ -717,6 +718,7 @@ const V2_LIST_VARIANTS = new Set([
   'grid-8-quaytung',
   'grid-8-quaytung-menu',
   'spotlight-v2',
+  'spotlight-v3',
   'spotlight-v2-list',
   'spotlight-partner-v2',
   'spotlight-partner-v2-info',
@@ -1544,14 +1546,19 @@ function formatSpotlightV2CoverSubtitle(subtitle) {
 }
 
 function renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, options = {}) {
+  if (page?.layoutVariant === 'spotlight-v3') {
+    return renderSpotlightV3Cover(page, index, listId, coverTitle, backgroundImage, options);
+  }
   const partnerClass = options.partner ? ' spotlight-partner-v2-cover' : '';
   const coverImageUrls = options.coverImageUrls || [];
   let tiles = spotlightV2CoverGridImages(page, backgroundImage, listId, coverImageUrls);
   while (tiles.length < 4) tiles.push('');
   tiles = tiles.slice(0, 4);
   const subtitle = formatSpotlightV2CoverSubtitle(coverSubtitle);
+  const placement = String(page?.titlePlacement || 'center').trim() || 'center';
+  const placementClass = `spotlight-v2-place-${placement}`;
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v2-cover', partnerClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v2-cover', `${partnerClass} ${placementClass}`.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       <div class="spotlight-v2-cover-grid">
         ${tiles.map((url, tileIndex) => `
           <div class="spotlight-v2-cover-cell">
@@ -1570,16 +1577,54 @@ function renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, 
   `;
 }
 
+function spotlightV3CoverImage(page, backgroundImage) {
+  const fromPage = Array.isArray(page?.coverImages) ? page.coverImages.filter(Boolean) : [];
+  return fromPage[0] || backgroundImage || page?.backgroundImage || '';
+}
+
+function spotlightV3CoverPlacement(page, listId = '') {
+  const allowed = [
+    'top-left', 'top-center', 'top-right',
+    'mid-left', 'mid-right',
+    'bottom-left', 'bottom-center', 'bottom-right',
+  ];
+  const raw = String(page?.titlePlacement || '').trim();
+  if (allowed.includes(raw)) return raw;
+  // Fallback random theo seed list — không mặc định giữa.
+  const seed = `${listId || page?.title || 'v3'}|place`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 33 + seed.charCodeAt(i)) >>> 0;
+  return allowed[hash % allowed.length];
+}
+
+function renderSpotlightV3Cover(page, index, listId, coverTitle, backgroundImage, options = {}) {
+  const imageUrl = spotlightV3CoverImage(page, backgroundImage);
+  const placement = spotlightV3CoverPlacement(page, listId);
+  const placementClass = `spotlight-v2-place-${placement}`;
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v2-cover spotlight-v3-cover', placementClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="spotlight-v3-cover-bg">
+        ${imageUrl ? renderPreviewImage(imageUrl, coverTitle || 'cover') : ''}
+      </div>
+      <div class="spotlight-v2-cover-center">
+        ${coverTitle ? `<h1 class="spotlight-v2-cover-title">${escapeHtml(coverTitle)}</h1>` : ''}
+      </div>
+    </article>
+  `;
+}
+
 function renderSpotlightV2Page(page, index, listId, list, options = {}) {
   const item = page.items?.[0] || {};
   const backgroundImage = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
   const titleText = item.rawName || item.name || page.title || '';
   const address = spotlightV2AddressLine(item);
   const hours = spotlightV2HoursLine(item);
+  const price = spotlightV2PriceLine(item);
   const positionClass = spotlightPositionClass(page, index, item);
   const partnerClass = options.partner ? ' spotlight-partner-v2-page' : '';
+  const v3Class = page?.layoutVariant === 'spotlight-v3' ? ' spotlight-v3-page' : '';
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v2-page', `${positionClass} ${partnerClass}`.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || item.name || 'spotlight')}.png">
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v2-page', `${positionClass} ${partnerClass}${v3Class}`.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || item.name || 'spotlight')}.png">
       <div class="spotlight-v2-bg">
         ${renderPreviewImage(backgroundImage, item.name || page.title)}
       </div>
@@ -1591,6 +1636,7 @@ function renderSpotlightV2Page(page, index, listId, list, options = {}) {
         </h2>
         ${address ? `<p class="spotlight-v2-address">${escapeHtml(address)}</p>` : ''}
         ${hours ? `<p class="spotlight-v2-hours">${escapeHtml(hours)}</p>` : ''}
+        ${price ? `<p class="spotlight-v2-price">${escapeHtml(price)}</p>` : ''}
       </div>
     </article>
   `;
@@ -1982,7 +2028,7 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
   if (page.layoutVariant === 'grid-5') {
     return renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
   }
-  if (page.layoutVariant === 'spotlight-v2') {
+  if (page.layoutVariant === 'spotlight-v2' || page.layoutVariant === 'spotlight-v3') {
     return renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, { coverImageUrls });
   }
   if (page.layoutVariant === 'spotlight-partner-v2') {
@@ -2039,7 +2085,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   if (page.layoutVariant === 'grid-5') {
     return renderGrid5Page(page, index, listId, pageSubtitle, list);
   }
-  if (page.layoutVariant === 'spotlight-v2') {
+  if (page.layoutVariant === 'spotlight-v2' || page.layoutVariant === 'spotlight-v3') {
     return renderSpotlightV2Page(page, index, listId, list);
   }
   if (page.layoutVariant === 'spotlight-partner-v2') {
@@ -2325,6 +2371,15 @@ function renderSpotlightMetaLine(value, className = '') {
 
 function spotlightV2AddressLine(item) {
   return String(item?.metaPrimary || '').replace(/\s+/g, ' ').trim();
+}
+
+function spotlightV2PriceLine(item) {
+  const secondary = String(item?.metaSecondary || '').replace(/\s+/g, ' ').trim();
+  if (!secondary) return '';
+  const match = secondary.match(/Giá:\s*([^·]+)/i);
+  if (!match) return '';
+  const price = String(match[1] || '').trim();
+  return price ? `Giá: ${price}` : '';
 }
 
 function spotlightV2HoursLine(item) {

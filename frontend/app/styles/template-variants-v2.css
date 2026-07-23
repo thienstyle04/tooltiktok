@@ -724,6 +724,119 @@
   pointer-events: none;
 }
 
+.story-page.spotlight-v2-cover.spotlight-v2-place-top-left .spotlight-v2-cover-center,
+.story-page.spotlight-v2-cover.spotlight-v2-place-top-center .spotlight-v2-cover-center,
+.story-page.spotlight-v2-cover.spotlight-v2-place-top-right .spotlight-v2-cover-center,
+.story-page.spotlight-v2-cover.spotlight-v2-place-mid-left .spotlight-v2-cover-center,
+.story-page.spotlight-v2-cover.spotlight-v2-place-mid-right .spotlight-v2-cover-center,
+.story-page.spotlight-v2-cover.spotlight-v2-place-bottom-left .spotlight-v2-cover-center,
+.story-page.spotlight-v2-cover.spotlight-v2-place-bottom-center .spotlight-v2-cover-center,
+.story-page.spotlight-v2-cover.spotlight-v2-place-bottom-right .spotlight-v2-cover-center {
+  transform: none;
+}
+
+.story-page.spotlight-v2-cover.spotlight-v2-place-top-left .spotlight-v2-cover-center {
+  left: 6%;
+  top: 8%;
+  right: auto;
+  width: 78%;
+  text-align: left;
+}
+
+.story-page.spotlight-v2-cover.spotlight-v2-place-top-center .spotlight-v2-cover-center {
+  left: 50%;
+  top: 7%;
+  transform: translateX(-50%);
+  width: 88%;
+  text-align: center;
+}
+
+.story-page.spotlight-v2-cover.spotlight-v2-place-top-right .spotlight-v2-cover-center {
+  left: auto;
+  right: 6%;
+  top: 8%;
+  width: 78%;
+  text-align: right;
+}
+
+.story-page.spotlight-v2-cover.spotlight-v2-place-mid-left .spotlight-v2-cover-center {
+  left: 6%;
+  top: 42%;
+  width: 78%;
+  text-align: left;
+}
+
+.story-page.spotlight-v2-cover.spotlight-v2-place-mid-right .spotlight-v2-cover-center {
+  left: auto;
+  right: 6%;
+  top: 42%;
+  width: 78%;
+  text-align: right;
+}
+
+.story-page.spotlight-v2-cover.spotlight-v2-place-bottom-left .spotlight-v2-cover-center {
+  left: 6%;
+  top: auto;
+  bottom: 9%;
+  width: 78%;
+  text-align: left;
+}
+
+.story-page.spotlight-v2-cover.spotlight-v2-place-bottom-center .spotlight-v2-cover-center {
+  left: 50%;
+  top: auto;
+  bottom: 8%;
+  transform: translateX(-50%);
+  width: 88%;
+  text-align: center;
+}
+
+.story-page.spotlight-v2-cover.spotlight-v2-place-bottom-right .spotlight-v2-cover-center {
+  left: auto;
+  right: 6%;
+  top: auto;
+  bottom: 9%;
+  width: 78%;
+  text-align: right;
+}
+
+.story-page.spotlight-v3-cover .spotlight-v3-cover-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #0f1410;
+}
+
+.story-page.spotlight-v3-cover .spotlight-v3-cover-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.story-page.spotlight-v3-cover .spotlight-v2-cover-center {
+  width: 72%;
+  max-width: 78%;
+}
+
+/* Spotlight V3: font giống Lịch trình Timeline (Cormorant + Be Vietnam Pro). */
+.story-page.spotlight-v3-cover,
+.story-page.spotlight-v3-page {
+  --spotlight-v3-serif: "Cormorant Garamond", "Be Vietnam Pro", Georgia, serif;
+  --spotlight-v3-body: "Be Vietnam Pro", Arial, sans-serif;
+}
+
+.story-page.spotlight-v2-page .spotlight-v2-price {
+  margin: 6px 0 0;
+  font-family: "Baloo 2", "Quicksand", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ffe08a;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+}
+
 .story-page.spotlight-v2-cover .spotlight-v2-cover-partner-script {
   margin-bottom: 6px;
   font-family: "Baloo 2", "Quicksand", sans-serif;
@@ -749,11 +862,37 @@
   line-height: 1.1;
   color: #ffe566;
   text-wrap: balance;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   text-shadow:
     0 3px 14px rgba(0, 0, 0, 0.88),
     0 0 1px rgba(0, 0, 0, 0.95),
     -1px -1px 0 rgba(0, 0, 0, 0.65),
     1px 1px 0 rgba(0, 0, 0, 0.65);
+}
+
+/* V3 cover: font Timeline (Cormorant Garamond), chữ nhỏ. */
+.story-page.spotlight-v2-cover.spotlight-v3-cover .spotlight-v2-cover-title {
+  font-family: var(--spotlight-v3-serif) !important;
+  font-size: clamp(0.68rem, 2.1vw, 0.86rem);
+  font-weight: 600 !important;
+  font-style: italic;
+  line-height: 1.15;
+  color: #ffd84d;
+  letter-spacing: 0.01em;
+}
+
+.story-page.spotlight-v3-page .spotlight-v2-name,
+.story-page.spotlight-v3-page .spotlight-v2-name-text {
+  font-family: var(--spotlight-v3-serif) !important;
+  font-style: italic;
+  font-weight: 600 !important;
+}
+
+.story-page.spotlight-v3-page .spotlight-v2-address,
+.story-page.spotlight-v3-page .spotlight-v2-hours,
+.story-page.spotlight-v3-page .spotlight-v2-price {
+  font-family: var(--spotlight-v3-body) !important;
 }
 
 .story-page.spotlight-v2-cover .spotlight-v2-cover-caption {

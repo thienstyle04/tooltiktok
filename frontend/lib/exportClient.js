@@ -785,11 +785,20 @@ function fallbackSourcesForTarget(target, context, ownSources) {
 }
 
 async function firstAvailableImageBlobUrl(sources, options = {}) {
+  const avoidSources = options.avoidSources instanceof Set ? options.avoidSources : null;
+  const claimedSources = options.claimedSources instanceof Set ? options.claimedSources : null;
+  const reserveOnTry = options.reserveOnTry === true && claimedSources;
   let fallback = { blob: null, blobUrl: null, timedOut: false, source: sources[0] || '' };
   for (const source of sources) {
+    if (!source) continue;
+    if (avoidSources?.has(source)) continue;
+    if (claimedSources?.has(source)) continue;
+    // Reserve trước khi fetch — tránh 2 ô song song cùng chiếm 1 candidate.
+    if (reserveOnTry) claimedSources.add(source);
     const result = await getCachedImageBlobUrl(source, options);
     fallback = { ...result, source };
     if (result.blob && result.blobUrl) return fallback;
+    if (reserveOnTry) claimedSources.delete(source);
   }
   return fallback;
 }
@@ -817,9 +826,26 @@ async function captureDomImageBlob(img) {
   }
 }
 
+function normalizeClaimSource(url) {
+  return String(url || '').trim();
+}
+
+function claimExportSource(claimedSources, source) {
+  const key = normalizeClaimSource(source);
+  if (!key || !claimedSources) return key;
+  claimedSources.add(key);
+  return key;
+}
+
+function isSourceClaimed(claimedSources, source) {
+  const key = normalizeClaimSource(source);
+  return Boolean(key && claimedSources?.has(key));
+}
+
 async function prepareImageTarget(target, options = {}) {
   const shouldWaitForReady = options.waitForReady !== false;
   const shouldUseUniqueObjectUrl = options.uniqueObjectUrl === true;
+  const claimedSources = options.claimedSources || null;
   const blobOptions = {
     maxDimension: options.maxImageDimension,
     imageFormat: options.sourceImageFormat,
@@ -833,26 +859,47 @@ async function prepareImageTarget(target, options = {}) {
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
     const sources = candidateSourcesForTarget(target);
+    // Ảnh địa điểm: không dùng lại URL đã gán cho ô khác trên cùng trang
+    // (lúc tạo list URL chính khác nhau, nhưng candidate fallback lúc xuất dễ trùng).
     const fallbackSources = allowCrossImageFallback
       ? fallbackSourcesForTarget(target, options.fallbackContext, sources)
+          .filter((source) => !isSourceClaimed(claimedSources, source))
       : [];
 
-    // 1) Ưu tiên ảnh đã hiện trên preview
-    let selectedBlob = await captureDomImageBlob(img);
-    let selectedBlobUrl = selectedBlob ? URL.createObjectURL(selectedBlob) : null;
-    let selectedSource = selectedBlob ? (originalSrc || 'dom-capture') : '';
-    let ownedObjectUrl = selectedBlobUrl;
+    // 1) Ưu tiên ảnh đã hiện trên preview — nhưng bỏ nếu URL đó đã claim bởi ô khác
+    const domCurrentSrc = normalizeClaimSource(img.currentSrc || img.src || originalSrc);
+    let selectedBlob = null;
+    let selectedBlobUrl = null;
+    let selectedSource = '';
+    let ownedObjectUrl = null;
+    const reservePlaceImage = !allowCrossImageFallback && Boolean(claimedSources);
+    if (!isSourceClaimed(claimedSources, domCurrentSrc)) {
+      selectedBlob = await captureDomImageBlob(img);
+      selectedBlobUrl = selectedBlob ? URL.createObjectURL(selectedBlob) : null;
+      selectedSource = selectedBlob ? (domCurrentSrc || originalSrc || 'dom-capture') : '';
+      ownedObjectUrl = selectedBlobUrl;
+    }
 
-    // 2) Nếu chưa có (trang mới render khi batch): fetch như cũ
+    // 2) Nếu chưa có (trang mới render khi batch): fetch như cũ, bỏ URL đã dùng
     if (!selectedBlob || !selectedBlobUrl) {
-      const fetched = await firstAvailableImageBlobUrl(sources, blobOptions);
+      const fetched = await firstAvailableImageBlobUrl(sources, {
+        ...blobOptions,
+        avoidSources: reservePlaceImage ? claimedSources : null,
+        claimedSources: reservePlaceImage ? claimedSources : null,
+        reserveOnTry: reservePlaceImage,
+      });
       selectedBlob = fetched.blob;
       selectedBlobUrl = fetched.blobUrl;
       selectedSource = fetched.source;
       ownedObjectUrl = null;
     }
     if (!selectedBlob || !selectedBlobUrl) {
-      const fallbackResult = await firstAvailableImageBlobUrl(fallbackSources, blobOptions);
+      const fallbackResult = await firstAvailableImageBlobUrl(fallbackSources, {
+        ...blobOptions,
+        avoidSources: claimedSources,
+        claimedSources,
+        reserveOnTry: Boolean(claimedSources),
+      });
       selectedBlob = fallbackResult.blob;
       selectedBlobUrl = fallbackResult.blobUrl;
       selectedSource = fallbackResult.source;
@@ -861,12 +908,18 @@ async function prepareImageTarget(target, options = {}) {
 
     // 3) Fetch fail nhưng DOM vẫn còn ảnh đã paint — thử chụp lại trước khi ra xám
     if (!selectedBlob || !selectedBlobUrl) {
-      selectedBlob = await captureDomImageBlob(img);
-      if (selectedBlob) {
-        selectedBlobUrl = URL.createObjectURL(selectedBlob);
-        selectedSource = originalSrc || 'dom-capture-retry';
-        ownedObjectUrl = selectedBlobUrl;
+      if (!isSourceClaimed(claimedSources, domCurrentSrc)) {
+        selectedBlob = await captureDomImageBlob(img);
+        if (selectedBlob) {
+          selectedBlobUrl = URL.createObjectURL(selectedBlob);
+          selectedSource = domCurrentSrc || originalSrc || 'dom-capture-retry';
+          ownedObjectUrl = selectedBlobUrl;
+        }
       }
+    }
+
+    if (selectedBlob && selectedSource) {
+      claimExportSource(claimedSources, selectedSource);
     }
 
     const displayBlob = await fitImageBlobToElement(selectedBlob, img, {
@@ -903,6 +956,7 @@ async function prepareImageTarget(target, options = {}) {
     return {
       img,
       originalSrc,
+      selectedSource,
       objectUrl: (shouldUseTargetObjectUrl || ownedObjectUrl) ? preparedBlobUrl : null,
     };
   }
@@ -919,6 +973,7 @@ async function prepareImageTarget(target, options = {}) {
     blobUrl = fallbackResult.blobUrl;
     source = fallbackResult.source;
   }
+  if (blob && source) claimExportSource(claimedSources, source);
   const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
   if (!preparedBlobUrl) {
     const neutralUrl = neutralImageDataUrl(target, 'background');
@@ -941,11 +996,33 @@ async function prepareImageTarget(target, options = {}) {
 async function prepareImageTargets(targets, options = {}) {
   const concurrency = Number(options.concurrency || 10);
   const fallbackContext = options.fallbackContext || buildImageFallbackContext(targets);
-  const handles = await mapWithConcurrency(targets, concurrency, (target) => prepareImageTarget(target, {
-    ...options,
-    fallbackContext,
-  }));
-  return handles.filter(Boolean);
+  // Claim theo từng trang (root) — tránh 4 ô grid dùng chung 1 ảnh candidate khi xuất.
+  const claimedByRoot = new WeakMap();
+  const getClaimedSet = (root) => {
+    if (!root) return options.claimedSources || null;
+    if (!claimedByRoot.has(root)) claimedByRoot.set(root, new Set());
+    return claimedByRoot.get(root);
+  };
+
+  // Ưu tiên xử lý tuần tự theo từng page root để claim URL ổn định (tránh race concurrency).
+  const byRoot = new Map();
+  for (const target of targets) {
+    const root = target.root || null;
+    if (!byRoot.has(root)) byRoot.set(root, []);
+    byRoot.get(root).push(target);
+  }
+
+  const handles = [];
+  for (const [root, rootTargets] of byRoot.entries()) {
+    const claimedSources = getClaimedSet(root);
+    const prepared = await mapWithConcurrency(rootTargets, concurrency, (target) => prepareImageTarget(target, {
+      ...options,
+      fallbackContext,
+      claimedSources,
+    }));
+    handles.push(...prepared.filter(Boolean));
+  }
+  return handles;
 }
 
 async function inlineImagesAsBlobs(node, options = {}) {
@@ -1238,6 +1315,8 @@ function deckShortName(deckId) {
     'grid-4': 'grid4',
     'grid-5': 'grid5',
     'spotlight-guide': 'spotlight',
+    'spotlight-v2': 'spotlightv2',
+    'spotlight-v3': 'spotlightv3',
     'spotlight-partner': 'partner',
   };
   return map[String(deckId || '')] || sanitizeFilePart(deckId || 'mau');
