@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 
 import {
   CaptionBlocks,
+  CoverPage,
   DatasetBuildContext,
   DeckPage,
   DeepSeekCaptionRequest,
@@ -57,7 +58,8 @@ import {
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { loadSpotlightV3Hooks } from './sync/spotlight-hook-source';
 import { DriveFileAsset, clearDriveAccessibilityCache, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownInaccessibleDriveProxyUrl, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
@@ -165,12 +167,22 @@ export class GuideService implements OnApplicationBootstrap {
     try {
       console.log('[warmup] Đang tải Google Sheet và build dataset trước khi nhận request...');
       const t0 = Date.now();
+      // Hook Doc phải sẵn trước khi build deck spotlight-v3 (cover title).
+      await this.warmSpotlightV3Hooks();
       await this.prepareWorkbookForDataset(false);
       this.buildDatasetContext();
       console.log(`[warmup] Sẵn sàng phục vụ /api/guide-data (mất ${Date.now() - t0}ms).`);
       this.scheduleWarmDriveFileDiskCache();
     } catch (error) {
       console.error('[warmup] Làm nóng dữ liệu trước thất bại, sẽ thử lại khi có request đầu tiên:', error);
+    }
+  }
+
+  private async warmSpotlightV3Hooks(): Promise<void> {
+    try {
+      await loadSpotlightV3Hooks({ dataRoot: this.dataRoot });
+    } catch (error) {
+      console.warn('[warmup] Không tải được hook Spotlight V3:', error instanceof Error ? error.message : error);
     }
   }
 
@@ -569,8 +581,10 @@ export class GuideService implements OnApplicationBootstrap {
       deckId,
     );
 
-    if (!caption.coverTitle) throw new BadRequestException('Cần có tiêu đề cover (≤ 35 ký tự) trước khi tạo list mới.');
     if (!caption.body) throw new BadRequestException('Cần có body caption trước khi tạo list mới.');
+    if (deckId !== 'spotlight-v3' && !caption.coverTitle) {
+      throw new BadRequestException('Cần có tiêu đề cover (≤ 35 ký tự) trước khi tạo list mới.');
+    }
 
     await this.prepareWorkbookForDataset(false);
     const context = this.buildDatasetContext();
@@ -599,19 +613,34 @@ export class GuideService implements OnApplicationBootstrap {
         }
       }
     }
-    const basePages = buildPagesForDeck(
-      deckId,
-      context.itemsBySection,
-      context.imageUrls,
-      context.imageLibraryEntries,
-      seed,
-      deckUsage.itemIds,
-      deckUsage.imageUrls,
-      context.coverImageUrls,
-    );
+    if (deckId === 'spotlight-v3') {
+      await this.warmSpotlightV3Hooks();
+      setSpotlightV3BuildContext({
+        destinationId: this.activeDestinationId,
+        usedHookTitles: this.getUsedCaptionTitles(deckId),
+      });
+    }
+    let basePages: DeckPage[];
+    try {
+      basePages = buildPagesForDeck(
+        deckId,
+        context.itemsBySection,
+        context.imageUrls,
+        context.imageLibraryEntries,
+        seed,
+        deckUsage.itemIds,
+        deckUsage.imageUrls,
+        context.coverImageUrls,
+      );
+    } finally {
+      clearSpotlightV3BuildContext();
+    }
+    const hookCoverTitle = deckId === 'spotlight-v3'
+      ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
+      : '';
     const safeCaption = {
       ...caption,
-      coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(caption.coverTitle)),
+      coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(hookCoverTitle || caption.coverTitle)),
       headline: this.sanitizeContentText(caption.headline),
       body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
     };
@@ -733,7 +762,8 @@ export class GuideService implements OnApplicationBootstrap {
           this.collectCaptionForbiddenNames(deckList),
         );
 
-        if (!caption.coverTitle || !caption.body) { failCount++; continue; }
+        if (deckId !== 'spotlight-v3' && (!caption.coverTitle || !caption.body)) { failCount++; continue; }
+        if (deckId === 'spotlight-v3' && !caption.body) { failCount++; continue; }
 
         const generated = await this.generateDeckFromCaption({
           deckId,
@@ -936,10 +966,16 @@ export class GuideService implements OnApplicationBootstrap {
     this.ensureInventoryLoaded();
     const renderUsage = this.createUsageScope();
     setActiveDestinationLocalize(this.activeDestinationId);
-    const baseDecks = localizeDecks(
-      buildDecks(itemsBySection, imageUrls, imageLibraryEntries, coverImageUrls, renderUsage.itemIds, renderUsage.imageUrls),
-      this.activeDestinationId,
-    );
+    setSpotlightV3BuildContext({ destinationId: this.activeDestinationId });
+    let baseDecks: GuideDeck[];
+    try {
+      baseDecks = localizeDecks(
+        buildDecks(itemsBySection, imageUrls, imageLibraryEntries, coverImageUrls, renderUsage.itemIds, renderUsage.imageUrls),
+        this.activeDestinationId,
+      );
+    } finally {
+      clearSpotlightV3BuildContext();
+    }
     baseDecks.forEach((deck) => this.markUsedInDeck(deck.lists.flatMap((list) => list.pages), renderUsage));
     if (this.hasGeneratedListsNeedingTemplateRefresh()) {
       this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, coverImageUrls, renderUsage, baseDecks);
@@ -1095,6 +1131,7 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'grid-6-quaytung') return GRID_6_QUAYTUNG_TEMPLATE_VERSION;
     if (deckId === 'grid-8-quaytung') return GRID_8_QUAYTUNG_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v2') return SPOTLIGHT_V2_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-v3') return SPOTLIGHT_V3_TEMPLATE_VERSION;
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n3d-stack') return ITINERARY_4N3D_STACK_TEMPLATE_VERSION;
     if (deckId === 'itinerary-timeline') return ITINERARY_TIMELINE_TEMPLATE_VERSION;
@@ -1224,7 +1261,10 @@ export class GuideService implements OnApplicationBootstrap {
 
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
     const cleanPage = this.sanitizeDeckPageText(page);
-    if (cleanPage.type === 'cover' && cleanPage.layoutVariant === 'spotlight-v2') {
+    if (cleanPage.type === 'cover' && (cleanPage.layoutVariant === 'spotlight-v2' || cleanPage.layoutVariant === 'spotlight-v3')) {
+      if (cleanPage.layoutVariant === 'spotlight-v3') {
+        return { ...cleanPage, subtitle: '' };
+      }
       return {
         ...cleanPage,
         subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(cleanPage.subtitle || list.description)),
@@ -1285,6 +1325,9 @@ export class GuideService implements OnApplicationBootstrap {
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
     if (page.type === 'cover') {
       const layout = String(page.layoutVariant || '');
+      if (layout === 'spotlight-v3') {
+        return { ...page, subtitle: '' };
+      }
       if (layout === 'spotlight-v2') {
         const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
         return {
@@ -1559,19 +1602,33 @@ export class GuideService implements OnApplicationBootstrap {
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
         const refreshSeed = `refresh:${deckId}:${list.id}:${listIndex}:${caption.coverTitle}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`;
-        const basePages = buildPagesForDeck(
-          deckId,
-          itemsBySection,
-          imageUrls,
-          libraryEntries,
-          refreshSeed,
-          deckUsage.itemIds,
-          deckUsage.imageUrls,
-          coverImageUrls,
-        );
+        if (deckId === 'spotlight-v3') {
+          setSpotlightV3BuildContext({
+            destinationId: this.activeDestinationId,
+            usedHookTitles: this.getUsedCaptionTitles(deckId),
+          });
+        }
+        let basePages: DeckPage[];
+        try {
+          basePages = buildPagesForDeck(
+            deckId,
+            itemsBySection,
+            imageUrls,
+            libraryEntries,
+            refreshSeed,
+            deckUsage.itemIds,
+            deckUsage.imageUrls,
+            coverImageUrls,
+          );
+        } finally {
+          if (deckId === 'spotlight-v3') clearSpotlightV3BuildContext();
+        }
+        const hookCoverTitle = deckId === 'spotlight-v3'
+          ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
+          : '';
         const safeCaption = {
           ...caption,
-          coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(caption.coverTitle)),
+          coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(hookCoverTitle || caption.coverTitle)),
           headline: this.sanitizeContentText(caption.headline),
           body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
         };
@@ -1690,6 +1747,22 @@ export class GuideService implements OnApplicationBootstrap {
     return metaText(item);
   }
 
+  /** Spotlight V3: Homestay/Dịch vụ chỉ hiện giá đầu người (không SĐT). */
+  private spotlightV3ItemMetaFromSource(item: GuideItem, chipText = ''): [string, string] {
+    const primary = item.address || 'Đang cập nhật địa chỉ';
+    const chip = String(chipText || '').trim();
+    const withPrice = chip === 'Homestay' || chip === 'Dịch vụ'
+      || item.sectionKey === 'homestay'
+      || item.sectionKey === 'dich_vu';
+    if (!withPrice) return [primary, ''];
+    const price = displayPrice(item);
+    const cleaned = String(price || '').trim();
+    const displayable = cleaned
+      && !/mien\s*phi|free/i.test(cleaned)
+      && !/^0+\s*(đ|d|vnd|vnđ)?$/i.test(cleaned);
+    return [primary, displayable ? `Giá: ${cleaned}` : ''];
+  }
+
   private budgetGalleryItemMetaFromSource(item: GuideItem): [string, string] {
     const openHours = String(item.openHours || '').replace(/\s+/g, ' ').trim();
     return ['', openHours ? `Khung giờ: ${openHours}` : ''];
@@ -1757,7 +1830,9 @@ export class GuideService implements OnApplicationBootstrap {
 
               const [metaPrimary, metaSecondaryRaw] = page.layoutVariant === 'budget-3n2d-gallery'
                 ? this.budgetGalleryItemMetaFromSource(sourceItem)
-                : this.pageItemMetaFromSource(sourceItem);
+                : page.layoutVariant === 'spotlight-v3'
+                  ? this.spotlightV3ItemMetaFromSource(sourceItem, page.chipText)
+                  : this.pageItemMetaFromSource(sourceItem);
               const metaSecondary = page.layoutVariant === 'itinerary-timeline-day'
                 ? this.mergeTimelineDayMetaSecondary(String(pageItem.metaSecondary || ''), metaSecondaryRaw)
                 : metaSecondaryRaw;

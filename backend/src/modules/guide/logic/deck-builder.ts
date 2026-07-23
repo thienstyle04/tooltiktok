@@ -1668,6 +1668,10 @@ export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: s
   const coverTitle = String(caption.coverTitle ?? '').trim();
   return pages.map((page) => {
     if (page.type === 'cover') {
+      // Spotlight V3: title lấy từ Google Doc hook — không ghi đè bằng caption AI.
+      if (page.layoutVariant === 'spotlight-v3') {
+        return { ...page, subtitle: '' };
+      }
       const subtitle = page.layoutVariant === 'spotlight-v2'
         ? spotlightV2CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
         : page.layoutVariant === 'grid-8-feed'

@@ -17,13 +17,20 @@ function benchmarkMode() {
   return mode === 'caption' ? 'caption' : 'clone';
 }
 
-function buildBenchmarkDataset(dataset, targetLists, mode = 'clone') {
+function benchmarkDeckFilter() {
+  if (typeof window === 'undefined') return '';
+  return String(new URLSearchParams(window.location.search).get('deck') || '').trim().toLowerCase();
+}
+
+function buildBenchmarkDataset(dataset, targetLists, mode = 'clone', deckFilter = '') {
   const cloned = JSON.parse(JSON.stringify(dataset));
   const selectedIds = new Set();
+  const deckOk = (deckId) => !deckFilter || String(deckId || '').toLowerCase() === deckFilter;
 
   if (mode === 'caption') {
     const captions = [];
     for (const deck of cloned.decks || []) {
+      if (!deckOk(deck.id)) continue;
       for (const list of deck.lists || []) {
         if (/-caption-/i.test(String(list.id || '')) && list.pages?.length) {
           captions.push(list.id);
@@ -39,6 +46,7 @@ function buildBenchmarkDataset(dataset, targetLists, mode = 'clone') {
 
   const mains = [];
   for (const deck of cloned.decks || []) {
+    if (!deckOk(deck.id)) continue;
     const main = (deck.lists || []).find((list) => listIsMain(list));
     if (main?.pages?.length) mains.push({ deck, main });
   }
@@ -81,7 +89,8 @@ export default function ExportBenchmarkPage() {
         const dataset = await res.json();
         const listTarget = targetListCount();
         const mode = benchmarkMode();
-        const { dataset: benchDataset, selectedIds } = buildBenchmarkDataset(dataset, listTarget, mode);
+        const deckFilter = benchmarkDeckFilter();
+        const { dataset: benchDataset, selectedIds } = buildBenchmarkDataset(dataset, listTarget, mode, deckFilter);
         const totalPages = benchDataset.decks.flatMap((d) => d.lists)
           .filter((l) => selectedIds.has(l.id))
           .reduce((sum, l) => sum + (l.pages?.length || 0), 0);

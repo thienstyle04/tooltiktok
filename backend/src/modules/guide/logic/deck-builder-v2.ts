@@ -21,10 +21,20 @@ import {
   buildPov3V2Pages,
   collectMappedImageUrls,
   createDeckBuildPools,
+  createListPicker,
+  dedupeItems,
+  displayPrice,
   pageItemWithResolver,
+  pickMixedItemsWithPartnerQuota,
 } from './deck-builder';
 import { itemUsageKey } from './data-allocator';
 import { createListImageResolver, stableHash } from './image-resolver';
+import {
+  getCachedSpotlightV3Hooks,
+  pickSpotlightV3CoverPlacement,
+  pickSpotlightV3Hook,
+} from '../sync/spotlight-hook-source';
+import type { TitlePlacement } from '../../../common/interfaces/guide.types';
 
 export const GRID_8_FEED_TEMPLATE_VERSION = 16;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
@@ -40,6 +50,7 @@ export function normalizeGrid8FeedPostCaption(value: string): string {
 export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 6;
 export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 8;
 export const SPOTLIGHT_V2_TEMPLATE_VERSION = 16;
+export const SPOTLIGHT_V3_TEMPLATE_VERSION = 2;
 export const POV_3_V2_TEMPLATE_VERSION = 13;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
 export const ITINERARY_4N3D_STACK_TEMPLATE_VERSION = 8;
@@ -50,6 +61,7 @@ export const V2_DECK_IDS = [
   'grid-8-feed',
   'grid-8-quaytung',
   'spotlight-v2',
+  'spotlight-v3',
   'pov-3-v2',
   'itinerary-4n3d-stack',
   'itinerary-timeline',
@@ -135,16 +147,31 @@ export function collectSpotlightV2CoverGridImages(coverImageUrls: string[], seed
   return ordered.slice(0, 4);
 }
 
+/** Spotlight V3 cover: chỉ 1 ảnh nền full-bleed. */
+export function collectSpotlightV3CoverImage(coverImageUrls: string[], seedPrefix: string): string {
+  return collectSpotlightV2CoverGridImages(coverImageUrls, seedPrefix)[0] || '';
+}
+
 export function tuneSpotlightV2Cover(
   pages: DeckPage[],
   coverImageUrls: string[],
   seedPrefix: string,
 ): DeckPage[] {
   const coverGridImages = collectSpotlightV2CoverGridImages(coverImageUrls, seedPrefix);
+  const coverSingleImage = collectSpotlightV3CoverImage(coverImageUrls, `${seedPrefix}|v3-single`);
 
   return pages.map((page) => {
     if (page.type !== 'cover') return page;
     const variant = page.layoutVariant || '';
+    if (variant === 'spotlight-v3') {
+      const url = coverSingleImage || page.backgroundImage || '';
+      if (!url) return page;
+      return {
+        ...page,
+        coverImages: url ? [url] : [],
+        backgroundImage: url,
+      };
+    }
     if (coverGridImages.length === 0) return page;
     if (variant === 'spotlight-v2') {
       return {
@@ -210,7 +237,7 @@ export function retuneSpotlightV2SpotImages(
   const mappedImageUrls = collectMappedImageUrls(createDeckBuildPools(common.itemsBySection));
 
   return pages.map((page, index) => {
-    if (page.type !== 'list' || page.layoutVariant !== 'spotlight-v2') return page;
+    if (page.type !== 'list' || (page.layoutVariant !== 'spotlight-v2' && page.layoutVariant !== 'spotlight-v3')) return page;
     const listPage = page as ListPage;
     const pageItem = listPage.items?.[0];
     if (!pageItem) return page;
@@ -231,6 +258,18 @@ export function retuneSpotlightV2SpotImages(
       pageItem.label || listPage.chipText,
       resolver,
     );
+
+    // V3: giữ address + giá đầu người (không để resolver ghi đè thành SĐT/giờ như V2).
+    if (listPage.layoutVariant === 'spotlight-v3') {
+      const chip = String(listPage.chipText || '');
+      const withPrice = chip === 'Homestay' || chip === 'Dịch vụ';
+      const priced = spotlightV3PageItem(guideItem, pageItem.label || chip, resolver, withPrice);
+      return {
+        ...listPage,
+        items: [{ ...nextItem, metaPrimary: priced.metaPrimary, metaSecondary: priced.metaSecondary }],
+        backgroundImage: nextItem.imageUrl || listPage.backgroundImage,
+      };
+    }
 
     return {
       ...listPage,
@@ -303,6 +342,148 @@ export function buildSpotlightV2Pages(common: DeckBuildCommon, seedPrefix: strin
   });
   const tuned = tuneSpotlightV2Cover(tuneV2ListPageTitles(remapped), common.coverImageUrls, seedPrefix);
   return retuneSpotlightV2SpotImages(tuned, common, seedPrefix);
+}
+
+function isDisplayableSpotlightPrice(price: string): boolean {
+  const cleaned = String(price || '').trim();
+  if (!cleaned) return false;
+  if (/mien\s*phi|free/i.test(cleaned)) return false;
+  return !/^0+\s*(đ|d|vnd|vnđ)?$/i.test(cleaned);
+}
+
+function spotlightV3PageItem(
+  item: GuideItem,
+  label: string,
+  imageResolver: (item: GuideItem) => Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'>,
+  withPrice: boolean,
+): PageItem {
+  const base = pageItemWithResolver(item, label, imageResolver);
+  const address = String(item.address || '').trim() || 'Đang cập nhật địa chỉ';
+  if (!withPrice) {
+    return { ...base, metaPrimary: address, metaSecondary: '' };
+  }
+  const price = displayPrice(item);
+  return {
+    ...base,
+    metaPrimary: address,
+    metaSecondary: isDisplayableSpotlightPrice(price) ? `Giá: ${price}` : '',
+  };
+}
+
+function pickSpotlightV3Item(
+  items: GuideItem[],
+  seed: string,
+  pick: ReturnType<typeof createListPicker>,
+): GuideItem | null {
+  const ready = dedupeItems(items).filter((item) => {
+    const name = String(item.name || '').trim();
+    if (!name) return false;
+    return Boolean(String(item.imageUrl || '').trim())
+      || Boolean((item.candidateImageUrls || []).some((url) => String(url || '').trim()));
+  });
+  const pool = ready.length > 0 ? ready : dedupeItems(items).filter((item) => String(item.name || '').trim());
+  return pickMixedItemsWithPartnerQuota(pool, 1, seed, pick)[0] || null;
+}
+
+type SpotlightV3Slot = {
+  chip: string;
+  tone: ListPage['chipTone'];
+  sectionItems: GuideItem[];
+  withPrice: boolean;
+};
+
+export function buildSpotlightV3Pages(
+  common: DeckBuildCommon,
+  seedPrefix: string,
+  options: { hooks?: string[]; usedHookTitles?: string[]; destinationId?: string } = {},
+): DeckPage[] {
+  const pools = createDeckBuildPools(common.itemsBySection);
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const imageResolver = createListImageResolver(
+    common.imageUrls,
+    common.libraryEntries,
+    `${seedPrefix}:spotlight-v3`,
+    mappedImageUrls,
+    common.globalUsedImageUrls || [],
+    { orientation: 'any', strictMapping: true },
+  );
+  const pick = createListPicker(common.globalUsedItemIds);
+  const usedImages = common.globalUsedImageUrls || new Set<string>();
+
+  const checkinPool = pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems;
+  const cafePool = pools.dayCafeItems.length > 0 ? pools.dayCafeItems : pools.cafeItems;
+  const foodPool = pools.daytimeFoodItems.length > 0 ? pools.daytimeFoodItems : pools.foodItems;
+  const nightlifePool = pools.nightlifeItems.length > 0 ? pools.nightlifeItems : pools.nightlifeImageItems;
+  const stayPool = pools.stayItems;
+  const servicePool = pools.serviceItems;
+
+  const slots: SpotlightV3Slot[] = [
+    { chip: 'Check-in', tone: 'terracotta', sectionItems: checkinPool, withPrice: false },
+    { chip: 'Check-in', tone: 'terracotta', sectionItems: checkinPool, withPrice: false },
+    { chip: 'Cafe', tone: 'gold', sectionItems: cafePool, withPrice: false },
+    { chip: 'Cafe', tone: 'gold', sectionItems: cafePool, withPrice: false },
+    { chip: 'Quán ăn', tone: 'berry', sectionItems: foodPool, withPrice: false },
+    { chip: 'Quán ăn', tone: 'berry', sectionItems: foodPool, withPrice: false },
+    { chip: 'Chơi đêm', tone: 'slate', sectionItems: nightlifePool, withPrice: false },
+    { chip: 'Chơi đêm', tone: 'slate', sectionItems: nightlifePool, withPrice: false },
+    { chip: 'Homestay', tone: 'pine', sectionItems: stayPool, withPrice: true },
+    { chip: 'Homestay', tone: 'pine', sectionItems: stayPool, withPrice: true },
+    { chip: 'Dịch vụ', tone: 'slate', sectionItems: servicePool, withPrice: true },
+    { chip: 'Dịch vụ', tone: 'slate', sectionItems: servicePool, withPrice: true },
+  ];
+
+  const spotPages: ListPage[] = [];
+  for (let index = 0; index < slots.length; index += 1) {
+    const slot = slots[index];
+    const item = pickSpotlightV3Item(slot.sectionItems, `${seedPrefix}-slot-${index + 1}`, pick);
+    if (!item) continue;
+    const pageItem = spotlightV3PageItem(item, slot.chip, imageResolver, slot.withPrice);
+    if (pageItem.imageUrl) usedImages.add(pageItem.imageUrl);
+    spotPages.push({
+      ...buildListPage(
+        slot.chip,
+        slot.tone,
+        item.name,
+        '',
+        [pageItem],
+        pageItem.imageUrl,
+        'spotlight-v3',
+      ),
+      title: item.name,
+      subtitle: '',
+    });
+  }
+
+  const destinationId = String(options.destinationId || '').toLowerCase();
+  const hooks = options.hooks?.length ? options.hooks : getCachedSpotlightV3Hooks();
+  const canUseDocHooks = destinationId !== 'phanthiet' && hooks.length > 0;
+  const coverTitle = canUseDocHooks
+    ? pickSpotlightV3Hook(hooks, options.usedHookTitles || [], `${seedPrefix}|hook`)
+    : (destinationId === 'phanthiet' ? 'Phan Thiết đáng thử ngay' : 'Đà Lạt đáng lưu ngay');
+  const coverPlacement = pickSpotlightV3CoverPlacement(`${seedPrefix}|place`) as TitlePlacement;
+  const coverImage = collectSpotlightV3CoverImage(common.coverImageUrls, `${seedPrefix}|v3-cover`);
+  if (coverImage) usedImages.add(coverImage);
+
+  const cover: CoverPage = {
+    type: 'cover',
+    title: coverTitle || 'Đà Lạt đáng lưu ngay',
+    subtitle: '',
+    backgroundImage: coverImage,
+    coverImages: coverImage ? [coverImage] : [],
+    layoutVariant: 'spotlight-v3',
+    titlePlacement: coverPlacement,
+  };
+
+  return finalizeSpotlightV3Pages([cover, ...spotPages], common, seedPrefix);
+}
+
+// Retune images for V3 spot pages (same pipeline as V2).
+function finalizeSpotlightV3Pages(pages: DeckPage[], common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
+  return retuneSpotlightV2SpotImages(
+    tuneSpotlightV2Cover(pages, common.coverImageUrls, `${seedPrefix}|v3-cover`),
+    common,
+    seedPrefix,
+  );
 }
 
 export function buildPov3V2DeckPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
@@ -419,6 +600,7 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'grid-8-feed': GRID_8_FEED_TEMPLATE_VERSION,
   'grid-8-quaytung': GRID_8_QUAYTUNG_TEMPLATE_VERSION,
   'spotlight-v2': SPOTLIGHT_V2_TEMPLATE_VERSION,
+  'spotlight-v3': SPOTLIGHT_V3_TEMPLATE_VERSION,
   'pov-3-v2': POV_3_V2_TEMPLATE_VERSION,
   'itinerary-4n3d-stack': ITINERARY_4N3D_STACK_TEMPLATE_VERSION,
   'itinerary-timeline': ITINERARY_TIMELINE_TEMPLATE_VERSION,
@@ -448,6 +630,12 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     title: 'Bộ spotlight top-left (V2)',
     description: 'Cover lưới 2×2 ảnh nền + trang địa điểm tên vàng. Tham chiếu dalatdidauchoi49.',
     listName: 'List spotlight V2',
+  },
+  'spotlight-v3': {
+    nav: 'Spotlight V3',
+    title: 'Bộ spotlight 13 trang (V3)',
+    description: 'Cover hook từ Google Doc + 12 trang 1 địa điểm (check-in/cafe/quán ăn/chơi đêm/homestay/dịch vụ). Không còn trang list cuối.',
+    listName: 'List spotlight V3',
   },
   'pov-3-v2': {
     nav: 'POV 3 V2',
@@ -496,6 +684,26 @@ export function buildItinerary4N3DStackDeckPages(common: DeckBuildCommon, seedPr
   return tuneSpotlightV2Cover(pages, common.coverImageUrls, `${seedPrefix}|cover-grid`);
 }
 
+type SpotlightV3BuildContext = {
+  hooks?: string[];
+  usedHookTitles?: string[];
+  destinationId?: string;
+};
+
+let spotlightV3BuildContext: SpotlightV3BuildContext = {};
+
+export function setSpotlightV3BuildContext(context: SpotlightV3BuildContext): void {
+  spotlightV3BuildContext = { ...context };
+}
+
+export function clearSpotlightV3BuildContext(): void {
+  spotlightV3BuildContext = {};
+}
+
+function getSpotlightV3BuildContext(): SpotlightV3BuildContext {
+  return spotlightV3BuildContext;
+}
+
 export function buildPagesForDeckV2(
   deckId: V2DeckId,
   itemsBySection: WorkbookItemsBySection,
@@ -524,6 +732,8 @@ export function buildPagesForDeckV2(
       return buildGrid8QuaytungDeckPages(common, seedPrefix);
     case 'spotlight-v2':
       return buildSpotlightV2Pages(common, seedPrefix);
+    case 'spotlight-v3':
+      return buildSpotlightV3Pages(common, seedPrefix, getSpotlightV3BuildContext());
     case 'pov-3-v2':
       return buildPov3V2DeckPages(common, seedPrefix);
     case 'itinerary-4n3d-stack':
