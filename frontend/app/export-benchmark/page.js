@@ -71,8 +71,11 @@ export default function ExportBenchmarkPage() {
   const [resultJson, setResultJson] = useState('');
 
   useEffect(() => {
+    // Next Strict Mode (dev) mount→unmount→remount làm useRef reset → xuất 2 lần, storm Drive.
+    if (typeof window !== 'undefined' && window.__EXPORT_BENCHMARK_STARTED__) return;
     if (started.current) return;
     started.current = true;
+    if (typeof window !== 'undefined') window.__EXPORT_BENCHMARK_STARTED__ = true;
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('autostart') !== '1') {

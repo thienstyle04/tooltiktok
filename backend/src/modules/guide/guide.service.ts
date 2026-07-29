@@ -57,7 +57,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
+import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks } from './sync/spotlight-hook-source';
 import { DriveFileAsset, clearDriveAccessibilityCache, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownInaccessibleDriveProxyUrl, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
@@ -309,6 +309,26 @@ export class GuideService implements OnApplicationBootstrap {
       throw new NotFoundException('Drive file id is required.');
     }
     return fetchDriveFileAsset(normalizedFileId);
+  }
+
+  /**
+   * Máy mới / trước khi xuất: tải trước các fileId cần dùng vào disk cache
+   * với concurrency thấp (tránh storm Drive lúc render hàng loạt).
+   */
+  async prefetchDriveFiles(fileIds: string[]): Promise<{
+    total: number;
+    skipped: number;
+    ok: number;
+    fail: number;
+    cancelled: boolean;
+  }> {
+    const ids = [...new Set((fileIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+    if (!ids.length) {
+      return { total: 0, skipped: 0, ok: 0, fail: 0, cancelled: false };
+    }
+    const concurrency = Math.min(Math.max(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 2), 1), 4);
+    console.log(`[drive-cache] Prefetch ${ids.length} ảnh trước khi xuất (concurrency=${concurrency})...`);
+    return warmDriveFileDiskCache(ids, { concurrency });
   }
 
   // ─── Dataset ──────────────────────────────────────────────────────────────
@@ -1344,8 +1364,16 @@ export class GuideService implements OnApplicationBootstrap {
           subtitle: this.sanitizeContentText(truncateGrid8FeedCoverSubtitle(rawSubtitle)),
         };
       }
+      if (layout === 'grid-8' || layout === 'journey-4n2d-grid8') {
+        const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
+        return {
+          ...page,
+          title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
+          subtitle: this.sanitizeContentText(truncateGrid8CoverSubtitle(rawSubtitle)),
+        };
+      }
       // Use page's own subtitle if available, otherwise use the list description (body).
-      // Truncate to ~150 chars, cutting at sentence boundary for natural reading.
+      // Truncate to ~150 chars, cutting at sentence boundary for natural reading — không thêm "...".
       const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
       let coverSubtitle = rawSubtitle;
       if (rawSubtitle.length > 150) {
@@ -1360,13 +1388,13 @@ export class GuideService implements OnApplicationBootstrap {
         if (lastSentenceEnd > 60) {
           coverSubtitle = rawSubtitle.slice(0, lastSentenceEnd + 1).trim();
         } else {
-          // Fall back to word boundary
-          coverSubtitle = truncated.replace(/\s+\S*$/, '') + '...';
+          const lastSpace = truncated.lastIndexOf(' ');
+          coverSubtitle = (lastSpace > 60 ? truncated.slice(0, lastSpace) : truncated).trim();
         }
       }
       return {
         ...page,
-        title: this.sanitizeContentText(sanitizeDeckHeadline(list.title || page.title)),
+        title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
         subtitle: this.sanitizeContentText(coverSubtitle),
       };
     }
@@ -2232,15 +2260,135 @@ export class GuideService implements OnApplicationBootstrap {
 
   private getUsedCaptionTitles(deckId: string): string[] {
     this.ensureGeneratedListsLoaded();
-    const lists = this.generatedListsByDeckId.get(deckId) ?? [];
     const titles: string[] = [];
+    const pushTitle = (value: string) => {
+      const clean = String(value || '').replace(/\s+/g, ' ').trim();
+      if (clean) titles.push(clean);
+    };
+
+    // Tiêu đề/mô tả list mẫu (main) — list AI không được copy y hệt.
+    try {
+      const mainList = this.buildDatasetContext().decks
+        .find((deck) => deck.id === deckId)
+        ?.lists
+        ?.find((list) => /-main$/i.test(String(list.id || '')));
+      if (mainList) {
+        pushTitle(mainList.coverTitle || mainList.title || '');
+        pushTitle(mainList.description || '');
+        pushTitle(mainList.postCaption || '');
+        const cover = (mainList.pages || []).find((page) => page.type === 'cover');
+        pushTitle(cover?.title || '');
+        pushTitle(cover?.subtitle || '');
+      }
+    } catch {
+      // Dataset chưa sẵn — vẫn chặn bằng cụm mẫu cứng bên dưới.
+    }
+
+    // Cụm mẫu cũ từng bị AI copy y hệt trên lưới 8 / lưới 8 feed.
+    for (const banned of this.bannedSampleCaptionPhrases()) {
+      pushTitle(banned);
+    }
+
+    const lists = this.generatedListsByDeckId.get(deckId) ?? [];
     for (const list of lists) {
-      const coverTitle = String(list.coverTitle || list.title || '').trim();
-      const postCaption = String(list.postCaption || '').trim();
-      if (coverTitle) titles.push(coverTitle);
-      if (postCaption) titles.push(postCaption);
+      pushTitle(list.coverTitle || list.title || '');
+      pushTitle(list.postCaption || '');
+      const cover = (list.pages || []).find((page) => page.type === 'cover');
+      pushTitle(cover?.title || '');
+      pushTitle(cover?.subtitle || '');
     }
     return [...new Set(titles)];
+  }
+
+  /** Cụm cover/caption mẫu — list mới không được dùng lại nguyên văn. */
+  private bannedSampleCaptionPhrases(): string[] {
+    return [
+      'ĐÀ LẠT 8 ĐIỂM / 1 TRANG',
+      'ĐÀ LẠT 8 ĐIỂM/1 TRANG',
+      '8 ĐIỂM / 1 TRANG',
+      '8 ĐIỂM/1 TRANG',
+      '4N3Đ ĐÀ LẠT 8 ĐIỂM MỖI TRANG',
+      '8 ĐIỂM MỖI TRANG',
+      'LƯU LIỀN 4 NGÀY ĐÀ LẠT',
+      'LƯU LIỀN 4 NGÀY',
+      'ĐÀ LẠT GỌN TRONG TỪNG LIST',
+      'ĐÀ LẠT GỌN TRONG 10 TRANG',
+      'GỌN TRONG TỪNG LIST',
+      'CẨM NANG ĐÀ LẠT GỌN NHẸ',
+      'ĐÀ LẠT NHẸ NHÀNG ĐÁNG GHÉ',
+      'NHẸ NHÀNG ĐÁNG GHÉ',
+      'ĐÀ LẠT NHỮNG ĐIỂM KHÔNG THỂ BỎ LỠ',
+      'NHỮNG ĐIỂM KHÔNG THỂ BỎ LỠ',
+      'CHECK-IN ĐÀ LẠT ĐỪNG BỎ LỠ',
+      'ĐÀ LẠT CÓ GÌ MÀ ĐI HOÀI',
+      'ĐÀ LẠT – GÓC NHỎ ĐÁNG LƯU',
+      'ĐÀ LẠT – CHILL TỪNG GÓC PHỐ',
+      '4 NGÀY ĐÀ LẠT NHẸ NHÀNG',
+      'Mẫu lưới dày để xem nhiều lựa chọn hơn trong một lần lướt.',
+      'Mẫu lưới dày để xem nhiều lựa chọn hơn trong một lần lướt',
+      'BỎ TÚI NGAY LIST NÀY RỦ BÉ BẠN XÁCH BA LÔ LÊN ĐÀ LẠT CHƠI LIỀN NÈ. CHIA THEO TỪNG LIST ĐỂ CHỌN NHANH, ĐỠ PHẢI LĂN TĂN.',
+      'BỎ TÚI NGAY LIST NÀY RỦ BÉ BẠN XÁCH BA LÔ LÊN ĐÀ LẠT CHƠI LIỀN NÈ',
+      'CHIA THEO TỪNG LIST ĐỂ CHỌN NHANH, ĐỠ PHẢI LĂN TĂN',
+    ];
+  }
+
+  private isBannedSampleCaptionText(value: string): boolean {
+    const normalized = normalizeText(value);
+    if (!normalized) return false;
+    if (/8\s*diem\s*\/?\s*1\s*trang/i.test(normalized)) return true;
+    if (/8\s*diem\s*moi\s*trang/i.test(normalized)) return true;
+    if (/mau\s*luoi\s*day/i.test(normalized)) return true;
+    if (/bo\s*tui\s*ngay\s*list\s*nay\s*ru\s*be\s*ban\s*xach\s*ba\s*lo/i.test(normalized)) return true;
+    // Title máy móc kiểu "LƯU LIỀN 4 NGÀY ĐÀ LẠT"
+    if (/^luu\s*(lien|ngay)\s*\d+\s*ngay(\s*da\s*lat)?$/i.test(normalized)) return true;
+    if (/^luu\s*(lien|ngay)\s*(lich\s*trinh|board|list)/i.test(normalized)) return true;
+    // Title meta về “list/trang” — kiểu "ĐÀ LẠT GỌN TRONG TỪNG LIST"
+    if (/gon\s*trong\s*(tung\s*)?(list|trang|\d+\s*trang)/i.test(normalized)) return true;
+    if (/trong\s*tung\s*list/i.test(normalized)) return true;
+    if (/cam\s*nang\s*.*\bgon\b/i.test(normalized)) return true;
+    if (/^da\s*lat\s+gon(\s|$)/i.test(normalized)) return true;
+    if (/nhe\s*nhang\s*dang\s*ghe/i.test(normalized)) return true;
+    return this.bannedSampleCaptionPhrases().some((phrase) => {
+      const banned = normalizeText(phrase);
+      return banned && (normalized === banned || normalized.includes(banned) || banned.includes(normalized));
+    });
+  }
+
+  private coverTitleMaxLen(deckId = ''): number {
+    if (deckId === 'grid-8' || deckId === 'grid-8-feed' || deckId === 'itinerary-4n2d-grid8') return 48;
+    return 35;
+  }
+
+  private itineraryGrid8CoverTitleFallback(seed = ''): string {
+    const pool = [
+      'ĐÀ LẠT 4N3Đ – CHUYẾN ĐI KHÔNG MUỐN KẾT THÚC',
+      'BỐN NGÀY NHƯ MỘT BỨC TRANH',
+      'ĐÀ LẠT 4N3Đ – Ở LẠI THÊM MỘT CHÚT',
+      'ĐÀ LẠT – BỐN NGÀY GIỮ LẠI BẦU TRỜI',
+      'ĐÀ LẠT 4N3Đ – ĐI CHẬM ĐỂ NHỚ LÂU',
+    ].map((title) => localizeText(title, this.activeDestinationId));
+    const index = Math.abs(stableHash(`itinerary-grid8-title:${seed || Date.now()}`)) % pool.length;
+    return pool[index].slice(0, this.coverTitleMaxLen('itinerary-4n2d-grid8'));
+  }
+
+  /** Title cover lưới 8 / feed — thơ / cảm xúc, kiểu “Đà Lạt – …”. */
+  private grid8CoverTitleFallback(seed = ''): string {
+    const pool = [
+      'ĐÀ LẠT – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH',
+      'ĐÀ LẠT – CHUYẾN ĐI MÀ MÌNH KHÔNG MUỐN KẾT THÚC',
+      'ĐÀ LẠT – NƠI LÒNG MUỐN Ở LẠI',
+      'ĐÀ LẠT – GÓC NHỎ LÀM MÌNH THƯƠNG',
+      'ĐÀ LẠT – ĐI MỘT LẦN NHỚ MÃI',
+      'ĐÀ LẠT – CHẬM LẠI MỘT NHỊP THỞ',
+    ].map((title) => localizeText(title, this.activeDestinationId));
+    const index = Math.abs(stableHash(`grid8-title:${seed || Date.now()}`)) % pool.length;
+    return pool[index].slice(0, this.coverTitleMaxLen('grid-8'));
+  }
+
+  private coverTitleFallbackForDeck(deckId: string, seed = ''): string {
+    if (deckId === 'itinerary-4n2d-grid8') return this.itineraryGrid8CoverTitleFallback(seed);
+    if (deckId === 'grid-8' || deckId === 'grid-8-feed') return this.grid8CoverTitleFallback(seed);
+    return localizeText('ĐI ĐÀ LẠT THÌ LƯU NGAY LIST NÀY', this.activeDestinationId).slice(0, 35);
   }
 
   private buildDeepSeekPrompt(
@@ -2252,7 +2400,10 @@ export class GuideService implements OnApplicationBootstrap {
     usedTitles: string[] = [],
   ): string {
     const pageLines = deckList.pages.map((page, index) => {
-      if (page.type === 'cover') return `Trang ${index + 1}: cover | tiêu đề: ${page.title} | mô tả: ${page.subtitle}`;
+      if (page.type === 'cover') {
+        // Không đưa tiêu đề/mô tả mẫu vào prompt — AI hay copy y hệt (vd. "ĐÀ LẠT 8 ĐIỂM / 1 TRANG").
+        return `Trang ${index + 1}: cover | tự viết coverTitle + body mới (KHÔNG copy tiêu đề/mô tả mẫu)`;
+      }
       const itemLines = page.items.map((item, i) => `- ${i + 1}. ${item.name} | ${item.metaPrimary} | ${item.metaSecondary}`).join('\n');
       return [`Trang ${index + 1}: list`, `Chủ đề: ${page.chipText}`, `Tiêu đề: ${page.title}`, `Mô tả: ${page.subtitle}`, 'Địa điểm:', itemLines].join('\n');
     });
@@ -2299,8 +2450,20 @@ export class GuideService implements OnApplicationBootstrap {
     const bodyShape = bodyShapes[Math.floor(variationSeed / diversityAngles.length) % bodyShapes.length];
 
     const deckNotes = deck.id === 'itinerary-4n2d-grid8'
-      ? 'Lưu ý đặc biệt: đây là lịch trình 4N3Đ (4 đêm 3 ngày), mỗi ngày một trang lưới 8 ô. Không gọi là 3N2Đ hay 4N2Đ trong caption.'
-      : '';
+      ? [
+        'Lưu ý đặc biệt: đây là lịch trình 4N3Đ (4 đêm 3 ngày), mỗi ngày một trang lưới 8 ô. Không gọi là 3N2Đ hay 4N2Đ trong caption.',
+        'coverTitle phải thơ / cảm xúc, kiểu “Đà Lạt – …” hoặc “Đà Lạt 4N3Đ – …”.',
+        'VD tốt: "ĐÀ LẠT 4N3Đ – CHUYẾN ĐI KHÔNG MUỐN KẾT THÚC", "BỐN NGÀY NHƯ MỘT BỨC TRANH", "ĐÀ LẠT 4N3Đ – Ở LẠI THÊM MỘT CHÚT".',
+        'TRÁNH title máy móc: "LƯU LIỀN 4 NGÀY ĐÀ LẠT", "LƯU NGAY LỊCH TRÌNH", "4 NGÀY ĐÀ LẠT GỌN", "NHỮNG ĐIỂM KHÔNG THỂ BỎ LỠ".',
+      ].join(' ')
+      : deck.id === 'grid-8' || deck.id === 'grid-8-feed'
+        ? [
+          'Body cho cover nên 1–2 câu ngắn (≤118 ký tự), dễ đọc trong 3 dòng.',
+          'coverTitle phải thơ / cảm xúc, cấu trúc "ĐÀ LẠT – …".',
+          'VD tốt: "ĐÀ LẠT – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH", "ĐÀ LẠT – CHUYẾN ĐI MÀ MÌNH KHÔNG MUỐN KẾT THÚC", "ĐÀ LẠT – NƠI LÒNG MUỐN Ở LẠI".',
+          'TRÁNH title máy móc/meta/listicle: "GỌN TRONG TỪNG LIST", "8 ĐIỂM / 1 TRANG", "NHỮNG ĐIỂM KHÔNG THỂ BỎ LỠ", "CHECK-IN ĐỪNG BỎ LỠ", "CÓ GÌ MÀ ĐI HOÀI".',
+        ].join(' ')
+        : '';
 
     const destinationLabel = cityLabel(this.activeDestinationId);
     const coreHashtags = getMarketingCopy(this.activeDestinationId).hashtags.slice(0, 3).join(' ');
@@ -2334,11 +2497,20 @@ export class GuideService implements OnApplicationBootstrap {
       ...pageLines,
       '',
       'YÊU CẦU QUAN TRỌNG VỀ COVER TITLE (TIÊU ĐỀ TRANG COVER):',
-      '- `coverTitle` là chữ in đậm ở trang bìa của bộ ảnh. Phải thật ngắn, dễ scan.',
-      '- Tuyệt đối KHÔNG vượt quá 35 ký tự (tính cả khoảng trắng).',
+      '- `coverTitle` là chữ in đậm ở trang bìa của bộ ảnh. Phải dễ scan, có hồn.',
+      deck.id === 'grid-8' || deck.id === 'grid-8-feed' || deck.id === 'itinerary-4n2d-grid8'
+        ? '- Với lưới 8 / lịch trình lưới 8: tối đa 48 ký tự. Ưu tiên cấu trúc "ĐÀ LẠT – …" (thơ, cảm xúc).'
+        : '- Tuyệt đối KHÔNG vượt quá 35 ký tự (tính cả khoảng trắng).',
       '- Viết hoa hoặc rất nổi bật, bám sát "Tone yêu cầu". Không được trùng với "Caption đăng bài".',
       '- Không dùng chữ "free" trong cover title. Thay bằng "0đ", "dễ đi", "gọn ví" hoặc bỏ luôn.',
       '- Không nhắc tên quán/địa điểm cụ thể trong cover title.',
+      '- KHÔNG copy tiêu đề mẫu kiểu "… 8 ĐIỂM / 1 TRANG", "8 điểm một trang", hay bất kỳ tiêu đề nào trong danh sách đã dùng.',
+      deck.id === 'grid-8' || deck.id === 'grid-8-feed'
+        ? '- Với mẫu lưới 8: coverTitle kiểu "ĐÀ LẠT – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH". CẤM meta layout / listicle cứng. Body ≤118 ký tự, 1–2 câu.'
+        : '',
+      deck.id === 'itinerary-4n2d-grid8'
+        ? '- Với lịch trình 4N3Đ lưới 8: coverTitle kiểu "ĐÀ LẠT 4N3Đ – CHUYẾN ĐI KHÔNG MUỐN KẾT THÚC", tránh "LƯU LIỀN … NGÀY". Body 1–2 câu ngắn.'
+        : '',
       '',
       'YÊU CẦU QUAN TRỌNG VỀ HEADLINE (CAPTION ĐĂNG BÀI):',
       '- `headline` là caption người dùng copy để dán vào TikTok khi đăng bài.',
@@ -2346,6 +2518,7 @@ export class GuideService implements OnApplicationBootstrap {
       '- Câu phải có hook thu hút ngay, có thể thêm 1 emoji cuối câu (không quá 1 emoji).',
       '- Không lặp lại nguyên văn cover title. Không dùng chữ "free" / "deck".',
       '- Có thể mời người xem lưu lại bộ ảnh, nhưng tuyệt đối không gọi tên địa điểm/quán cụ thể.',
+      '- KHÔNG dùng lại caption mẫu kiểu "BỎ TÚI NGAY LIST NÀY RỦ BÉ BẠN XÁCH BA LÔ...".',
       '',
       'CÁC YÊU CẦU KHÁC:',
       '- TUYỆT ĐỐI không dùng từ "deck" trong nội dung. Thay vào đó hãy dùng: "hình", "ảnh", "bộ ảnh", "cẩm nang", "lịch trình", "list này"...',
@@ -2356,7 +2529,7 @@ export class GuideService implements OnApplicationBootstrap {
       '- Body: Phải đa dạng cấu trúc câu, không lặp lại các motif cũ. Tối đa 250 ký tự. Tuyệt đối không liệt kê hoặc gọi tên địa điểm/quán cụ thể trong list.',
       '- Body không được viết kiểu lịch trình theo từng chặng/ngày như "ngày đầu ghé...", "ngày hai...", "tối lượn..."; chỉ nói lợi ích tổng quát của list.',
       '- Dữ liệu địa điểm chỉ dùng để hiểu tinh thần list; không chép tên địa điểm/quán vào cover title, headline, hay body caption.',
-      '- Khong mo ta bo cuc thiet ke hoac kich thuoc layout trong caption. Tranh cac cum: "2x3", "3x3", "2x4", "luoi", "layout", "grid", "o anh", "o hinh".',
+      '- Khong mo ta bo cuc thiet ke hoac kich thuoc layout trong caption. Tranh cac cum: "2x3", "3x3", "2x4", "luoi", "layout", "grid", "o anh", "o hinh", "8 diem / 1 trang".',
       '- Moi lan bam sinh lai phai doi goc viet, doi nhip cau, doi dong tu mo dau; khong chi thay vai tu dong nghia.',
       `- Hashtags: đúng 5 hashtag. 3 hashtag đầu BẮT BUỘC cố định: ${coreHashtags}. 2 hashtag cuối cố định theo mẫu "${deck.navTitle || deck.id}": ${deckHashtagExtras}. Không đổi thứ tự, không thay 3 hashtag đầu.`,
       '- Trả về JSON object đúng schema:',
@@ -2582,15 +2755,28 @@ export class GuideService implements OnApplicationBootstrap {
       ? list.pages.map((page) => this.sanitizeDeckPageText(page))
       : [];
     const isGrid8Feed = String(list.id || '').startsWith('grid-8-feed');
-    const postCaption = isGrid8Feed
+    const postCaptionRaw = isGrid8Feed
       ? normalizeGrid8FeedPostCaption(String(list.postCaption || ''))
       : (list.postCaption ? this.sanitizeContentText(localizeText(list.postCaption, this.activeDestinationId)) : list.postCaption);
+    const postCaption = this.isBannedSampleCaptionText(String(postCaptionRaw || ''))
+      ? localizeText('Lưu list này rồi đi Đà Lạt cho đỡ mò từng nơi nhé.', this.activeDestinationId)
+      : postCaptionRaw;
+    const safeCoverFallback = this.coverTitleFallbackForDeck(resolvedDeckId || '', String(list.id || ''));
+    const safeBodyFallback = getMarketingCopy(this.activeDestinationId).captionBodyFallback;
+    let coverTitle = list.coverTitle
+      ? this.sanitizeContentText(sanitizeDeckHeadline(localizeText(list.coverTitle, this.activeDestinationId)))
+      : list.coverTitle;
+    if (this.isBannedSampleCaptionText(String(coverTitle || ''))) coverTitle = safeCoverFallback;
+    let title = this.sanitizeContentText(sanitizeDeckHeadline(localizeText(list.title || '', this.activeDestinationId)));
+    if (this.isBannedSampleCaptionText(title)) title = safeCoverFallback;
+    let description = this.sanitizeContentText(localizeText(list.description || '', this.activeDestinationId));
+    if (this.isBannedSampleCaptionText(description)) description = safeBodyFallback;
     const localized = {
       ...list,
       navTitle: this.sanitizeContentText(localizeText(list.navTitle || '', this.activeDestinationId)),
-      title: this.sanitizeContentText(sanitizeDeckHeadline(localizeText(list.title || '', this.activeDestinationId))),
-      description: this.sanitizeContentText(localizeText(list.description || '', this.activeDestinationId)),
-      coverTitle: list.coverTitle ? this.sanitizeContentText(sanitizeDeckHeadline(localizeText(list.coverTitle, this.activeDestinationId))) : list.coverTitle,
+      title,
+      description,
+      coverTitle,
       postCaption,
       captionHashtags: Array.isArray(list.captionHashtags)
         ? buildCaptionHashtags(
@@ -2600,7 +2786,14 @@ export class GuideService implements OnApplicationBootstrap {
           resolvedDeckId,
         )
         : list.captionHashtags,
-      pages,
+      pages: pages.map((page) => {
+        if (page.type !== 'cover') return page;
+        let pageTitle = page.title;
+        let pageSubtitle = page.subtitle;
+        if (this.isBannedSampleCaptionText(pageTitle)) pageTitle = String(coverTitle || safeCoverFallback);
+        if (this.isBannedSampleCaptionText(pageSubtitle)) pageSubtitle = description || safeBodyFallback;
+        return { ...page, title: pageTitle, subtitle: pageSubtitle };
+      }),
     };
     return localized;
   }
@@ -2838,6 +3031,8 @@ export class GuideService implements OnApplicationBootstrap {
     const removeLayoutTerms = (value: string): string => String(value || '')
       .replace(/\b[234]\s*(?:x|×|by)\s*[234]\b/gi, '')
       .replace(/\b(?:grid|layout)\b/gi, '')
+      .replace(/\b\d+\s*điểm\s*\/\s*\d+\s*trang\b/giu, '')
+      .replace(/\b\d+\s*diem\s*\/\s*\d+\s*trang\b/gi, '')
       .replace(/(^|[\s([{])(?:lưới|luoi)(?=$|[\s,.;:!?)}\]])/gi, '$1')
       .replace(/(^|[\s([{])(?:bố\s*cục|bo\s*cuc)(?=$|[\s,.;:!?)}\]])/gi, '$1')
       .replace(/(^|[\s([{])(?:\d+\s*)?(?:ô|o)\s*(?:ảnh|anh|hình|hinh)(?=$|[\s,.;:!?)}\]])/gi, '$1')
@@ -2848,24 +3043,29 @@ export class GuideService implements OnApplicationBootstrap {
       .trim();
     const copy = getMarketingCopy(this.activeDestinationId);
     const normalizeCoverTitle = (v: string) => {
-      const fallback = localizeText('ĐI ĐÀ LẠT THÌ LƯU NGAY LIST NÀY', this.activeDestinationId);
+      const maxLen = this.coverTitleMaxLen(deckId);
+      const fallback = this.coverTitleFallbackForDeck(deckId, `${deckId}:${v}:${tone}`);
       const withoutLayout = removeLayoutTerms(this.sanitizeContentText(sanitizeDeckHeadline(v || fallback)));
       const clean = withoutLayout.replace(/\s+/g, ' ').trim();
-      return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 35);
+      if (this.isBannedSampleCaptionText(clean)) return fallback.slice(0, maxLen);
+      return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, maxLen);
     };
     const normalizeHeadline = (v: string) => {
       const fallback = localizeText('Lưu list này rồi đi Đà Lạt cho đỡ mò từng nơi nhé.', this.activeDestinationId);
       const withoutLayout = removeLayoutTerms(this.sanitizeContentText(v || fallback));
       const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
       const clean = this.sanitizeContentText(withoutPlaces).replace(/\s+/g, ' ').trim();
+      if (this.isBannedSampleCaptionText(clean)) return fallback.slice(0, 80);
       return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 80);
     };
     const normalizeBody = (v: string) => {
       const fallback = copy.captionBodyFallback;
       const withoutLayout = removeLayoutTerms(this.sanitizeContentText(v || fallback));
+      if (this.isBannedSampleCaptionText(withoutLayout)) return fallback;
       if (this.bodyListsStops(withoutLayout, forbiddenPlaceNames)) return fallback;
       const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
       const clean = this.sanitizeContentText(withoutPlaces).replace(/\s+/g, ' ').trim();
+      if (this.isBannedSampleCaptionText(clean)) return fallback;
       return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 250);
     };
     const normalizeHashtags = (values: string[]): string[] => buildCaptionHashtags(values, tone, this.activeDestinationId, deckId || undefined);

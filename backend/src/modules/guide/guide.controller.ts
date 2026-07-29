@@ -120,6 +120,18 @@ export class GuideController {
     return this.guideService.generatePartnerSpotlight(request);
   }
 
+  @Post('api/drive-files/prefetch')
+  @HttpCode(200)
+  prefetchDriveFiles(@Body() body: { fileIds?: string[] }): Promise<{
+    total: number;
+    skipped: number;
+    ok: number;
+    fail: number;
+    cancelled: boolean;
+  }> {
+    return this.guideService.prefetchDriveFiles(Array.isArray(body?.fileIds) ? body.fileIds : []);
+  }
+
   @Patch('api/decks/:deckId/lists/:listId/cover')
   updateGeneratedListCover(
     @Param('deckId') deckId: string,
