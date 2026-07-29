@@ -55,7 +55,7 @@ const BATCH_IMAGE_EXTENSION = 'png';
 const BATCH_IMAGE_QUALITY = 1;
 const BATCH_SOURCE_IMAGE_MAX_DIMENSION = 0;
 const BATCH_SOURCE_IMAGE_QUALITY = 1;
-const BATCH_IMAGE_PREPARE_CONCURRENCY = 12;
+const BATCH_IMAGE_PREPARE_CONCURRENCY = 4;
 const IMAGE_FETCH_TIMEOUT_MS = 22000;
 const IMAGE_READY_TIMEOUT_MS = 6000;
 const PAGE_RENDER_TIMEOUT_MS = 45000;
@@ -85,8 +85,8 @@ const EXPORT_QUALITY_PROFILES = Object.freeze({
     sourceImageMaxDimension: 3000,
     sourceImageFormat: 'image/jpeg',
     sourceImageQuality: 0.97,
-    imagePrepareConcurrency: 12,
-    renderChunkSize: 12,
+    imagePrepareConcurrency: 4,
+    renderChunkSize: 8,
     captureConcurrency: 4,
     preferHtml2Canvas: true,
     renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
@@ -148,6 +148,102 @@ function exportCallbacks(callbacks = {}) {
 
 function exportQualityProfile(quality) {
   return EXPORT_QUALITY_PROFILES[quality] || EXPORT_QUALITY_PROFILES.optimized;
+}
+
+function collectDriveFileIdsFromValue(value, ids = new Set()) {
+  if (!value) return ids;
+  if (typeof value === 'string') {
+    if (value.includes('/assets/drive-file') || /drive\.google\.com|googleusercontent\.com/i.test(value)) {
+      const match = value.match(/[?&](?:id|id%3D)=([a-zA-Z0-9_-]{10,})/i)
+        || value.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/i)
+        || value.match(/[?&]id=([a-zA-Z0-9_-]{10,})/i);
+      if (match?.[1]) ids.add(match[1]);
+    }
+    return ids;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectDriveFileIdsFromValue(item, ids));
+    return ids;
+  }
+  if (typeof value === 'object') {
+    Object.values(value).forEach((item) => collectDriveFileIdsFromValue(item, ids));
+  }
+  return ids;
+}
+
+function collectDriveFileIdsFromLists(lists) {
+  const ids = new Set();
+  const visit = (value) => {
+    if (!value) return;
+    if (typeof value === 'string') return;
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      // Candidate chỉ dùng khi primary fail — không prefetch hết (máy mới sẽ rất lâu).
+      if (key === 'candidateImageUrls' || key === 'candidates') continue;
+      if (typeof child === 'string') {
+        if (/image|cover|photo|background|src/i.test(key) || child.includes('/assets/drive-file')) {
+          collectDriveFileIdsFromValue(child, ids);
+        }
+        continue;
+      }
+      visit(child);
+    }
+  };
+  for (const entry of lists || []) visit(entry?.list || entry);
+  return [...ids];
+}
+
+/**
+ * Máy mới: trước khi xuất, nhờ backend tải trước ảnh Drive với concurrency thấp
+ * rồi ghi disk cache — tránh storm 12 request cùng lúc lúc render.
+ * Chia lô nhỏ để không bị Next proxy cắt timeout (~2 phút/request).
+ */
+async function prefetchDriveFilesForExport(fileIds, cb = {}) {
+  const uniqueIds = [...new Set((fileIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+  if (!uniqueIds.length) return null;
+  const setStatus = cb.setStatus || noop;
+  const updateProgress = cb.updateProgress || noop;
+  const CHUNK = 36;
+  const summary = { total: uniqueIds.length, skipped: 0, ok: 0, fail: 0, cancelled: false, chunks: 0 };
+
+  for (let offset = 0; offset < uniqueIds.length; offset += CHUNK) {
+    const chunk = uniqueIds.slice(offset, offset + CHUNK);
+    const done = Math.min(offset + chunk.length, uniqueIds.length);
+    setStatus(`Đang tải trước ảnh Drive ${done}/${uniqueIds.length} lên máy (máy mới)...`);
+    updateProgress(2 + (done / uniqueIds.length) * 4, `Đang tải trước ảnh ${done}/${uniqueIds.length}...`);
+    try {
+      const response = await fetch('/api/drive-files/prefetch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileIds: chunk }),
+        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+          ? AbortSignal.timeout(4 * 60 * 1000)
+          : undefined,
+      });
+      if (!response.ok) {
+        console.warn(`[export] Prefetch Drive chunk HTTP ${response.status} (${done}/${uniqueIds.length})`);
+        summary.fail += chunk.length;
+        continue;
+      }
+      const result = await response.json();
+      summary.skipped += Number(result.skipped || 0);
+      summary.ok += Number(result.ok || 0);
+      summary.fail += Number(result.fail || 0);
+      summary.chunks += 1;
+    } catch (error) {
+      console.warn(`[export] Prefetch Drive chunk lỗi (${done}/${uniqueIds.length}): ${error?.message || error}`);
+      summary.fail += chunk.length;
+    }
+  }
+
+  console.log(
+    `[export] Prefetch Drive xong: total=${summary.total} skipped=${summary.skipped} ok=${summary.ok} fail=${summary.fail} chunks=${summary.chunks}`,
+  );
+  return summary;
 }
 
 async function requestExportWakeLock() {
@@ -1597,6 +1693,7 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
+    await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
     const visiblePageNode = findVisibleSelectedPageNode(list, selectedPageIndex);
     const preferFreshRender = page?.layoutVariant === 'budget-3n2d-table'
       || page?.layoutVariant === 'budget-3n2d'
@@ -1732,6 +1829,7 @@ export async function exportActiveList(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
+    await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
     const pageNodes = renderPagesForExport(exportList);
     await waitForExportLayout();
     cb.updateProgress(8, `Đang dựng layout ${pageNodes.length} trang...`);
@@ -1814,6 +1912,11 @@ export async function exportBatch(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
+    const driveFileIds = collectDriveFileIdsFromLists(orderedLists);
+    if (driveFileIds.length) {
+      await prefetchDriveFilesForExport(driveFileIds, cb);
+    }
+
     const mainZip = new JSZip();
     await requestExportWakeLock();
     const totalPages = Math.max(orderedLists.reduce((total, item) => total + (item.list.pages?.length || 0), 0), 1);

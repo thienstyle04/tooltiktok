@@ -3,17 +3,26 @@ import * as path from 'node:path';
 
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 30 * 60 * 1000;
+/** Fallback SVG chỉ cache ngắn — máy mới hay fail tạm thời; cache 30 phút sẽ “đóng băng” ảnh xám. */
+const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 20 * 1000;
 const DRIVE_FILE_DISK_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DRIVE_FETCH_TIMEOUT_MS = 15_000;
 /** Backoff dài hơn cho 401/429 — Google hay rate-limit khi sync hàng trăm folder. */
 const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 1_500, 4_000, 8_000];
+/** Máy mới: FE xuất song song nhiều ảnh → giới hạn tải Drive thật để tránh terminated/rate-limit. */
+const MAX_PARALLEL_DRIVE_NETWORK_FETCHES = Math.min(
+  Math.max(Number(process.env.DALAT_DRIVE_FETCH_CONCURRENCY || 3), 1),
+  6,
+);
 const DRIVE_BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
 const folderEntriesCache = new Map<string, { expiresAt: number; entries: DriveFolderEntry[] }>();
 const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFileAsset }>();
 const driveFileAccessibilityCache = new Map<string, boolean>();
+const driveFileInFlight = new Map<string, Promise<DriveFileAsset>>();
+let activeDriveNetworkFetches = 0;
+const driveNetworkWaiters: Array<() => void> = [];
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.jfif', '.bmp']);
 
@@ -604,18 +613,24 @@ export async function resolveDriveLinkToEntries(link: string, placeName: string,
   }];
 }
 
-export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsset> {
-  try {
-    return await fetchDriveFileAssetUnsafe(fileId);
-  } catch (error) {
-    // An toàn cuối cùng: mọi lỗi mạng bất ngờ (ECONNRESET, DNS, v.v...) đều phải rơi về ảnh fallback,
-    // tuyệt đối không để lộ ra thành lỗi 500 cho /assets/drive-file — ảnh lỗi không nên làm sập cả trang.
-    console.warn(`[drive-image] Loi khong luong truoc, dung anh fallback: ${fileId}`, error instanceof Error ? error.message : error);
-    return createDriveFallbackAsset(fileId);
+async function acquireDriveNetworkSlot(): Promise<void> {
+  if (activeDriveNetworkFetches < MAX_PARALLEL_DRIVE_NETWORK_FETCHES) {
+    activeDriveNetworkFetches += 1;
+    return;
   }
+  await new Promise<void>((resolve) => {
+    driveNetworkWaiters.push(resolve);
+  });
+  activeDriveNetworkFetches += 1;
 }
 
-async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset> {
+function releaseDriveNetworkSlot(): void {
+  activeDriveNetworkFetches = Math.max(0, activeDriveNetworkFetches - 1);
+  const next = driveNetworkWaiters.shift();
+  if (next) next();
+}
+
+function readCachedDriveFileAsset(fileId: string): DriveFileAsset | null {
   const cached = driveFileAssetCache.get(fileId);
   const now = Date.now();
   if (cached && cached.expiresAt > now) {
@@ -623,60 +638,98 @@ async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset
   }
 
   const diskCached = readDriveFileDiskCache(fileId);
-  if (diskCached) {
-    setCachedDriveFileAccessibility(fileId, true);
-    driveFileAssetCache.set(fileId, {
-      expiresAt: now + DRIVE_FILE_CACHE_TTL_MS,
-      asset: diskCached,
-    });
-    return diskCached;
-  }
+  if (!diskCached) return null;
 
-  const candidateUrls = [
-    `https://drive.google.com/uc?export=view&id=${encodeURIComponent(fileId)}`,
-    `https://drive.google.com/thumbnail?authuser=0&sz=w1600&id=${encodeURIComponent(fileId)}`,
-    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`,
-  ];
-
-  for (const url of candidateUrls) {
-    const response = await fetchDriveResponseWithRetry(url);
-    if (!response?.ok) continue;
-
-    // Google Drive có thể tự reset kết nối ngay giữa lúc đang đọc nội dung ảnh (ECONNRESET) dù header
-    // đã trả 200 OK trước đó. Bọc try/catch ở đây để lỗi mạng rơi qua URL kế tiếp / ảnh fallback,
-    // thay vì ném thẳng ra ngoài thành lỗi 500 chưa xử lý cho request /assets/drive-file.
-    let body: Buffer;
-    try {
-      body = Buffer.from(await response.arrayBuffer());
-    } catch (error) {
-      console.warn(`[drive-image] Doc noi dung anh loi (se thu URL/fallback khac): ${fileId}`, error instanceof Error ? error.message : error);
-      continue;
-    }
-    const headerContentType = String(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
-    const sniffedContentType = sniffImageContentType(body);
-    const contentType = headerContentType.startsWith('image/') ? headerContentType : sniffedContentType;
-    if (!contentType) continue;
-
-    const asset: DriveFileAsset = {
-      body,
-      contentLength: body.byteLength,
-      contentType,
-      isFallback: false,
-    };
-    setCachedDriveFileAccessibility(fileId, true);
-    driveFileAssetCache.set(fileId, {
-      expiresAt: now + DRIVE_FILE_CACHE_TTL_MS,
-      asset,
-    });
-    writeDriveFileDiskCache(fileId, asset);
-    return asset;
-  }
-
-  const fallbackAsset = createDriveFallbackAsset(fileId);
-  setCachedDriveFileAccessibility(fileId, false);
+  setCachedDriveFileAccessibility(fileId, true);
   driveFileAssetCache.set(fileId, {
-    expiresAt: now + DRIVE_FILE_FALLBACK_CACHE_TTL_MS,
-    asset: fallbackAsset,
+    expiresAt: now + DRIVE_FILE_CACHE_TTL_MS,
+    asset: diskCached,
   });
-  return fallbackAsset;
+  return diskCached;
+}
+
+export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsset> {
+  const normalizedFileId = String(fileId ?? '').trim();
+  if (!normalizedFileId) return createDriveFallbackAsset(fileId);
+
+  try {
+    const cached = readCachedDriveFileAsset(normalizedFileId);
+    if (cached) return cached;
+
+    const inFlight = driveFileInFlight.get(normalizedFileId);
+    if (inFlight) return inFlight;
+
+    const promise = fetchDriveFileAssetUnsafe(normalizedFileId).finally(() => {
+      driveFileInFlight.delete(normalizedFileId);
+    });
+    driveFileInFlight.set(normalizedFileId, promise);
+    return await promise;
+  } catch (error) {
+    // An toàn cuối cùng: mọi lỗi mạng bất ngờ (ECONNRESET, DNS, v.v...) đều phải rơi về ảnh fallback,
+    // tuyệt đối không để lộ ra thành lỗi 500 cho /assets/drive-file — ảnh lỗi không nên làm sập cả trang.
+    console.warn(`[drive-image] Loi khong luong truoc, dung anh fallback: ${normalizedFileId}`, error instanceof Error ? error.message : error);
+    return createDriveFallbackAsset(normalizedFileId);
+  }
+}
+
+async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset> {
+  // Có thể vừa đợi slot / in-flight khác xong — đọc lại cache trước khi đụng Drive.
+  const cachedBeforeSlot = readCachedDriveFileAsset(fileId);
+  if (cachedBeforeSlot) return cachedBeforeSlot;
+
+  await acquireDriveNetworkSlot();
+  try {
+    const cachedAfterSlot = readCachedDriveFileAsset(fileId);
+    if (cachedAfterSlot) return cachedAfterSlot;
+
+    const candidateUrls = [
+      `https://drive.google.com/uc?export=view&id=${encodeURIComponent(fileId)}`,
+      `https://drive.google.com/thumbnail?authuser=0&sz=w1600&id=${encodeURIComponent(fileId)}`,
+      `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`,
+    ];
+
+    for (const url of candidateUrls) {
+      const response = await fetchDriveResponseWithRetry(url);
+      if (!response?.ok) continue;
+
+      // Google Drive có thể tự reset kết nối ngay giữa lúc đang đọc nội dung ảnh (ECONNRESET) dù header
+      // đã trả 200 OK trước đó. Bọc try/catch ở đây để lỗi mạng rơi qua URL kế tiếp / ảnh fallback,
+      // thay vì ném thẳng ra ngoài thành lỗi 500 chưa xử lý cho request /assets/drive-file.
+      let body: Buffer;
+      try {
+        body = Buffer.from(await response.arrayBuffer());
+      } catch (error) {
+        console.warn(`[drive-image] Doc noi dung anh loi (se thu URL/fallback khac): ${fileId}`, error instanceof Error ? error.message : error);
+        continue;
+      }
+      const headerContentType = String(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+      const sniffedContentType = sniffImageContentType(body);
+      const contentType = headerContentType.startsWith('image/') ? headerContentType : sniffedContentType;
+      if (!contentType) continue;
+
+      const asset: DriveFileAsset = {
+        body,
+        contentLength: body.byteLength,
+        contentType,
+        isFallback: false,
+      };
+      setCachedDriveFileAccessibility(fileId, true);
+      driveFileAssetCache.set(fileId, {
+        expiresAt: Date.now() + DRIVE_FILE_CACHE_TTL_MS,
+        asset,
+      });
+      writeDriveFileDiskCache(fileId, asset);
+      return asset;
+    }
+
+    const fallbackAsset = createDriveFallbackAsset(fileId);
+    setCachedDriveFileAccessibility(fileId, false);
+    driveFileAssetCache.set(fileId, {
+      expiresAt: Date.now() + DRIVE_FILE_FALLBACK_CACHE_TTL_MS,
+      asset: fallbackAsset,
+    });
+    return fallbackAsset;
+  } finally {
+    releaseDriveNetworkSlot();
+  }
 }

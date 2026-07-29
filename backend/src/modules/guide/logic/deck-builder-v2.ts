@@ -36,7 +36,7 @@ import {
 } from '../sync/spotlight-hook-source';
 import type { TitlePlacement } from '../../../common/interfaces/guide.types';
 
-export const GRID_8_FEED_TEMPLATE_VERSION = 16;
+export const GRID_8_FEED_TEMPLATE_VERSION = 17;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
 
 export function normalizeGrid8FeedPostCaption(value: string): string {

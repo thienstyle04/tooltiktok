@@ -40,14 +40,14 @@ const POV_3_V2_CAFE_FOOD_PARTNER_CAP = 6;
 const GRID_8_QUAYTUNG_PARTNER_CAP = 4;
 export const ITINERARY_3N2D_TEMPLATE_VERSION = 17;
 export const ITINERARY_4N3D_TEMPLATE_VERSION = 13;
-export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 16;
+export const ITINERARY_4N2D_GRID8_TEMPLATE_VERSION = 18;
 export const POV_3_DAY_TEMPLATE_VERSION = 13;
 export const GRID_4_TEMPLATE_VERSION = 18;
 export const GRID_4_MUTANT_TEMPLATE_VERSION = 2;
 export const GRID_5_TEMPLATE_VERSION = 4;
 export const GRID_6_TEMPLATE_VERSION = 18;
 export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 3;
-export const GRID_8_TEMPLATE_VERSION = 16;
+export const GRID_8_TEMPLATE_VERSION = 19;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
 export const BUDGET_3N2D_TEMPLATE_VERSION = 7;
 export const BUDGET_3N2D_STORY_TEMPLATE_VERSION = 5;
@@ -989,8 +989,14 @@ function coverSubtitleFromCaption(body: string, fallback: string): string {
 }
 
 const SPOTLIGHT_V2_COVER_SUBTITLE_MAX = 58;
+/** ~3 dòng chữ phụ cover lưới 8 ô (giống độ dài lịch trình 4N3Đ lưới 8); cắt câu/từ, không thêm … */
+export const GRID_8_COVER_SUBTITLE_MAX = 118;
 /** ~4 dòng tagline cover grid-8-feed; cắt câu/từ, không thêm … */
 export const GRID_8_FEED_COVER_SUBTITLE_MAX = 168;
+
+export function truncateGrid8CoverSubtitle(value: string, fallback = '', max = GRID_8_COVER_SUBTITLE_MAX): string {
+  return truncateGrid8FeedCoverSubtitle(value, fallback, max);
+}
 
 export function truncateGrid8FeedCoverSubtitle(value: string, fallback = '', max = GRID_8_FEED_COVER_SUBTITLE_MAX): string {
   const stripped = String(value || '')
@@ -1015,6 +1021,21 @@ export function truncateGrid8FeedCoverSubtitle(value: string, fallback = '', max
   const lastSpace = truncated.lastIndexOf(' ');
   if (lastSpace > max * 0.45) return truncated.slice(0, lastSpace).trim();
   return truncated.trim();
+}
+
+function grid8CoverSubtitleFromCaption(
+  caption: { headline: string; body: string },
+  fallback: string,
+): string {
+  const body = String(caption.body || '').replace(/\s+/g, ' ').trim();
+  const firstSentence = body.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() || body;
+  const secondSentence = body.slice(firstSentence.length).match(/^\s*[^.!?]+[.!?]?/)?.[0]?.trim() || '';
+  // Ưu tiên 1–2 câu ngắn như lịch trình 4N3Đ lưới 8 — không nhét cả body dài vào cover.
+  let combined = firstSentence;
+  if (secondSentence && `${firstSentence} ${secondSentence}`.length <= GRID_8_COVER_SUBTITLE_MAX) {
+    combined = `${firstSentence} ${secondSentence}`.trim();
+  }
+  return truncateGrid8CoverSubtitle(combined || body, fallback);
 }
 
 function grid8FeedCoverSubtitleFromCaption(
@@ -1676,7 +1697,9 @@ export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: s
         ? spotlightV2CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
         : page.layoutVariant === 'grid-8-feed'
           ? grid8FeedCoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
-          : coverSubtitleFromCaption(safeBody, page.subtitle);
+          : page.layoutVariant === 'grid-8' || page.layoutVariant === 'journey-4n2d-grid8'
+            ? grid8CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
+            : coverSubtitleFromCaption(safeBody, page.subtitle);
       return {
         ...page,
         title: sanitizeDeckHeadline(coverTitle || caption.headline || page.title),
@@ -2756,8 +2779,8 @@ function buildItinerary4N2DGrid8Pages(
   return [
     {
       ...buildCoverPage(
-        '4N3Đ ĐÀ LẠT\n8 ĐIỂM MỖI TRANG',
-        'Lịch trình 4N3Đ dạng lưới: ảnh bao quanh, tiêu đề ở giữa, mỗi điểm có thời gian rõ ràng. Lưu liền tay nhé.',
+        `ĐÀ LẠT 4N3Đ\nCHUYẾN ĐI KHÔNG MUỐN KẾT THÚC`,
+        'Cứ lưu board này về — từ sáng đến tối có sẵn khung giờ, khỏi lo lạc đường hay đói.',
         coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'journey-4n2d-grid8',
@@ -4426,8 +4449,8 @@ function buildGrid8Pages(
   return [
     {
       ...buildCoverPage(
-        'ĐÀ LẠT 8 ĐIỂM / 1 TRANG',
-        'Mẫu lưới dày để xem nhiều lựa chọn hơn trong một lần lướt.',
+        `${cityLabelUpper()} – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH`,
+        'List điểm đáng lưu để đi chơi đỡ phải mò từng nơi.',
         coverBackground(`${seedPrefix}-cover`),
       ),
       layoutVariant: 'grid-8',
