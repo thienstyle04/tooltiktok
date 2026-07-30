@@ -307,12 +307,25 @@ export default function DeckStudio({ initialDataset = null }) {
   const [refreshing, setRefreshing] = useState(false);
   const [destinationInfo, setDestinationInfo] = useState(null);
   const [switchingDestination, setSwitchingDestination] = useState(false);
+  const [driveCacheStatus, setDriveCacheStatus] = useState({
+    phase: 'checking',
+    ready: false,
+    total: 0,
+    completed: 0,
+    cached: 0,
+    downloaded: 0,
+    failed: 0,
+    percent: 0,
+    message: 'Đang kiểm tra cache ảnh Google Drive...',
+  });
+  const [driveCacheReadyNotice, setDriveCacheReadyNotice] = useState(false);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const v2CatalogRefreshAttemptedRef = useRef(false);
   const selectionHistoryRef = useRef([]);
   const spotlightPartnerRefreshRef = useRef(false);
   const datasetRef = useRef(initialDataset);
   const focusRefreshRef = useRef(0);
+  const driveCacheWasWaitingRef = useRef(false);
 
   const activeDeck = useMemo(
     () => dataset?.decks?.find((deck) => deck.id === activeDeckId) || null,
@@ -533,6 +546,39 @@ export default function DeckStudio({ initialDataset = null }) {
       cancelled = true;
     };
   }, [applyDataset, initialDataset, loadDataset, loadDestinations]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let readyNoticeTimer = null;
+
+    const loadDriveCacheStatus = async () => {
+      try {
+        const response = await apiFetch('/api/drive-cache/status', { cache: 'no-store' });
+        if (!response.ok) return;
+        const next = await response.json();
+        if (cancelled) return;
+        setDriveCacheStatus(next);
+        if (!next.ready) {
+          driveCacheWasWaitingRef.current = true;
+        } else if (driveCacheWasWaitingRef.current) {
+          driveCacheWasWaitingRef.current = false;
+          setDriveCacheReadyNotice(true);
+          if (readyNoticeTimer) window.clearTimeout(readyNoticeTimer);
+          readyNoticeTimer = window.setTimeout(() => setDriveCacheReadyNotice(false), 5000);
+        }
+      } catch {
+        // Backend guard vẫn chặn tạo list nếu cache chưa sẵn sàng.
+      }
+    };
+
+    loadDriveCacheStatus();
+    const interval = window.setInterval(loadDriveCacheStatus, 1200);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      if (readyNoticeTimer) window.clearTimeout(readyNoticeTimer);
+    };
+  }, []);
 
   useEffect(() => {
     const refreshIfServerChanged = async () => {
@@ -791,6 +837,10 @@ export default function DeckStudio({ initialDataset = null }) {
   }, [activeDeck, caption, captionSourceList, captionTone]);
 
   const createDeckFromCaption = useCallback(async () => {
+    if (!driveCacheStatus.ready) {
+      setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
+      return;
+    }
     if (!activeDeck) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
@@ -841,9 +891,13 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally {
       setBusy(false);
     }
-  }, [activeDeck, activeListId, caption, captionSourceList, loadDataset]);
+  }, [activeDeck, activeListId, caption, captionSourceList, driveCacheStatus.ready, loadDataset]);
 
   const createBatchLists = useCallback(async (count) => {
+    if (!driveCacheStatus.ready) {
+      setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
+      return;
+    }
     if (!activeDeck) {
       setStatus('Chưa có deck để tạo batch list.');
       return;
@@ -877,9 +931,13 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally {
       setBusy(false);
     }
-  }, [activeDeck, activeListId, loadDataset]);
+  }, [activeDeck, activeListId, driveCacheStatus.ready, loadDataset]);
 
   const createPartnerSpotlight = useCallback(async (partner) => {
+    if (!driveCacheStatus.ready) {
+      setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo spotlight.');
+      return;
+    }
     if (!partner?.id && !partner?.name) {
       setStatus('Chưa chọn đối tác.');
       return;
@@ -908,7 +966,7 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally {
       setBusy(false);
     }
-  }, [loadDataset]);
+  }, [driveCacheStatus.ready, loadDataset]);
 
   const deleteGeneratedList = useCallback(async (deckId, listId) => {
     const confirmed = window.confirm('Bạn có chắc chắn muốn xóa bộ ảnh AI này?');
@@ -1247,6 +1305,11 @@ export default function DeckStudio({ initialDataset = null }) {
   const destinationScrollBusy = busy || refreshing || switchingDestination;
   const activeDestinationIndex = Math.max(0, destinationOptions.findIndex((entry) => entry.id === activeDestinationId));
   const destinationCount = Math.max(destinationOptions.length, 1);
+  const cacheDestinationShortLabel = {
+    dalat: 'ĐL',
+    phanthiet: 'PT',
+    greenland: 'GL',
+  }[driveCacheStatus.destinationId] || studioShort;
 
   const resolveDestinationCount = (entry) => {
     if (entry.id === activeDestinationId && dataset?.source?.totalItems) {
@@ -1262,6 +1325,49 @@ export default function DeckStudio({ initialDataset = null }) {
 
   return (
     <main className="app-shell">
+      {!driveCacheStatus.ready ? (
+        <div className="cache-warm-overlay" role="dialog" aria-modal="true" aria-labelledby="cacheWarmTitle">
+          <section className="cache-warm-dialog">
+            <div className="cache-warm-icon" aria-hidden="true">{cacheDestinationShortLabel}</div>
+            <p className="panel-kicker">Chuẩn bị dữ liệu lần đầu</p>
+            <h2 id="cacheWarmTitle">
+              {driveCacheStatus.phase === 'error' ? 'Chưa thể tải dữ liệu' : 'Đang chuẩn bị dữ liệu'}
+            </h2>
+            <p className="cache-warm-message">{driveCacheStatus.message}</p>
+            <div
+              className="cache-warm-progress"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={driveCacheStatus.percent || 0}
+            >
+              <span style={{ width: `${Math.max(0, Math.min(100, driveCacheStatus.percent || 0))}%` }} />
+            </div>
+            <div className="cache-warm-stats">
+              <strong>{driveCacheStatus.percent || 0}%</strong>
+              <span>
+                {driveCacheStatus.total
+                  ? `${driveCacheStatus.completed || 0}/${driveCacheStatus.total} ảnh`
+                  : 'Đang kiểm tra danh sách ảnh'}
+              </span>
+            </div>
+            {driveCacheStatus.failed > 0 ? (
+              <p className="cache-warm-warning">{driveCacheStatus.failed} ảnh hiện chưa tải được.</p>
+            ) : null}
+            <p className="cache-warm-note">
+              Tạm thời chưa thể sinh list. Vui lòng giữ ứng dụng mở cho đến khi quá trình hoàn tất.
+            </p>
+          </section>
+        </div>
+      ) : null}
+
+      {driveCacheReadyNotice ? (
+        <div className="cache-ready-notice" role="status">
+          <strong>Dữ liệu đã sẵn sàng</strong>
+          <span>Bạn có thể tạo và xuất list.</span>
+        </div>
+      ) : null}
+
       <Sidebar
         dataset={dataset}
         activeView={activeView}
@@ -1399,6 +1505,7 @@ export default function DeckStudio({ initialDataset = null }) {
               caption={caption}
               setCaption={setCaption}
               busy={busy}
+              cacheReady={driveCacheStatus.ready}
               onDeckSelect={handleDeckSelect}
               onListSelect={handleListSelect}
               onGeneratedListSelect={previewGeneratedList}

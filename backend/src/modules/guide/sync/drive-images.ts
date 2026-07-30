@@ -11,8 +11,8 @@ const DRIVE_FETCH_TIMEOUT_MS = 15_000;
 const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 1_500, 4_000, 8_000];
 /** Máy mới: FE xuất song song nhiều ảnh → giới hạn tải Drive thật để tránh terminated/rate-limit. */
 const MAX_PARALLEL_DRIVE_NETWORK_FETCHES = Math.min(
-  Math.max(Number(process.env.DALAT_DRIVE_FETCH_CONCURRENCY || 3), 1),
-  6,
+  Math.max(Number(process.env.DALAT_DRIVE_FETCH_CONCURRENCY || 4), 1),
+  8,
 );
 const DRIVE_BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
@@ -122,6 +122,12 @@ export function hasDriveFileDiskCache(fileId: string): boolean {
   }
 }
 
+/** Lọc fileId chưa có trên disk — chỉ check metadata, không tải mạng. */
+export function listUncachedDriveFileIds(fileIds: string[]): string[] {
+  const uniqueIds = [...new Set(fileIds.map((id) => String(id || '').trim()).filter(Boolean))];
+  return uniqueIds.filter((fileId) => !hasDriveFileDiskCache(fileId));
+}
+
 export interface WarmDriveFileDiskCacheResult {
   total: number;
   skipped: number;
@@ -139,6 +145,7 @@ export async function warmDriveFileDiskCache(
   options: {
     concurrency?: number;
     shouldCancel?: () => boolean;
+    onProgress?: (result: WarmDriveFileDiskCacheResult) => void;
   } = {},
 ): Promise<WarmDriveFileDiskCacheResult> {
   const concurrency = Math.min(Math.max(Number(options.concurrency) || 2, 1), 4);
@@ -163,10 +170,12 @@ export async function warmDriveFileDiskCache(
 
   if (!pending.length) {
     console.log(`[drive-cache] Đủ cache disk (${result.skipped}/${result.total}), bỏ qua warm.`);
+    options.onProgress?.({ ...result });
     return result;
   }
 
   console.log(`[drive-cache] Bắt đầu tự tạo cache: cần tải ${pending.length}/${result.total} ảnh (concurrency=${concurrency})...`);
+  options.onProgress?.({ ...result });
   let index = 0;
   let done = 0;
   const workers = Array.from({ length: Math.min(concurrency, pending.length) }, async () => {
@@ -192,6 +201,7 @@ export async function warmDriveFileDiskCache(
         result.fail += 1;
       }
       done += 1;
+      options.onProgress?.({ ...result });
       if (done === pending.length || done % 25 === 0) {
         console.log(`[drive-cache] Tiến độ ${done}/${pending.length} (ok=${result.ok} fail=${result.fail})`);
       }

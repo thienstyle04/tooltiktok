@@ -12,6 +12,7 @@ export default function CaptionTools({
   caption,
   setCaption,
   busy,
+  cacheReady,
   partners,
   onDeckSelect,
   onListSelect,
@@ -32,6 +33,7 @@ export default function CaptionTools({
   const lists = mainLists.length ? mainLists : allLists.slice(0, 1);
   const selectedCaptionList = lists.find((list) => list.id === activeList?.id) || lists[0] || null;
   const isSpotlightPartnerDeck = activeDeck?.id === 'spotlight-partner';
+  const creationDisabled = busy || !cacheReady;
 
   const handleDeckChange = (event) => {
     const deck = decks.find((item) => item.id === event.target.value);
@@ -53,6 +55,12 @@ export default function CaptionTools({
         </div>
         <span className="ai-state-pill">{visible ? 'Đang mở' : 'Sẵn sàng'}</span>
       </div>
+
+      {!cacheReady ? (
+        <div className="ai-cache-warning" role="status">
+          Đang đồng bộ ảnh Drive vào cache. Chức năng tạo list sẽ mở sau khi tải xong.
+        </div>
+      ) : null}
 
       <div className="ai-toolbar">
         <div className="caption-target-picker">
@@ -104,7 +112,7 @@ export default function CaptionTools({
               id="createDeckFromCaptionBtn"
               className="toolbar-button secondary ai-batch-main"
               type="button"
-              disabled={busy}
+              disabled={creationDisabled}
               onClick={() => {
                 setBatchDropdownOpen(false);
                 if (batchCount === 1) {
@@ -119,7 +127,7 @@ export default function CaptionTools({
             <button
               className="toolbar-button secondary ai-batch-arrow"
               type="button"
-              disabled={busy}
+              disabled={creationDisabled}
               aria-label="Chọn số lượng list"
               onClick={() => setBatchDropdownOpen((prev) => !prev)}
             >
@@ -228,7 +236,7 @@ export default function CaptionTools({
                     key={partner.id}
                     type="button"
                     className="generated-list-card"
-                    disabled={busy}
+                    disabled={creationDisabled}
                     onClick={() => onCreatePartnerSpotlight?.(partner)}
                   >
                     <span className="generated-list-index">{partner.imageCount}</span>
