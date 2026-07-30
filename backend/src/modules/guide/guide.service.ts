@@ -60,7 +60,7 @@ import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks } from './sync/spotlight-hook-source';
-import { DriveFileAsset, clearDriveAccessibilityCache, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownInaccessibleDriveProxyUrl, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
+import { DriveFileAsset, clearDriveAccessibilityCache, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownInaccessibleDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
   DEFAULT_DESTINATION_ID,
@@ -94,6 +94,19 @@ interface WorkbookDerivedContext {
   autoMappedItemCount: number;
 }
 
+export interface DriveCacheWarmStatus {
+  phase: 'checking' | 'warming' | 'ready' | 'error';
+  ready: boolean;
+  destinationId: string;
+  total: number;
+  completed: number;
+  cached: number;
+  downloaded: number;
+  failed: number;
+  percent: number;
+  message: string;
+}
+
 @Injectable()
 export class GuideService implements OnApplicationBootstrap {
   // toolRoot points to the backend folder root
@@ -123,7 +136,7 @@ export class GuideService implements OnApplicationBootstrap {
   private workbookDerivedCache: WorkbookDerivedContext | null = null;
   private workbookDerivedCacheTime = 0;
   private workbookDerivedCacheFresh = false;
-  private readonly DATASET_CACHE_TTL_MS = 20 * 60 * 1000; // 20 phút — dữ liệu Sheet ít đổi; đã có invalidate tức thời khi sync/ảnh Drive cập nhật.
+  private readonly DATASET_CACHE_TTL_MS = 20 * 60 * 1000; // chỉ dùng khi tắt session-sticky
   private datasetRebuildTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly DATASET_REBUILD_DEBOUNCE_MS = 800; // gộp nhiều lần invalidate liên tiếp thành 1 lần build nền.
   private readonly FORCE_SYNC_MIN_INTERVAL_MS = 60 * 1000; // không ép đồng bộ lại Google Sheet quá 1 lần/phút dù FE gọi refresh=1 liên tục.
@@ -141,14 +154,36 @@ export class GuideService implements OnApplicationBootstrap {
   private syncPromise: Promise<void> | null = null;
   private manifestSyncPromise: Promise<void> | null = null;
   private workbookSource: SheetWorkbookSource | null = null;
+  private readonly workbookSourceByDestination = new Map<DestinationId, SheetWorkbookSource>();
+  private readonly workbookDerivedCacheByDestination = new Map<DestinationId, WorkbookDerivedContext>();
+  private destinationDataLoading = true;
+  private destinationDataError = '';
   private driveAccessCacheLoadedFor: DestinationId | null = null;
-  private readonly AUTO_SYNC_ENABLED = !['0', 'false', 'no'].includes(String(process.env.DALAT_AUTO_SYNC_SHEET ?? 'true').trim().toLowerCase());
-  private readonly AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 phút
+  /** Mặc định TẮT: không tự kéo lại Google Sheet mỗi 10 phút khi đang tạo/xuất list. Bật lại bằng DALAT_AUTO_SYNC_SHEET=true. */
+  private readonly AUTO_SYNC_ENABLED = ['1', 'true', 'yes'].includes(String(process.env.DALAT_AUTO_SYNC_SHEET ?? 'false').trim().toLowerCase());
+  private readonly AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 phút (khi bật AUTO_SYNC)
+  /** Giữ dataset đã build lúc mở tool cho cả session — không rebuild nền khi tạo/xuất. Chỉ build lại khi bấm "Làm mới" / đổi điểm đến. */
+  private readonly SESSION_STICKY_DATASET = !['0', 'false', 'no'].includes(String(process.env.DALAT_SESSION_STICKY_DATASET ?? 'true').trim().toLowerCase());
   private readonly AUTO_WARM_DRIVE_CACHE = !['0', 'false', 'no'].includes(String(process.env.DALAT_AUTO_WARM_DRIVE_CACHE ?? 'true').trim().toLowerCase());
   private driveCacheWarmToken = 0;
+  private driveCacheWarmStatus: DriveCacheWarmStatus = {
+    phase: this.AUTO_WARM_DRIVE_CACHE ? 'checking' : 'ready',
+    ready: !this.AUTO_WARM_DRIVE_CACHE,
+    destinationId: this.activeDestinationId,
+    total: 0,
+    completed: 0,
+    cached: 0,
+    downloaded: 0,
+    failed: 0,
+    percent: this.AUTO_WARM_DRIVE_CACHE ? 0 : 100,
+    message: this.AUTO_WARM_DRIVE_CACHE
+      ? 'Đang kiểm tra ảnh Google Drive cần tải về máy...'
+      : 'Tự động tải cache Drive đang tắt.',
+  };
 
   constructor() {
     this.activeDestinationId = this.loadActiveDestinationId();
+    this.driveCacheWarmStatus.destinationId = this.activeDestinationId;
     setActiveDestinationLocalize(this.activeDestinationId);
     const cacheDir = String(process.env.DALAT_DRIVE_FILE_CACHE_DIR || '').trim()
       || path.join(this.dataRoot, 'drive-file-cache');
@@ -160,21 +195,38 @@ export class GuideService implements OnApplicationBootstrap {
   // tải Google Sheet + build dataset lần đầu ở đây, thay vì để request đầu tiên của người dùng
   // phải gánh 12-25s đó (và dễ gặp lỗi 500/503 nếu trùng lúc backend chưa sẵn sàng).
   onApplicationBootstrap(): void {
+    // Warm ảnh từ manifest cục bộ ngay lập tức. Không chờ Google Sheet vì lần sync đầu
+    // có thể chậm hoặc mất kết nối, khiến giao diện khóa ở trạng thái "đang kiểm tra" 0%.
+    this.scheduleWarmDriveFileDiskCache();
     void this.warmUpDatasetCache();
   }
 
   private async warmUpDatasetCache(): Promise<void> {
+    this.destinationDataLoading = true;
+    this.destinationDataError = '';
     try {
       console.log('[warmup] Đang tải Google Sheet và build dataset trước khi nhận request...');
       const t0 = Date.now();
       // Hook Doc phải sẵn trước khi build deck spotlight-v3 (cover title).
       await this.warmSpotlightV3Hooks();
       await this.prepareWorkbookForDataset(false);
+      // Chờ manifest Drive xong rồi mới build 1 lần — tránh sync xong lại invalidate/rebuild lần 2.
+      if (this.manifestSyncPromise) {
+        await this.manifestSyncPromise.catch(() => undefined);
+      }
       this.buildDatasetContext();
-      console.log(`[warmup] Sẵn sàng phục vụ /api/guide-data (mất ${Date.now() - t0}ms).`);
-      this.scheduleWarmDriveFileDiskCache();
+      if (this.workbookSource) {
+        this.workbookSourceByDestination.set(this.activeDestinationId, this.workbookSource);
+      }
+      if (this.workbookDerivedCache) {
+        this.workbookDerivedCacheByDestination.set(this.activeDestinationId, this.workbookDerivedCache);
+      }
+      console.log(`[warmup] Sẵn sàng phục vụ /api/guide-data (mất ${Date.now() - t0}ms). Session sticky=${this.SESSION_STICKY_DATASET}, autoSyncSheet=${this.AUTO_SYNC_ENABLED}.`);
     } catch (error) {
+      this.destinationDataError = error instanceof Error ? error.message : String(error);
       console.error('[warmup] Làm nóng dữ liệu trước thất bại, sẽ thử lại khi có request đầu tiên:', error);
+    } finally {
+      this.destinationDataLoading = false;
     }
   }
 
@@ -188,9 +240,39 @@ export class GuideService implements OnApplicationBootstrap {
 
   /** Máy mới: tự tải ảnh Drive còn thiếu vào backend/data/drive-file-cache (chạy nền). */
   private scheduleWarmDriveFileDiskCache(): void {
-    if (!this.AUTO_WARM_DRIVE_CACHE) return;
+    if (!this.AUTO_WARM_DRIVE_CACHE) {
+      this.driveCacheWarmStatus = {
+        ...this.driveCacheWarmStatus,
+        phase: 'ready',
+        ready: true,
+        destinationId: this.activeDestinationId,
+        percent: 100,
+        message: 'Tự động tải cache Drive đang tắt.',
+      };
+      return;
+    }
     const token = ++this.driveCacheWarmToken;
-    void this.runWarmDriveFileDiskCache(token);
+    this.driveCacheWarmStatus = {
+      phase: 'checking',
+      ready: false,
+      destinationId: this.activeDestinationId,
+      total: 0,
+      completed: 0,
+      cached: 0,
+      downloaded: 0,
+      failed: 0,
+      percent: 0,
+      message: 'Đang kiểm tra ảnh Google Drive cần tải về máy...',
+    };
+    void this.runWarmDriveFileDiskCache(token).catch((error) => {
+      if (token !== this.driveCacheWarmToken) return;
+      this.driveCacheWarmStatus = {
+        ...this.driveCacheWarmStatus,
+        phase: 'error',
+        ready: false,
+        message: `Không thể hoàn tất cache ảnh Drive: ${error instanceof Error ? error.message : error}`,
+      };
+    });
   }
 
   private collectDriveFileIdsForCacheWarm(): string[] {
@@ -215,10 +297,90 @@ export class GuideService implements OnApplicationBootstrap {
 
   private async runWarmDriveFileDiskCache(token: number): Promise<void> {
     const fileIds = this.collectDriveFileIdsForCacheWarm();
-    if (!fileIds.length) return;
-    await warmDriveFileDiskCache(fileIds, {
+    if (!fileIds.length) {
+      if (token === this.driveCacheWarmToken) {
+        this.driveCacheWarmStatus = {
+          ...this.driveCacheWarmStatus,
+          phase: 'ready',
+          ready: true,
+          percent: 100,
+          message: 'Không có ảnh Drive nào cần tải cache.',
+        };
+      }
+      return;
+    }
+    const warmed = await warmDriveFileDiskCache(fileIds, {
       concurrency: Math.min(Math.max(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 2), 1), 4),
       shouldCancel: () => token !== this.driveCacheWarmToken,
+      onProgress: (result) => {
+        if (token !== this.driveCacheWarmToken) return;
+        const completed = result.skipped + result.ok + result.fail;
+        this.driveCacheWarmStatus = {
+          phase: 'warming',
+          ready: false,
+          destinationId: this.activeDestinationId,
+          total: result.total,
+          completed,
+          cached: result.skipped,
+          downloaded: result.ok,
+          failed: result.fail,
+          percent: result.total ? Math.min(99, Math.round((completed / result.total) * 100)) : 0,
+          message: `Đang tải ảnh Drive vào cache (${completed}/${result.total})...`,
+        };
+      },
+    });
+    if (token !== this.driveCacheWarmToken || warmed.cancelled) return;
+    const completed = warmed.skipped + warmed.ok + warmed.fail;
+    this.driveCacheWarmStatus = {
+      phase: 'ready',
+      ready: true,
+      destinationId: this.activeDestinationId,
+      total: warmed.total,
+      completed,
+      cached: warmed.skipped,
+      downloaded: warmed.ok,
+      failed: warmed.fail,
+      percent: 100,
+      message: warmed.fail > 0
+        ? `Đã hoàn tất cache ảnh; ${warmed.fail} ảnh Drive không tải được và sẽ dùng ảnh dự phòng.`
+        : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
+    };
+  }
+
+  getDriveCacheWarmStatus(): DriveCacheWarmStatus {
+    const datasetIsReady = Boolean(this.workbookSource && this.workbookDerivedCache);
+    if (this.destinationDataLoading && !datasetIsReady) {
+      return {
+        ...this.driveCacheWarmStatus,
+        phase: this.driveCacheWarmStatus.phase === 'error' ? 'error' : this.driveCacheWarmStatus.phase,
+        ready: false,
+        destinationId: this.activeDestinationId,
+        message: this.driveCacheWarmStatus.phase === 'warming'
+          ? `Đang tải dữ liệu ${getDestinationConfig(this.activeDestinationId).label} và ${this.driveCacheWarmStatus.message.toLowerCase()}`
+          : `Đang tải dữ liệu Google Sheet (${getDestinationConfig(this.activeDestinationId).label})...`,
+      };
+    }
+    if (this.destinationDataError) {
+      return {
+        ...this.driveCacheWarmStatus,
+        phase: 'error',
+        ready: false,
+        destinationId: this.activeDestinationId,
+        message: this.destinationDataError,
+      };
+    }
+    return { ...this.driveCacheWarmStatus, destinationId: this.activeDestinationId };
+  }
+
+  private assertDriveCacheReady(): void {
+    const cacheStatus = this.getDriveCacheWarmStatus();
+    if (cacheStatus.ready) return;
+    throw new ServiceUnavailableException({
+      message: cacheStatus.phase === 'error'
+        ? `Dữ liệu điểm đến chưa sẵn sàng: ${cacheStatus.message}`
+        : 'Đang đồng bộ dữ liệu và ảnh Google Drive vào cache, tạm thời chưa thể tạo list. Vui lòng chờ thông báo hoàn tất.',
+      code: 'DRIVE_CACHE_WARMING',
+      cache: cacheStatus,
     });
   }
   // ──────────────────────────────────────────────────────────────────────────
@@ -312,6 +474,23 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   /**
+   * Kiểm tra nhanh disk cache (không tải mạng) — FE dùng để bỏ prefetch khi đã đủ ảnh.
+   */
+  getDriveFilesCacheStatus(fileIds: string[]): {
+    total: number;
+    cached: number;
+    missing: string[];
+  } {
+    const ids = [...new Set((fileIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+    const missing = listUncachedDriveFileIds(ids);
+    return {
+      total: ids.length,
+      cached: ids.length - missing.length,
+      missing,
+    };
+  }
+
+  /**
    * Máy mới / trước khi xuất: tải trước các fileId cần dùng vào disk cache
    * với concurrency thấp (tránh storm Drive lúc render hàng loạt).
    */
@@ -326,9 +505,21 @@ export class GuideService implements OnApplicationBootstrap {
     if (!ids.length) {
       return { total: 0, skipped: 0, ok: 0, fail: 0, cancelled: false };
     }
-    const concurrency = Math.min(Math.max(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 2), 1), 4);
-    console.log(`[drive-cache] Prefetch ${ids.length} ảnh trước khi xuất (concurrency=${concurrency})...`);
-    return warmDriveFileDiskCache(ids, { concurrency });
+    const missing = listUncachedDriveFileIds(ids);
+    if (!missing.length) {
+      console.log(`[drive-cache] Prefetch bỏ qua — đủ cache disk (${ids.length}/${ids.length}).`);
+      return { total: ids.length, skipped: ids.length, ok: 0, fail: 0, cancelled: false };
+    }
+    const concurrency = Math.min(Math.max(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 3), 1), 5);
+    console.log(`[drive-cache] Prefetch ${missing.length}/${ids.length} ảnh còn thiếu (concurrency=${concurrency})...`);
+    const warmed = await warmDriveFileDiskCache(missing, { concurrency });
+    return {
+      total: ids.length,
+      skipped: ids.length - missing.length + warmed.skipped,
+      ok: warmed.ok,
+      fail: warmed.fail,
+      cancelled: warmed.cancelled,
+    };
   }
 
   // ─── Dataset ──────────────────────────────────────────────────────────────
@@ -346,38 +537,81 @@ export class GuideService implements OnApplicationBootstrap {
       throw new BadRequestException('destination id khong hop le. Chi ho tro dalat, phanthiet hoac greenland.');
     }
 
-    if (nextId !== this.activeDestinationId) {
+    const switchingDestination = nextId !== this.activeDestinationId;
+    if (switchingDestination) {
       if (this.generatedListsLoaded) this.persistGeneratedLists();
       if (this.inventoryLoaded) this.persistInventory();
+      if (this.workbookSource) {
+        this.workbookSourceByDestination.set(this.activeDestinationId, this.workbookSource);
+      }
+      if (this.workbookDerivedCache) {
+        this.workbookDerivedCacheByDestination.set(this.activeDestinationId, this.workbookDerivedCache);
+      }
 
       this.activeDestinationId = nextId;
       this.saveActiveDestinationId(nextId);
       setActiveDestinationLocalize(nextId);
       this.resetDestinationScopedState();
-      this.workbookSource = null;
       this.lastSyncTime = 0;
-      this.invalidateDatasetCache({ immediate: true });
-      await this.syncWorkbookNow('doi nguon Google Sheet');
-      this.scheduleWarmDriveFileDiskCache();
-    } else if (!this.workbookSource) {
-      await this.syncWorkbookNow('tai du lieu lan dau');
+
+      this.workbookSource = this.workbookSourceByDestination.get(nextId) || null;
+      if (!this.workbookSource) {
+        this.workbookSource = this.loadWorkbookSnapshot(nextId);
+        if (this.workbookSource) {
+          this.workbookSourceByDestination.set(nextId, this.workbookSource);
+        }
+      }
+      this.workbookDerivedCache = this.workbookDerivedCacheByDestination.get(nextId) || null;
+      this.workbookDerivedCacheFresh = Boolean(this.workbookDerivedCache);
+      this.workbookDerivedCacheTime = this.workbookDerivedCache ? Date.now() : 0;
+      this.invalidateDatasetCache({ immediate: !this.workbookDerivedCache });
       this.scheduleWarmDriveFileDiskCache();
     }
 
-    const dataset = await this.getDataset({ refresh: true });
-    return {
-      active: this.getActiveDestinationSummary(),
-      dataset,
-    };
+    const needsFirstLoad = !this.workbookSource;
+    this.destinationDataLoading = needsFirstLoad;
+    this.destinationDataError = '';
+    try {
+      if (needsFirstLoad) {
+        await this.syncWorkbookNow(switchingDestination ? 'tai diem den lan dau' : 'tai du lieu lan dau');
+      }
+      const dataset = await this.getDataset();
+      if (this.workbookSource) {
+        this.workbookSourceByDestination.set(this.activeDestinationId, this.workbookSource);
+      }
+      if (this.workbookDerivedCache) {
+        this.workbookDerivedCacheByDestination.set(this.activeDestinationId, this.workbookDerivedCache);
+      }
+      return {
+        active: this.getActiveDestinationSummary(),
+        dataset,
+      };
+    } catch (error) {
+      this.destinationDataError = error instanceof Error ? error.message : String(error);
+      throw error;
+    } finally {
+      this.destinationDataLoading = false;
+    }
   }
 
   async getDataset(options: { refresh?: boolean } = {}): Promise<GuideDataset> {
+    const explicitRefresh = Boolean(options.refresh);
+    if (explicitRefresh) {
+      this.destinationDataLoading = true;
+      this.destinationDataError = '';
+    }
     try {
-      await this.prepareWorkbookForDataset(Boolean(options.refresh));
-      if (options.refresh) {
+      await this.prepareWorkbookForDataset(explicitRefresh);
+      if (explicitRefresh) {
         this.invalidateDatasetCache({ immediate: true });
       }
       const context = this.buildDatasetContext();
+      if (this.workbookSource) {
+        this.workbookSourceByDestination.set(this.activeDestinationId, this.workbookSource);
+      }
+      if (this.workbookDerivedCache) {
+        this.workbookDerivedCacheByDestination.set(this.activeDestinationId, this.workbookDerivedCache);
+      }
       const destination = getDestinationConfig(this.activeDestinationId);
       return {
         generatedAt: new Date().toISOString(),
@@ -418,6 +652,9 @@ export class GuideService implements OnApplicationBootstrap {
         decks: context.decks,
       };
     } catch (error) {
+      if (explicitRefresh) {
+        this.destinationDataError = error instanceof Error ? error.message : String(error);
+      }
       if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof ServiceUnavailableException) {
         throw error;
       }
@@ -428,6 +665,10 @@ export class GuideService implements OnApplicationBootstrap {
           ? message
           : `Không tải được dữ liệu mẫu: ${message}`,
       );
+    } finally {
+      if (explicitRefresh) {
+        this.destinationDataLoading = false;
+      }
     }
   }
 
@@ -579,6 +820,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
+    this.assertDriveCacheReady();
     this.ensureGeneratedListsLoaded();
     const deckId = String(request.deckId ?? '').trim();
     if (deckId === 'spotlight-partner') {
@@ -691,6 +933,7 @@ export class GuideService implements OnApplicationBootstrap {
   // ─── Batch list generation ────────────────────────────────────────────────
 
   async generateBatchLists(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    this.assertDriveCacheReady();
     const deckId = String(request.deckId ?? '').trim();
     if (deckId === 'spotlight-partner') {
       throw new BadRequestException('Mau Spotlight Doi tac tao list bang cach chon doi tac, khong tao batch tu caption chung.');
@@ -829,6 +1072,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   async generatePartnerSpotlight(request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
+    this.assertDriveCacheReady();
     const partnerId = String(request.partnerId ?? '').trim();
     const partnerName = String(request.partnerName ?? '').trim();
     if (!partnerId && !partnerName) {
@@ -921,12 +1165,13 @@ export class GuideService implements OnApplicationBootstrap {
    * options.immediate = true: xoá cache ngay (buộc lần đọc kế tiếp phải build lại đồng bộ trước khi
    * trả kết quả). Chỉ dùng cho hành động người dùng chủ động chờ dữ liệu mới (bấm "Làm mới", đổi điểm đến).
    *
-   * options.immediate = false (mặc định): stale-while-revalidate — vẫn phục vụ dữ liệu Sheet cũ ngay lập
-   * tức, và lên lịch build lại ở nền (debounce) để không chặn request hiện tại / không làm server "đơ".
+   * options.immediate = false (mặc định):
+   * - Session sticky (mặc định): bỏ qua — giữ dataset đã build lúc mở tool, không rebuild khi đang tạo/xuất.
+   * - Không sticky: stale-while-revalidate (phục vụ bản cũ + build nền).
    */
   private invalidateDatasetCache(options: { immediate?: boolean } = {}): void {
-    this.workbookDerivedCacheFresh = false;
     if (options.immediate) {
+      this.workbookDerivedCacheFresh = false;
       this.workbookDerivedCache = null;
       this.workbookDerivedCacheTime = 0;
       this.driveAccessCacheLoadedFor = null;
@@ -936,6 +1181,11 @@ export class GuideService implements OnApplicationBootstrap {
       }
       return;
     }
+    if (this.SESSION_STICKY_DATASET) {
+      // Sync nền / cập nhật Drive manifest không được làm gián đoạn tạo list + xuất file.
+      return;
+    }
+    this.workbookDerivedCacheFresh = false;
     this.scheduleBackgroundDerivedRebuild();
   }
 
@@ -955,16 +1205,19 @@ export class GuideService implements OnApplicationBootstrap {
 
   private ensureWorkbookDerivedContext(): WorkbookDerivedContext {
     const now = Date.now();
-    const isFresh = this.workbookDerivedCache
-      && this.workbookDerivedCacheFresh
-      && (now - this.workbookDerivedCacheTime) < this.DATASET_CACHE_TTL_MS;
-    if (isFresh) {
-      console.log('[cache] dataset context HIT');
-      return this.workbookDerivedCache as WorkbookDerivedContext;
-    }
-
     if (this.workbookDerivedCache) {
-      // Còn bản cũ (chỉ hết TTL hoặc vừa bị invalidate nhẹ) -> trả ngay, build lại ở nền.
+      // Session sticky: giữ nguyên bản đã build lúc mở tool cho mọi create/export trong phiên.
+      if (this.SESSION_STICKY_DATASET) {
+        console.log('[cache] dataset context HIT');
+        return this.workbookDerivedCache;
+      }
+      const isFresh = this.workbookDerivedCacheFresh
+        && (now - this.workbookDerivedCacheTime) < this.DATASET_CACHE_TTL_MS;
+      if (isFresh) {
+        console.log('[cache] dataset context HIT');
+        return this.workbookDerivedCache;
+      }
+      // Còn bản cũ (hết TTL hoặc soft-invalidate) -> trả ngay, build lại ở nền.
       console.log('[cache] dataset context STALE — dùng bản cũ, đang build lại ở nền');
       this.scheduleBackgroundDerivedRebuild();
       return this.workbookDerivedCache;
@@ -3112,6 +3365,14 @@ export class GuideService implements OnApplicationBootstrap {
 
   private async prepareWorkbookForDataset(forceRefresh: boolean): Promise<void> {
     if (!this.workbookSource) {
+      if (!forceRefresh) {
+        const snapshot = this.loadWorkbookSnapshot(this.activeDestinationId);
+        if (snapshot) {
+          this.workbookSource = snapshot;
+          this.workbookSourceByDestination.set(this.activeDestinationId, snapshot);
+          return;
+        }
+      }
       await this.syncWorkbookNow('tai du lieu lan dau');
       return;
     }
@@ -3154,9 +3415,10 @@ export class GuideService implements OnApplicationBootstrap {
       try {
         const result = await fetchWorkbookFromSheet(getDestinationConfig(this.activeDestinationId));
         this.workbookSource = result;
-        // Không invalidate ngay ở đây: refreshSheetDriveManifest() chạy ngay sau và sẽ tự invalidate khi
-        // xong (kể cả khi lỗi) — gộp lại thành đúng 1 lần build nền thay vì 2 lần build liên tiếp.
-        void this.refreshSheetDriveManifest(result);
+        this.workbookSourceByDestination.set(result.destinationId, result);
+        this.saveWorkbookSnapshot(result);
+        // Chờ manifest Drive xong trong cùng lượt sync để warmup build đúng 1 lần (không fire-and-forget rồi rebuild nền).
+        await this.refreshSheetDriveManifest(result);
         this.lastSyncTime = Date.now();
         console.log(`[sync] Da tai du lieu Google Sheet (${getDestinationConfig(this.activeDestinationId).label}): ${result.workbookName} (${result.bytes} bytes).`);
       } catch (error) {
@@ -3189,6 +3451,9 @@ export class GuideService implements OnApplicationBootstrap {
         const manifest = await buildSheetDriveManifest(source, this.loadSheetDriveManifest());
         writeSheetDriveManifest(this.dataRoot, manifest, source.destinationId);
         this.invalidateDatasetCache();
+        if (source.destinationId === this.activeDestinationId) {
+          this.scheduleWarmDriveFileDiskCache();
+        }
         console.log(`[sync] Dong bo anh Drive hoan tat: ${Object.keys(manifest.items).length} anh.`);
       } catch (error) {
         console.error('[sync] Dong bo anh Drive that bai:', error);
@@ -3247,6 +3512,49 @@ export class GuideService implements OnApplicationBootstrap {
       JSON.stringify({ totalItems, syncedAt: new Date().toISOString() }, null, 2),
       'utf-8',
     );
+  }
+
+  private workbookSnapshotPath(id: DestinationId): string {
+    return path.join(this.dataRoot, `workbook-cache.${id}.xlsx`);
+  }
+
+  private loadWorkbookSnapshot(id: DestinationId): SheetWorkbookSource | null {
+    const snapshotPath = this.workbookSnapshotPath(id);
+    if (!fs.existsSync(snapshotPath)) return null;
+    try {
+      const workbookBuffer = fs.readFileSync(snapshotPath);
+      if (!workbookBuffer.length) return null;
+      const config = getDestinationConfig(id);
+      const stat = fs.statSync(snapshotPath);
+      console.log(`[sync] Dung snapshot Sheet da tai truoc (${config.label}): ${snapshotPath}`);
+      return {
+        workbook: XLSX.read(workbookBuffer, { cellDates: false, type: 'buffer' }),
+        workbookName: config.workbookName,
+        destinationId: id,
+        bytes: workbookBuffer.byteLength,
+        fetchedAt: stat.mtimeMs,
+        sourceUrl: config.exportUrl,
+      };
+    } catch (error) {
+      console.warn(
+        `[sync] Khong doc duoc snapshot Sheet (${getDestinationConfig(id).label}), se tai lai khi can:`,
+        error instanceof Error ? error.message : error,
+      );
+      return null;
+    }
+  }
+
+  private saveWorkbookSnapshot(source: SheetWorkbookSource): void {
+    try {
+      this.ensureDataRoot();
+      const body = XLSX.write(source.workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+      fs.writeFileSync(this.workbookSnapshotPath(source.destinationId), body);
+    } catch (error) {
+      console.warn(
+        `[sync] Khong luu duoc snapshot Sheet (${getDestinationConfig(source.destinationId).label}):`,
+        error instanceof Error ? error.message : error,
+      );
+    }
   }
 
   private loadActiveDestinationId(): DestinationId {

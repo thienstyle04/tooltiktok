@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import * as path from 'node:path';
 import { getAppConfig } from '../../config';
-import { GuideService } from './guide.service';
+import { DriveCacheWarmStatus, GuideService } from './guide.service';
 import {
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
@@ -79,6 +79,11 @@ export class GuideController {
     return { status: 'ok' };
   }
 
+  @Get('api/drive-cache/status')
+  getDriveCacheWarmStatus(): DriveCacheWarmStatus {
+    return this.guideService.getDriveCacheWarmStatus();
+  }
+
   @Get('api/guide-data')
   getGuideData(@Query('refresh') refresh?: string): Promise<GuideDataset> {
     const shouldRefresh = ['1', 'true', 'yes'].includes(String(refresh ?? '').trim().toLowerCase());
@@ -118,6 +123,16 @@ export class GuideController {
   @Post('api/decks/generate-partner-spotlight')
   generatePartnerSpotlight(@Body() request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
     return this.guideService.generatePartnerSpotlight(request);
+  }
+
+  @Post('api/drive-files/cache-status')
+  @HttpCode(200)
+  driveFilesCacheStatus(@Body() body: { fileIds?: string[] }): {
+    total: number;
+    cached: number;
+    missing: string[];
+  } {
+    return this.guideService.getDriveFilesCacheStatus(Array.isArray(body?.fileIds) ? body.fileIds : []);
   }
 
   @Post('api/drive-files/prefetch')
