@@ -75,7 +75,8 @@ File cấu hình chính là `backend/.env`.
 
 ```env
 DEEPSEEK_API_KEY=sk-your-deepseek-api-key-here
-DALAT_AUTO_SYNC_SHEET=true
+DALAT_AUTO_SYNC_SHEET=false
+DALAT_SESSION_STICKY_DATASET=true
 
 # Nếu muốn đổi sang Google Sheet khác
 DALAT_FNB_SHEET_URL=https://docs.google.com/spreadsheets/d/.../edit
@@ -89,7 +90,9 @@ TIKTOK_REFERENCE_DIR=data/images/tiktok
 Ghi chú:
 
 - Không commit `backend/.env` vì file này có thể chứa API key.
-- `DALAT_AUTO_SYNC_SHEET=true` giúp backend tự đồng bộ Google Sheet khi khởi động.
+- Mặc định tool chỉ tải Google Sheet **một lần lúc mở**; tạo list / xuất file không rebuild Sheet nền.
+- Bấm **Làm mới** hoặc đổi điểm đến vẫn sync Sheet ngay.
+- `DALAT_AUTO_SYNC_SHEET=true` chỉ bật khi muốn tự kéo Sheet định kỳ (~10 phút/lần) trong lúc tool đang chạy.
 - Nếu Google Sheet public hoặc có quyền truy cập đúng, máy mới không cần file Excel local để lấy dữ liệu chính.
 - Sheet `Hinh_nen` đang được dùng làm nguồn ảnh nền cover cho các mẫu.
 
@@ -169,9 +172,9 @@ npm run sync:sheet
 
 ### Dữ liệu vẫn cũ sau khi sửa Google Sheet
 
-- Đảm bảo `DALAT_AUTO_SYNC_SHEET=true`.
-- Chạy thủ công `npm run sync:sheet` trong thư mục `backend`.
-- Khởi động lại `start.bat` nếu backend đang giữ cache cũ.
+- Bấm **Làm mới** trên giao diện (hoặc gọi `/api/guide-data?refresh=1`).
+- Hoặc tắt tool rồi mở lại `start.bat` để tải Sheet lần đầu của phiên mới.
+- Chỉ bật `DALAT_AUTO_SYNC_SHEET=true` nếu muốn tự kéo Sheet định kỳ khi tool đang chạy.
 
 ### Next.js báo còn dev server cũ
 

@@ -55,7 +55,7 @@ const BATCH_IMAGE_EXTENSION = 'png';
 const BATCH_IMAGE_QUALITY = 1;
 const BATCH_SOURCE_IMAGE_MAX_DIMENSION = 0;
 const BATCH_SOURCE_IMAGE_QUALITY = 1;
-const BATCH_IMAGE_PREPARE_CONCURRENCY = 4;
+const BATCH_IMAGE_PREPARE_CONCURRENCY = 8;
 const IMAGE_FETCH_TIMEOUT_MS = 22000;
 const IMAGE_READY_TIMEOUT_MS = 6000;
 const PAGE_RENDER_TIMEOUT_MS = 45000;
@@ -85,9 +85,9 @@ const EXPORT_QUALITY_PROFILES = Object.freeze({
     sourceImageMaxDimension: 3000,
     sourceImageFormat: 'image/jpeg',
     sourceImageQuality: 0.97,
-    imagePrepareConcurrency: 4,
+    imagePrepareConcurrency: 8,
     renderChunkSize: 8,
-    captureConcurrency: 4,
+    captureConcurrency: 6,
     preferHtml2Canvas: true,
     renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
   },
@@ -175,7 +175,12 @@ function collectDriveFileIdsFromLists(lists) {
   const ids = new Set();
   const visit = (value) => {
     if (!value) return;
-    if (typeof value === 'string') return;
+    if (typeof value === 'string') {
+      // coverImageUrls/coverImages là mảng chuỗi; trước đây các URL này bị bỏ
+      // qua nên cover 8 Feed có thể xuất trắng một phần trên máy chưa có cache.
+      collectDriveFileIdsFromValue(value, ids);
+      return;
+    }
     if (Array.isArray(value)) {
       value.forEach(visit);
       return;
@@ -193,28 +198,71 @@ function collectDriveFileIdsFromLists(lists) {
       visit(child);
     }
   };
-  for (const entry of lists || []) visit(entry?.list || entry);
+  for (const entry of lists || []) {
+    const list = entry?.list || entry;
+    visit(list);
+
+    // 8 Feed có nhiều ảnh trên cùng trang. Trên máy mới, nếu ảnh chính lỗi mà
+    // candidate chưa có trong disk cache, renderer phải tải gấp nhiều ảnh cùng
+    // lúc và dễ bị Drive rate-limit. Cache trước hai candidate đầu của mỗi ô.
+    for (const page of list?.pages || []) {
+      if (page?.layoutVariant !== 'grid-8-feed') continue;
+      for (const item of page?.items || []) {
+        for (const candidate of (item?.candidateImageUrls || []).slice(0, 2)) {
+          collectDriveFileIdsFromValue(candidate, ids);
+        }
+      }
+    }
+  }
   return [...ids];
 }
 
 /**
- * Máy mới: trước khi xuất, nhờ backend tải trước ảnh Drive với concurrency thấp
- * rồi ghi disk cache — tránh storm 12 request cùng lúc lúc render.
- * Chia lô nhỏ để không bị Next proxy cắt timeout (~2 phút/request).
+ * Trước khi xuất: chỉ tải ảnh Drive còn thiếu trên disk.
+ * Máy đã có cache → check nhanh rồi bỏ qua (không chờ prefetch từng lô).
  */
 async function prefetchDriveFilesForExport(fileIds, cb = {}) {
   const uniqueIds = [...new Set((fileIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
   if (!uniqueIds.length) return null;
   const setStatus = cb.setStatus || noop;
   const updateProgress = cb.updateProgress || noop;
-  const CHUNK = 36;
-  const summary = { total: uniqueIds.length, skipped: 0, ok: 0, fail: 0, cancelled: false, chunks: 0 };
+  const summary = { total: uniqueIds.length, skipped: 0, ok: 0, fail: 0, cancelled: false, chunks: 0, missing: 0 };
 
-  for (let offset = 0; offset < uniqueIds.length; offset += CHUNK) {
-    const chunk = uniqueIds.slice(offset, offset + CHUNK);
-    const done = Math.min(offset + chunk.length, uniqueIds.length);
-    setStatus(`Đang tải trước ảnh Drive ${done}/${uniqueIds.length} lên máy (máy mới)...`);
-    updateProgress(2 + (done / uniqueIds.length) * 4, `Đang tải trước ảnh ${done}/${uniqueIds.length}...`);
+  let missingIds = uniqueIds;
+  try {
+    setStatus(`Đang kiểm tra cache ảnh Drive (${uniqueIds.length})...`);
+    updateProgress(2, `Đang kiểm tra cache ảnh ${uniqueIds.length}...`);
+    const statusResponse = await fetch('/api/drive-files/cache-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileIds: uniqueIds }),
+      signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+        ? AbortSignal.timeout(60 * 1000)
+        : undefined,
+    });
+    if (statusResponse.ok) {
+      const status = await statusResponse.json();
+      missingIds = Array.isArray(status?.missing) ? status.missing.map((id) => String(id || '').trim()).filter(Boolean) : uniqueIds;
+      summary.skipped = Number(status?.cached || Math.max(0, uniqueIds.length - missingIds.length));
+      summary.missing = missingIds.length;
+      if (!missingIds.length) {
+        console.log(`[export] Prefetch bỏ qua — đủ cache disk (${summary.skipped}/${summary.total}).`);
+        setStatus(`Cache ảnh sẵn sàng (${summary.skipped}/${summary.total}).`);
+        return summary;
+      }
+    }
+  } catch (error) {
+    console.warn(`[export] Cache-status lỗi, fallback prefetch đầy đủ: ${error?.message || error}`);
+    missingIds = uniqueIds;
+  }
+
+  const CHUNK = 48;
+  setStatus(`Đang tải ${missingIds.length}/${uniqueIds.length} ảnh Drive còn thiếu...`);
+  for (let offset = 0; offset < missingIds.length; offset += CHUNK) {
+    const chunk = missingIds.slice(offset, offset + CHUNK);
+    const done = Math.min(offset + chunk.length, missingIds.length);
+    setStatus(`Đang tải trước ảnh Drive còn thiếu ${done}/${missingIds.length}...`);
+    updateProgress(2 + (done / missingIds.length) * 4, `Đang tải ảnh còn thiếu ${done}/${missingIds.length}...`);
     try {
       const response = await fetch('/api/drive-files/prefetch', {
         method: 'POST',
@@ -225,7 +273,7 @@ async function prefetchDriveFilesForExport(fileIds, cb = {}) {
           : undefined,
       });
       if (!response.ok) {
-        console.warn(`[export] Prefetch Drive chunk HTTP ${response.status} (${done}/${uniqueIds.length})`);
+        console.warn(`[export] Prefetch Drive chunk HTTP ${response.status} (${done}/${missingIds.length})`);
         summary.fail += chunk.length;
         continue;
       }
@@ -235,13 +283,13 @@ async function prefetchDriveFilesForExport(fileIds, cb = {}) {
       summary.fail += Number(result.fail || 0);
       summary.chunks += 1;
     } catch (error) {
-      console.warn(`[export] Prefetch Drive chunk lỗi (${done}/${uniqueIds.length}): ${error?.message || error}`);
+      console.warn(`[export] Prefetch Drive chunk lỗi (${done}/${missingIds.length}): ${error?.message || error}`);
       summary.fail += chunk.length;
     }
   }
 
   console.log(
-    `[export] Prefetch Drive xong: total=${summary.total} skipped=${summary.skipped} ok=${summary.ok} fail=${summary.fail} chunks=${summary.chunks}`,
+    `[export] Prefetch Drive xong: total=${summary.total} missing=${summary.missing || missingIds.length} skipped=${summary.skipped} ok=${summary.ok} fail=${summary.fail} chunks=${summary.chunks}`,
   );
   return summary;
 }
@@ -1090,7 +1138,6 @@ async function prepareImageTarget(target, options = {}) {
 }
 
 async function prepareImageTargets(targets, options = {}) {
-  const concurrency = Number(options.concurrency || 10);
   const fallbackContext = options.fallbackContext || buildImageFallbackContext(targets);
   // Claim theo từng trang (root) — tránh 4 ô grid dùng chung 1 ảnh candidate khi xuất.
   const claimedByRoot = new WeakMap();
@@ -1111,7 +1158,9 @@ async function prepareImageTargets(targets, options = {}) {
   const handles = [];
   for (const [root, rootTargets] of byRoot.entries()) {
     const claimedSources = getClaimedSet(root);
-    const prepared = await mapWithConcurrency(rootTargets, concurrency, (target) => prepareImageTarget(target, {
+    // Trong cùng một trang phải claim candidate tuần tự. Chạy song song khiến
+    // hai ô cùng thấy một candidate "chưa dùng" rồi lấy trùng ảnh khi primary fail.
+    const prepared = await mapWithConcurrency(rootTargets, 1, (target) => prepareImageTarget(target, {
       ...options,
       fallbackContext,
       claimedSources,

@@ -21,10 +21,27 @@ import PageInspector from './PageInspector';
 import PreviewDashboardPanel from './PreviewDashboardPanel';
 import ProgressBar from './ProgressBar';
 import Sidebar from './Sidebar';
+import SettingsPanel from './SettingsPanel';
 import TemplateGalleryPanel from './TemplateGalleryPanel';
 
 const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 const SPOTLIGHT_PARTNER_DECK_ID = 'spotlight-partner';
+const BUILTIN_DESTINATION_FALLBACKS = [
+  { id: 'dalat', label: 'Đà Lạt', shortLabel: 'ĐL' },
+  { id: 'phanthiet', label: 'Phan Thiết', shortLabel: 'PT' },
+  { id: 'greenland', label: 'Green Land', shortLabel: 'GL' },
+];
+
+function mergeDestinations(...lists) {
+  const merged = new Map();
+  for (const list of lists) {
+    for (const entry of list || []) {
+      if (!entry?.id) continue;
+      merged.set(entry.id, { ...(merged.get(entry.id) || {}), ...entry });
+    }
+  }
+  return [...merged.values()];
+}
 
 async function readApiPayload(response) {
   const text = await response.text();
@@ -267,20 +284,6 @@ function deckCatalogSignature(dataset) {
     .join('|');
 }
 
-function formatSheetSyncTime(iso) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '—';
-  }
-}
-
 export default function DeckStudio({ initialDataset = null }) {
   const initialDeck = initialDataset?.decks?.[0] || null;
   const initialList = initialDeck?.lists?.[0] || null;
@@ -441,28 +444,27 @@ export default function DeckStudio({ initialDataset = null }) {
       });
       const payload = await readApiPayload(response);
       if (!response.ok) throw new Error(apiErrorMessage(payload, `Không chuyển được nguồn Sheet: HTTP ${response.status}`));
-      setDestinationInfo({
-        active: {
-          ...payload.active,
-          totalItems: payload.dataset?.source?.totalItems,
-          syncedAt: payload.dataset?.generatedAt,
-        },
-        destinations: destinationInfo?.destinations?.length
-          ? destinationInfo.destinations.map((entry) => (
-            entry.id === payload.active?.id
-              ? {
-                ...entry,
-                totalItems: payload.dataset?.source?.totalItems,
-                syncedAt: payload.dataset?.generatedAt,
-              }
-              : entry
-          ))
-          : [{
-            ...payload.active,
-            totalItems: payload.dataset?.source?.totalItems,
-            syncedAt: payload.dataset?.generatedAt,
-          }],
-      });
+      let latestDestinationInfo = null;
+      try {
+        const destinationsResponse = await apiFetch('/api/destinations', { cache: 'no-store' });
+        if (destinationsResponse.ok) latestDestinationInfo = await destinationsResponse.json();
+      } catch {
+        // Giữ danh sách hiện có; fallback mặc định bên dưới bảo đảm ba nguồn gốc không biến mất.
+      }
+      const updatedActive = {
+        ...payload.active,
+        totalItems: payload.dataset?.source?.totalItems,
+        syncedAt: payload.dataset?.generatedAt,
+      };
+      setDestinationInfo((previous) => ({
+        active: updatedActive,
+        destinations: mergeDestinations(
+          BUILTIN_DESTINATION_FALLBACKS,
+          previous?.destinations,
+          latestDestinationInfo?.destinations,
+          [updatedActive],
+        ),
+      }));
       writeCachedDataset(payload.dataset);
       markCatalogRevisionStored();
       applyDataset(payload.dataset, currentSelectionRef.current);
@@ -472,7 +474,39 @@ export default function DeckStudio({ initialDataset = null }) {
       setSwitchingDestination(false);
       setRefreshing(false);
     }
-  }, [applyDataset, destinationInfo, switchingDestination]);
+  }, [applyDataset, destinationInfo?.active?.id, switchingDestination]);
+
+  const addDestination = useCallback(async ({ label, sheetUrl }) => {
+    if (switchingDestination) return;
+    setSwitchingDestination(true);
+    setRefreshing(true);
+    setStatus(`Đang kiểm tra và tải Google Sheet ${label}...`);
+    try {
+      const response = await apiFetch('/api/destinations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, sheetUrl }),
+        cache: 'no-store',
+      });
+      const payload = await readApiPayload(response);
+      if (!response.ok) {
+        throw new Error(apiErrorMessage(payload, `Không thêm được Google Sheet: HTTP ${response.status}`));
+      }
+      clearCachedDataset();
+      setDestinationInfo({
+        active: payload.active,
+        destinations: payload.destinations || [],
+      });
+      writeCachedDataset(payload.dataset);
+      markCatalogRevisionStored();
+      applyDataset(payload.dataset, currentSelectionRef.current);
+      setStatus(`Đã thêm và chuyển sang ${payload.active?.label || label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
+      return payload.active;
+    } finally {
+      setSwitchingDestination(false);
+      setRefreshing(false);
+    }
+  }, [applyDataset, switchingDestination]);
 
   useEffect(() => {
     const stored = readStoredSelection();
@@ -1270,6 +1304,11 @@ export default function DeckStudio({ initialDataset = null }) {
     setCaptionToolsVisible(false);
   }, []);
 
+  const openSettingsView = useCallback(() => {
+    setActiveView('settings');
+    setCaptionToolsVisible(false);
+  }, []);
+
   const openDeleteView = useCallback(() => {
     setActiveView('delete');
     setCaptionToolsVisible(false);
@@ -1288,23 +1327,19 @@ export default function DeckStudio({ initialDataset = null }) {
     activeView === 'preview' || activeView === 'export' || activeView === 'delete' ? 'preview-mode' : '',
     activeView === 'caption' ? 'caption-mode' : '',
     activeView === 'data' ? 'data-mode' : '',
+    activeView === 'settings' ? 'settings-mode' : '',
   ].filter(Boolean).join(' ');
 
   const activeDestinationId = destinationInfo?.active?.id || dataset?.source?.destinationId || 'dalat';
-  const destinationOptions = destinationInfo?.destinations?.length
-    ? destinationInfo.destinations
-    : [
-      { id: 'dalat', label: 'Đà Lạt', shortLabel: 'ĐL' },
-      { id: 'phanthiet', label: 'Phan Thiết', shortLabel: 'PT' },
-      { id: 'greenland', label: 'Green Land', shortLabel: 'GL' },
-    ];
+  const destinationOptions = mergeDestinations(
+    BUILTIN_DESTINATION_FALLBACKS,
+    destinationInfo?.destinations,
+  );
   const studioTitle = destinationInfo?.active?.label || dataset?.source?.destinationLabel || 'Carousel Studio';
   const studioShort = destinationInfo?.active?.shortLabel
     || destinationOptions.find((entry) => entry.id === activeDestinationId)?.shortLabel
     || 'CS';
   const destinationScrollBusy = busy || refreshing || switchingDestination;
-  const activeDestinationIndex = Math.max(0, destinationOptions.findIndex((entry) => entry.id === activeDestinationId));
-  const destinationCount = Math.max(destinationOptions.length, 1);
   const cacheDestinationShortLabel = {
     dalat: 'ĐL',
     phanthiet: 'PT',
@@ -1316,11 +1351,6 @@ export default function DeckStudio({ initialDataset = null }) {
       return dataset.source.totalItems;
     }
     return entry.totalItems;
-  };
-
-  const formatDestinationCount = (count) => {
-    if (typeof count === 'number' && Number.isFinite(count)) return `${count} địa điểm`;
-    return 'Chưa sync';
   };
 
   return (
@@ -1357,6 +1387,16 @@ export default function DeckStudio({ initialDataset = null }) {
             <p className="cache-warm-note">
               Tạm thời chưa thể sinh list. Vui lòng giữ ứng dụng mở cho đến khi quá trình hoàn tất.
             </p>
+            {driveCacheStatus.phase === 'error' ? (
+              <button
+                type="button"
+                className="toolbar-button primary cache-retry-button"
+                disabled={refreshing}
+                onClick={() => loadDataset('Đang thử tải lại dữ liệu...', {}, true).catch((error) => setStatus(error.message))}
+              >
+                {refreshing ? 'Đang thử lại...' : 'Thử lại'}
+              </button>
+            ) : null}
           </section>
         </div>
       ) : null}
@@ -1376,6 +1416,7 @@ export default function DeckStudio({ initialDataset = null }) {
         onOpenCaption={openCaptionView}
         onOpenExport={openExportView}
         onOpenData={openDataView}
+        onOpenSettings={openSettingsView}
         onOpenDelete={openDeleteView}
       />
 
@@ -1399,69 +1440,6 @@ export default function DeckStudio({ initialDataset = null }) {
               <span>{activeList?.pages?.length || 0} trang</span>
               <span>{activePageItems.length} dữ liệu</span>
               <span>{activePartnerCount} đối tác</span>
-            </div>
-          </div>
-          <div className="toolbar-actions">
-            <div
-              className="destination-slider"
-              aria-label="Chọn nguồn Google Sheet"
-              style={{
-                '--dest-count': destinationCount,
-                '--active-index': activeDestinationIndex,
-              }}
-            >
-              <p className="destination-slider-label">Chọn dữ liệu</p>
-              <div
-                className="destination-slider-switch"
-                role="listbox"
-                aria-label="Danh sách điểm đến"
-                data-active={activeDestinationId}
-              >
-                <span className="destination-slider-thumb" aria-hidden="true" />
-                {destinationOptions.map((entry) => {
-                  const isActive = entry.id === activeDestinationId;
-                  const itemCount = resolveDestinationCount(entry);
-                  return (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      role="option"
-                      aria-selected={isActive}
-                      className={`destination-slider-option${isActive ? ' is-active' : ''}`}
-                      data-destination={entry.id}
-                      disabled={destinationScrollBusy}
-                      onClick={() => switchDestination(entry.id).catch((error) => setStatus(error.message))}
-                      title={`Dùng Google Sheet ${entry.label}${typeof itemCount === 'number' ? ` (${itemCount} địa điểm)` : ''}`}
-                    >
-                      <span className="destination-slider-badge">{entry.shortLabel || entry.label.slice(0, 2)}</span>
-                      <span className="destination-slider-copy">
-                        <span className="destination-slider-name">{entry.label}</span>
-                        <span className="destination-slider-count">{formatDestinationCount(itemCount)}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="destination-slider-rail" aria-hidden="true">
-                <span className="destination-slider-rail-track" />
-                <span className="destination-slider-rail-thumb" />
-              </div>
-              <div className="destination-slider-meta">
-                <span className="sync-meta" title={dataset?.generatedAt || ''}>
-                  {destinationScrollBusy
-                    ? 'Đang sync Sheet...'
-                    : `Cập nhật ${formatSheetSyncTime(dataset?.generatedAt)}`}
-                </span>
-                <button
-                  id="refreshBtn"
-                  className="toolbar-button"
-                  type="button"
-                  disabled={destinationScrollBusy}
-                  onClick={() => loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message))}
-                >
-                  {refreshing ? 'Đang sync...' : 'Làm mới'}
-                </button>
-              </div>
             </div>
           </div>
         </header>
@@ -1490,6 +1468,26 @@ export default function DeckStudio({ initialDataset = null }) {
               dataset={dataset}
               activeDeckId={activeDeckId}
               onPreviewDeck={previewDeck}
+            />
+          </div>
+        ) : activeView === 'settings' ? (
+          <div className={workspaceClasses}>
+            <SettingsPanel
+              activeDestinationId={activeDestinationId}
+              destinations={destinationOptions.map((entry) => ({
+                ...entry,
+                totalItems: resolveDestinationCount(entry),
+              }))}
+              cacheStatus={driveCacheStatus}
+              busy={destinationScrollBusy}
+              refreshing={refreshing}
+              onDestinationChange={(destinationId) => {
+                switchDestination(destinationId).catch((error) => setStatus(error.message));
+              }}
+              onAddDestination={addDestination}
+              onRefresh={() => {
+                loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message));
+              }}
             />
           </div>
         ) : activeView === 'caption' ? (

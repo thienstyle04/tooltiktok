@@ -148,7 +148,7 @@ export async function warmDriveFileDiskCache(
     onProgress?: (result: WarmDriveFileDiskCacheResult) => void;
   } = {},
 ): Promise<WarmDriveFileDiskCacheResult> {
-  const concurrency = Math.min(Math.max(Number(options.concurrency) || 2, 1), 4);
+  const concurrency = Math.min(Math.max(Number(options.concurrency) || 4, 1), 4);
   const uniqueIds = [...new Set(fileIds.map((id) => String(id || '').trim()).filter(Boolean))];
   const result: WarmDriveFileDiskCacheResult = {
     total: uniqueIds.length,

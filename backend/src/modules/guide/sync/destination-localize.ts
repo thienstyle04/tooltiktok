@@ -18,7 +18,7 @@ export interface DestinationMarketingCopy {
   hashtags: string[];
 }
 
-export const DESTINATION_MARKETING_COPY: Record<DestinationId, DestinationMarketingCopy> = {
+export const DESTINATION_MARKETING_COPY: Record<string, DestinationMarketingCopy> = {
   dalat: {
     label: 'Đà Lạt',
     labelUpper: 'ĐÀ LẠT',
@@ -128,7 +128,7 @@ export function isDalatHashtag(tag: string): boolean {
 }
 
 /** 2 hashtag cuối (vị trí 4–5) — cố định theo từng mẫu deck. 3 hashtag đầu lấy từ `copy.hashtags`. */
-export const DECK_HASHTAG_EXTRAS: Record<DestinationId, Record<string, readonly [string, string]>> = {
+export const DECK_HASHTAG_EXTRAS: Record<string, Record<string, readonly [string, string]>> = {
   dalat: {
     'itinerary-3n2d': ['#lichtrinhdalat', '#3n2ddalat'],
     'budget-3n2d': ['#72hdalat', '#dulichdalat'],
@@ -226,7 +226,7 @@ export function getDeckHashtagExtras(deckId: string, id: DestinationId = activeD
   return [copy.hashtags[3] || '', copy.hashtags[4] || ''].filter(Boolean) as [string, string];
 }
 
-export const TONE_HASHTAG_SUGGESTIONS: Record<DestinationId, Record<string, string[]>> = {
+export const TONE_HASHTAG_SUGGESTIONS: Record<string, Record<string, string[]>> = {
   dalat: {
     gen_z: ['#checkindalat', '#anchoidalat'],
     tinh_te: ['#dalatchill', '#dalatnhenhang'],
@@ -315,7 +315,37 @@ export function getActiveDestinationLocalize(): DestinationId {
 }
 
 export function getMarketingCopy(id: DestinationId = activeDestinationId): DestinationMarketingCopy {
-  return DESTINATION_MARKETING_COPY[id];
+  const existing = DESTINATION_MARKETING_COPY[id];
+  if (existing) return existing;
+
+  const config = getDestinationConfig(id);
+  const label = config.label;
+  const labelUpper = label.toLocaleUpperCase('vi-VN');
+  const hashtagKey = label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+  const tag = hashtagKey || 'dulich';
+  const customCopy: DestinationMarketingCopy = {
+    label,
+    labelUpper,
+    shortLabel: config.shortLabel,
+    budgetCoverTitle: `"72H" Ở ${labelUpper} VỚI 3TR`,
+    budgetTableTitle: `${labelUpper} 3 NGÀY 2 ĐÊM`,
+    budgetBusInActivity: `Di chuyển đến ${label}`,
+    budgetBusInAddress: `Bến xe / trung tâm ${label}`,
+    budgetBusInCost: 'Chi phí tùy thời điểm',
+    budgetBusOutActivity: 'Check out, di chuyển về lại',
+    budgetBusOutAddress: `Bến xe / trung tâm ${label}`,
+    povCoverTitle: `POV: có 3 ngày\nvi vu khắp ${label}`,
+    povCoverSubtitle: `${tag}. [gợi ý local guide ngắn ngày]`,
+    captionBodyFallback: `Lưu list này để có lịch đi ${label} gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.`,
+    hashtags: [`#riviu${tag}`, `#${tag}`, `#${tag}review`, `#72h${tag}`, `#dulich${tag}`],
+  };
+  DESTINATION_MARKETING_COPY[id] = customCopy;
+  return customCopy;
 }
 
 export function cityLabel(id: DestinationId = activeDestinationId): string {
@@ -350,8 +380,8 @@ export function localizeText(text: string, id: DestinationId = activeDestination
     .replace(/ĐÀ LẠT/g, copy.labelUpper)
     .replace(/Đà Lạt/g, copy.label)
     .replace(/đà lạt/g, copy.label.toLowerCase())
-    .replace(/\bdalat\b/gi, 'phanthiet')
-    .replace(/\bSG - ĐL\b/g, 'SG - PT');
+    .replace(/\bdalat\b/gi, normalizeHashtagKey(copy.hashtags[1]) || 'dulich')
+    .replace(/\bSG - ĐL\b/g, `SG - ${copy.shortLabel}`);
 
   return result;
 }

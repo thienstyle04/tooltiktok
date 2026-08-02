@@ -221,6 +221,20 @@ body {
   background: currentColor;
 }
 
+.side-icon.settings::before {
+  inset: 2px;
+  border-radius: 50%;
+}
+
+.side-icon.settings::after {
+  left: 7px;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 .side-icon.delete::before {
   left: 4px;
   right: 4px;

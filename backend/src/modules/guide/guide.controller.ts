@@ -5,6 +5,8 @@ import { DriveCacheWarmStatus, GuideService } from './guide.service';
 import {
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
+  AddDestinationRequest,
+  AddDestinationResponse,
   DestinationListResponse,
   GenerateBatchListsRequest,
   GenerateBatchListsResponse,
@@ -98,6 +100,11 @@ export class GuideController {
   @Post('api/destination')
   setDestination(@Body() request: SetDestinationRequest): Promise<SetDestinationResponse> {
     return this.guideService.setActiveDestination(request);
+  }
+
+  @Post('api/destinations')
+  addDestination(@Body() request: AddDestinationRequest): Promise<AddDestinationResponse> {
+    return this.guideService.addDestination(request);
   }
 
   @Get('api/partners')
