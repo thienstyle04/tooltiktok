@@ -1,4 +1,4 @@
-export type DestinationId = 'dalat' | 'phanthiet' | 'greenland';
+export type DestinationId = string;
 
 export interface DestinationConfig {
   id: DestinationId;
@@ -60,14 +60,30 @@ export const DESTINATIONS: Record<DestinationId, DestinationConfig> = {
   },
 };
 
+export function getDestinationList(): DestinationConfig[] {
+  return Object.values(DESTINATIONS);
+}
+
+/** Danh sách mặc định để tương thích các công cụ audit chạy độc lập. Runtime dùng getDestinationList(). */
 export const DESTINATION_LIST: DestinationConfig[] = Object.values(DESTINATIONS);
 
 export function isDestinationId(value: string): value is DestinationId {
-  return value === 'dalat' || value === 'phanthiet' || value === 'greenland';
+  return Boolean(value && DESTINATIONS[value]);
 }
 
 export function getDestinationConfig(id: DestinationId): DestinationConfig {
-  return DESTINATIONS[id];
+  const config = DESTINATIONS[id];
+  if (!config) throw new Error(`Destination "${id}" is not configured.`);
+  return config;
+}
+
+export function registerDestination(config: DestinationConfig): void {
+  DESTINATIONS[config.id] = config;
+}
+
+export function unregisterDestination(id: DestinationId): void {
+  if (id === 'dalat' || id === 'phanthiet' || id === 'greenland') return;
+  delete DESTINATIONS[id];
 }
 
 export function isPartnerFirstDestination(id: DestinationId): boolean {

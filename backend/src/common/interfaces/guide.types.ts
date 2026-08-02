@@ -1,4 +1,4 @@
-export type DestinationId = 'dalat' | 'phanthiet' | 'greenland';
+export type DestinationId = string;
 
 export interface DestinationSummary {
   id: DestinationId;
@@ -21,6 +21,15 @@ export interface SetDestinationRequest {
 export interface SetDestinationResponse {
   active: DestinationSummary;
   dataset: GuideDataset;
+}
+
+export interface AddDestinationRequest {
+  label: string;
+  sheetUrl: string;
+}
+
+export interface AddDestinationResponse extends SetDestinationResponse {
+  destinations: DestinationSummary[];
 }
 
 export type SectionKey =

@@ -47,8 +47,12 @@ if not exist "backend\.env" (
 )
 findstr /b /c:"DALAT_AUTO_SYNC_SHEET=" "backend\.env" >nul 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo DALAT_AUTO_SYNC_SHEET=true>>"backend\.env"
-    echo ^> Da bat tu dong dong bo Google Sheet trong backend\.env.
+    echo DALAT_AUTO_SYNC_SHEET=false>>"backend\.env"
+    echo ^> Da tat sync Sheet dinh ky (chi tai 1 lan luc mo tool). Bat lai bang DALAT_AUTO_SYNC_SHEET=true neu can.
+)
+findstr /b /c:"DALAT_SESSION_STICKY_DATASET=" "backend\.env" >nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    echo DALAT_SESSION_STICKY_DATASET=true>>"backend\.env"
 )
 echo.
 

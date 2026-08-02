@@ -110,7 +110,8 @@ $readmeLines = @(
     'LUU Y KHAC:',
     '- Goi nay KHONG co node_modules. setup.bat se tu cai.',
     '- Goi nay KHONG co backend/.env (bao mat). Copy tay tu may cu.',
-    '- Du lieu Sheet tu dong sync neu DALAT_AUTO_SYNC_SHEET=true va co mang.',
+    '- Du lieu Sheet: mac dinh chi tai 1 lan luc mo tool. Bat DALAT_AUTO_SYNC_SHEET=true neu muon sync dinh ky.',
+    '- Bam "Lam moi" tren giao dien khi can keo Sheet moi ngay.',
     '',
     "Tao luc: $timestamp"
 )

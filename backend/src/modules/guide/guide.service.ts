@@ -7,6 +7,8 @@ import * as XLSX from 'xlsx';
 
 import {
   CaptionBlocks,
+  AddDestinationRequest,
+  AddDestinationResponse,
   CoverPage,
   DatasetBuildContext,
   DeckPage,
@@ -64,9 +66,12 @@ import { DriveFileAsset, clearDriveAccessibilityCache, configureDriveFileDiskCac
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
   DEFAULT_DESTINATION_ID,
-  DESTINATION_LIST,
+  DestinationConfig,
+  getDestinationList,
   getDestinationConfig,
   isDestinationId,
+  registerDestination,
+  unregisterDestination,
   toDestinationInfo,
 } from './sync/destination-config';
 import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
@@ -126,6 +131,7 @@ export class GuideService implements OnApplicationBootstrap {
       : path.resolve(this.workspaceRoot, 'data/images/tiktok'));
   private readonly imageMappingPath = path.join(this.dataRoot, 'image-mapping.json');
   private readonly activeDestinationPath = path.join(this.dataRoot, 'active-destination.json');
+  private readonly customDestinationsPath = path.join(this.dataRoot, 'custom-destinations.json');
   private activeDestinationId: DestinationId = DEFAULT_DESTINATION_ID;
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
   private generatedListsLoaded = false;
@@ -182,6 +188,7 @@ export class GuideService implements OnApplicationBootstrap {
   };
 
   constructor() {
+    this.loadCustomDestinations();
     this.activeDestinationId = this.loadActiveDestinationId();
     this.driveCacheWarmStatus.destinationId = this.activeDestinationId;
     setActiveDestinationLocalize(this.activeDestinationId);
@@ -310,7 +317,7 @@ export class GuideService implements OnApplicationBootstrap {
       return;
     }
     const warmed = await warmDriveFileDiskCache(fileIds, {
-      concurrency: Math.min(Math.max(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 2), 1), 4),
+      concurrency: Math.min(Math.max(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 4), 1), 4),
       shouldCancel: () => token !== this.driveCacheWarmToken,
       onProgress: (result) => {
         if (token !== this.driveCacheWarmToken) return;
@@ -527,14 +534,70 @@ export class GuideService implements OnApplicationBootstrap {
   getDestinations(): DestinationListResponse {
     return {
       active: this.getActiveDestinationSummary(),
-      destinations: DESTINATION_LIST.map((entry) => this.getDestinationSummary(entry.id)),
+      destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
     };
+  }
+
+  async addDestination(request: AddDestinationRequest): Promise<AddDestinationResponse> {
+    const label = String(request?.label || '').replace(/\s+/g, ' ').trim();
+    if (label.length < 2 || label.length > 60) {
+      throw new BadRequestException('Tên nguồn dữ liệu phải có từ 2 đến 60 ký tự.');
+    }
+
+    const sheet = this.parseGoogleSheetUrl(request?.sheetUrl);
+    const duplicate = getDestinationList().find((entry) => this.extractSheetId(entry.sheetUrl) === sheet.sheetId);
+    if (duplicate) {
+      throw new BadRequestException(`Google Sheet này đã được thêm với tên "${duplicate.label}".`);
+    }
+
+    const id = `sheet-${stableHash(sheet.sheetId).toString(36)}`;
+    const shortLabel = this.createDestinationShortLabel(label);
+    const config: DestinationConfig = {
+      id,
+      label,
+      shortLabel,
+      sheetUrl: sheet.sheetUrl,
+      exportUrl: sheet.exportUrl,
+      workbookName: `Google Sheet - ${label}`,
+    };
+    const previousDestinationId = this.activeDestinationId;
+
+    let source: SheetWorkbookSource;
+    try {
+      source = await fetchWorkbookFromSheet(config);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BadRequestException(
+        `${message}. Hãy kiểm tra link và cấp quyền "Bất kỳ ai có đường liên kết đều có thể xem".`,
+      );
+    }
+
+    registerDestination(config);
+    try {
+      this.persistCustomDestinations();
+      this.workbookSourceByDestination.set(id, source);
+      this.saveWorkbookSnapshot(source);
+      const switched = await this.setActiveDestination({ id });
+      return {
+        ...switched,
+        destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
+      };
+    } catch (error) {
+      if (this.activeDestinationId === id && isDestinationId(previousDestinationId)) {
+        await this.setActiveDestination({ id: previousDestinationId }).catch(() => undefined);
+      }
+      unregisterDestination(id);
+      this.workbookSourceByDestination.delete(id);
+      this.workbookDerivedCacheByDestination.delete(id);
+      this.persistCustomDestinations();
+      throw error;
+    }
   }
 
   async setActiveDestination(request: SetDestinationRequest): Promise<SetDestinationResponse> {
     const nextId = String(request?.id ?? '').trim();
     if (!isDestinationId(nextId)) {
-      throw new BadRequestException('destination id khong hop le. Chi ho tro dalat, phanthiet hoac greenland.');
+      throw new BadRequestException('Nguồn dữ liệu không tồn tại hoặc đã bị xóa.');
     }
 
     const switchingDestination = nextId !== this.activeDestinationId;
@@ -3472,6 +3535,81 @@ export class GuideService implements OnApplicationBootstrap {
 
   private captionBodyFallback(): string {
     return getMarketingCopy(this.activeDestinationId).captionBodyFallback;
+  }
+
+  private extractSheetId(value: string): string {
+    const match = String(value || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    return match?.[1] || '';
+  }
+
+  private parseGoogleSheetUrl(value: unknown): { sheetId: string; sheetUrl: string; exportUrl: string } {
+    const raw = String(value || '').trim();
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      throw new BadRequestException('Link Google Sheet không hợp lệ.');
+    }
+    if (parsed.protocol !== 'https:' || parsed.hostname !== 'docs.google.com') {
+      throw new BadRequestException('Chỉ hỗ trợ link Google Sheet từ docs.google.com.');
+    }
+    const sheetId = this.extractSheetId(parsed.pathname);
+    if (!sheetId) {
+      throw new BadRequestException('Không tìm thấy mã Google Sheet trong link.');
+    }
+    const gid = parsed.searchParams.get('gid') || new URLSearchParams(parsed.hash.replace(/^#/, '')).get('gid');
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit${gid ? `?gid=${encodeURIComponent(gid)}#gid=${encodeURIComponent(gid)}` : ''}`;
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+    return { sheetId, sheetUrl, exportUrl };
+  }
+
+  private createDestinationShortLabel(label: string): string {
+    const words = label.split(/\s+/).filter(Boolean);
+    const initials = words.map((word) => [...word][0] || '').join('');
+    const value = (initials.length >= 2 ? initials : label.slice(0, 2)).toLocaleUpperCase('vi-VN');
+    return value.slice(0, 3);
+  }
+
+  private loadCustomDestinations(): void {
+    if (!fs.existsSync(this.customDestinationsPath)) return;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(this.customDestinationsPath, 'utf-8')) as {
+        destinations?: Array<Partial<DestinationConfig>>;
+      };
+      for (const entry of parsed.destinations || []) {
+        const id = String(entry.id || '').trim();
+        const label = String(entry.label || '').trim();
+        const sheetUrl = String(entry.sheetUrl || '').trim();
+        const exportUrl = String(entry.exportUrl || '').trim();
+        if (!/^sheet-[a-z0-9]+$/.test(id) || !label || !sheetUrl || !exportUrl) continue;
+        registerDestination({
+          id,
+          label,
+          shortLabel: String(entry.shortLabel || this.createDestinationShortLabel(label)).slice(0, 3),
+          sheetUrl,
+          exportUrl,
+          workbookName: String(entry.workbookName || `Google Sheet - ${label}`),
+          partnerFirst: Boolean(entry.partnerFirst),
+        });
+      }
+    } catch (error) {
+      console.warn(
+        '[destination] Không đọc được danh sách Google Sheet tùy chỉnh:',
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  private persistCustomDestinations(): void {
+    this.ensureDataRoot();
+    const destinations = getDestinationList().filter(
+      (entry) => entry.id !== 'dalat' && entry.id !== 'phanthiet' && entry.id !== 'greenland',
+    );
+    fs.writeFileSync(
+      this.customDestinationsPath,
+      JSON.stringify({ version: 1, destinations }, null, 2),
+      'utf-8',
+    );
   }
 
   private getActiveDestinationSummary(): DestinationSummary {
