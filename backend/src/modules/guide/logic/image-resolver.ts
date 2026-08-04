@@ -10,7 +10,7 @@ import {
   PageItem,
   SectionKey,
 } from '../../../common/interfaces/guide.types';
-import { filterKnownAccessibleDriveProxyUrls, isKnownInaccessibleDriveProxyUrl } from '../sync/drive-images';
+import { extractDriveFileIdFromProxyUrl, filterKnownAccessibleDriveProxyUrls, hasDriveFileDiskCache, isKnownFailedDriveFileId, isKnownInaccessibleDriveProxyUrl } from '../sync/drive-images';
 
 // ─── Pure utility helpers ─────────────────────────────────────────────────────
 
@@ -690,21 +690,34 @@ export function createListImageResolver(
     return rememberPicked(fresh || '');
   };
 
+  const runtimeReadyCandidates = (urls: string[] = []): string[] => {
+    const usable = filterKnownAccessibleDriveProxyUrls(urls).filter((url) => {
+      const fileId = extractDriveFileIdFromProxyUrl(url);
+      return !fileId || !isKnownFailedDriveFileId(fileId);
+    });
+    const diskReady = usable.filter((url) => {
+      const fileId = extractDriveFileIdFromProxyUrl(url);
+      return !fileId || hasDriveFileDiskCache(fileId);
+    });
+    return diskReady.length > 0 ? diskReady : usable;
+  };
+
   return (
     item: GuideItem,
     options?: { forceFallback?: boolean },
   ): Pick<PageItem, 'imageUrl' | 'imageMapped' | 'imageSource' | 'imageNote' | 'candidateImageUrls'> => {
-    const common = { candidateImageUrls: item.candidateImageUrls };
+    const readyItemCandidates = runtimeReadyCandidates(
+      item.candidateImageUrls && item.candidateImageUrls.length > 0
+        ? item.candidateImageUrls
+        : (item.imageUrl ? [item.imageUrl] : []),
+    );
+    const common = { candidateImageUrls: readyItemCandidates };
 
     if (!options?.forceFallback && item.imageSource === 'manual') {
       const manualCandidates = preferImageUrlsForResolverOptions(
         preferredImageCandidates(
           item.name,
-          filterKnownAccessibleDriveProxyUrls(
-            item.candidateImageUrls && item.candidateImageUrls.length > 0
-              ? item.candidateImageUrls
-              : (item.imageUrl ? [item.imageUrl] : []),
-          ),
+          readyItemCandidates,
         ),
         libraryEntries,
         resolverOptions,
@@ -715,15 +728,21 @@ export function createListImageResolver(
       if (pickedManual) {
         return { ...common, imageUrl: pickedManual, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm từ sheet' };
       }
-      if (item.candidateImageUrls && item.candidateImageUrls.length > 0) {
+      if (readyItemCandidates.length > 0) {
         const sorted = preferImageUrlsForResolverOptions(
-          preferredImageCandidates(item.name, item.candidateImageUrls),
+          preferredImageCandidates(item.name, readyItemCandidates),
           libraryEntries,
           resolverOptions,
         ).sort(
           (a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`),
         );
         const picked = pickUnused(sorted);
+        if (!picked) {
+          const reusable = sorted.find((url) => url && !shouldAvoidImageForItem(item.name, url));
+          if (reusable) {
+            return { ...common, imageUrl: reusable, imageMapped: true, imageSource: 'manual', imageNote: 'Anh da cache cua dung dia diem' };
+          }
+        }
         if (picked) return { ...common, imageUrl: picked, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm (từ thư mục)' };
       }
       if (

@@ -27,6 +27,7 @@ const driveNetworkWaiters: Array<() => void> = [];
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.jfif', '.bmp']);
 
 let driveFileDiskCacheDir = '';
+let knownFailedDriveFileIds: Set<string> | null = null;
 
 export interface DriveFolderEntry {
   fileId: string;
@@ -43,6 +44,7 @@ export interface DriveFileAsset {
 
 export function configureDriveFileDiskCache(dir: string): void {
   driveFileDiskCacheDir = String(dir || '').trim();
+  knownFailedDriveFileIds = null;
 }
 
 function resolveDriveFileDiskCacheDir(): string {
@@ -62,6 +64,57 @@ function diskCachePaths(fileId: string): { binPath: string; metaPath: string } {
     binPath: path.join(dir, `${key}.bin`),
     metaPath: path.join(dir, `${key}.json`),
   };
+}
+
+function failedDriveFileIdsPath(): string {
+  return path.join(resolveDriveFileDiskCacheDir(), 'failed-file-ids.json');
+}
+
+function loadKnownFailedDriveFileIds(): Set<string> {
+  if (knownFailedDriveFileIds) return knownFailedDriveFileIds;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(failedDriveFileIdsPath(), 'utf8')) as { fileIds?: unknown };
+    knownFailedDriveFileIds = new Set(
+      (Array.isArray(parsed.fileIds) ? parsed.fileIds : [])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean),
+    );
+  } catch {
+    knownFailedDriveFileIds = new Set();
+  }
+  return knownFailedDriveFileIds;
+}
+
+export function isKnownFailedDriveFileId(fileId: string): boolean {
+  const normalized = String(fileId || '').trim();
+  return Boolean(normalized && loadKnownFailedDriveFileIds().has(normalized));
+}
+
+function persistKnownFailedDriveFileIds(): void {
+  const ids = loadKnownFailedDriveFileIds();
+  try {
+    const dir = resolveDriveFileDiskCacheDir();
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(failedDriveFileIdsPath(), JSON.stringify({
+      savedAt: new Date().toISOString(),
+      fileIds: [...ids].sort(),
+    }, null, 2), 'utf8');
+  } catch (error) {
+    console.warn('[drive-cache] Khong luu duoc danh sach anh loi:', error instanceof Error ? error.message : error);
+  }
+}
+
+/** Chỉ gọi khi người dùng chủ động tải lại dữ liệu. */
+export function clearKnownFailedDriveFileIds(fileIds: string[]): void {
+  const failedIds = loadKnownFailedDriveFileIds();
+  let changed = false;
+  for (const fileId of fileIds) {
+    const id = String(fileId || '').trim();
+    changed = failedIds.delete(id) || changed;
+    driveFileAssetCache.delete(id);
+    driveFileAccessibilityCache.delete(id);
+  }
+  if (changed) persistKnownFailedDriveFileIds();
 }
 
 function readDriveFileDiskCache(fileId: string): DriveFileAsset | null {
@@ -103,6 +156,8 @@ function writeDriveFileDiskCache(fileId: string, asset: DriveFileAsset): void {
       contentLength: asset.body.byteLength,
       savedAt: Date.now(),
     }), 'utf8');
+    const failedIds = loadKnownFailedDriveFileIds();
+    if (failedIds.delete(fileId)) persistKnownFailedDriveFileIds();
   } catch (error) {
     console.warn(`[drive-image] Khong ghi duoc disk cache: ${fileId}`, error instanceof Error ? error.message : error);
   }
@@ -160,16 +215,19 @@ export async function warmDriveFileDiskCache(
   if (!uniqueIds.length) return result;
 
   const pending: string[] = [];
+  const failedIds = loadKnownFailedDriveFileIds();
   for (const fileId of uniqueIds) {
     if (hasDriveFileDiskCache(fileId)) {
       result.skipped += 1;
+    } else if (failedIds.has(fileId)) {
+      result.fail += 1;
     } else {
       pending.push(fileId);
     }
   }
 
   if (!pending.length) {
-    console.log(`[drive-cache] Đủ cache disk (${result.skipped}/${result.total}), bỏ qua warm.`);
+    console.log(`[drive-cache] Không cần tải mạng (cache=${result.skipped}, đã biết lỗi=${result.fail}, tổng=${result.total}).`);
     options.onProgress?.({ ...result });
     return result;
   }
@@ -196,9 +254,11 @@ export async function warmDriveFileDiskCache(
           result.ok += 1;
         } else {
           result.fail += 1;
+          failedIds.add(fileId);
         }
       } catch {
         result.fail += 1;
+        failedIds.add(fileId);
       }
       done += 1;
       options.onProgress?.({ ...result });
@@ -208,6 +268,7 @@ export async function warmDriveFileDiskCache(
     }
   });
   await Promise.all(workers);
+  persistKnownFailedDriveFileIds();
   if (result.cancelled) {
     console.log(`[drive-cache] Dừng warm sớm (đổi destination). ok=${result.ok} fail=${result.fail} skip=${result.skipped}`);
   } else {

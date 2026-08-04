@@ -99,6 +99,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
 
     let cancelled = false;
     const controllers = [];
+    const inspectingImages = new WeakSet();
 
     const readCandidates = (img) => {
       const raw = img.dataset?.candidateSrcs;
@@ -127,38 +128,57 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
       const tried = new Set(String(img.dataset.previewFallbackTried || '').split('\n').filter(Boolean));
       if (current) tried.add(normalizePreviewUrl(current));
       const next = candidates.find((url) => !tried.has(normalizePreviewUrl(url)));
-      if (!next) return;
+      if (!next) return '';
       tried.add(normalizePreviewUrl(next));
       img.dataset.previewFallbackTried = Array.from(tried).join('\n');
       img.src = next;
+      return next;
     };
 
     const inspectImage = async (img) => {
-      if (!img?.src || !img.dataset?.candidateSrcs) return;
-      const controller = new AbortController();
-      controllers.push(controller);
-      try {
-        const response = await fetch(img.currentSrc || img.src, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-        const isDriveFallback = response.headers?.get?.('x-drive-image-fallback') === '1';
-        const contentType = String(response.headers?.get?.('content-type') || '').toLowerCase();
-        let isFallbackSvg = false;
-        if (!isDriveFallback && contentType.includes('svg')) {
-          const text = await response.text();
-          isFallbackSvg = text.includes('Drive image unavailable') || text.includes('File needs public access or sign-in');
+      if (!img?.src || !img.dataset?.candidateSrcs || inspectingImages.has(img)) return;
+      inspectingImages.add(img);
+      let source = img.currentSrc || img.src;
+      while (source && !cancelled) {
+        const controller = new AbortController();
+        controllers.push(controller);
+        try {
+          const response = await fetch(source, {
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+          const isDriveFallback = response.headers?.get?.('x-drive-image-fallback') === '1';
+          const contentType = String(response.headers?.get?.('content-type') || '').toLowerCase();
+          let isFallbackSvg = false;
+          if (!isDriveFallback && contentType.includes('svg')) {
+            const text = await response.text();
+            isFallbackSvg = text.includes('Drive image unavailable') || text.includes('File needs public access or sign-in');
+          }
+          if (response.ok && !isDriveFallback && !isFallbackSvg) {
+            const current = normalizePreviewUrl(img.currentSrc || img.src);
+            if (current !== normalizePreviewUrl(source)) img.src = source;
+            img.style.removeProperty('opacity');
+            delete img.dataset.previewUnavailable;
+            inspectingImages.delete(img);
+            return;
+          }
+        } catch {
+          // Thử candidate kế tiếp bên dưới.
         }
-        if (!cancelled && (isDriveFallback || isFallbackSvg)) {
-          tryNextCandidate(img);
-        }
-      } catch {
-        if (!cancelled) tryNextCandidate(img);
+        source = tryNextCandidate(img);
+      }
+      inspectingImages.delete(img);
+      if (!cancelled) {
+        img.dataset.previewUnavailable = '1';
+        img.style.opacity = '0';
       }
     };
 
     root.querySelectorAll('img[data-candidate-srcs]').forEach((img) => {
-      img.addEventListener('error', () => tryNextCandidate(img), { once: true });
+      img.addEventListener('error', () => {
+        const next = tryNextCandidate(img);
+        if (next) inspectImage(img);
+      });
       inspectImage(img);
     });
 

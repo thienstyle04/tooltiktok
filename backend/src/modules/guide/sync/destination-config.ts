@@ -33,18 +33,6 @@ export const DESTINATIONS: Record<DestinationId, DestinationConfig> = {
       || 'https://docs.google.com/spreadsheets/d/1-ECVLtuySSlCO5AShcJle1uP9j8XCA4l/export?format=xlsx',
     workbookName: 'Google Sheet - Da Lat',
   },
-  phanthiet: {
-    id: 'phanthiet',
-    label: 'Phan Thiết',
-    shortLabel: 'PT',
-    sheetUrl:
-      process.env.PHAN_THIET_FNB_SHEET_URL
-      || 'https://docs.google.com/spreadsheets/d/1l1HUVSkqVgj1udZmjtmjqZ3AeWEMgp0PI9kyBd-4CVw/edit?gid=0#gid=0',
-    exportUrl:
-      process.env.PHAN_THIET_FNB_EXPORT_URL
-      || 'https://docs.google.com/spreadsheets/d/1l1HUVSkqVgj1udZmjtmjqZ3AeWEMgp0PI9kyBd-4CVw/export?format=xlsx',
-    workbookName: 'Google Sheet - Phan Thiet',
-  },
   greenland: {
     id: 'greenland',
     label: 'Green Land',
@@ -82,7 +70,7 @@ export function registerDestination(config: DestinationConfig): void {
 }
 
 export function unregisterDestination(id: DestinationId): void {
-  if (id === 'dalat' || id === 'phanthiet' || id === 'greenland') return;
+  if (id === 'dalat' || id === 'greenland') return;
   delete DESTINATIONS[id];
 }
 

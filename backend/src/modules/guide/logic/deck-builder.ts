@@ -261,13 +261,14 @@ function portableBackgroundFor(
 
 function coverBackgroundFor(
   coverImageUrls: string[],
-  mappedImageUrls: string[],
-  imageUrls: string[],
+  _mappedImageUrls: string[],
+  _imageUrls: string[],
   seed: string,
   usedImageUrls?: Set<string>,
 ): string {
-  const coverImage = backgroundFor(coverImageUrls.filter(isPortableImageUrl), seed, usedImageUrls);
-  return coverImage || portableBackgroundFor(mappedImageUrls, imageUrls, seed, usedImageUrls);
+  // Background là nguồn riêng từ sheet/thư mục Hình_nền. Không fallback sang
+  // ảnh của địa điểm vì ảnh đó còn phải dành cho đúng ô nội dung khi export.
+  return backgroundFor(coverImageUrls.filter(isPortableImageUrl), seed, usedImageUrls);
 }
 
 function normalizeText(value: string): string {
