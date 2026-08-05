@@ -1412,18 +1412,22 @@ function collectPartnerNames(list) {
   const partnerNames = new Set();
   list.pages?.forEach((page, pageIndex) => {
     if (page?.type !== 'list') return;
-    const renderedMarkup = renderPageMarkupForExport(list, page, pageIndex);
+    // Trang dạng bảng chữ (budget table...) không có ảnh riêng theo item — không có gì
+    // để đối chiếu trong markup, nên chỉ render markup khi thực sự cần (có item có ảnh).
+    const hasImageItems = page.items?.some((item) => String(item?.imageUrl || '').trim());
+    const renderedMarkup = hasImageItems ? renderPageMarkupForExport(list, page, pageIndex) : '';
     page.items?.forEach((item) => {
+      if (!item?.isPartner) return;
       const partnerName = String(item?.rawName || item?.name || '')
         .replace(/^[^:]{1,30}:\s*/, '')
         .trim();
-      if (
-        item?.isPartner
-        && partnerName
-        && renderedMarkupIncludesImage(renderedMarkup, item?.imageUrl)
-      ) {
-        partnerNames.add(partnerName);
-      }
+      if (!partnerName) return;
+      const imageUrl = String(item?.imageUrl || '').trim();
+      // Chỉ đối chiếu ảnh đã render khi item có ảnh riêng (grid/gallery...), để tránh đếm
+      // nhầm đối tác mà ảnh thật không lên hình. Dòng không có ảnh (bảng chi phí...) thì
+      // tin trực tiếp cờ isPartner từ dữ liệu.
+      if (imageUrl && !renderedMarkupIncludesImage(renderedMarkup, imageUrl)) return;
+      partnerNames.add(partnerName);
     });
   });
 
