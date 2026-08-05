@@ -28,7 +28,6 @@ const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt g�
 const SPOTLIGHT_PARTNER_DECK_ID = 'spotlight-partner';
 const BUILTIN_DESTINATION_FALLBACKS = [
   { id: 'dalat', label: 'Đà Lạt', shortLabel: 'ĐL' },
-  { id: 'phanthiet', label: 'Phan Thiết', shortLabel: 'PT' },
   { id: 'greenland', label: 'Green Land', shortLabel: 'GL' },
 ];
 
@@ -470,6 +469,8 @@ export default function DeckStudio({ initialDataset = null }) {
       applyDataset(payload.dataset, currentSelectionRef.current);
       const label = payload?.active?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
       setStatus(`Đã chuyển sang ${label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
+    } catch (error) {
+      setStatus(`Không thể chuyển nguồn: ${error?.message || 'Google Sheet không truy cập được'}. Hệ thống đã giữ nguyên nguồn đang dùng.`);
     } finally {
       setSwitchingDestination(false);
       setRefreshing(false);
@@ -1342,7 +1343,6 @@ export default function DeckStudio({ initialDataset = null }) {
   const destinationScrollBusy = busy || refreshing || switchingDestination;
   const cacheDestinationShortLabel = {
     dalat: 'ĐL',
-    phanthiet: 'PT',
     greenland: 'GL',
   }[driveCacheStatus.destinationId] || studioShort;
 

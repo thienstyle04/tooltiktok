@@ -72,7 +72,7 @@ const HTML_TO_IMAGE_RENDER_OPTIONS = Object.freeze({
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
 const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
 const SPOTLIGHT_PARTNER_CAPTION_HASHTAGS = ['#riviudalat', '#dalat', '#dalatreview', '#spotlightdalat', '#dichvudalat'];
-const BATCH_CACHE_TRIM_INTERVAL = 50;
+const BATCH_CACHE_TRIM_INTERVAL = 4;
 const EXPORT_QUALITY_PROFILES = Object.freeze({
   optimized: {
     id: 'optimized',
@@ -85,9 +85,9 @@ const EXPORT_QUALITY_PROFILES = Object.freeze({
     sourceImageMaxDimension: 3000,
     sourceImageFormat: 'image/jpeg',
     sourceImageQuality: 0.97,
-    imagePrepareConcurrency: 8,
-    renderChunkSize: 8,
-    captureConcurrency: 6,
+    imagePrepareConcurrency: 3,
+    renderChunkSize: 4,
+    captureConcurrency: 2,
     preferHtml2Canvas: true,
     renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
   },
@@ -905,7 +905,7 @@ function isSharedBackgroundTarget(target) {
   if (!img) return false;
   if (img.classList?.contains('grid8-center-bg')) return true;
   return Boolean(img.closest?.(
-    '.grid8-cover-photo, .grid6-cover-bg, .grid4-feature-bg, .grid8-quaytung-cover-photo, .budget72-cover-bg, .budget72-story-bg, .grid5-cover-bg, .spotlight-cover, .grid4-feature-cover',
+    '.page-shell-bg, .journey-bg, .grid8-cover-photo, .grid6-cover-bg, .grid4-feature-bg, .grid8-quaytung-cover-photo, .budget72-cover-bg, .budget72-story-bg, .grid5-cover-bg, .spotlight-cover, .grid4-feature-cover',
   ));
 }
 
@@ -957,6 +957,15 @@ async function captureDomImageBlob(img) {
   // Placeholder SVG / empty — bỏ
   const currentSrc = String(img.currentSrc || img.src || '');
   if (!currentSrc || currentSrc.startsWith('data:image/svg')) return null;
+  // Drive proxy có thể trả placeholder SVG với HTTP 200. Không chụp DOM trực tiếp
+  // vì trình duyệt vẫn xem placeholder là một ảnh hợp lệ; luồng fetch bên dưới sẽ
+  // kiểm tra header/nội dung và chuyển sang candidate dự phòng.
+  try {
+    const parsed = new URL(currentSrc, window.location.href);
+    if (parsed.pathname === '/assets/drive-file') return null;
+  } catch {
+    if (currentSrc.includes('/assets/drive-file')) return null;
+  }
   try {
     const canvas = document.createElement('canvas');
     canvas.width = img.naturalWidth;
@@ -1391,14 +1400,34 @@ function batchCaptureConcurrencyForProfile(profile) {
   return Number(profile?.captureConcurrency || batchCaptureConcurrencyLimit());
 }
 
+function renderedMarkupIncludesImage(markup, imageUrl) {
+  const source = String(imageUrl || '').trim();
+  if (!source) return false;
+  const driveId = source.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || '';
+  if (driveId) return markup.includes(driveId);
+  return markup.includes(source) || markup.includes(escapeXml(source));
+}
+
 function collectPartnerNames(list) {
   const partnerNames = new Set();
-  list.pages?.forEach((page) => {
+  list.pages?.forEach((page, pageIndex) => {
+    if (page?.type !== 'list') return;
+    // Trang dạng bảng chữ (budget table...) không có ảnh riêng theo item — không có gì
+    // để đối chiếu trong markup, nên chỉ render markup khi thực sự cần (có item có ảnh).
+    const hasImageItems = page.items?.some((item) => String(item?.imageUrl || '').trim());
+    const renderedMarkup = hasImageItems ? renderPageMarkupForExport(list, page, pageIndex) : '';
     page.items?.forEach((item) => {
-      const partnerName = String(item?.rawName || '').trim();
-      if (item?.isPartner && partnerName) {
-        partnerNames.add(partnerName);
-      }
+      if (!item?.isPartner) return;
+      const partnerName = String(item?.rawName || item?.name || '')
+        .replace(/^[^:]{1,30}:\s*/, '')
+        .trim();
+      if (!partnerName) return;
+      const imageUrl = String(item?.imageUrl || '').trim();
+      // Chỉ đối chiếu ảnh đã render khi item có ảnh riêng (grid/gallery...), để tránh đếm
+      // nhầm đối tác mà ảnh thật không lên hình. Dòng không có ảnh (bảng chi phí...) thì
+      // tin trực tiếp cờ isPartner từ dữ liệu.
+      if (imageUrl && !renderedMarkupIncludesImage(renderedMarkup, imageUrl)) return;
+      partnerNames.add(partnerName);
     });
   });
 

@@ -62,7 +62,7 @@ import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks } from './sync/spotlight-hook-source';
-import { DriveFileAsset, clearDriveAccessibilityCache, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownInaccessibleDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
+import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownFailedDriveFileId, isKnownInaccessibleDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
   DEFAULT_DESTINATION_ID,
@@ -110,6 +110,12 @@ export interface DriveCacheWarmStatus {
   failed: number;
   percent: number;
   message: string;
+}
+
+/** Sleep đồng bộ ngắn (không await) dùng cho retry ghi file — an toàn vì chỉ chờ tối đa vài trăm ms. */
+function sleepSyncMs(ms: number): void {
+  const view = new Int32Array(new SharedArrayBuffer(4));
+  Atomics.wait(view, 0, 0, ms);
 }
 
 @Injectable()
@@ -230,8 +236,19 @@ export class GuideService implements OnApplicationBootstrap {
       }
       console.log(`[warmup] Sẵn sàng phục vụ /api/guide-data (mất ${Date.now() - t0}ms). Session sticky=${this.SESSION_STICKY_DATASET}, autoSyncSheet=${this.AUTO_SYNC_ENABLED}.`);
     } catch (error) {
+      console.error('[warmup] Làm nóng dữ liệu trước thất bại:', error);
+      if (this.activeDestinationId !== DEFAULT_DESTINATION_ID) {
+        const failedDestinationId = this.activeDestinationId;
+        try {
+          console.warn(`[warmup] Nguồn ${failedDestinationId} không sẵn sàng; tự quay về ${DEFAULT_DESTINATION_ID}.`);
+          await this.setActiveDestination({ id: DEFAULT_DESTINATION_ID });
+          this.destinationDataError = '';
+          return;
+        } catch (fallbackError) {
+          console.error('[warmup] Không thể quay về nguồn mặc định:', fallbackError);
+        }
+      }
       this.destinationDataError = error instanceof Error ? error.message : String(error);
-      console.error('[warmup] Làm nóng dữ liệu trước thất bại, sẽ thử lại khi có request đầu tiên:', error);
     } finally {
       this.destinationDataLoading = false;
     }
@@ -246,7 +263,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   /** Máy mới: tự tải ảnh Drive còn thiếu vào backend/data/drive-file-cache (chạy nền). */
-  private scheduleWarmDriveFileDiskCache(): void {
+  private scheduleWarmDriveFileDiskCache(options: { retryKnownFailures?: boolean } = {}): void {
     if (!this.AUTO_WARM_DRIVE_CACHE) {
       this.driveCacheWarmStatus = {
         ...this.driveCacheWarmStatus,
@@ -271,7 +288,7 @@ export class GuideService implements OnApplicationBootstrap {
       percent: 0,
       message: 'Đang kiểm tra ảnh Google Drive cần tải về máy...',
     };
-    void this.runWarmDriveFileDiskCache(token).catch((error) => {
+    void this.runWarmDriveFileDiskCache(token, Boolean(options.retryKnownFailures)).catch((error) => {
       if (token !== this.driveCacheWarmToken) return;
       this.driveCacheWarmStatus = {
         ...this.driveCacheWarmStatus,
@@ -302,7 +319,7 @@ export class GuideService implements OnApplicationBootstrap {
     }
   }
 
-  private async runWarmDriveFileDiskCache(token: number): Promise<void> {
+  private async runWarmDriveFileDiskCache(token: number, retryKnownFailures = false): Promise<void> {
     const fileIds = this.collectDriveFileIdsForCacheWarm();
     if (!fileIds.length) {
       if (token === this.driveCacheWarmToken) {
@@ -315,6 +332,9 @@ export class GuideService implements OnApplicationBootstrap {
         };
       }
       return;
+    }
+    if (retryKnownFailures) {
+      clearKnownFailedDriveFileIds(fileIds);
     }
     const warmed = await warmDriveFileDiskCache(fileIds, {
       concurrency: Math.min(Math.max(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 4), 1), 4),
@@ -373,6 +393,9 @@ export class GuideService implements OnApplicationBootstrap {
         phase: 'error',
         ready: false,
         destinationId: this.activeDestinationId,
+        total: 0,
+        completed: 0,
+        percent: 0,
         message: this.destinationDataError,
       };
     }
@@ -412,6 +435,31 @@ export class GuideService implements OnApplicationBootstrap {
 
   private ensureDataRoot(): void {
     fs.mkdirSync(this.dataRoot, { recursive: true });
+  }
+
+  /**
+   * Ghi file JSON qua file tạm rồi rename (atomic hơn) + retry ngắn khi gặp lỗi
+   * khoá file thoáng qua trên Windows (Defender/OneDrive quét file lúc đang ghi
+   * ra "UNKNOWN: unknown error, open ..." hoặc EBUSY). Tránh việc create/delete
+   * list bị 500 giữa chừng do va lỗi ghi đè cùng lúc.
+   */
+  private writeJsonFileSafe(targetPath: string, data: unknown): void {
+    const json = JSON.stringify(data, null, 2);
+    const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const maxAttempts = 5;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        fs.writeFileSync(tmpPath, json, 'utf-8');
+        fs.renameSync(tmpPath, targetPath);
+        return;
+      } catch (error) {
+        lastError = error;
+        try { fs.unlinkSync(tmpPath); } catch { /* file tạm có thể chưa được tạo, bỏ qua */ }
+        if (attempt < maxAttempts) sleepSyncMs(50 * attempt);
+      }
+    }
+    throw lastError;
   }
 
   getFrontendTextFile(fileName: string): string {
@@ -600,7 +648,8 @@ export class GuideService implements OnApplicationBootstrap {
       throw new BadRequestException('Nguồn dữ liệu không tồn tại hoặc đã bị xóa.');
     }
 
-    const switchingDestination = nextId !== this.activeDestinationId;
+    const previousDestinationId = this.activeDestinationId;
+    const switchingDestination = nextId !== previousDestinationId;
     if (switchingDestination) {
       if (this.generatedListsLoaded) this.persistGeneratedLists();
       if (this.inventoryLoaded) this.persistInventory();
@@ -650,7 +699,26 @@ export class GuideService implements OnApplicationBootstrap {
         dataset,
       };
     } catch (error) {
-      this.destinationDataError = error instanceof Error ? error.message : String(error);
+      if (switchingDestination) {
+        ++this.driveCacheWarmToken;
+        this.activeDestinationId = previousDestinationId;
+        this.saveActiveDestinationId(previousDestinationId);
+        setActiveDestinationLocalize(previousDestinationId);
+        this.resetDestinationScopedState();
+        this.workbookSource = this.workbookSourceByDestination.get(previousDestinationId)
+          || this.loadWorkbookSnapshot(previousDestinationId);
+        if (this.workbookSource) {
+          this.workbookSourceByDestination.set(previousDestinationId, this.workbookSource);
+        }
+        this.workbookDerivedCache = this.workbookDerivedCacheByDestination.get(previousDestinationId) || null;
+        this.workbookDerivedCacheFresh = Boolean(this.workbookDerivedCache);
+        this.workbookDerivedCacheTime = this.workbookDerivedCache ? Date.now() : 0;
+        this.invalidateDatasetCache({ immediate: !this.workbookDerivedCache });
+        this.destinationDataError = '';
+        this.scheduleWarmDriveFileDiskCache();
+      } else {
+        this.destinationDataError = error instanceof Error ? error.message : String(error);
+      }
       throw error;
     } finally {
       this.destinationDataLoading = false;
@@ -1571,20 +1639,18 @@ export class GuideService implements OnApplicationBootstrap {
     const safeDescription = this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanList.description, cleanList.pages));
     const pages = cleanList.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, cleanList, safeDescription));
     const enrichedPages = tuneSpotlightV2Cover(pages, coverImageUrls, `${cleanList.id}|cover-grid`);
-    const portableCoverImage = this.coverImageForList(cleanList, coverImageUrls, usedCoverUrls) || this.firstPortableImageForPages(enrichedPages);
+    const portableCoverImage = this.coverImageForList(cleanList, coverImageUrls, usedCoverUrls);
     return {
       ...cleanList,
       description: safeDescription,
-      pages: enrichedPages.map((page) => {
-        if (page.layoutVariant === 'grid-8-quaytung-menu') return page;
-        if (this.isPortableImageUrl(page.backgroundImage)) return page;
+      pages: enrichedPages.map((page, pageIndex) => {
+        const pageBackgroundImage = this.backgroundImageForPage(cleanList, page, pageIndex, coverImageUrls);
         if (page.type === 'cover') {
           const grid = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
           if (grid.length > 0) return { ...page, backgroundImage: grid[0] };
-          return portableCoverImage ? { ...page, backgroundImage: portableCoverImage } : page;
+          return { ...page, backgroundImage: portableCoverImage };
         }
-        const pageImage = this.firstPortableImageForPages([page]) || portableCoverImage;
-        return pageImage ? { ...page, backgroundImage: pageImage } : page;
+        return { ...page, backgroundImage: pageBackgroundImage };
       }),
     };
   }
@@ -1592,7 +1658,16 @@ export class GuideService implements OnApplicationBootstrap {
   private sanitizeBaseListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
     const pages = list.pages.map((page) => this.sanitizeBasePageForDisplay(page, list));
     const enrichedPages = tuneSpotlightV2Cover(pages, coverImageUrls, `${list.id}|cover-grid`);
-    return { ...list, pages: enrichedPages };
+    return {
+      ...list,
+      pages: enrichedPages.map((page, pageIndex) => {
+        if (page.type === 'cover') {
+          const coverImages = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
+          return { ...page, backgroundImage: coverImages[0] || this.backgroundImageForPage(list, page, pageIndex, coverImageUrls) };
+        }
+        return { ...page, backgroundImage: this.backgroundImageForPage(list, page, pageIndex, coverImageUrls) };
+      }),
+    };
   }
 
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
@@ -1638,6 +1713,20 @@ export class GuideService implements OnApplicationBootstrap {
     const picked = ordered.find((url) => !usedCoverUrls?.has(url)) || ordered[0] || '';
     if (picked) usedCoverUrls?.add(picked);
     return picked;
+  }
+
+  private backgroundImageForPage(
+    list: GuideDeckList,
+    page: DeckPage,
+    pageIndex: number,
+    coverImageUrls: string[],
+  ): string {
+    const pool = coverImageUrls.filter((url) => this.isPortableImageUrl(url));
+    if (pool.length === 0) return '';
+    const seed = `${list.id}|${pageIndex}|${page.type}|${page.layoutVariant || ''}|background`;
+    return [...pool].sort(
+      (left, right) => stableHash(`${seed}:${left}`) - stableHash(`${seed}:${right}`),
+    )[0] || '';
   }
 
   private isPortableImageUrl(value?: string): boolean {
@@ -2269,7 +2358,7 @@ export class GuideService implements OnApplicationBootstrap {
     );
     const payload: GeneratedListsStore = { version: 1, savedAt: new Date().toISOString(), decks };
     this.ensureDataRoot();
-    fs.writeFileSync(this.getDestinationDataPath('generated-caption-lists'), JSON.stringify(payload, null, 2), 'utf-8');
+    this.writeJsonFileSafe(this.getDestinationDataPath('generated-caption-lists'), payload);
     // Không đụng tới cache Sheet ở đây: list AI được merge trực tiếp từ generatedListsByDeckId
     // (bộ nhớ, luôn mới nhất) ngay trong buildDatasetContext(), nên CRUD list không cần rebuild Sheet.
   }
@@ -2326,8 +2415,17 @@ export class GuideService implements OnApplicationBootstrap {
 
   private loadCoverImageUrls(sheetDriveManifest: SheetDriveImageManifest): string[] {
     const seen = new Set<string>();
+    // Chỉ chọn trong cùng nhóm cover đã được warm cache. Trước đây Green Land
+    // warm 120 ảnh nhưng builder lại chọn trên toàn bộ hơn 2.000 ảnh, khiến
+    // preview/export phải tải Drive đột xuất và dễ mất nền trên máy khác.
+    const coverLimit = Math.max(0, Number(process.env.DALAT_DRIVE_CACHE_COVER_LIMIT || 120));
     return (sheetDriveManifest.coverImages ?? [])
-      .map((entry) => entry.fileId ? getDriveImageProxyUrl(entry.fileId) : '')
+      .slice(0, coverLimit)
+      .map((entry) => {
+        const fileId = String(entry?.fileId || '').trim();
+        if (!fileId || isKnownFailedDriveFileId(fileId)) return '';
+        return getDriveImageProxyUrl(fileId);
+      })
       .filter((url) => {
         if (!url || seen.has(url)) return false;
         seen.add(url);
@@ -2368,6 +2466,7 @@ export class GuideService implements OnApplicationBootstrap {
         }
       }
     }
+
     return results;
   }
 
@@ -2490,7 +2589,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   private persistInventory(): void {
     this.ensureDataRoot();
-    fs.writeFileSync(this.getDestinationDataPath('used-inventory'), JSON.stringify(this.usedAllocator.snapshot(), null, 2), 'utf-8');
+    this.writeJsonFileSafe(this.getDestinationDataPath('used-inventory'), this.usedAllocator.snapshot());
   }
 
   private createUsageScope(): DataAllocator {
@@ -3481,7 +3580,7 @@ export class GuideService implements OnApplicationBootstrap {
         this.workbookSourceByDestination.set(result.destinationId, result);
         this.saveWorkbookSnapshot(result);
         // Chờ manifest Drive xong trong cùng lượt sync để warmup build đúng 1 lần (không fire-and-forget rồi rebuild nền).
-        await this.refreshSheetDriveManifest(result);
+        await this.refreshSheetDriveManifest(result, reason === 'lam moi theo yeu cau');
         this.lastSyncTime = Date.now();
         console.log(`[sync] Da tai du lieu Google Sheet (${getDestinationConfig(this.activeDestinationId).label}): ${result.workbookName} (${result.bytes} bytes).`);
       } catch (error) {
@@ -3506,7 +3605,7 @@ export class GuideService implements OnApplicationBootstrap {
     return this.syncPromise;
   }
 
-  private async refreshSheetDriveManifest(source: SheetWorkbookSource): Promise<void> {
+  private async refreshSheetDriveManifest(source: SheetWorkbookSource, retryKnownFailures = false): Promise<void> {
     if (this.manifestSyncPromise) return this.manifestSyncPromise;
 
     this.manifestSyncPromise = (async () => {
@@ -3515,7 +3614,7 @@ export class GuideService implements OnApplicationBootstrap {
         writeSheetDriveManifest(this.dataRoot, manifest, source.destinationId);
         this.invalidateDatasetCache();
         if (source.destinationId === this.activeDestinationId) {
-          this.scheduleWarmDriveFileDiskCache();
+          this.scheduleWarmDriveFileDiskCache({ retryKnownFailures });
         }
         console.log(`[sync] Dong bo anh Drive hoan tat: ${Object.keys(manifest.items).length} anh.`);
       } catch (error) {
@@ -3603,7 +3702,7 @@ export class GuideService implements OnApplicationBootstrap {
   private persistCustomDestinations(): void {
     this.ensureDataRoot();
     const destinations = getDestinationList().filter(
-      (entry) => entry.id !== 'dalat' && entry.id !== 'phanthiet' && entry.id !== 'greenland',
+      (entry) => entry.id !== 'dalat' && entry.id !== 'greenland',
     );
     fs.writeFileSync(
       this.customDestinationsPath,

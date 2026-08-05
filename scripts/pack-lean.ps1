@@ -39,6 +39,8 @@ $excludeDirs = @(
     '.codex',
     '.codex-dev-logs',
     '.codex-runtime',
+    '.test-runtime',
+    '.test-runtime-e2e',
     '.omx',
     'agent-transcripts',
     'mcps'

@@ -1,4 +1,4 @@
-// frontend/lib/utils.js
+// lib/utils.js
 var DATASET_CACHE_KEY = "dalat-carousel-dataset-cache-v82";
 var STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
 function escapeHtml(value) {
@@ -8,7 +8,7 @@ function sanitizeFilePart(value) {
   return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
 }
 
-// frontend/lib/pageMarkup.js
+// lib/pageMarkup.js
 function imageSourceClass(item) {
   return item?.imageSource || (item?.imageMapped ? "manual" : "fallback");
 }
@@ -28,9 +28,7 @@ function titleFontClass(listId) {
   const raw = String(listId || "");
   const captionNumber = raw.match(/^(.*?)-caption-(\d+)/i);
   if (captionNumber) {
-    const baseVariant = titleFontVariantFromId(`${captionNumber[1]}-main`);
-    const generatedOffset = Number(captionNumber[2]) || 1;
-    return `title-font-${(baseVariant - 1 + generatedOffset) % TITLE_FONT_VARIANT_COUNT + 1}`;
+    return `title-font-${titleFontVariantFromId(`${captionNumber[1]}-main`)}`;
   }
   return `title-font-${titleFontVariantFromId(raw)}`;
 }
@@ -79,6 +77,16 @@ function firstPortablePageImage(page) {
     }
   }
   return "";
+}
+function portablePageImageCandidates(page, primary = "") {
+  const urls = [];
+  for (const item of page?.items || []) {
+    if (isPortableImageUrl(item.imageUrl)) urls.push(item.imageUrl);
+    for (const candidate of item.candidateImageUrls || []) {
+      if (isPortableImageUrl(candidate)) urls.push(candidate);
+    }
+  }
+  return [...new Set(urls)].filter((url) => url !== primary);
 }
 function grid4FeatureBackgroundImage(page, list) {
   if (isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
@@ -404,7 +412,7 @@ function renderGrid4MutantItems(items, position = "bottom", showAddress = true) 
         ${renderPreviewImage(item.imageUrl, item.name, "", item.candidateImageUrls)}
         <div class="grid4-mutant-overlay">
           ${labelHtml}
-          <div class="grid4-mutant-name story-image-title">${escapeHtml(truncateMenuLine(displayName, 36))}</div>
+          <div class="grid4-mutant-name">${escapeHtml(truncateMenuLine(displayName, 36))}</div>
           ${addressHtml}
         </div>
       </div>
@@ -454,24 +462,36 @@ function renderZigzagCover(page, index, listId) {
     </article>
   `;
 }
+function zigzagThirdLineHtml(item) {
+  const label = String(item?.label || "").trim();
+  const price = gridPriceMetaFromSecondary(item?.metaSecondary);
+  const sectionKey = String(item?.sourceSectionKey || "").trim();
+  if (sectionKey === "quan_an" && label) {
+    return `<span class="zigzag-label">${escapeHtml(label)}</span>`;
+  }
+  if (price) {
+    return `<span class="zigzag-price">${escapeHtml(price)}</span>`;
+  }
+  if (label) {
+    return `<span class="zigzag-label">${escapeHtml(label)}</span>`;
+  }
+  return "";
+}
 function renderZigzagItems(items, { showAddress = true } = {}) {
   return items.map((item) => {
     const displayName = compactGridItemName(item?.rawName || item?.name);
-    const address = String(item?.metaPrimary || "").replace(/\s+/g, " ").trim();
-    const price = String(item?.metaSecondary || "").trim();
-    const label = String(item?.label || "").trim();
-    const addressHtml = shouldShowItemAddress(item, showAddress) && address ? `<div class="zigzag-address">${escapeHtml(address)}</div>` : "";
-    const priceHtml = price ? `<span class="zigzag-price">${escapeHtml(price)}</span>` : "";
-    const labelHtml = !price && label ? `<span class="zigzag-label">${escapeHtml(label)}</span>` : "";
+    const address = shouldShowItemAddress(item, showAddress) ? cleanGridAddress(item?.metaPrimary) : "";
+    const addressHtml = address ? `<div class="zigzag-address">${escapeHtml(address)}</div>` : "";
+    const thirdHtml = zigzagThirdLineHtml(item);
     return `
       <div class="zigzag-item">
         <div class="zigzag-thumb ${escapeHtml(item.imageSource || (item.imageMapped ? "manual" : "fallback"))}">
           ${renderPreviewImage(item.imageUrl, item.name, "", item.candidateImageUrls)}
         </div>
         <div class="zigzag-copy">
-          <div class="zigzag-name story-image-title">${escapeHtml(displayName)}</div>
+          <div class="zigzag-name">${escapeHtml(displayName)}</div>
           ${addressHtml}
-          ${priceHtml}${labelHtml}
+          ${thirdHtml}
         </div>
       </div>
     `;
@@ -567,6 +587,7 @@ var V2_COVER_VARIANTS = /* @__PURE__ */ new Set([
   "grid-8-feed",
   "grid-8-quaytung-cover",
   "spotlight-v2",
+  "spotlight-v3",
   "spotlight-partner-v2",
   "pov-maikem",
   "pov-3-v2-cover",
@@ -580,6 +601,7 @@ var V2_LIST_VARIANTS = /* @__PURE__ */ new Set([
   "grid-8-quaytung",
   "grid-8-quaytung-menu",
   "spotlight-v2",
+  "spotlight-v3",
   "spotlight-v2-list",
   "spotlight-partner-v2",
   "spotlight-partner-v2-info",
@@ -671,10 +693,10 @@ function grid5TitleCard(page, list) {
   return stripped || String(page.chipText || "G\u1EE3i \xFD \u0110\xE0 L\u1EA1t").trim();
 }
 function grid5ItemMeta(item, showAddress = true) {
-  if (!shouldShowItemAddress(item, showAddress)) return String(item?.metaSecondary || "").trim();
+  if (!shouldShowItemAddress(item, showAddress)) return gridPriceMetaFromSecondary(item?.metaSecondary);
   const address = cleanGridAddress(item?.metaPrimary);
   if (address) return address;
-  return String(item?.metaSecondary || "").trim();
+  return gridPriceMetaFromSecondary(item?.metaSecondary);
 }
 function renderGrid8FeedSlot(item, showAddress = true) {
   const displayName = gridDisplayName(item);
@@ -1162,6 +1184,7 @@ function renderGrid8QuaytungItems(page, items, backgroundImage) {
 function renderGrid8QuaytungMenuSection(section, reverse) {
   const photoItem = section.items.find((item) => item.imageUrl) || section.items[0];
   const photoUrl = photoItem?.imageUrl || "";
+  const photoCandidates = photoItem?.candidateImageUrls || [];
   const rows = section.items.map((item) => {
     const address = cleanGridAddress(item.metaPrimary) || String(item.metaPrimary || "").trim();
     const shortAddress = address ? truncateMenuLine(address, 36) : "";
@@ -1179,7 +1202,7 @@ function renderGrid8QuaytungMenuSection(section, reverse) {
         <ul class="grid8-quaytung-menu-list">${rows}</ul>
       </div>
       <div class="grid8-quaytung-menu-section-photo">
-        ${photoUrl ? renderPreviewImage(photoUrl, section.title) : ""}
+        ${photoUrl ? renderPreviewImage(photoUrl, section.title, "", photoCandidates) : ""}
       </div>
     </section>
   `;
@@ -1318,14 +1341,19 @@ function formatSpotlightV2CoverSubtitle(subtitle) {
   return `/${clean.replace(/^\/+|\/+$/g, "")}/`;
 }
 function renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, options = {}) {
+  if (page?.layoutVariant === "spotlight-v3") {
+    return renderSpotlightV3Cover(page, index, listId, coverTitle, backgroundImage, options);
+  }
   const partnerClass = options.partner ? " spotlight-partner-v2-cover" : "";
   const coverImageUrls = options.coverImageUrls || [];
   let tiles = spotlightV2CoverGridImages(page, backgroundImage, listId, coverImageUrls);
   while (tiles.length < 4) tiles.push("");
   tiles = tiles.slice(0, 4);
   const subtitle = formatSpotlightV2CoverSubtitle(coverSubtitle);
+  const placement = String(page?.titlePlacement || "center").trim() || "center";
+  const placementClass = `spotlight-v2-place-${placement}`;
   return `
-    <article class="${escapeHtml(storyPageClass(listId, "spotlight-v2-cover", partnerClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
+    <article class="${escapeHtml(storyPageClass(listId, "spotlight-v2-cover", `${partnerClass} ${placementClass}`.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
       <div class="spotlight-v2-cover-grid">
         ${tiles.map((url, tileIndex) => `
           <div class="spotlight-v2-cover-cell">
@@ -1343,16 +1371,55 @@ function renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, 
     </article>
   `;
 }
+function spotlightV3CoverImage(page, backgroundImage) {
+  const fromPage = Array.isArray(page?.coverImages) ? page.coverImages.filter(Boolean) : [];
+  return fromPage[0] || backgroundImage || page?.backgroundImage || "";
+}
+function spotlightV3CoverPlacement(page, listId = "") {
+  const allowed = [
+    "top-left",
+    "top-center",
+    "top-right",
+    "mid-left",
+    "mid-right",
+    "bottom-left",
+    "bottom-center",
+    "bottom-right"
+  ];
+  const raw = String(page?.titlePlacement || "").trim();
+  if (allowed.includes(raw)) return raw;
+  const seed = `${listId || page?.title || "v3"}|place`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = hash * 33 + seed.charCodeAt(i) >>> 0;
+  return allowed[hash % allowed.length];
+}
+function renderSpotlightV3Cover(page, index, listId, coverTitle, backgroundImage, options = {}) {
+  const imageUrl = spotlightV3CoverImage(page, backgroundImage);
+  const placement = spotlightV3CoverPlacement(page, listId);
+  const placementClass = `spotlight-v2-place-${placement}`;
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, "spotlight-v2-cover spotlight-v3-cover", placementClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
+      <div class="spotlight-v3-cover-bg">
+        ${imageUrl ? renderPreviewImage(imageUrl, coverTitle || "cover") : ""}
+      </div>
+      <div class="spotlight-v2-cover-center">
+        ${coverTitle ? `<h1 class="spotlight-v2-cover-title">${escapeHtml(coverTitle)}</h1>` : ""}
+      </div>
+    </article>
+  `;
+}
 function renderSpotlightV2Page(page, index, listId, list, options = {}) {
   const item = page.items?.[0] || {};
   const backgroundImage = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
   const titleText = item.rawName || item.name || page.title || "";
   const address = spotlightV2AddressLine(item);
   const hours = spotlightV2HoursLine(item);
+  const price = spotlightV2PriceLine(item);
   const positionClass = spotlightPositionClass(page, index, item);
   const partnerClass = options.partner ? " spotlight-partner-v2-page" : "";
+  const v3Class = page?.layoutVariant === "spotlight-v3" ? " spotlight-v3-page" : "";
   return `
-    <article class="${escapeHtml(storyPageClass(listId, "spotlight-v2-page", `${positionClass} ${partnerClass}`.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText || item.name || "spotlight")}.png">
+    <article class="${escapeHtml(storyPageClass(listId, "spotlight-v2-page", `${positionClass} ${partnerClass}${v3Class}`.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText || item.name || "spotlight")}.png">
       <div class="spotlight-v2-bg">
         ${renderPreviewImage(backgroundImage, item.name || page.title)}
       </div>
@@ -1364,6 +1431,7 @@ function renderSpotlightV2Page(page, index, listId, list, options = {}) {
         </h2>
         ${address ? `<p class="spotlight-v2-address">${escapeHtml(address)}</p>` : ""}
         ${hours ? `<p class="spotlight-v2-hours">${escapeHtml(hours)}</p>` : ""}
+        ${price ? `<p class="spotlight-v2-price">${escapeHtml(price)}</p>` : ""}
       </div>
     </article>
   `;
@@ -1718,7 +1786,7 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
   if (page.layoutVariant === "grid-5") {
     return renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage);
   }
-  if (page.layoutVariant === "spotlight-v2") {
+  if (page.layoutVariant === "spotlight-v2" || page.layoutVariant === "spotlight-v3") {
     return renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, { coverImageUrls });
   }
   if (page.layoutVariant === "spotlight-partner-v2") {
@@ -1774,7 +1842,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   if (page.layoutVariant === "grid-5") {
     return renderGrid5Page(page, index, listId, pageSubtitle, list);
   }
-  if (page.layoutVariant === "spotlight-v2") {
+  if (page.layoutVariant === "spotlight-v2" || page.layoutVariant === "spotlight-v3") {
     return renderSpotlightV2Page(page, index, listId, list);
   }
   if (page.layoutVariant === "spotlight-partner-v2") {
@@ -1979,7 +2047,10 @@ function renderListItems(items) {
         ${item.label ? `<div class="item-label">${escapeHtml(item.label)}</div>` : ""}
         <div class="item-name story-image-title">${escapeHtml(item.name)}</div>
         <p class="item-meta story-image-meta">${escapeHtml(item.metaPrimary)}</p>
-        ${item.metaSecondary ? `<p class="item-meta story-image-meta secondary">${escapeHtml(item.metaSecondary)}</p>` : ""}
+        ${(() => {
+    const secondary = gridPriceMetaFromSecondary(item.metaSecondary);
+    return secondary ? `<p class="item-meta story-image-meta secondary">${escapeHtml(secondary)}</p>` : "";
+  })()}
         <div class="mapping-chip compact ${escapeHtml(item.imageSource || (item.imageMapped ? "manual" : "fallback"))}">
           ${item.imageSource === "manual" ? "\u0110\xFAng \u1EA3nh" : item.imageSource === "auto" ? "T\u1EF1 map" : "Minh h\u1ECDa"}
         </div>
@@ -2010,7 +2081,7 @@ function renderGridAddress(value) {
   `;
 }
 function renderGridSecondary(value) {
-  const cleanValue = String(value || "").replace(/\s+/g, " ").trim();
+  const cleanValue = gridPriceMetaFromSecondary(value);
   if (!cleanValue) return "";
   return `
     <div class="grid6-address grid6-address-extra story-image-meta">
@@ -2030,6 +2101,14 @@ function renderSpotlightMetaLine(value, className = "") {
 }
 function spotlightV2AddressLine(item) {
   return String(item?.metaPrimary || "").replace(/\s+/g, " ").trim();
+}
+function spotlightV2PriceLine(item) {
+  const secondary = String(item?.metaSecondary || "").replace(/\s+/g, " ").trim();
+  if (!secondary) return "";
+  const match = secondary.match(/Giá:\s*([^·]+)/i);
+  if (!match) return "";
+  const price = String(match[1] || "").trim();
+  return price ? `Gi\xE1: ${price}` : "";
 }
 function spotlightV2HoursLine(item) {
   const secondary = String(item?.metaSecondary || "").replace(/\s+/g, " ").trim();
@@ -2097,7 +2176,7 @@ function renderSpotlightListItems(items, options = {}) {
   const showSecondary = options.showSecondary !== false;
   return (items || []).map((item) => {
     const isHomestay = item.sourceSectionKey === "homestay";
-    const metaSecondary = showSecondary ? item.metaSecondary || (isHomestay && item.price ? `Gi\xE1: ${item.price}` : "") : "";
+    const metaSecondary = showSecondary ? gridPriceMetaFromSecondary(item.metaSecondary) || (isHomestay && item.price ? `Gi\xE1: ${item.price}` : "") : "";
     return `
     <article class="spotlight-list-row ${escapeHtml(imageSourceClass(item))}">
       <div class="spotlight-list-thumb">
@@ -2406,7 +2485,7 @@ function renderBudget3N2DDayPage(page, index, listId, list) {
         <div class="budget72-story-timeline">
           ${items.map((item) => {
     const { time } = budgetStoryParts(item);
-    const secondary = String(item.metaSecondary || "").trim();
+    const secondary = gridPriceMetaFromSecondary(item.metaSecondary);
     return `
               <article class="budget72-story-stop">
                 <div class="budget72-story-time">${escapeHtml(time)}</div>
@@ -2702,10 +2781,11 @@ function renderListPage(page, index, total, listId, hashtags = [], list = null) 
     const grid8Title = isGeneratedCaptionList(list) ? contextualGrid8Title(page) : page.title;
     const grid8Intro = grid8IntroForPage(page, pageSubtitle, list);
     const showAddress = !isActivityListPage(page);
+    const grid8Background = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
     return `
       <article class="${escapeHtml(storyPageClass(listId, "grid8-page"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, grid8Title, page.chipText, page.backgroundImage, grid8Intro, { showLabel: isServiceOrStayListPage(page), showAddress })}
+          ${renderGrid8Items(page.items, grid8Title, page.chipText, grid8Background, grid8Intro, { showLabel: isServiceOrStayListPage(page), showAddress })}
         </div>
       </article>
     `;
@@ -2714,10 +2794,11 @@ function renderListPage(page, index, total, listId, hashtags = [], list = null) 
     const hideCenterChip = page.chipText === "L\u01B0u tr\xFA" || page.chipText === "Homestay" || page.chipText === "D\u1ECBch v\u1EE5";
     const showJourneyServiceLabel = isServiceOrStayListPage(page) || hideCenterChip;
     const showAddress = !isActivityListPage(page);
+    const journeyBackground = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
     return `
       <article class="${escapeHtml(storyPageClass(listId, "grid8-page", "journey-grid8-page"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, page.backgroundImage, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: !hideCenterChip, showLabel: showJourneyServiceLabel, showAddress })}
+          ${renderGrid8Items(page.items, page.title, page.chipText, journeyBackground, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: !hideCenterChip, showLabel: showJourneyServiceLabel, showAddress })}
         </div>
       </article>
     `;
@@ -2757,7 +2838,7 @@ function renderListPage(page, index, total, listId, hashtags = [], list = null) 
     const dayNumber = String(Math.max(index, 1)).padStart(2, "0");
     return `
       <article class="${escapeHtml(storyPageClass(listId, "journey4", `journey-page-${dayNumber}`))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText)}.png">
-        <div class="journey-bg">${renderPreviewImage(page.backgroundImage, page.title)}</div>
+        <div class="journey-bg">${renderPreviewImage(page.backgroundImage, page.title, "", portablePageImageCandidates(page, page.backgroundImage))}</div>
         <div class="journey-day-badge">${escapeHtml(page.chipText)}</div>
         <div class="journey-card">
           <div class="journey-title-block">
@@ -2776,7 +2857,7 @@ function renderListPage(page, index, total, listId, hashtags = [], list = null) 
   const itemsHtml = page.layoutVariant === "itinerary" ? renderItineraryItems(page.items) : renderListItems(page.items);
   return `
     <article class="${escapeHtml(storyPageClass(listId, variantClass.trim(), crowdedClass.trim(), hashtagClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText)}.png">
-      <div class="page-shell-bg">${renderPreviewImage(page.backgroundImage, page.title)}</div>
+      <div class="page-shell-bg">${renderPreviewImage(page.backgroundImage, page.title, "", portablePageImageCandidates(page, page.backgroundImage))}</div>
       <div class="page-card">
         <div class="page-chip chip-${escapeHtml(page.chipTone)}">${escapeHtml(page.chipText)}</div>
         <h3 class="page-title">${escapeHtml(page.title)}</h3>

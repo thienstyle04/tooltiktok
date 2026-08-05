@@ -92,6 +92,17 @@ function firstPortablePageImage(page) {
   return '';
 }
 
+function portablePageImageCandidates(page, primary = '') {
+  const urls = [];
+  for (const item of page?.items || []) {
+    if (isPortableImageUrl(item.imageUrl)) urls.push(item.imageUrl);
+    for (const candidate of item.candidateImageUrls || []) {
+      if (isPortableImageUrl(candidate)) urls.push(candidate);
+    }
+  }
+  return [...new Set(urls)].filter((url) => url !== primary);
+}
+
 function grid4FeatureBackgroundImage(page, list) {
   if (isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
   return firstPortablePageImage(page) || coverBackgroundImage(page, list);
@@ -877,24 +888,19 @@ function renderGrid8FeedItems(items, centerHook, showAddress = true) {
 }
 
 function grid8FeedPageBgImages(page, backgroundImage, listId = '', coverImageUrls = []) {
-  const fromItems = (Array.isArray(page?.items) ? page.items : [])
-    .map((item) => String(item?.imageUrl || '').trim())
-    .filter(Boolean);
-  const uniqueFromItems = [...new Set(fromItems)];
-  if (uniqueFromItems.length >= 4) return uniqueFromItems.slice(0, 4);
-
-  const fromPageBg = String(page?.backgroundImage || backgroundImage || '').trim();
+  // Nền Grid 8 Feed là một nguồn dữ liệu riêng: chỉ được lấy từ sheet/thư mục
+  // Hình_nền (coverImageUrls). Không mượn imageUrl/backgroundImage của địa điểm,
+  // nếu không quá trình inline lúc xuất sẽ "claim" ảnh chính trước các ô quán và
+  // buộc ô quán dùng candidate chưa cache, dẫn đến trắng ảnh trên máy khác.
   const pool = (coverImageUrls.length > 0 ? coverImageUrls : spotlightV2CoverImagePool).filter(Boolean);
   const seed = `${listId || page?.chipText || 'grid8-feed-page'}|${page?.title || page?.chipText || 'bg'}`;
-  const fromPool = pickUniqueCoverGridImages(pool, seed, 4);
-  const merged = [...new Set([...uniqueFromItems, fromPageBg, ...fromPool].filter(Boolean))];
-  if (merged.length >= 4) return merged.slice(0, 4);
-  if (merged.length > 0) {
-    const padded = [...merged];
-    while (padded.length < 4) padded.push(padded[padded.length % merged.length]);
+  const backgroundPool = pickUniqueCoverGridImages(pool, seed, 4);
+  if (backgroundPool.length > 0) {
+    const padded = [...backgroundPool];
+    while (padded.length < 4) padded.push(padded[padded.length % backgroundPool.length]);
     return padded.slice(0, 4);
   }
-  return fromPageBg ? [fromPageBg] : [];
+  return [];
 }
 
 function renderGrid8FeedPageBackground(page, backgroundImage, listId = '', coverImageUrls = []) {
@@ -3269,7 +3275,7 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     const dayNumber = String(Math.max(index, 1)).padStart(2, '0');
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'journey4', `journey-page-${dayNumber}`))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
-        <div class="journey-bg">${renderPreviewImage(page.backgroundImage, page.title)}</div>
+        <div class="journey-bg">${renderPreviewImage(page.backgroundImage, page.title, '', portablePageImageCandidates(page, page.backgroundImage))}</div>
         <div class="journey-day-badge">${escapeHtml(page.chipText)}</div>
         <div class="journey-card">
           <div class="journey-title-block">
@@ -3297,7 +3303,7 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
     : renderListItems(page.items);
   return `
     <article class="${escapeHtml(storyPageClass(listId, variantClass.trim(), crowdedClass.trim(), hashtagClass.trim()))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
-      <div class="page-shell-bg">${renderPreviewImage(page.backgroundImage, page.title)}</div>
+      <div class="page-shell-bg">${renderPreviewImage(page.backgroundImage, page.title, '', portablePageImageCandidates(page, page.backgroundImage))}</div>
       <div class="page-card">
         <div class="page-chip chip-${escapeHtml(page.chipTone)}">${escapeHtml(page.chipText)}</div>
         <h3 class="page-title">${escapeHtml(page.title)}</h3>

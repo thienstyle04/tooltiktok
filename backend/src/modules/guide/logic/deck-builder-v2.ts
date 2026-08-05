@@ -267,14 +267,14 @@ export function retuneSpotlightV2SpotImages(
       return {
         ...listPage,
         items: [{ ...nextItem, metaPrimary: priced.metaPrimary, metaSecondary: priced.metaSecondary }],
-        backgroundImage: nextItem.imageUrl || listPage.backgroundImage,
+        backgroundImage: listPage.backgroundImage,
       };
     }
 
     return {
       ...listPage,
       items: [nextItem],
-      backgroundImage: nextItem.imageUrl || listPage.backgroundImage,
+      backgroundImage: listPage.backgroundImage,
     };
   });
 }
