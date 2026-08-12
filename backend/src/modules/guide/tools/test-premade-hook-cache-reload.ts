@@ -10,9 +10,9 @@ const filePath = path.join(tempDataRoot, 'premade-hooks.json');
 
 try {
   // 1) File chua ton tai luc goi lan dau (giong luc server moi khoi dong truoc khi file duoc tao)
-  //    -> phai tra ve rong, KHONG duoc throw.
+  //    -> phai tra ve hook mac dinh, KHONG duoc throw.
   const firstAttempt = loadPremadeHookPool('highlight', tempDataRoot);
-  assert.deepEqual(firstAttempt, [], 'lan dau file chua ton tai phai tra ve rong');
+  assert.ok(firstAttempt.length >= 5, 'lan dau file chua ton tai phai tra ve hook mac dinh');
 
   // 2) File duoc tao SAU do (vi du mot session khac vua ghi premade-hooks.json) -> lan goi
   //    tiep theo PHAI doc lai duoc, khong duoc khoa cung o trang thai rong mai.

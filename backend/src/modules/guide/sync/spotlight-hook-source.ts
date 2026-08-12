@@ -4,6 +4,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { BUNDLED_SECTION_HOOKS, BUNDLED_SPOTLIGHT_HOOKS } from './hook-fallbacks';
 
 const DEFAULT_DOC_ID = '1NGgDbpoUGDormMJKlMdYJoYWAt-nmVq_neDSH3PyueE';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -112,6 +113,8 @@ export async function loadSpotlightV3Hooks(options: {
   forceRefresh?: boolean;
   cacheFileName?: string;
   sectionHeadingIncludes?: string[];
+  fallbackKey?: string;
+  fetchDocument?: (docId: string) => Promise<string>;
 }): Promise<string[]> {
   const docId = String(options.docId || process.env.SPOTLIGHT_V3_HOOK_DOC_ID || DEFAULT_DOC_ID).trim() || DEFAULT_DOC_ID;
   const sectionKey = (options.sectionHeadingIncludes || []).map(normalizeHookLine).filter(Boolean).join('|').toLowerCase();
@@ -128,7 +131,7 @@ export async function loadSpotlightV3Hooks(options: {
   }
 
   try {
-    const text = await fetchHookDocument(docId);
+    const text = await (options.fetchDocument || fetchHookDocument)(docId);
     const hooks = sectionKey
       ? parseHookDocumentSection(text, options.sectionHeadingIncludes || [])
       : parseSpotlightHookDocument(text);
@@ -144,8 +147,14 @@ export async function loadSpotlightV3Hooks(options: {
       memoryCache = disk;
       return disk.hooks;
     }
-    if (memoryCache?.hooks?.length) return memoryCache.hooks;
-    return [];
+    if (memoryCache?.hooks?.length && memoryCache.docId === docId && String(memoryCache.sectionKey || '') === sectionKey) {
+      return memoryCache.hooks;
+    }
+    const bundled = options.fallbackKey
+      ? BUNDLED_SECTION_HOOKS[options.fallbackKey] || []
+      : BUNDLED_SPOTLIGHT_HOOKS;
+    console.warn(`[spotlight-hooks] Dùng ${bundled.length} hook mặc định đóng gói.`);
+    return [...bundled];
   }
 }
 

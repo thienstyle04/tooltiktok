@@ -4,6 +4,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { BUNDLED_PREMADE_HOOKS } from './hook-fallbacks';
 
 export type PremadeHookPoolKey = 'itinerary_3n2d' | 'itinerary_4n3d' | 'budget' | 'highlight';
 
@@ -66,9 +67,14 @@ export function loadPremadeHookPool(poolKey: PremadeHookPoolKey, dataRoot: strin
       cacheFilePath = filePath;
     } catch (error) {
       console.warn('[premade-hooks] Không đọc được premade-hooks.json:', error instanceof Error ? error.message : error);
-      cache = { itinerary_3n2d: [], itinerary_4n3d: [], budget: [], highlight: [] };
+      cache = {
+        itinerary_3n2d: [...BUNDLED_PREMADE_HOOKS.itinerary_3n2d],
+        itinerary_4n3d: [...BUNDLED_PREMADE_HOOKS.itinerary_4n3d],
+        budget: [...BUNDLED_PREMADE_HOOKS.budget],
+        highlight: [...BUNDLED_PREMADE_HOOKS.highlight],
+      };
       // Không lưu mtimeMs khi đọc lỗi, để lần gọi kế tiếp thử đọc lại thay vì khoá cứng rỗng.
     }
   }
-  return cache?.[poolKey] || [];
+  return cache?.[poolKey]?.length ? cache[poolKey] : [...BUNDLED_PREMADE_HOOKS[poolKey]];
 }

@@ -296,6 +296,7 @@ export class GuideService implements OnApplicationBootstrap {
       docId: HOOK_DOC_ID,
       cacheFileName: `${section.key}-hooks.json`,
       sectionHeadingIncludes: section.headingIncludes,
+      fallbackKey: section.key,
     });
   }
 
