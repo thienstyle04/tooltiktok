@@ -1,7 +1,9 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { renderCoverPage, renderListPage } from '../lib/pageMarkup';
 
-const MOJIBAKE_TEXT_RE = /(?:Ã|Â|Ä|Å|Æ|áÂ|â€|ï¿½)/;
+// Xem giải thích ở pageMarkup.js: chỉ bắt dấu hiệu mojibake thật, không bắt
+// chữ hoa có dấu hợp lệ trong tiếng Việt (Â, Ã, Ä, Å, Æ).
+const MOJIBAKE_TEXT_RE = /(?:áÂ|â€|ï¿½)/;
 
 const BUDGET72_STORY_COPY = {
   cover: {
@@ -40,7 +42,7 @@ function hasMojibakeText(value) {
 function setTextIfBroken(element, fallback) {
   if (!element) return;
   const current = element.textContent || '';
-  if (!current.trim() || hasMojibakeText(current)) {
+  if (hasMojibakeText(current)) {
     element.textContent = fallback;
   }
 }
@@ -86,14 +88,16 @@ function renderSlideHtml(list, page, index, coverImageUrls = []) {
 
 function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] }) {
   const contentRef = useRef(null);
-  const html = useMemo(
-    () => renderSlideHtml(list, page, index, coverImageUrls),
-    [list, page, index, coverImageUrls],
-  );
+  const html = renderSlideHtml(list, page, index, coverImageUrls);
 
   useEffect(() => {
     const root = contentRef.current;
     if (!root) return undefined;
+
+    // React does not patch mismatched `dangerouslySetInnerHTML` during hydration.
+    // Re-apply the client-rendered markup so persisted/generated page text is not
+    // left behind in the server HTML after restarting the app.
+    if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
 
@@ -209,4 +213,4 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
   );
 }
 
-export default memo(SlideCard);
+export default SlideCard;

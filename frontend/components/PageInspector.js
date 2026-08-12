@@ -21,9 +21,9 @@ export default function PageInspector({
   deck,
   list,
   selectedPageIndex,
-  onCoverTextChange,
-  onCoverTextSave,
-  savingCoverText = false,
+  onPageTextChange,
+  onPageTextSave,
+  savingPageText = false,
   onExportPage,
   onExportList,
   busy = false,
@@ -43,8 +43,11 @@ export default function PageInspector({
     ? page.backgroundImage
     : firstPortableListImage(list) || page.backgroundImage || '';
   const coverImage = hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
-  const canEditCover = !hasItems && page.type === 'cover' && typeof onCoverTextChange === 'function';
-  const canSaveCover = canEditCover && typeof onCoverTextSave === 'function';
+  const canEditPage = typeof onPageTextChange === 'function';
+  const canSavePage = canEditPage && typeof onPageTextSave === 'function';
+  const titleLimit = page.type === 'cover' ? 60 : 90;
+  const pageTitle = String(page.title || '');
+  const pageSubtitle = String(page.subtitle || '');
 
   return (
     <>
@@ -57,6 +60,27 @@ export default function PageInspector({
         </div>
       </div>
 
+      {canEditPage ? (
+        <div className="inspector-cover-editor inspector-page-editor">
+          <label className="inspector-field">
+            <span className="inspector-field-head"><span>Tiêu đề trang</span><span>{pageTitle.length}/{titleLimit}</span></span>
+            <textarea value={pageTitle} placeholder="Nhập tiêu đề trang..." rows={2} maxLength={titleLimit} onChange={(event) => onPageTextChange({ title: event.target.value })} />
+          </label>
+          <label className="inspector-field">
+            <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/220</span></span>
+            <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
+          </label>
+          <div className="inspector-editor-actions">
+            <span>Xem trước cập nhật ngay · chỉ lưu khi bấm nút.</span>
+            {canSavePage ? (
+              <button className="toolbar-button secondary" type="button" disabled={savingPageText} onClick={onPageTextSave}>
+                {savingPageText ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {hasItems ? (
         <>
           <div className="inspector-stats">
@@ -68,68 +92,32 @@ export default function PageInspector({
           <ul className="inspector-list">
             {items.map((item, index) => (
               <li key={`${item.id || item.name}-${index}`} className={`inspector-item ${item.imageUrl ? 'rich' : ''}`}>
-                {item.imageUrl ? (
-                  <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" />
-                ) : null}
+                {item.imageUrl ? <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" /> : null}
                 <span className="inspector-item-copy">
                   <span className="inspector-item-label">{item.label || ''}</span>
                   <span className="inspector-item-name">{item.name}</span>
                   <span className="inspector-item-meta">{item.metaPrimary || ''}</span>
                 </span>
-                {item.imageUrl ? (
-                  <span className={`inspector-item-source ${imageSourceClass(item)}`}>{sourceLabel(item)}</span>
-                ) : (
-                  <span className="inspector-item-source text-only">Bảng</span>
-                )}
+                {item.imageUrl
+                  ? <span className={`inspector-item-source ${imageSourceClass(item)}`}>{sourceLabel(item)}</span>
+                  : <span className="inspector-item-source text-only">Bảng</span>}
               </li>
             ))}
           </ul>
         </>
       ) : (
-        <>
-          {canEditCover ? (
-            <div className="inspector-cover-editor">
-              <label className="inspector-field">
-                <span>Chữ cover</span>
-                <textarea
-                  value={page.subtitle || ''}
-                  placeholder="Nhập chữ muốn hiện trên cover..."
-                  rows={4}
-                  maxLength={220}
-                  onChange={(event) => onCoverTextChange({ coverSubtitle: event.target.value })}
-                />
-              </label>
-              <div className="inspector-editor-actions">
-                <span>{list.id?.includes('caption-') ? 'List AI: lưu để lần sau mở lại vẫn còn.' : 'List gốc: sửa tạm trong phiên hiện tại.'}</span>
-                {canSaveCover ? (
-                  <button className="toolbar-button secondary" type="button" disabled={savingCoverText} onClick={onCoverTextSave}>
-                    {savingCoverText ? 'Đang lưu...' : 'Lưu chữ cover'}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-          <div className="inspector-cover-note">
-            <strong>Trang này là cover</strong>
-            <span>Cover dùng ảnh nền và chữ phụ. Sửa nội dung ở ô trên rồi xuất lại, không cần sinh caption AI.</span>
-          </div>
-        </>
+        <div className="inspector-cover-note">
+          <strong>Trang này là cover</strong>
+          <span>Cover dùng ảnh nền và chữ riêng. Có thể sửa tiêu đề và mô tả ở trên mà không cần sinh lại bằng AI.</span>
+        </div>
       )}
 
       {typeof onExportPage === 'function' || typeof onExportList === 'function' ? (
         <div className="inspector-export-actions">
           <p className="inspector-export-kicker">Xuất ảnh</p>
           <div className="inspector-export-buttons">
-            {typeof onExportPage === 'function' ? (
-              <button className="toolbar-button secondary" type="button" disabled={busy} onClick={onExportPage}>
-                Xuất trang PNG
-              </button>
-            ) : null}
-            {typeof onExportList === 'function' ? (
-              <button className="toolbar-button" type="button" disabled={busy} onClick={onExportList}>
-                Xuất list ZIP
-              </button>
-            ) : null}
+            {typeof onExportPage === 'function' ? <button className="toolbar-button secondary" type="button" disabled={busy} onClick={onExportPage}>Xuất trang PNG</button> : null}
+            {typeof onExportList === 'function' ? <button className="toolbar-button" type="button" disabled={busy} onClick={onExportList}>Xuất list ZIP</button> : null}
           </div>
           <p className="inspector-export-hint">Phím tắt: Ctrl+S xuất trang · ← → đổi trang</p>
         </div>

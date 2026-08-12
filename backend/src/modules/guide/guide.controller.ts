@@ -10,6 +10,8 @@ import {
   DestinationListResponse,
   GenerateBatchListsRequest,
   GenerateBatchListsResponse,
+  DeleteGeneratedListsRequest,
+  DeleteGeneratedListsResponse,
   GenerateCaptionDeckRequest,
   GenerateCaptionDeckResponse,
   GeneratePartnerSpotlightRequest,
@@ -19,6 +21,8 @@ import {
   SetDestinationResponse,
   UpdateGeneratedListCoverRequest,
   UpdateGeneratedListCoverResponse,
+  UpdatePageTextRequest,
+  UpdatePageTextResponse,
 } from '../../common/interfaces/guide.types';
 
 @Controller()
@@ -127,6 +131,12 @@ export class GuideController {
     return this.guideService.generateBatchLists(request);
   }
 
+  @Post('api/decks/delete-lists')
+  @HttpCode(200)
+  deleteGeneratedLists(@Body() request: DeleteGeneratedListsRequest): DeleteGeneratedListsResponse {
+    return this.guideService.deleteGeneratedLists(request.groups || []);
+  }
+
   @Post('api/decks/generate-partner-spotlight')
   generatePartnerSpotlight(@Body() request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
     return this.guideService.generatePartnerSpotlight(request);
@@ -161,6 +171,16 @@ export class GuideController {
     @Body() request: UpdateGeneratedListCoverRequest,
   ): UpdateGeneratedListCoverResponse {
     return this.guideService.updateGeneratedListCover(deckId, listId, request);
+  }
+
+  @Patch('api/decks/:deckId/lists/:listId/pages/:pageIndex/text')
+  updatePageText(
+    @Param('deckId') deckId: string,
+    @Param('listId') listId: string,
+    @Param('pageIndex') pageIndex: string,
+    @Body() request: UpdatePageTextRequest,
+  ): UpdatePageTextResponse {
+    return this.guideService.updatePageText(deckId, listId, Number(pageIndex), request);
   }
 
   @Delete('api/decks/:deckId/lists/:listId')

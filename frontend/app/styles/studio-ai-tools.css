@@ -79,6 +79,27 @@
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   min-width: 160px;
+  max-height: min(320px, 48vh);
+}
+
+.ai-shell.non-ai-template {
+  overflow: visible !important;
+}
+
+.ai-shell.non-ai-template .ai-toolbar {
+  overflow: visible;
+}
+
+.ai-shell.non-ai-template .caption-target-picker {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ai-shell.non-ai-template .ai-actions {
+  grid-template-columns: minmax(0, 360px);
+}
+
+.ai-shell.non-ai-template .ai-cache-warning {
+  margin: 14px 16px 16px;
 }
 
 .ai-batch-option {
@@ -184,7 +205,8 @@
 .cache-warm-progress {
   height: 12px;
   margin-top: 24px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
 }
@@ -218,6 +240,38 @@
 .cache-warm-note {
   margin-top: 22px;
   font-size: 0.82rem;
+}
+
+.cache-warm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.cache-warm-actions .toolbar-button {
+  min-width: 132px;
+}
+
+.cache-exit-button {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f7f3eb;
+}
+
+.cache-exit-button:hover {
+  border-color: rgba(240, 127, 90, 0.55);
+  background: rgba(240, 127, 90, 0.12);
+}
+
+@media (max-width: 520px) {
+  .cache-warm-actions {
+    flex-direction: column;
+  }
+
+  .cache-warm-actions .toolbar-button {
+    width: 100%;
+  }
 }
 
 .cache-ready-notice {

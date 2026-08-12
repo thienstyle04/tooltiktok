@@ -1160,7 +1160,7 @@ function renderGrid8QuaytungCenterSlot(page, backgroundImage) {
         <div class="grid8-quaytung-center-shade"></div>
         <div class="grid8-quaytung-center-copy">
           ${renderGrid8QuaytungDalatBadge()}
-          <div class="grid8-quaytung-center-hook">"${escapeHtml(hook)}"</div>
+          ${hook ? `<div class="grid8-quaytung-center-hook">${escapeHtml(hook)}</div>` : ""}
           ${tagline ? `<div class="grid8-quaytung-center-tagline">${escapeHtml(tagline)}</div>` : ""}
         </div>
       </div>

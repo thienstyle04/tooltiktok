@@ -7,6 +7,27 @@ echo KHOI DONG DALAT TIKTOK CAROUSEL TOOL
 echo ==============================================================
 echo.
 
+echo Dang kiem tra moi truong dung chung...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-portable-runtime.ps1"
+if errorlevel 1 (
+  echo.
+  echo [LOI] Khong the chuan bi moi truong. Kiem tra Node.js va ket noi mang.
+  pause
+  exit /b 1
+)
+if not exist "%~dp0backend\.env" (
+  if exist "%~dp0backend\.env.example" (
+    copy /y "%~dp0backend\.env.example" "%~dp0backend\.env" >nul
+  )
+)
+if not exist "%~dp0backend\.env" (
+  echo [LOI] Khong tao duoc file cau hinh: %~dp0backend\.env
+  pause
+  exit /b 1
+)
+echo ^> Da xac nhan file cau hinh: %~dp0backend\.env
+echo.
+
 rem Backup list AI truoc khi khoi dong de tranh mat du lieu
 if exist "backend\data\generated-caption-lists.json" (
   copy /y "backend\data\generated-caption-lists.json" "backend\data\generated-caption-lists.backup.json" >nul

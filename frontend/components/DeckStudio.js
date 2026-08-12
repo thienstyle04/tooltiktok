@@ -129,7 +129,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'grid-8-quaytung',
   'spotlight-v2',
   'spotlight-v3',
-  'pov-3-v2',
+  'carousel-mau-1',
   'itinerary-4n3d-stack',
   'itinerary-timeline',
 ];
@@ -197,26 +197,6 @@ function needsGrid5CatalogRefresh(dataset) {
   return cover?.layoutVariant !== 'grid-5';
 }
 
-const POV_3_V2_MIN_TEMPLATE_VERSION = 11;
-
-function isStalePov3V2List(list) {
-  if (!list) return true;
-  if (Number(list.templateVersion || 0) < POV_3_V2_MIN_TEMPLATE_VERSION) return true;
-  if ((list.pages || []).length < 8) return true;
-  const listPages = (list.pages || []).filter((page) => page.type === 'list');
-  const chips = listPages.map((page) => String(page.chipText || '').trim());
-  if (!chips.includes('Khu du lịch')) return true;
-  if (!chips.some((chip) => chip.includes('Dịch vụ'))) return true;
-  if (chips.filter((chip) => chip === 'Check-in').length > 2) return true;
-  return false;
-}
-
-function needsPov3V2CatalogRefresh(dataset) {
-  const deck = (dataset?.decks || []).find((item) => item.id === 'pov-3-v2');
-  if (!deck) return true;
-  return (deck.lists || []).some((list) => isStalePov3V2List(list));
-}
-
 const BUDGET_72H_SUMMARY_MIN_TEMPLATE_VERSION = 7;
 
 function isStaleBudget72HSummaryList(list, deck = null) {
@@ -266,7 +246,6 @@ function needsTemplateCatalogRefresh(dataset) {
     || needsGrid6QuaytungCatalogRefresh(dataset)
     || needsGrid8QuaytungCatalogRefresh(dataset)
     || needsGrid5CatalogRefresh(dataset)
-    || needsPov3V2CatalogRefresh(dataset)
     || needsBudget72HSummaryCatalogRefresh(dataset);
 }
 
@@ -305,7 +284,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const [selectedListsForDelete, setSelectedListsForDelete] = useState(new Set());
   const [progress, setProgress] = useState({ visible: false, failed: false, value: 0, label: 'Đang chuẩn bị xuất file...' });
   const [partners, setPartners] = useState([]);
-  const [savingCoverText, setSavingCoverText] = useState(false);
+  const [savingPageText, setSavingPageText] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [destinationInfo, setDestinationInfo] = useState(null);
   const [switchingDestination, setSwitchingDestination] = useState(false);
@@ -321,6 +300,7 @@ export default function DeckStudio({ initialDataset = null }) {
     message: 'Đang kiểm tra cache ảnh Google Drive...',
   });
   const [driveCacheReadyNotice, setDriveCacheReadyNotice] = useState(false);
+  const [dismissedCacheDestinationId, setDismissedCacheDestinationId] = useState(null);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const v2CatalogRefreshAttemptedRef = useRef(false);
   const selectionHistoryRef = useRef([]);
@@ -328,6 +308,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const datasetRef = useRef(initialDataset);
   const focusRefreshRef = useRef(0);
   const driveCacheWasWaitingRef = useRef(false);
+  const creatingListsRef = useRef(false);
 
   const activeDeck = useMemo(
     () => dataset?.decks?.find((deck) => deck.id === activeDeckId) || null,
@@ -597,6 +578,7 @@ export default function DeckStudio({ initialDataset = null }) {
           driveCacheWasWaitingRef.current = true;
         } else if (driveCacheWasWaitingRef.current) {
           driveCacheWasWaitingRef.current = false;
+          setDismissedCacheDestinationId(null);
           setDriveCacheReadyNotice(true);
           if (readyNoticeTimer) window.clearTimeout(readyNoticeTimer);
           readyNoticeTimer = window.setTimeout(() => setDriveCacheReadyNotice(false), 5000);
@@ -754,7 +736,7 @@ export default function DeckStudio({ initialDataset = null }) {
     setStatus(message);
   }, []);
 
-  const updateActiveCoverTextInDataset = useCallback((updates) => {
+  const updateActivePageTextInDataset = useCallback((updates) => {
     if (!dataset || !activeDeckId || !activeListId) return null;
     let updatedList = null;
     const nextDataset = {
@@ -766,16 +748,19 @@ export default function DeckStudio({ initialDataset = null }) {
           lists: deck.lists.map((list) => {
             if (list.id !== activeListId) return list;
             const pages = (list.pages || []).map((page, index) => {
-              if (index !== selectedPageIndex || page.type !== 'cover') return page;
+              if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.coverTitle !== undefined ? { title: updates.coverTitle } : {}),
-                ...(updates.coverSubtitle !== undefined ? { subtitle: updates.coverSubtitle } : {}),
+                ...(updates.title !== undefined ? { title: updates.title } : {}),
+                ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
               };
             });
+            const editingCover = selectedPageIndex === 0 && pages[0]?.type === 'cover';
             updatedList = {
               ...list,
-              ...(updates.coverTitle !== undefined ? { title: updates.coverTitle || list.title, coverTitle: updates.coverTitle || list.coverTitle } : {}),
+              ...(editingCover && updates.title !== undefined
+                ? { title: updates.title, coverTitle: updates.title }
+                : {}),
               pages,
             };
             return updatedList;
@@ -783,42 +768,38 @@ export default function DeckStudio({ initialDataset = null }) {
         };
       }),
     };
-    writeCachedDataset(nextDataset);
+    datasetRef.current = nextDataset;
     setDataset(nextDataset);
-    return updatedList;
+    return { updatedList, nextDataset };
   }, [activeDeckId, activeListId, dataset, selectedPageIndex]);
 
-  const handleCoverTextChange = useCallback((updates) => {
-    updateActiveCoverTextInDataset(updates);
-  }, [updateActiveCoverTextInDataset]);
+  const handlePageTextChange = useCallback((updates) => {
+    updateActivePageTextInDataset(updates);
+  }, [updateActivePageTextInDataset]);
 
-  const saveCoverText = useCallback(async () => {
-    if (!activeDeck || !activeList || !activePage || activePage.type !== 'cover') return;
-    if (listIsMain(activeList)) {
-      setStatus('List gốc lấy từ Google Sheet: chữ cover đã sửa tạm trong phiên, muốn lưu lâu dài hãy sửa trên Sheet hoặc tạo list AI.');
-      return;
-    }
-
-    setSavingCoverText(true);
+  const savePageText = useCallback(async () => {
+    if (!activeDeck || !activeList || !activePage) return;
+    setSavingPageText(true);
     try {
-      const response = await apiFetch(`/api/decks/${encodeURIComponent(activeDeck.id)}/lists/${encodeURIComponent(activeList.id)}/cover`, {
+      const response = await apiFetch(`/api/decks/${encodeURIComponent(activeDeck.id)}/lists/${encodeURIComponent(activeList.id)}/pages/${selectedPageIndex}/text`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          coverTitle: activePage.title || activeList.coverTitle || activeList.title || '',
-          coverSubtitle: activePage.subtitle || '',
+          title: activePage.title || '',
+          subtitle: activePage.subtitle || '',
         }),
       });
       const payload = await readApiPayload(response);
-      if (!response.ok) throw new Error(apiErrorMessage(payload, `Lưu chữ cover thất bại: HTTP ${response.status}`));
-      clearCachedDataset();
-      setStatus('Đã lưu chữ cover cho list AI.');
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Lưu nội dung trang thất bại: HTTP ${response.status}`));
+      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle });
+      if (result?.nextDataset) writeCachedDataset(result.nextDataset);
+      setStatus(`Đã lưu nội dung trang ${selectedPageIndex + 1}.`);
     } catch (error) {
-      setStatus(error?.message || 'Không lưu được chữ cover.');
+      setStatus(error?.message || 'Không lưu được nội dung trang. Bản nháp vẫn được giữ.');
     } finally {
-      setSavingCoverText(false);
+      setSavingPageText(false);
     }
-  }, [activeDeck, activeList, activePage]);
+  }, [activeDeck, activeList, activePage, selectedPageIndex, updateActivePageTextInDataset]);
 
   const requestCaption = useCallback(async (target = 'full') => {
     if (!activeDeck || !captionSourceList) {
@@ -849,14 +830,14 @@ export default function DeckStudio({ initialDataset = null }) {
       if (!response.ok) throw new Error(apiErrorMessage(payload, `DeepSeek trả lỗi HTTP ${response.status}`));
       if (target === 'full') {
         setCaption({
-          coverTitle: (payload.coverTitle || '').slice(0, 35),
+          coverTitle: (payload.coverTitle || '').slice(0, 56),
           headline: payload.headline || '',
           body: sanitizeCaptionBody(payload.body, captionSourceList) || '',
           hashtags: Array.isArray(payload.hashtags) ? payload.hashtags.join(' ') : '',
         });
       } else {
         setCaption((prev) => ({
-          coverTitle: target === 'cover_title' ? (payload.coverTitle || '').slice(0, 35) : prev.coverTitle,
+          coverTitle: target === 'cover_title' ? (payload.coverTitle || '').slice(0, 56) : prev.coverTitle,
           headline: target === 'headline' ? (payload.headline || '') : prev.headline,
           body: target === 'body' ? (sanitizeCaptionBody(payload.body, captionSourceList) || '') : prev.body,
           hashtags: target === 'hashtags' ? (Array.isArray(payload.hashtags) ? payload.hashtags.join(' ') : '') : prev.hashtags,
@@ -880,18 +861,17 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
     }
+    const isNonAiTemplate = activeDeck.id === 'carousel-mau-1';
     const coverTitle = (caption.coverTitle || '').trim();
-    if (!coverTitle) {
-      setStatus('Cần có tiêu đề cover (≤ 35 ký tự) trước khi tạo list AI.');
-      return;
-    }
-    if (!caption.body.trim()) {
-      setStatus('Cần có body caption trước khi tạo list AI.');
+    if (!isNonAiTemplate && !coverTitle) {
+      setStatus('Cần có tiêu đề cover trước khi tạo list AI.');
       return;
     }
 
     setBusy(true);
-    setStatus(`Đang tạo list AI mới trong deck "${activeDeck.navTitle}"...`);
+    setStatus(isNonAiTemplate
+      ? `Đang tạo Mẫu 1 từ Google Sheet "${activeDeck.navTitle}"...`
+      : `Đang tạo list AI mới trong deck "${activeDeck.navTitle}"...`);
     try {
       const response = await apiFetch('/api/decks/generate-from-caption', {
         method: 'POST',
@@ -901,10 +881,10 @@ export default function DeckStudio({ initialDataset = null }) {
           listId: captionSourceList?.id || activeListId,
           tone: captionTone,
           caption: {
-            coverTitle: coverTitle.slice(0, 35),
-            headline: caption.headline.trim(),
-            body: caption.body.trim(),
-            hashtags: normalizeHashtagInput(caption.hashtags),
+            coverTitle: isNonAiTemplate ? '' : coverTitle.slice(0, 56),
+            headline: isNonAiTemplate ? '' : caption.headline.trim(),
+            body: isNonAiTemplate ? '' : caption.body.trim(),
+            hashtags: isNonAiTemplate ? [] : normalizeHashtagInput(caption.hashtags),
           },
         }),
       });
@@ -937,15 +917,18 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo batch list.');
       return;
     }
+    if (creatingListsRef.current) return;
     const safeCount = Math.min(10, Math.max(1, Number(count) || 5));
     if (safeCount >= 5 && !window.confirm(`Tạo ${safeCount} list AI? Có thể mất vài phút.`)) return;
+    creatingListsRef.current = true;
+    const requestId = `${activeDeck.id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     setBusy(true);
     setStatus(`Đang tạo ${safeCount} list AI (xoay vòng tone)...`);
     try {
       const response = await apiFetch('/api/decks/generate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deckId: activeDeck.id, count: safeCount }),
+        body: JSON.stringify({ deckId: activeDeck.id, count: safeCount, requestId }),
       });
       if (!response.ok) {
         const message = await response.text();
@@ -958,12 +941,13 @@ export default function DeckStudio({ initialDataset = null }) {
         selectedPageIndex: 0,
       }, false);
       const msg = payload.failCount > 0
-        ? `Đã tạo ${payload.successCount}/${safeCount} list (${payload.failCount} lỗi).`
+        ? `Đã tạo ${payload.successCount}/${safeCount} list (${payload.failCount} lỗi)${payload.errors?.[0]?.message ? `: ${payload.errors[0].message}` : '.'}`
         : `Đã tạo xong ${payload.successCount} list AI.`;
       setStatus(msg);
     } catch (error) {
       setStatus(error?.message || 'Không tạo được batch list.');
     } finally {
+      creatingListsRef.current = false;
       setBusy(false);
     }
   }, [activeDeck, activeListId, driveCacheStatus.ready, loadDataset]);
@@ -1010,16 +994,19 @@ export default function DeckStudio({ initialDataset = null }) {
     setBusy(true);
     setStatus('Đang xóa list AI...');
     try {
-      const deckBeforeDelete = dataset?.decks?.find((deck) => deck.id === deckId);
+      const deckBeforeDelete = datasetRef.current?.decks?.find((deck) => deck.id === deckId);
       const listIndex = deckBeforeDelete?.lists?.findIndex((list) => list.id === listId) ?? -1;
       const response = await apiFetch(`/api/decks/${encodeURIComponent(deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
       if (!response.ok && response.status !== 204 && response.status !== 404) {
         throw new Error(await formatApiError(response, 'Xóa thất bại'));
       }
 
+      // Đọc datasetRef.current (không dùng `dataset` đóng gói lúc gọi hàm) để tránh
+      // ghi đè mất tác dụng của một lượt xóa khác đang chạy đồng thời.
+      const latestDataset = datasetRef.current;
       const nextDataset = {
-        ...dataset,
-        decks: dataset.decks.map((deck) => deck.id === deckId
+        ...latestDataset,
+        decks: latestDataset.decks.map((deck) => deck.id === deckId
           ? { ...deck, lists: deck.lists.filter((list) => list.id !== listId) }
           : deck),
       };
@@ -1037,7 +1024,7 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally {
       setBusy(false);
     }
-  }, [activeListId, applyDataset, dataset]);
+  }, [activeListId, applyDataset]);
 
   const deleteSelectedLists = useCallback(async () => {
     const groups = (dataset?.decks || [])
@@ -1056,21 +1043,30 @@ export default function DeckStudio({ initialDataset = null }) {
     try {
       const focusIndexByDeck = new Map();
       for (const group of groups) {
-        const deckBeforeDelete = dataset.decks.find((deck) => deck.id === group.deckId);
+        const deckBeforeDelete = datasetRef.current.decks.find((deck) => deck.id === group.deckId);
         const deleteIndexes = group.listIds
           .map((id) => deckBeforeDelete?.lists?.findIndex((list) => list.id === id) ?? -1)
           .filter((index) => index >= 0);
         focusIndexByDeck.set(group.deckId, deleteIndexes.length > 0 ? Math.min(...deleteIndexes) : 0);
-        for (const listId of group.listIds) {
-          const response = await apiFetch(`/api/decks/${encodeURIComponent(group.deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
-          if (!response.ok && response.status !== 204 && response.status !== 404) {
-            throw new Error(await formatApiError(response, 'Xóa thất bại'));
-          }
-        }
       }
+      const deleteResponse = await apiFetch('/api/decks/delete-lists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groups }),
+      });
+      if (!deleteResponse.ok) {
+        throw new Error(await formatApiError(deleteResponse, 'Xóa thất bại'));
+      }
+      const deleteResult = await deleteResponse.json();
+      if (deleteResult.remainingIds?.length) {
+        throw new Error(`Không thể xóa ${deleteResult.remainingIds.length} list. Vui lòng thử lại.`);
+      }
+      // Đọc datasetRef.current (không dùng `dataset` đóng gói lúc gọi hàm) để tránh
+      // ghi đè mất tác dụng của một lượt xóa khác đang chạy đồng thời.
+      const latestDataset = datasetRef.current;
       const nextDataset = {
-        ...dataset,
-        decks: dataset.decks.map((deck) => {
+        ...latestDataset,
+        decks: latestDataset.decks.map((deck) => {
           const group = groups.find((item) => item.deckId === deck.id);
           return group ? { ...deck, lists: deck.lists.filter((list) => !group.listIds.includes(list.id)) } : deck;
         }),
@@ -1087,7 +1083,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setSelectedListsForDelete(new Set());
       setDeleteModalOpen(false);
       setActiveView('preview');
-      setStatus(`Đã xóa ${listCount} list AI.`);
+      setStatus(`Đã xóa ${deleteResult.deletedCount}/${listCount} list AI.`);
     } catch (error) {
       setStatus(error?.message || 'Không xóa được các list AI đã chọn.');
     } finally {
@@ -1115,23 +1111,33 @@ export default function DeckStudio({ initialDataset = null }) {
     setStatus(`Đã xuất xong. Đang xóa ${cleanupCount} list AI đã xuất...`);
     const focusIndexByDeck = new Map();
     for (const group of cleanupGroups) {
-      const deckBeforeDelete = dataset.decks.find((deck) => deck.id === group.deckId);
+      const deckBeforeDelete = datasetRef.current.decks.find((deck) => deck.id === group.deckId);
       const deleteIndexes = group.listIds
         .map((id) => deckBeforeDelete?.lists?.findIndex((list) => list.id === id) ?? -1)
         .filter((index) => index >= 0);
       focusIndexByDeck.set(group.deckId, deleteIndexes.length > 0 ? Math.min(...deleteIndexes) : 0);
 
-      for (const listId of group.listIds) {
-        const response = await apiFetch(`/api/decks/${encodeURIComponent(group.deckId)}/lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
-        if (!response.ok && response.status !== 204 && response.status !== 404) {
-          throw new Error(await formatApiError(response, 'Xóa list đã xuất thất bại'));
-        }
-      }
     }
 
+    const deleteResponse = await apiFetch('/api/decks/delete-lists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groups: cleanupGroups }),
+    });
+    if (!deleteResponse.ok) {
+      throw new Error(await formatApiError(deleteResponse, 'Xóa list đã xuất thất bại'));
+    }
+    const deleteResult = await deleteResponse.json();
+    if (deleteResult.remainingIds?.length) {
+      throw new Error(`Không thể xóa ${deleteResult.remainingIds.length} list đã xuất. Vui lòng thử lại.`);
+    }
+
+    // Đọc datasetRef.current (không dùng `dataset` đóng gói lúc gọi hàm) để tránh
+    // ghi đè mất tác dụng của một lượt xóa khác đang chạy đồng thời.
+    const latestDataset = datasetRef.current;
     const nextDataset = {
-      ...dataset,
-      decks: dataset.decks.map((deck) => {
+      ...latestDataset,
+      decks: latestDataset.decks.map((deck) => {
         const group = cleanupGroups.find((item) => item.deckId === deck.id);
         return group ? { ...deck, lists: deck.lists.filter((list) => !group.listIds.includes(list.id)) } : deck;
       }),
@@ -1151,7 +1157,7 @@ export default function DeckStudio({ initialDataset = null }) {
       const removed = new Set(cleanupGroups.flatMap((group) => group.listIds));
       return new Set(Array.from(prev).filter((id) => !removed.has(id)));
     });
-    setStatus(`Đã xuất và xóa ${cleanupCount} list AI đã xuất.`);
+    setStatus(`Đã xuất và xóa ${deleteResult.deletedCount}/${cleanupCount} list AI đã xuất.`);
   }, [activeDeckId, activeListId, applyDataset, dataset]);
 
   const handleExportPage = useCallback(async () => {
@@ -1345,6 +1351,9 @@ export default function DeckStudio({ initialDataset = null }) {
     dalat: 'ĐL',
     greenland: 'GL',
   }[driveCacheStatus.destinationId] || studioShort;
+  const cacheStatusDestinationId = driveCacheStatus.destinationId || activeDestinationId;
+  const showCacheWarmOverlay = !driveCacheStatus.ready
+    && dismissedCacheDestinationId !== cacheStatusDestinationId;
 
   const resolveDestinationCount = (entry) => {
     if (entry.id === activeDestinationId && dataset?.source?.totalItems) {
@@ -1355,7 +1364,7 @@ export default function DeckStudio({ initialDataset = null }) {
 
   return (
     <main className="app-shell">
-      {!driveCacheStatus.ready ? (
+      {showCacheWarmOverlay ? (
         <div className="cache-warm-overlay" role="dialog" aria-modal="true" aria-labelledby="cacheWarmTitle">
           <section className="cache-warm-dialog">
             <div className="cache-warm-icon" aria-hidden="true">{cacheDestinationShortLabel}</div>
@@ -1388,14 +1397,31 @@ export default function DeckStudio({ initialDataset = null }) {
               Tạm thời chưa thể sinh list. Vui lòng giữ ứng dụng mở cho đến khi quá trình hoàn tất.
             </p>
             {driveCacheStatus.phase === 'error' ? (
-              <button
-                type="button"
-                className="toolbar-button primary cache-retry-button"
-                disabled={refreshing}
-                onClick={() => loadDataset('Đang thử tải lại dữ liệu...', {}, true).catch((error) => setStatus(error.message))}
-              >
-                {refreshing ? 'Đang thử lại...' : 'Thử lại'}
-              </button>
+              <div className="cache-warm-actions">
+                <button
+                  type="button"
+                  className="toolbar-button primary cache-retry-button"
+                  disabled={refreshing}
+                  onClick={() => {
+                    setDismissedCacheDestinationId(null);
+                    loadDataset('Đang thử tải lại dữ liệu...', {}, true).catch((error) => setStatus(error.message));
+                  }}
+                >
+                  {refreshing ? 'Đang thử lại...' : 'Thử lại'}
+                </button>
+                <button
+                  type="button"
+                  className="toolbar-button cache-exit-button"
+                  onClick={() => {
+                    setDismissedCacheDestinationId(cacheStatusDestinationId);
+                    setActiveView('settings');
+                    setCaptionToolsVisible(false);
+                    setStatus('Đồng bộ dữ liệu chưa hoàn tất. Bạn có thể kiểm tra nguồn trong Cài đặt; chức năng tạo list vẫn tạm khóa.');
+                  }}
+                >
+                  Vào giao diện
+                </button>
+              </div>
             ) : null}
           </section>
         </div>
@@ -1562,9 +1588,9 @@ export default function DeckStudio({ initialDataset = null }) {
                     deck={activeDeck}
                     list={activeList}
                     selectedPageIndex={selectedPageIndex}
-                    onCoverTextChange={handleCoverTextChange}
-                    onCoverTextSave={saveCoverText}
-                    savingCoverText={savingCoverText}
+                    onPageTextChange={handlePageTextChange}
+                    onPageTextSave={savePageText}
+                    savingPageText={savingPageText}
                     onExportPage={handleExportPage}
                     onExportList={handleExportList}
                     busy={busy}

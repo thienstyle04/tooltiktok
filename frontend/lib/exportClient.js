@@ -1373,6 +1373,31 @@ async function createHorizontalXlsx(values, sheetName = 'Doi tac') {
   });
 }
 
+async function createTableXlsx(headers, rows, sheetName = 'Du lieu') {
+  const workbookZip = new JSZip();
+  const allRows = [headers, ...rows];
+  const sheetRows = allRows.map((row, rowIndex) => {
+    const cells = row.map((value, columnIndex) =>
+      `<c r="${columnName(columnIndex)}${rowIndex + 1}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`,
+    ).join('');
+    return `<row r="${rowIndex + 1}">${cells}</row>`;
+  }).join('');
+  const cols = headers.map((_, index) =>
+    `<col min="${index + 1}" max="${index + 1}" width="28" customWidth="1"/>`,
+  ).join('');
+  workbookZip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`);
+  workbookZip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  workbookZip.folder('xl').file('workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`);
+  workbookZip.folder('xl').folder('_rels').file('workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`);
+  workbookZip.folder('xl').folder('worksheets').file('sheet1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${cols}</cols><sheetData>${sheetRows}</sheetData></worksheet>`);
+  return workbookZip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    compression: 'STORE',
+  });
+}
+
 function renderConcurrencyLimit() {
   const cores = Number(navigator.hardwareConcurrency || 4);
   return cores >= 8 ? 3 : 2;
@@ -1491,6 +1516,7 @@ function deckShortName(deckId) {
     'spotlight-guide': 'spotlight',
     'spotlight-v2': 'spotlightv2',
     'spotlight-v3': 'spotlightv3',
+    'carousel-mau-1': 'mau1',
     'spotlight-partner': 'partner',
   };
   return map[String(deckId || '')] || sanitizeFilePart(deckId || 'mau');
@@ -1532,6 +1558,21 @@ async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(l
   const captionParts = [postCaption, body, hashtags].filter(Boolean);
   folder.file(`caption-${setLabel}.txt`, captionParts.join('\n\n').trim() || coverTitle);
   folder.file(`partners-${setLabel}.xlsx`, await createHorizontalXlsx(collectPartnerNames(list)));
+  if ((list.pages || []).some((page) => page?.layoutVariant === 'carousel-mau-1-page')) {
+    const rows = (list.pages || []).flatMap((page, pageIndex) => (page.items || []).map((item) => [
+      String(pageIndex + 1),
+      item.sourceKey || item.id || '',
+      item.sourceSectionKey || '',
+      item.rawName || item.name || '',
+      item.metaPrimary || '',
+      item.imageUrl || '',
+    ]));
+    folder.file(`du-lieu-mau-1-${setLabel}.xlsx`, await createTableXlsx(
+      ['Trang', 'ID nguồn', 'Nhóm dữ liệu', 'Tên địa điểm', 'Địa chỉ', 'URL ảnh'],
+      rows,
+      'Du lieu Mau 1',
+    ));
+  }
 }
 
 function renderBatchTaskPages(tasks) {
@@ -1753,6 +1794,15 @@ function assertBudget72HExportReady(deck, list) {
   }
 }
 
+function assertMau1PrefetchReady(deckOrItems, summary) {
+  const hasMau1 = Array.isArray(deckOrItems)
+    ? deckOrItems.some((item) => item?.deck?.id === 'carousel-mau-1')
+    : deckOrItems?.id === 'carousel-mau-1';
+  if (hasMau1 && Number(summary?.fail || 0) > 0) {
+    throw new Error(`Mẫu 1 còn ${summary.fail} ảnh chưa tải được. File chưa được xuất để tránh trang trắng; hãy kiểm tra quyền ảnh rồi thử lại.`);
+  }
+}
+
 export async function exportSelectedPagePng(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
   const { deck, list, selectedPageIndex, quality = 'optimized', dataset = null } = context;
@@ -1771,7 +1821,8 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
-    await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
+    const prefetchSummary = await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
+    assertMau1PrefetchReady(deck, prefetchSummary);
     const visiblePageNode = findVisibleSelectedPageNode(list, selectedPageIndex);
     const preferFreshRender = page?.layoutVariant === 'budget-3n2d-table'
       || page?.layoutVariant === 'budget-3n2d'
@@ -1907,7 +1958,8 @@ export async function exportActiveList(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
-    await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
+    const prefetchSummary = await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
+    assertMau1PrefetchReady(deck, prefetchSummary);
     const pageNodes = renderPagesForExport(exportList);
     await waitForExportLayout();
     cb.updateProgress(8, `Đang dựng layout ${pageNodes.length} trang...`);
@@ -1992,7 +2044,8 @@ export async function exportBatch(context, callbacks = {}) {
   try {
     const driveFileIds = collectDriveFileIdsFromLists(orderedLists);
     if (driveFileIds.length) {
-      await prefetchDriveFilesForExport(driveFileIds, cb);
+      const prefetchSummary = await prefetchDriveFilesForExport(driveFileIds, cb);
+      assertMau1PrefetchReady(orderedLists, prefetchSummary);
     }
 
     const mainZip = new JSZip();

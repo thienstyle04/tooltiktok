@@ -140,7 +140,11 @@ function isBudget3N2DStoryCover(page) {
   return page.layoutVariant === 'budget-3n2d-story' && page.type === 'cover';
 }
 
-const MOJIBAKE_TEXT_RE = /(?:Ã|Â|Ä|Å|Æ|áÂ|â€|ï¿½)/;
+// Chỉ bắt đúng dấu hiệu mojibake (UTF-8 bị đọc nhầm thành Latin-1), KHÔNG bắt
+// các chữ hoa có dấu hợp lệ trong tiếng Việt (Â, Ã, Ä, Å, Æ đều là chữ cái
+// tiếng Việt bình thường, đặc biệt khi tiêu đề viết HOA) — nếu không, chữ do
+// người dùng nhập/xóa sẽ bị âm thầm reset về text mặc định.
+const MOJIBAKE_TEXT_RE = /(?:áÂ|â€|ï¿½)/;
 
 const BUDGET72_STORY_TEXT = {
   coverTitle: '"72H" \u1ede \u0110\u00c0 L\u1ea0T V\u1edaI 3TR',
@@ -192,16 +196,16 @@ function cleanBudgetStoryDayCopy(page, index) {
   const defaults = BUDGET72_STORY_TEXT[`day${budgetStoryDayNumber(page, index)}`] || BUDGET72_STORY_TEXT.day1;
   return {
     chip: cleanStoryText(page?.chipText, defaults.chip),
-    title: cleanStoryText(page?.title, defaults.title),
-    subtitle: cleanStoryText(page?.subtitle, defaults.subtitle),
+    title: cleanStoryText(page?.title, ''),
+    subtitle: cleanStoryText(page?.subtitle, ''),
   };
 }
 
 function cleanBudgetStoryTotalCopy(page) {
   return {
     chip: cleanStoryText(page?.chipText, BUDGET72_STORY_TEXT.total.chip),
-    title: cleanStoryText(page?.title, BUDGET72_STORY_TEXT.total.title),
-    subtitle: cleanStoryText(page?.subtitle, BUDGET72_STORY_TEXT.total.subtitle),
+    title: cleanStoryText(page?.title, ''),
+    subtitle: cleanStoryText(page?.subtitle, ''),
   };
 }
 
@@ -427,17 +431,11 @@ function contextualGrid8Intro(page, list) {
 }
 
 function grid8IntroForPage(page, pageSubtitle, list) {
-  if (!isGeneratedCaptionList(list)) return pageSubtitle;
-  if (!pageSubtitle || sameGridText(pageSubtitle, list?.description)) return contextualGrid8Intro(page, list);
-  if (page.layoutVariant === 'grid-8') return contextualGrid8Intro(page, list);
-  return pageSubtitle;
+  return polishShortVietnameseCopy(pageSubtitle || '');
 }
 
 function gridFeatureSubtitle(page, pageSubtitle, list) {
-  if (pageSubtitle && !sameGridText(pageSubtitle, list?.description)) return polishShortVietnameseCopy(pageSubtitle);
-  const kind = gridPageKind(page);
-  const variants = GRID8_INTRO_VARIANTS[kind] || GRID8_INTRO_VARIANTS.generic;
-  return polishShortVietnameseCopy(pickListVariant(list, variants, kind));
+  return polishShortVietnameseCopy(pageSubtitle || '');
 }
 
 function renderGrid4FeaturePage(page, index, listId, list, pageSubtitle) {
@@ -451,7 +449,7 @@ function renderGrid4FeaturePage(page, index, listId, list, pageSubtitle) {
       <div class="grid4-feature-shade"></div>
       <div class="grid4-feature-copy">
         <div class="grid4-feature-kicker">ĐÀ LẠT</div>
-        <h1 class="grid4-feature-title">${escapeHtml(page.title || page.chipText || '')}</h1>
+        ${page.title ? `<h1 class="grid4-feature-title">${escapeHtml(page.title)}</h1>` : ''}
         ${featureSubtitle ? `<p class="grid4-feature-subtitle">${escapeHtml(featureSubtitle)}</p>` : ''}
       </div>
     </article>
@@ -588,7 +586,7 @@ function renderZigzagItems(items, { showAddress = true } = {}) {
     const thirdHtml = zigzagThirdLineHtml(item);
     return `
       <div class="zigzag-item">
-        <div class="zigzag-thumb ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
+        <div class="zigzag-thumb ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}${portraitFocusClass(item)}">
           ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
         </div>
         <div class="zigzag-copy">
@@ -715,6 +713,7 @@ const V2_COVER_VARIANTS = new Set([
   'grid-8-quaytung-cover',
   'spotlight-v2',
   'spotlight-v3',
+  'carousel-mau-1-cover',
   'spotlight-partner-v2',
   'pov-maikem',
   'pov-3-v2-cover',
@@ -730,6 +729,7 @@ const V2_LIST_VARIANTS = new Set([
   'grid-8-quaytung-menu',
   'spotlight-v2',
   'spotlight-v3',
+  'carousel-mau-1-page',
   'spotlight-v2-list',
   'spotlight-partner-v2',
   'spotlight-partner-v2-info',
@@ -761,11 +761,7 @@ const GRID8_FEED_CENTER_HOOKS = {
 };
 
 function grid8FeedCenterHook(page, list) {
-  const kind = gridPageKind(page);
-  if (GRID8_FEED_CENTER_HOOKS[kind]) return GRID8_FEED_CENTER_HOOKS[kind];
-  const stripped = stripChipPrefixFromTitle(page.chipText, page.title);
-  if (stripped) return stripped;
-  return String(page.chipText || 'Đà Lạt').trim();
+  return String(page.title || '').trim();
 }
 
 /** Grid8: chỉ giá (đã ưu tiên gia_dau_nguoi từ backend), bỏ khung giờ. */
@@ -794,20 +790,6 @@ function grid8FeedItemMeta(item, showAddress = true) {
   return '';
 }
 
-function stripChipPrefixFromTitle(chipText, title) {
-  const chip = String(chipText || '').trim();
-  const raw = String(title || '').trim();
-  if (!raw) return '';
-  if (!chip) return raw;
-  const lowerTitle = raw.toLowerCase();
-  const lowerChip = chip.toLowerCase();
-  if (lowerTitle === lowerChip) return '';
-  if (lowerTitle.startsWith(`${lowerChip} - `)) return raw.slice(chip.length + 3).trim();
-  if (lowerTitle.startsWith(`${lowerChip}-`)) return raw.slice(chip.length + 1).trim();
-  if (lowerTitle.startsWith(lowerChip)) return raw.slice(chip.length).replace(/^[\s\-–—:]+/, '').trim();
-  return raw;
-}
-
 const GRID5_TITLE_CARDS = {
   checkin: 'Một vài điểm check in hot',
   food: 'Một vài quán ăn ngon',
@@ -820,14 +802,7 @@ const GRID5_TITLE_CARDS = {
 };
 
 function grid5TitleCard(page, list) {
-  const kind = gridPageKind(page);
-  if (kind === 'cafe') {
-    const idx = listVariantIndex(list, 2, page.chipText);
-    return idx === 0 ? 'Một vài quán cafe đẹp' : 'Một vài quán cafe chill';
-  }
-  if (GRID5_TITLE_CARDS[kind]) return GRID5_TITLE_CARDS[kind];
-  const stripped = stripChipPrefixFromTitle(page.chipText, page.title);
-  return stripped || String(page.chipText || 'Gợi ý Đà Lạt').trim();
+  return String(page.title || '').trim();
 }
 
 function grid5ItemMeta(item, showAddress = true) {
@@ -935,7 +910,8 @@ function grid8FeedCoverGridImages(page, backgroundImage, listId = '', coverImage
 }
 
 function formatGrid8FeedCoverHero(title) {
-  const raw = String(title || 'CÁC ĐỊA ĐIỂM ĐÀ LẠT').replace(/\s+/g, ' ').trim();
+  const raw = String(title || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
   const upper = raw.toUpperCase();
   const words = upper.split(' ');
   if (words.length <= 5) return escapeHtml(upper);
@@ -944,7 +920,8 @@ function formatGrid8FeedCoverHero(title) {
 }
 
 function formatGrid8FeedCoverTagline(value) {
-  let text = String(value || 'BỎ LỠ CHẮC CHẮN LÀ HỐI HẬN').replace(/\s+/g, ' ').trim();
+  let text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
   text = text.replace(/\.{3,}$/, '').replace(/…+$/, '').trim();
   return escapeHtml(text.toUpperCase());
 }
@@ -966,8 +943,8 @@ function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, ba
       </div>
       <div class="grid8-feed-cover-dim" aria-hidden="true"></div>
       <div class="grid8-feed-cover-center">
-        <h1 class="grid8-feed-cover-hero">${hero}</h1>
-        <p class="grid8-feed-cover-tagline">${tagline}</p>
+        ${hero ? `<h1 class="grid8-feed-cover-hero">${hero}</h1>` : ''}
+        ${tagline ? `<p class="grid8-feed-cover-tagline">${tagline}</p>` : ''}
       </div>
     </article>
   `;
@@ -992,7 +969,8 @@ function itinerary4N3DStackCoverGridImages(page, backgroundImage, listId = '', c
 }
 
 function formatItinerary4N3DStackCoverHero(title) {
-  const raw = String(title || '4N3Đ ĐÀ LẠT').replace(/\s+/g, ' ').trim();
+  const raw = String(title || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
   const upper = raw.toUpperCase();
   const words = upper.split(' ');
   if (words.length <= 4) return escapeHtml(upper);
@@ -1002,7 +980,7 @@ function formatItinerary4N3DStackCoverHero(title) {
 
 function renderItinerary4N3DStackCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
   const hero = formatItinerary4N3DStackCoverHero(coverTitle);
-  const tagline = escapeHtml(String(coverSubtitle || 'Gom gọn gợi ý theo từng nhóm — đi chậm, chill từng ngày').replace(/\s+/g, ' ').trim());
+  const tagline = escapeHtml(String(coverSubtitle || '').replace(/\s+/g, ' ').trim());
   let tiles = itinerary4N3DStackCoverGridImages(page, backgroundImage, listId, coverImageUrls);
   while (tiles.length < 4) tiles.push('');
   tiles = tiles.slice(0, 4);
@@ -1017,8 +995,7 @@ function renderItinerary4N3DStackCover(page, index, listId, coverTitle, coverSub
       </div>
       <div class="itinerary-4n3d-stack-cover-dim" aria-hidden="true"></div>
       <div class="itinerary-4n3d-stack-cover-center">
-        <div class="itinerary-4n3d-stack-cover-kicker">LỊCH TRÌNH 4N3Đ</div>
-        <h1 class="itinerary-4n3d-stack-cover-hero">${hero}</h1>
+        ${hero ? `<h1 class="itinerary-4n3d-stack-cover-hero">${hero}</h1>` : ''}
         <p class="itinerary-4n3d-stack-cover-tagline">${tagline}</p>
       </div>
     </article>
@@ -1052,10 +1029,10 @@ function itinerary4N3DStackBracketLead(lead) {
   return escapeHtml(bracketText);
 }
 
-function renderItinerary4N3DStackCell(item, showAddress = true) {
+function renderItinerary4N3DStackCell(item) {
+  // Bỏ dòng địa chỉ — người dùng chỉ muốn giữ tiêu đề lớn cho gọn, đỡ rối chữ.
   const dayLabel = String(item.label || '').trim();
   const name = gridDisplayName(item);
-  const address = shouldShowItemAddress(item, showAddress) ? cleanGridAddress(item.metaPrimary) : '';
   const focusClass = itinerary4N3DStackRowFocusClass(item);
   return `
     <div class="itinerary-4n3d-stack-page-cell${focusClass} ${escapeHtml(imageSourceClass(item))}">
@@ -1064,7 +1041,6 @@ function renderItinerary4N3DStackCell(item, showAddress = true) {
       <div class="itinerary-4n3d-stack-row-copy">
         ${dayLabel ? `<div class="itinerary-4n3d-stack-day">${escapeHtml(dayLabel)}</div>` : ''}
         <h3 class="itinerary-4n3d-stack-name">${escapeHtml(name)}</h3>
-        ${address ? `<p class="itinerary-4n3d-stack-address">${escapeHtml(address)}</p>` : ''}
       </div>
     </div>
   `;
@@ -1072,21 +1048,20 @@ function renderItinerary4N3DStackCell(item, showAddress = true) {
 
 function renderItinerary4N3DStackPage(page, index, listId, pageSubtitle = '') {
   const items = (page.items || []).slice(0, 4);
-  const showAddress = !isActivityListPage(page);
-  const heading = String(page.title || page.chipText || '').trim();
+  const heading = String(page.title || '').trim();
   const lead = String(pageSubtitle || page.subtitle || '').trim();
   const [lineOne, lineTwo] = itinerary4N3DStackHeadlineLines(heading);
   const leadHtml = lead ? itinerary4N3DStackBracketLead(lead) : '';
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'itinerary-4n3d-stack-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
       <div class="itinerary-4n3d-stack-page-grid">
-        ${items.map((item) => renderItinerary4N3DStackCell(item, showAddress)).join('')}
+        ${items.map((item) => renderItinerary4N3DStackCell(item)).join('')}
       </div>
       <div class="itinerary-4n3d-stack-page-head">
-        <h2 class="itinerary-4n3d-stack-page-headline">
+        ${heading ? `<h2 class="itinerary-4n3d-stack-page-headline">
           <span>${escapeHtml(lineOne)}</span>
           ${lineTwo ? `<span>${escapeHtml(lineTwo)}</span>` : ''}
-        </h2>
+        </h2>` : ''}
         ${leadHtml ? `<p class="itinerary-4n3d-stack-page-bracket">${leadHtml}</p>` : ''}
       </div>
     </article>
@@ -1094,7 +1069,7 @@ function renderItinerary4N3DStackPage(page, index, listId, pageSubtitle = '') {
 }
 
 function formatItineraryTimelineCoverHero(coverTitle) {
-  const raw = String(coverTitle || 'Đà Lạt 3N2Đ').replace(/\s+/g, ' ').trim();
+  const raw = String(coverTitle || '').replace(/\s+/g, ' ').trim();
   const match = raw.match(/^(.+?\s+-\s+)(.+)$/);
   if (match && raw.length > 22) {
     return `${escapeHtml(match[1].trim())}<br>${escapeHtml(match[2].trim())}`;
@@ -1112,7 +1087,7 @@ function renderItineraryTimelineCover(page, index, listId, coverTitle, coverSubt
       <div class="itl-cover-shade" aria-hidden="true"></div>
       <div class="itl-cover-copy">
         <p class="itl-cover-serif">Lịch trình</p>
-        <p class="itl-cover-script" lang="vi">${hero}</p>
+        ${hero ? `<p class="itl-cover-script" lang="vi">${hero}</p>` : ''}
         <p class="itl-cover-serif">đi đâu?</p>
         <div class="itl-cover-spark">— ✦ —</div>
       </div>
@@ -1121,13 +1096,13 @@ function renderItineraryTimelineCover(page, index, listId, coverTitle, coverSubt
 }
 
 function renderItineraryTimelineRow(item) {
+  // Cấu trúc mô tả: giờ - tên | địa chỉ | giá (3 dòng rõ ràng, không nhồi
+  // chung "Khung giờ: ... · Giá: ..." thô từ metaSecondary vào 1 dòng như cũ).
   const time = String(item?.label || '').trim();
-  const activity = String(item?.metaSecondary || '').trimEnd();
   const place = String(item?.name || '').trim();
   const address = cleanGridAddress(item?.metaPrimary) || String(item?.metaPrimary || '').trim();
-  const placeHtml = place
-    ? `${activity ? ' ' : ''}<strong class="itl-day-place">${escapeHtml(place)}</strong>`
-    : '';
+  const price = gridPriceMetaFromSecondary(item?.metaSecondary).replace(/^Giá:\s*/i, '').trim();
+  const placeHtml = place ? `<strong class="itl-day-place">${escapeHtml(place)}</strong>` : '';
   return `
     <div class="itl-day-row ${escapeHtml(imageSourceClass(item))}">
       <div class="itl-day-thumb">
@@ -1136,9 +1111,10 @@ function renderItineraryTimelineRow(item) {
       <div class="itl-day-track"><span class="itl-day-dot" aria-hidden="true"></span></div>
       <div class="itl-day-copy">
         <p class="itl-day-line">
-          ${time ? `<span class="itl-day-time">${escapeHtml(time)}</span>` : ''}${time && (activity || place) ? ' - ' : ''}${activity ? `<span class="itl-day-activity">${escapeHtml(activity)}</span>` : ''}${placeHtml}
+          ${time ? `<span class="itl-day-time">${escapeHtml(time)}</span>` : ''}${time && place ? ' - ' : ''}${placeHtml}
         </p>
         ${address ? `<p class="itl-day-address"><span class="itl-day-pin">📍</span>${escapeHtml(address)}</p>` : ''}
+        ${price ? `<p class="itl-day-price"><span class="itl-day-pin">💰</span>${escapeHtml(price)}</p>` : ''}
       </div>
     </div>
   `;
@@ -1203,7 +1179,7 @@ function formatGrid8QuaytungCoverTitle(title) {
 }
 
 function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
-  const subtitle = String(coverSubtitle || 'Lưu list này cho chuyến đi thành công').replace(/^\[+|\]+$/g, '').trim();
+  const subtitle = String(coverSubtitle || '').replace(/^\[+|\]+$/g, '').trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       <div class="grid8-quaytung-cover-photo">
@@ -1213,7 +1189,7 @@ function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle
       <div class="grid8-quaytung-cover-center">
         ${renderGrid8QuaytungDalatBadge()}
         <h1 class="grid8-quaytung-cover-title">${formatGrid8QuaytungCoverTitle(coverTitle)}</h1>
-        <p class="grid8-quaytung-cover-sub">[ ${escapeHtml(subtitle)} ]</p>
+        <p class="grid8-quaytung-cover-sub">${escapeHtml(subtitle)}</p>
       </div>
     </article>
   `;
@@ -1234,7 +1210,7 @@ function formatGrid6QuaytungCoverTitle(title) {
 }
 
 function renderGrid6QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
-  const subtitle = String(coverSubtitle || 'Lưu list này cho chuyến đi thành công').replace(/^\[+|\]+$/g, '').trim();
+  const subtitle = String(coverSubtitle || '').replace(/^\[+|\]+$/g, '').trim();
   const tag = String(page?.chipText || 'loanh quanh phố phường').trim().toLowerCase();
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'grid6-quaytung-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
@@ -1354,7 +1330,7 @@ function renderGrid8QuaytungCenterSlot(page, backgroundImage) {
         <div class="grid8-quaytung-center-shade"></div>
         <div class="grid8-quaytung-center-copy">
           ${renderGrid8QuaytungDalatBadge()}
-          <div class="grid8-quaytung-center-hook">"${escapeHtml(hook)}"</div>
+          ${hook ? `<div class="grid8-quaytung-center-hook">${escapeHtml(hook)}</div>` : ''}
           ${tagline ? `<div class="grid8-quaytung-center-tagline">${escapeHtml(tagline)}</div>` : ''}
         </div>
       </div>
@@ -1423,7 +1399,7 @@ function renderGrid8QuaytungMenuPage(page, index, listId, list) {
       <div class="grid8-quaytung-menu-dim"></div>
       <div class="grid8-quaytung-menu-head">
         ${renderGrid8QuaytungDalatBadge()}
-        <h2 class="grid8-quaytung-menu-title">${escapeHtml(truncateMenuLine(page.title || 'ĐỊA ĐIỂM ĂN UỐNG NGON', 32))}</h2>
+        ${page.title ? `<h2 class="grid8-quaytung-menu-title">${escapeHtml(truncateMenuLine(page.title, 32))}</h2>` : ''}
       </div>
       <div class="grid8-quaytung-menu-sections">
         ${sections.map((section, idx) => renderGrid8QuaytungMenuSection(section, idx % 2 === 1)).join('')}
@@ -1471,9 +1447,8 @@ function renderGrid5Matrix(items, titleText, showAddress = true) {
 }
 
 function renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
-  const hero = String(coverTitle || 'Dalat').trim();
-  const hook = String(coverSubtitle || 'Tháng 5+6 nên đi đâu? Làm gì?').trim();
-  const bracket = '[ Gợi ý những tọa độ hay ho cho chuyến đi mùa hè ]';
+  const hero = String(coverTitle || '').trim();
+  const hook = String(coverSubtitle || '').trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'grid5-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       <div class="grid5-cover-bg">
@@ -1481,12 +1456,10 @@ function renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgr
       </div>
       <div class="grid5-cover-shade"></div>
       <div class="grid5-cover-copy">
-        <div class="grid5-cover-script">Thong dong</div>
         <div class="grid5-cover-hero-row">
-          <h1 class="grid5-cover-dalat">${escapeHtml(hero)}</h1>
-          <p class="grid5-cover-hook">${escapeHtml(hook)}</p>
+          ${hero ? `<h1 class="grid5-cover-dalat">${escapeHtml(hero)}</h1>` : ''}
+          ${hook ? `<p class="grid5-cover-hook">${escapeHtml(hook)}</p>` : ''}
         </div>
-        <p class="grid5-cover-bracket">${escapeHtml(bracket)}</p>
       </div>
     </article>
   `;
@@ -1619,6 +1592,38 @@ function renderSpotlightV3Cover(page, index, listId, coverTitle, backgroundImage
   `;
 }
 
+function renderCarouselMau1Cover(page, index, listId, coverTitle, backgroundImage) {
+  const imageUrl = spotlightV3CoverImage(page, backgroundImage);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'carousel-mau-1-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="carousel-mau-1-bg">
+        ${imageUrl ? renderPreviewImage(imageUrl, coverTitle || 'cover') : ''}
+      </div>
+      <div class="carousel-mau-1-cover-gradient" aria-hidden="true"></div>
+      <div class="carousel-mau-1-cover-copy">
+        <h1>${escapeHtml(coverTitle || '')}</h1>
+      </div>
+    </article>
+  `;
+}
+
+function renderCarouselMau1Page(page, index, listId, list) {
+  const item = page.items?.[0] || {};
+  const imageUrl = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
+  const name = item.rawName || item.name || page.title || '';
+  const address = String(item.metaPrimary || '').trim();
+  const line = address ? `${name} – ${address}` : name;
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'carousel-mau-1-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || page.chipText || 'dia-diem')}.png">
+      <div class="carousel-mau-1-bg">
+        ${renderPreviewImage(imageUrl, name || page.title)}
+      </div>
+      <div class="carousel-mau-1-page-gradient" aria-hidden="true"></div>
+      <div class="carousel-mau-1-place-line"><span aria-hidden="true">📍</span>${escapeHtml(line)}</div>
+    </article>
+  `;
+}
+
 function renderSpotlightV2Page(page, index, listId, list, options = {}) {
   const item = page.items?.[0] || {};
   const backgroundImage = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
@@ -1668,20 +1673,20 @@ function renderPovMaikemCover(page, index, listId, coverTitle, coverSubtitle, ba
 }
 
 function pov3V2HeadlineLines(title) {
-  const raw = String(title || 'đứng đâu\ncũng đẹp').replace(/\\n/g, '\n');
+  const raw = String(title || '').replace(/\\n/g, '\n');
   const lines = raw.split(/\n+/).map((line) => line.trim()).filter(Boolean);
-  if (lines.length === 0) return ['đứng đâu', 'cũng đẹp'];
+  if (lines.length === 0) return ['', ''];
   if (lines.length === 1) {
     const parts = lines[0].split(/\s+/);
     if (parts.length >= 4) return [parts.slice(0, 2).join(' '), parts.slice(2).join(' ')];
-    return [lines[0], 'cũng đẹp'];
+    return [lines[0], ''];
   }
   return lines.slice(0, 2);
 }
 
 function pov3V2BracketSubtitle(subtitle) {
-  const clean = String(subtitle || '[ Những địa điểm checkin mang đậm vibe Đà Lạt ]').replace(/\s+/g, ' ').trim();
-  if (!clean) return '[ Những địa điểm checkin mang đậm vibe Đà Lạt ]';
+  const clean = String(subtitle || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
   const inner = clean.replace(/^[\[\(\s]+|[\]\)\s]+$/g, '');
   return `[ ${inner} ]`;
 }
@@ -1704,7 +1709,7 @@ function renderPov3V2Cover(page, index, listId, coverTitle, coverSubtitle, backg
           <span>${escapeHtml(lineOne)}</span>
           <span>${escapeHtml(lineTwo || '')}</span>
         </h1>
-        <p class="pov-3-v2-bracket">${subtitleHtml}</p>
+        ${bracketText ? `<p class="pov-3-v2-bracket">${subtitleHtml}</p>` : ''}
       </div>
     </article>
   `;
@@ -1857,7 +1862,7 @@ function renderPov3V2GridLabel(item) {
 
 function renderPov3V2GridPage(page, index, listId, pageSubtitle) {
   const items = (page.items || []).slice(0, 9);
-  const panelTitle = page.title || pageSubtitle || page.chipText || '';
+  const panelTitle = String(page.title || '').trim();
   const backgroundImage = page.backgroundImage || items[0]?.imageUrl || '';
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'pov-3-v2-grid-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || 'grid')}.png">
@@ -1865,7 +1870,7 @@ function renderPov3V2GridPage(page, index, listId, pageSubtitle) {
         ${renderPreviewImage(backgroundImage, panelTitle)}
       </div>
       <div class="pov-3-v2-grid-panel">
-        <h2 class="pov-3-v2-grid-title">"${escapeHtml(panelTitle)}"</h2>
+        ${panelTitle ? `<h2 class="pov-3-v2-grid-title">"${escapeHtml(panelTitle)}"</h2>` : ''}
         <div class="pov-3-v2-grid-matrix">
           ${items.map((item) => `
             <div class="pov-3-v2-grid-cell ${escapeHtml(imageSourceClass(item))}">
@@ -1910,8 +1915,8 @@ function renderPovMaikemPage(page, index, listId) {
 function renderBudgetWalletCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
   const titleParts = String(coverTitle || '').split('·').map((part) => part.trim()).filter(Boolean);
   const subtitleParts = String(coverSubtitle || '').split('·').map((part) => part.trim()).filter(Boolean);
-  const mainTitle = titleParts[0] || coverTitle || '4N3Đ ĐÀ LẠT';
-  const hookLine = titleParts[1] || subtitleParts[0] || 'MỞ VÍ ~4.2TR';
+  const mainTitle = titleParts[0] || coverTitle || '';
+  const hookLine = titleParts[1] || subtitleParts[0] || '';
   const subLine = subtitleParts.length > 1
     ? subtitleParts.slice(1).join(' · ')
     : (titleParts.length > 1 ? '' : subtitleParts.slice(1).join(' · '));
@@ -1923,8 +1928,8 @@ function renderBudgetWalletCover(page, index, listId, coverTitle, coverSubtitle,
       <div class="budget-wallet-cover-shade"></div>
       <div class="budget-wallet-cover-copy">
         <div class="budget-wallet-script">dalat.</div>
-        <h1 class="budget-wallet-title">${escapeHtml(mainTitle)}</h1>
-        <h2 class="budget-wallet-hook">${escapeHtml(hookLine)}</h2>
+        ${mainTitle ? `<h1 class="budget-wallet-title">${escapeHtml(mainTitle)}</h1>` : ''}
+        ${hookLine ? `<h2 class="budget-wallet-hook">${escapeHtml(hookLine)}</h2>` : ''}
         ${subLine ? `<p class="budget-wallet-sub">${escapeHtml(subLine)}</p>` : ''}
       </div>
     </article>
@@ -1996,7 +2001,7 @@ function renderBudgetWalletBillPage(page, index, listId) {
     <article class="${escapeHtml(storyPageClass(listId, 'budget-wallet-bill'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-bill.png">
       <section class="budget-wallet-bill-panel">
         <span>${escapeHtml(String(page.chipText || 'BILL').toUpperCase())}</span>
-        <h2>${escapeHtml(page.title || 'BILL 4N3Đ')}</h2>
+        ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
         <div class="budget-wallet-lines">
           ${items.filter((item) => !/tong|total/i.test(String(item.id || ''))).map((item) => `
             <article class="budget-wallet-line">
@@ -2016,6 +2021,9 @@ function renderBudgetWalletBillPage(page, index, listId) {
 }
 
 function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
+  if (page.layoutVariant === 'carousel-mau-1-cover') {
+    return renderCarouselMau1Cover(page, index, listId, coverTitle, backgroundImage);
+  }
   if (page.layoutVariant === 'grid-8-feed') {
     return renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls);
   }
@@ -2053,6 +2061,9 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
 }
 
 function renderListPageV2(page, index, listId, list, pageSubtitle) {
+  if (page.layoutVariant === 'carousel-mau-1-page') {
+    return renderCarouselMau1Page(page, index, listId, list);
+  }
   if (page.layoutVariant === 'grid-8-feed') {
     const centerHook = grid8FeedCenterHook(page, list);
     const showAddress = !isActivityListPage(page);
@@ -2148,7 +2159,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
     return renderGrid4MutantCover(page, index, listId);
   }
   if (isBudget3N2DCover(page)) {
-    const title = coverTitle || '"72H" Ở ĐÀ LẠT VỚI 3TR';
+    const title = String(coverTitle || '').trim();
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'budget72-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="budget72-cover-bg">
@@ -2157,16 +2168,16 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         <div class="budget72-cover-shade"></div>
         <div class="budget72-cover-copy">
           <div class="budget72-script">dalat.</div>
-          <h1 class="budget72-title">${escapeHtml(title)}</h1>
-          <p class="budget72-subtitle">${escapeHtml(coverSubtitle || '/Gợi ý lịch trình du hí 3N2Đ/')}</p>
+          ${title ? `<h1 class="budget72-title">${escapeHtml(title)}</h1>` : ''}
+          ${coverSubtitle ? `<p class="budget72-subtitle">${escapeHtml(coverSubtitle)}</p>` : ''}
         </div>
       </article>
     `;
   }
 
   if (isBudget3N2DStoryCover(page)) {
-    const title = cleanStoryText(coverTitle, BUDGET72_STORY_TEXT.coverTitle);
-    const subtitle = cleanStoryText(coverSubtitle, BUDGET72_STORY_TEXT.coverSubtitle);
+    const title = coverTitle ? cleanStoryText(coverTitle, '') : '';
+    const subtitle = coverSubtitle ? cleanStoryText(coverSubtitle, '') : '';
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'budget72-story-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="budget72-story-bg">
@@ -2175,8 +2186,8 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         <div class="budget72-story-cover-shade"></div>
         <div class="budget72-story-cover-copy">
           <div class="budget72-story-script">dalat.</div>
-          <h1>${escapeHtml(title)}</h1>
-          <p>${escapeHtml(subtitle)}</p>
+          ${title ? `<h1>${escapeHtml(title)}</h1>` : ''}
+          ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ''}
         </div>
       </article>
     `;
@@ -2647,7 +2658,7 @@ function renderBudget3N2DTablePage(page, index, listId) {
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'budget72-table-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-bang-chi-phi.png">
       <div class="budget72-table-shell">
-        <h2>${escapeHtml(page.title || 'ĐÀ LẠT 3 NGÀY 2 ĐÊM')}</h2>
+        ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ''}
         <table class="budget72-schedule-table">
           <colgroup>
             <col class="budget72-col-day" />
@@ -2779,6 +2790,7 @@ function renderBudget3N2DGalleryCorner(item, cornerIndex) {
 function renderBudget3N2DGalleryCornerPage(page, index, listId, list) {
   const items = Array.isArray(page.items) ? page.items.slice(0, 4) : [];
   const backgroundImage = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
+  const subtitle = String(page.subtitle ?? '').trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'budget72-gallery-page budget72-corner-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText || page.title || 'gallery')}.png">
       <div class="budget72-gallery-backdrop">
@@ -2791,7 +2803,7 @@ function renderBudget3N2DGalleryCornerPage(page, index, listId, list) {
         <section class="budget72-gallery-center">
           <span>dalat.</span>
           <h2>${escapeHtml(page.title || '')}</h2>
-          <p>${escapeHtml(page.subtitle || 'Gợi ý nhanh để lưu lại và chọn điểm ghé hợp lịch.')}</p>
+          ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ''}
         </section>
       </div>
     </article>
@@ -2972,7 +2984,7 @@ export function renderGrid6Items(items, { numbered = false, twoDigitNumber = fal
     const itemNumber = twoDigitNumber ? String(index + 1).padStart(2, '0') : String(index + 1);
     const itemName = numbered ? `${itemNumber}. ${displayName}` : displayName;
     return `
-    <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}">
+    <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? 'manual' : 'fallback'))}${portraitFocusClass(item)}">
       ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       <div class="grid6-overlay">
         ${showLabel && item.label ? `<div class="grid6-service-label">${escapeHtml(item.label)}</div>` : ''}
@@ -3009,29 +3021,7 @@ function renderGrid8Secondary(value, options = {}) {
 }
 
 function journeyGrid8Intro(page) {
-  const chip = String(page?.chipText || '').trim().toLowerCase();
-  const title = String(page?.title || '').trim().toLowerCase();
-  const textKey = `${chip} ${title}`;
-  const pageSubtitle = polishShortVietnameseCopy(page?.subtitle || '');
-  if (textKey.includes('day 01') || textKey.includes('ngày 1') || textKey.includes('vao pho') || textKey.includes('vào phố')) {
-    return pageSubtitle || 'Một nhịp mở đầu dễ đi, đủ bữa ăn, cafe và check-in trong ngày đầu.';
-  }
-  if (textKey.includes('day 02') || textKey.includes('ngày 2') || textKey.includes('san anh') || textKey.includes('săn ảnh')) {
-    return pageSubtitle || 'Ưu tiên các điểm có ảnh đẹp, di chuyển theo nhịp sáng đến tối.';
-  }
-  if (textKey.includes('day 03') || textKey.includes('ngày 3') || textKey.includes('di sau') || textKey.includes('đi sâu')) {
-    return pageSubtitle || 'Ngày giữa chuyến đi dành cho điểm xa hơn, trải nghiệm rõ chất Đà Lạt.';
-  }
-  if (textKey.includes('day 04') || textKey.includes('ngày 4') || textKey.includes('sang cham') || textKey.includes('sáng chậm')) {
-    return pageSubtitle || 'Một ngày cuối gọn nhịp, vẫn đủ điểm ghé và chốt bữa tối. Lưu lại ngay nhé.';
-  }
-  if (textKey.includes('lưu trú') || textKey.includes('luu tru')) {
-    return pageSubtitle || 'Các lựa chọn nên xem trước để chốt nơi nghỉ phù hợp lịch trình.';
-  }
-  if (textKey.includes('dịch vụ') || textKey.includes('dich vu')) {
-    return pageSubtitle || 'Các dịch vụ hỗ trợ chuyến đi, ưu tiên mục có thông tin rõ để liên hệ nhanh.';
-  }
-  return polishShortVietnameseCopy(sanitizeSubtitleForDisplay(page?.subtitle, [page]));
+  return polishShortVietnameseCopy(page?.subtitle || '');
 }
 
 export function renderGrid8Items(items, title, chipText, backgroundImage, introText = '', options = {}) {
@@ -3201,7 +3191,7 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
   }
 
   if (page.layoutVariant === 'grid-8') {
-    const grid8Title = isGeneratedCaptionList(list) ? contextualGrid8Title(page) : page.title;
+    const grid8Title = page.title;
     const grid8Intro = grid8IntroForPage(page, pageSubtitle, list);
     const showAddress = !isActivityListPage(page);
     const grid8Background = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);

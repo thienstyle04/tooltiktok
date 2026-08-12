@@ -101,10 +101,6 @@
     gap: 11px;
   }
 
-  .journey-timeline::before {
-    left: 46px;
-  }
-
   .journey-time-copy strong {
     font-size: 0.7rem;
   }
