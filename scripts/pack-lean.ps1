@@ -19,15 +19,8 @@ Write-Host "Dich  : $outZip"
 Write-Host ''
 
 $outDir = Split-Path -Parent $outZip
-$oldZips = Get-ChildItem -Path $outDir -Filter "$projectName-portable-*.zip" -ErrorAction SilentlyContinue
-if ($oldZips) {
-    Write-Host 'Xoa file nen portable cu:'
-    foreach ($old in $oldZips) {
-        Write-Host " - $($old.Name)"
-        Remove-Item $old.FullName -Force
-    }
-    Write-Host ''
-}
+Write-Host 'Giu nguyen cac file portable cu tren Desktop.'
+Write-Host ''
 
 $excludeDirs = @(
     'node_modules',
@@ -96,11 +89,10 @@ $readmeLines = @(
     '',
     "1. Giai nen thu muc nay (vi du: C:\Tools\$projectName)",
     '2. Cai Node.js LTS (https://nodejs.org) neu chua co',
-    '3. Mo thu muc goc, chay: setup.bat',
-    '4. Copy file backend/.env tu may cu (API key / cau hinh Sheet)',
-    '   Neu chua co: sua backend/.env sau khi setup (tu .env.example)',
-    '5. Chay: start.bat',
-    '6. Mo trinh duyet: http://localhost:3001',
+    '3. Chay thang: start.bat',
+    '   Tool tu dung lai thu vien va backend/.env cua phien ban truoc tren cung may.',
+    '4. Chi can mang/cai dependencies mot lan neu package-lock da thay doi.',
+    '5. Mo trinh duyet: http://localhost:3001',
     '',
     'LUU Y VE ANH:',
     '- Anh dia diem lay tu Google Drive luc chay (khong dong san trong zip).',
@@ -110,8 +102,8 @@ $readmeLines = @(
     '- Neu anh bi xam: kiem tra mang toi drive.google.com, copy dung backend/.env, khoi dong lai tool.',
     '',
     'LUU Y KHAC:',
-    '- Goi nay KHONG co node_modules. setup.bat se tu cai.',
-    '- Goi nay KHONG co backend/.env (bao mat). Copy tay tu may cu.',
+    '- Goi nay KHONG co node_modules. start.bat tu tao/tai su dung kho thu vien tren cung o dia voi tool.',
+    '- Goi nay KHONG co backend/.env. start.bat tu khoi phuc cau hinh da luu tren cung may.',
     '- Du lieu Sheet: mac dinh chi tai 1 lan luc mo tool. Bat DALAT_AUTO_SYNC_SHEET=true neu muon sync dinh ky.',
     '- Bam "Lam moi" tren giao dien khi can keo Sheet moi ngay.',
     '',
@@ -151,4 +143,4 @@ Write-Host "  Dung luong: $sizeMB MB"
 Write-Host '  Cache anh: may moi tu tao khi start'
 Write-Host '=============================================================='
 Write-Host ''
-Write-Host 'Tren may moi: giai nen -> setup.bat -> copy backend/.env -> start.bat'
+Write-Host 'Tren may da tung cai: giai nen -> start.bat (khong can setup lai)'

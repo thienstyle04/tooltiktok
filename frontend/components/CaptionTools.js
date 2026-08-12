@@ -33,6 +33,7 @@ export default function CaptionTools({
   const lists = mainLists.length ? mainLists : allLists.slice(0, 1);
   const selectedCaptionList = lists.find((list) => list.id === activeList?.id) || lists[0] || null;
   const isSpotlightPartnerDeck = activeDeck?.id === 'spotlight-partner';
+  const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1';
   const creationDisabled = busy || !cacheReady;
 
   const handleDeckChange = (event) => {
@@ -47,11 +48,11 @@ export default function CaptionTools({
   };
 
   return (
-    <section className="ai-shell">
+    <section className={`ai-shell${isNonAiTemplate ? ' non-ai-template' : ''}`}>
       <div className="panel-head ai-panel-head">
         <div>
-          <p className="panel-kicker">Caption AI</p>
-          <h3 className="panel-title">Tạo caption & list mới</h3>
+          <p className="panel-kicker">{isNonAiTemplate ? 'Tạo list từ dữ liệu' : 'Caption AI'}</p>
+          <h3 className="panel-title">{isNonAiTemplate ? 'Tạo Mẫu 1 từ dữ liệu' : 'Tạo caption & list mới'}</h3>
         </div>
         <span className="ai-state-pill">{visible ? 'Đang mở' : 'Sẵn sàng'}</span>
       </div>
@@ -78,7 +79,7 @@ export default function CaptionTools({
               ))}
             </select>
           </div>
-          <div className="caption-target-field">
+          {!isNonAiTemplate ? <div className="caption-target-field">
             <label className="ai-tone-label" htmlFor="captionListSelect">List cần sinh caption</label>
             <select
               id="captionListSelect"
@@ -91,10 +92,10 @@ export default function CaptionTools({
                 <option key={list.id} value={list.id}>{list.navTitle || list.title}</option>
               ))}
             </select>
-          </div>
+          </div> : null}
         </div>
 
-        <div className="ai-tone-group">
+        {!isNonAiTemplate ? <div className="ai-tone-group">
           <label className="ai-tone-label" htmlFor="captionTone">Tone caption</label>
           <select id="captionTone" className="ai-tone-select" value={tone} onChange={(event) => setTone(event.target.value)}>
             <option value="lich_trinh_huu_ich">Lịch trình hữu ích</option>
@@ -103,9 +104,11 @@ export default function CaptionTools({
             <option value="ban_hang_nhe">Bán hàng nhẹ</option>
             <option value="tinh_te">Tinh tế</option>
           </select>
-        </div>
+        </div> : null}
         <div className="ai-actions">
-          <button id="generateCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={() => onRequestCaption('full')}>Tạo caption</button>
+          {!isNonAiTemplate ? (
+            <button id="generateCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={() => onRequestCaption('full')}>Tạo caption</button>
+          ) : null}
           {!isSpotlightPartnerDeck ? (
           <div className="ai-batch-group" ref={batchDropdownRef}>
             <button
@@ -115,14 +118,17 @@ export default function CaptionTools({
               disabled={creationDisabled}
               onClick={() => {
                 setBatchDropdownOpen(false);
-                if (batchCount === 1) {
+                const hasManualCaption = isNonAiTemplate || caption.coverTitle.trim();
+                if (batchCount === 1 && hasManualCaption) {
+                  // Đã có caption soạn sẵn (bấm "Tạo caption" hoặc tự sửa) → tạo đúng 1 list bằng caption này.
                   onCreateList();
                 } else {
+                  // Chưa soạn caption: tạo qua batch (tự gọi DeepSeek sinh caption), tránh im lặng không tạo được gì.
                   onCreateBatchLists?.(batchCount);
                 }
               }}
             >
-              {batchCount === 1 ? 'Tạo list AI' : `Tạo ${batchCount} list`}
+              {batchCount === 1 ? (isNonAiTemplate ? 'Tạo Mẫu 1' : 'Tạo list AI') : `Tạo ${batchCount} list`}
             </button>
             <button
               className="toolbar-button secondary ai-batch-arrow"
@@ -152,16 +158,22 @@ export default function CaptionTools({
             )}
           </div>
           ) : null}
-          <button id="copyFullCaptionBtn" className="toolbar-button" type="button" onClick={() => onCopy([caption.headline, caption.body, caption.hashtags].filter(Boolean).join('\n\n'), 'Đã copy full caption.')}>Copy caption</button>
+          {!isNonAiTemplate ? <button id="copyFullCaptionBtn" className="toolbar-button" type="button" onClick={() => onCopy([caption.headline, caption.hashtags].filter(Boolean).join('\n\n'), 'Đã copy full caption.')}>Copy caption</button> : null}
         </div>
       </div>
 
-      <div className="ai-grid">
+      {isNonAiTemplate ? (
+        <div className="ai-cache-warning" role="note">
+          Trang bìa lấy hook từ Google Docs; 13 trang còn lại lấy trực tiếp từ Google Sheet đang chọn. Mẫu này không gọi AI.
+        </div>
+      ) : null}
+
+      {!isNonAiTemplate ? <div className="ai-grid">
         <section className="ai-block">
           <div className="ai-block-head">
             <div>
               <p className="ai-block-label">Tiêu đề cover</p>
-              <p className="ai-block-note">Tối đa 35 ký tự, dùng làm title trang cover.</p>
+              <p className="ai-block-note">Tối đa ~42-56 ký tự tuỳ mẫu, dùng làm title trang cover.</p>
             </div>
             <div className="ai-block-actions">
               <button id="regenCoverTitleBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => onRequestCaption('cover_title')}>Sinh lại</button>
@@ -172,9 +184,9 @@ export default function CaptionTools({
             id="captionCoverTitle"
             className="ai-output compact"
             placeholder="Tiêu đề cover sẽ hiện ở đây..."
-            maxLength={35}
+            maxLength={56}
             value={caption.coverTitle || ''}
-            onChange={(event) => setCaption((prev) => ({ ...prev, coverTitle: event.target.value.slice(0, 35) }))}
+            onChange={(event) => setCaption((prev) => ({ ...prev, coverTitle: event.target.value.slice(0, 56) }))}
           />
         </section>
 
@@ -190,20 +202,6 @@ export default function CaptionTools({
             </div>
           </div>
           <textarea id="captionHeadline" className="ai-output compact" placeholder="Caption đăng bài sẽ hiện ở đây..." value={caption.headline} onChange={(event) => setCaption((prev) => ({ ...prev, headline: event.target.value }))} />
-        </section>
-
-        <section className="ai-block">
-          <div className="ai-block-head">
-            <div>
-              <p className="ai-block-label">Body</p>
-              <p className="ai-block-note">Phần giải thích ngắn cho caption.</p>
-            </div>
-            <div className="ai-block-actions">
-              <button id="regenBodyBtn" className="toolbar-button" type="button" disabled={busy} onClick={() => onRequestCaption('body')}>Sinh lại</button>
-              <button id="copyBodyBtn" className="toolbar-button" type="button" onClick={() => onCopy(caption.body.trim(), 'Đã copy body.')}>Copy</button>
-            </div>
-          </div>
-          <textarea id="captionBody" className="ai-output" placeholder="Body caption sẽ hiện ở đây..." value={caption.body} onChange={(event) => setCaption((prev) => ({ ...prev, body: event.target.value }))} />
         </section>
 
         <section className="ai-block">
@@ -286,7 +284,7 @@ export default function CaptionTools({
             <p className="generated-list-empty">Chưa có list AI mới cho mẫu này.</p>
           )}
         </section>
-      </div>
+      </div> : null}
     </section>
   );
 }

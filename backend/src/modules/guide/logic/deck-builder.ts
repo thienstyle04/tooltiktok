@@ -21,6 +21,7 @@ import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 import { buildPagesForDeckV2, getV2DeckDefinitions, isV2DeckId } from './deck-builder-v2';
 import { cityLabel, cityLabelUpper, getMarketingCopy, buildCaptionHashtags, getActiveDestinationLocalize } from '../sync/destination-localize';
 import { isPartnerFirstDestination } from '../sync/destination-config';
+import { getCachedSpotlightV3Hooks, getSpotlightV3BuildContext, pickSpotlightV3Hook } from '../sync/spotlight-hook-source';
 
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
@@ -73,7 +74,6 @@ const budget72StoryText = {
   listName: 'List 72H 3N2\u0110 Story',
   listDescription: 'Danh s\u00e1ch \u1ea3nh ch\u00ednh cho m\u1eabu 72H b\u1ea3n story d\u1ec5 xem tr\u00ean TikTok.',
 };
-const CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 
 function partnerTargetCount(count: number, availablePartners: number, cap = DEFAULT_PARTNER_TARGET_PER_PAGE): number {
   // partnerFirst: bỏ mọi cap, chỉ giới hạn bởi số chỗ trống trên trang và số đối tác thực có sẵn.
@@ -984,9 +984,11 @@ export function sanitizeDeckHeadline(value: string): string {
     .trim();
 }
 
-function coverSubtitleFromCaption(body: string, fallback: string): string {
+function coverSubtitleFromCaption(body: string): string {
+  // Người dùng đã quyết định bỏ hẳn mô tả khỏi trang cover — body rỗng thì để rỗng
+  // thật sự, không quay lại dùng câu mô tả tĩnh có sẵn của mẫu nữa.
   const cleanBody = String(body || '').replace(/\s+/g, ' ').trim();
-  return sanitizeDeckHeadline(cleanBody || fallback || '');
+  return sanitizeDeckHeadline(cleanBody);
 }
 
 const SPOTLIGHT_V2_COVER_SUBTITLE_MAX = 58;
@@ -995,16 +997,17 @@ export const GRID_8_COVER_SUBTITLE_MAX = 118;
 /** ~4 dòng tagline cover grid-8-feed; cắt câu/từ, không thêm … */
 export const GRID_8_FEED_COVER_SUBTITLE_MAX = 168;
 
-export function truncateGrid8CoverSubtitle(value: string, fallback = '', max = GRID_8_COVER_SUBTITLE_MAX): string {
-  return truncateGrid8FeedCoverSubtitle(value, fallback, max);
+export function truncateGrid8CoverSubtitle(value: string, max = GRID_8_COVER_SUBTITLE_MAX): string {
+  return truncateGrid8FeedCoverSubtitle(value, max);
 }
 
-export function truncateGrid8FeedCoverSubtitle(value: string, fallback = '', max = GRID_8_FEED_COVER_SUBTITLE_MAX): string {
+export function truncateGrid8FeedCoverSubtitle(value: string, max = GRID_8_FEED_COVER_SUBTITLE_MAX): string {
   const stripped = String(value || '')
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/^\/+|\/+$/g, '');
-  const clean = sanitizeDeckHeadline(stripped || fallback || '').trim();
+  // Bỏ hẳn mô tả khi rỗng — không quay lại dùng câu mô tả tĩnh có sẵn của mẫu.
+  const clean = sanitizeDeckHeadline(stripped).trim();
   if (!clean) return '';
   if (clean.length <= max) return clean;
 
@@ -1024,10 +1027,7 @@ export function truncateGrid8FeedCoverSubtitle(value: string, fallback = '', max
   return truncated.trim();
 }
 
-function grid8CoverSubtitleFromCaption(
-  caption: { headline: string; body: string },
-  fallback: string,
-): string {
+function grid8CoverSubtitleFromCaption(caption: { headline: string; body: string }): string {
   const body = String(caption.body || '').replace(/\s+/g, ' ').trim();
   const firstSentence = body.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() || body;
   const secondSentence = body.slice(firstSentence.length).match(/^\s*[^.!?]+[.!?]?/)?.[0]?.trim() || '';
@@ -1036,18 +1036,15 @@ function grid8CoverSubtitleFromCaption(
   if (secondSentence && `${firstSentence} ${secondSentence}`.length <= GRID_8_COVER_SUBTITLE_MAX) {
     combined = `${firstSentence} ${secondSentence}`.trim();
   }
-  return truncateGrid8CoverSubtitle(combined || body, fallback);
+  return truncateGrid8CoverSubtitle(combined || body);
 }
 
-function grid8FeedCoverSubtitleFromCaption(
-  caption: { headline: string; body: string },
-  fallback: string,
-): string {
+function grid8FeedCoverSubtitleFromCaption(caption: { headline: string; body: string }): string {
   const body = String(caption.body || '').replace(/\s+/g, ' ').trim();
   const firstSentence = body.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() || body;
   const secondSentence = body.slice(firstSentence.length).match(/^\s*[^.!?]+[.!?]?/)?.[0]?.trim() || '';
   const combined = [firstSentence, secondSentence].filter(Boolean).join(' ').trim();
-  return truncateGrid8FeedCoverSubtitle(combined || body, fallback);
+  return truncateGrid8FeedCoverSubtitle(combined || body);
 }
 
 /** ~2 dòng tagline trên stack row; cắt tại ranh giới câu/từ, không để cụt "khi/và/của". */
@@ -1092,12 +1089,12 @@ export function truncatePov3V2StackTagline(
   return /[.!?…]$/.test(trimmed) ? trimmed : `${trimmed}…`;
 }
 
-export function truncateSpotlightV2CoverSubtitle(value: string, fallback = ''): string {
+export function truncateSpotlightV2CoverSubtitle(value: string): string {
   const stripped = String(value || '')
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/^\/+|\/+$/g, '');
-  const clean = sanitizeDeckHeadline(stripped || fallback || '').trim();
+  const clean = sanitizeDeckHeadline(stripped).trim();
   if (!clean) return '';
   if (clean.length <= SPOTLIGHT_V2_COVER_SUBTITLE_MAX) return clean;
 
@@ -1109,15 +1106,12 @@ export function truncateSpotlightV2CoverSubtitle(value: string, fallback = ''): 
   return `${truncated.trim()}…`;
 }
 
-function spotlightV2CoverSubtitleFromCaption(
-  caption: { headline: string; body: string },
-  fallback: string,
-): string {
+function spotlightV2CoverSubtitleFromCaption(caption: { headline: string; body: string }): string {
   const headline = String(caption.headline || '').replace(/\s+/g, ' ').trim();
   const body = String(caption.body || '').replace(/\s+/g, ' ').trim();
   const firstSentence = body.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() || body;
-  const source = headline || firstSentence || body || fallback;
-  return truncateSpotlightV2CoverSubtitle(source, fallback);
+  const source = headline || firstSentence || body;
+  return truncateSpotlightV2CoverSubtitle(source);
 }
 
 export function buildListPage(
@@ -1674,12 +1668,14 @@ function looksLocationSpecific(value: string): boolean {
 }
 
 export function sanitizeCaptionBodyForPages(body: string, pages: DeckPage[]): string {
+  // Người dùng đã quyết định bỏ hẳn mô tả (body) khỏi trang cover — không còn fallback
+  // text mặc định nữa, body rỗng (hoặc bị lọc vì lộ tên địa điểm) thì để rỗng thật sự.
   const clean = String(body || '').replace(/\s+/g, ' ').trim();
-  if (!clean) return CAPTION_BODY_FALLBACK;
+  if (!clean) return '';
 
   const placeNames = collectPagePlaceNames(pages);
   if (hasPagePlaceName(clean, placeNames) || looksLikeStopList(clean) || looksLocationSpecific(clean)) {
-    return CAPTION_BODY_FALLBACK;
+    return '';
   }
 
   return clean.slice(0, 250);
@@ -1691,16 +1687,16 @@ export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: s
   return pages.map((page) => {
     if (page.type === 'cover') {
       // Spotlight V3: title lấy từ Google Doc hook — không ghi đè bằng caption AI.
-      if (page.layoutVariant === 'spotlight-v3') {
+      if (page.layoutVariant === 'spotlight-v3' || page.layoutVariant === 'carousel-mau-1-cover') {
         return { ...page, subtitle: '' };
       }
       const subtitle = page.layoutVariant === 'spotlight-v2'
-        ? spotlightV2CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
+        ? spotlightV2CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody })
         : page.layoutVariant === 'grid-8-feed'
-          ? grid8FeedCoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
+          ? grid8FeedCoverSubtitleFromCaption({ headline: caption.headline, body: safeBody })
           : page.layoutVariant === 'grid-8' || page.layoutVariant === 'journey-4n2d-grid8'
-            ? grid8CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody }, page.subtitle)
-            : coverSubtitleFromCaption(safeBody, page.subtitle);
+            ? grid8CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody })
+            : coverSubtitleFromCaption(safeBody);
       return {
         ...page,
         title: sanitizeDeckHeadline(coverTitle || caption.headline || page.title),
@@ -2321,7 +2317,9 @@ function buildBudget3N2DStoryPages(
   if (coverPage.type === 'cover') {
     coverPage.layoutVariant = 'budget-3n2d-story';
     coverPage.title = getMarketingCopy().budgetCoverTitle;
-    coverPage.subtitle = budget72StoryText.coverSubtitle;
+    // Bỏ hẳn mô tả trang bìa (đồng bộ với budget-3n2d/budget-72h-summary) — không dùng
+    // coverSubtitle tĩnh nữa, tránh bị lộ ra khi caption.body rỗng.
+    coverPage.subtitle = '';
   }
 
   const scheduleItems = tablePage?.items || [];
@@ -3658,10 +3656,15 @@ function buildSpotlightGuidePages(
     ),
   ], `${seedPrefix}-spotlight-order`);
 
+  const spotlightGuideHooks = getCachedSpotlightV3Hooks();
+  const spotlightGuideCoverTitle = spotlightGuideHooks.length
+    ? pickSpotlightV3Hook(spotlightGuideHooks, getSpotlightV3BuildContext().usedHookTitles || [], `${seedPrefix}|hook`)
+    : 'ĐÀ LẠT GỌN TRONG 10 TRANG';
+
   return [
     {
       ...buildCoverPage(
-        'ĐÀ LẠT GỌN TRONG 10 TRANG',
+        spotlightGuideCoverTitle,
         'Một bộ gợi ý dạng spotlight: mỗi trang một địa điểm rõ ảnh, rõ tên, rõ thông tin để lưu và đi nhanh hơn.',
         backgroundFor(coverImageUrls.filter(isPortableImageUrl), `${seedPrefix}-cover`) || coverImageUrls[0] || background(`${seedPrefix}-cover`),
       ),
@@ -4093,7 +4096,7 @@ function buildSpotlightPartnerSampleLists(
   );
   list.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
   list.postCaption = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
-  list.description = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
+  list.description = '';
   list.captionHashtags = buildCaptionHashtags([], 'lich_trinh_huu_ich', undefined, 'spotlight-partner');
   list.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
   return [list];
@@ -5327,13 +5330,9 @@ export function buildDecks(
       description: 'Lịch trình 4N3Đ: mỗi ngày một trang lưới 8 ô bao quanh tiêu đề giữa, mỗi địa điểm có khung giờ cụ thể. Có thêm trang Lưu trú và Dịch vụ.',
       lists: [buildDeckList('itinerary-4n2d-grid8', 'main', 'List chính', 'List lịch trình 4N3Đ lưới 8', 'Danh sách ảnh chính cho mẫu 4N3Đ dạng 8 ảnh quanh tiêu đề, có Lưu trú và Dịch vụ.', buildPagesForDeck('itinerary-4n2d-grid8', common.itemsBySection, common.imageUrls, common.libraryEntries, 'itinerary-4n2d-grid8-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
     },
-    {
-      id: 'pov-3-day',
-      navTitle: 'POV 3 ngày',
-      title: 'Bộ trang POV 3 ngày vi vu khắp Đà Lạt',
-      description: 'Format này bám sát photomode TikTok: cover mạnh, rồi chia theo nhóm điểm local như check-in free, cafe, quán ăn và dịch vụ cần lưu ý.',
-      lists: [buildDeckList('pov-3-day', 'main', 'List chính', 'List POV 3 ngày', 'Danh sách ảnh chính cho bộ POV 3 ngày vi vu khắp Đà Lạt.', buildPagesForDeck('pov-3-day', common.itemsBySection, common.imageUrls, common.libraryEntries, 'pov-3-day-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
-    },
+    // POV 3 ngày: gỡ khỏi danh sách mẫu hiển thị cho người dùng — ảnh định dạng
+    // ngang không chỉnh được trong layout này (giữ nguyên logic build phía trên
+    // phòng khi cần dùng lại, chỉ ẩn khỏi buildDecks()).
     {
       id: 'grid-6',
       navTitle: 'Mẫu Lưới 6 Ô',
@@ -5390,6 +5389,8 @@ export function buildDecks(
       description: 'Mẫu dành riêng cho đối tác: cover + mỗi ảnh Drive của đối tác là 1 trang spotlight + trang list đối tác liên quan. Chọn đối tác từ danh sách để sinh mẫu.',
       lists: buildSpotlightPartnerSampleLists(common.itemsBySection, common.imageUrls, common.libraryEntries, common.coverImageUrls),
     },
-    ...getV2DeckDefinitions(common),
+    // pov-3-v2: gỡ khỏi danh sách mẫu hiển thị — cùng lý do (ảnh ngang không
+    // chỉnh được), giữ nguyên logic build trong deck-builder-v2, chỉ lọc ra ở đây.
+    ...getV2DeckDefinitions(common).filter((deck) => deck.id !== 'pov-3-v2'),
   ];
 }

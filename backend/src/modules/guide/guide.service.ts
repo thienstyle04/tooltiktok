@@ -14,6 +14,7 @@ import {
   DeckPage,
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
+  DeleteGeneratedListsResponse,
   GenerateBatchListsRequest,
   GenerateBatchListsResponse,
   GenerateCaptionDeckRequest,
@@ -33,6 +34,9 @@ import {
   SectionKey,
   UpdateGeneratedListCoverRequest,
   UpdateGeneratedListCoverResponse,
+  UpdatePageTextRequest,
+  UpdatePageTextResponse,
+  PageTextOverrideStore,
   WorkbookItemsBySection,
   DestinationId,
   DestinationListResponse,
@@ -60,8 +64,9 @@ import {
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
-import { loadSpotlightV3Hooks } from './sync/spotlight-hook-source';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
+import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
 import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAccessibleDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownFailedDriveFileId, isKnownInaccessibleDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
@@ -74,15 +79,35 @@ import {
   unregisterDestination,
   toDestinationInfo,
 } from './sync/destination-config';
+
 import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
 import { localizeDecks, localizeText, setActiveDestinationLocalize, getMarketingCopy, buildCaptionHashtags, getDeckHashtagExtras, resolveDeckIdFromListId, cityLabel } from './sync/destination-localize';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
 
-const GENERATED_CAPTION_BODY_FALLBACK = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
+const HOOK_DOC_ID = '1E1erto0ZzdOO3NLC5ss1_cj8Dr_E46BY1OVk_UW70Lc';
+const HOOK_SECTION_BY_DECK: Record<string, { key: string; headingIncludes: string[] }> = {
+  'itinerary-3n2d': { key: 'hook-1', headingIncludes: ['Hook 1', '3N2Đ'] },
+  'itinerary-4n3d': { key: 'hook-2', headingIncludes: ['Hook 2', '4N3Đ'] },
+  'itinerary-4n2d-grid8': { key: 'hook-2', headingIncludes: ['Hook 2', '4N3Đ'] },
+  'budget-3n2d': { key: 'hook-3', headingIncludes: ['Hook 3', '3 triệu'] },
+  'budget-72h-summary': { key: 'hook-3', headingIncludes: ['Hook 3', '3 triệu'] },
+  'budget-3n2d-story': { key: 'hook-3', headingIncludes: ['Hook 3', '3 triệu'] },
+  ...Object.fromEntries([
+    'grid-6', 'grid-8', 'grid-4', 'grid-5', 'grid-6-zigzag', 'grid-6-quaytung',
+    'grid-8-feed',
+  ].map((deckId) => [deckId, { key: 'hook-4', headingIncludes: ['Hook 4', 'Feed 8'] }])),
+};
+const isLegacyGoogleDocHookDeck = (deckId: string): boolean =>
+  deckId === 'spotlight-v3' || deckId === 'carousel-mau-1' || deckId === 'spotlight-guide';
+const isSectionedGoogleDocHookDeck = (deckId: string): boolean => Boolean(HOOK_SECTION_BY_DECK[deckId]);
+const isGoogleDocHookDeck = (deckId: string): boolean =>
+  isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
+const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
+const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1';
+
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
-const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
 type CaptionTone = DeepSeekCaptionResponse['tone'];
 
 // Phần dữ liệu "nặng" (đọc Google Sheet, dò ảnh, build 22 mẫu deck) — chỉ cần build lại khi
@@ -140,6 +165,7 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly customDestinationsPath = path.join(this.dataRoot, 'custom-destinations.json');
   private activeDestinationId: DestinationId = DEFAULT_DESTINATION_ID;
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
+  private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
   private usedAllocator = new DataAllocator();
   private inventoryLoaded = false;
@@ -260,6 +286,29 @@ export class GuideService implements OnApplicationBootstrap {
     } catch (error) {
       console.warn('[warmup] Không tải được hook Spotlight V3:', error instanceof Error ? error.message : error);
     }
+  }
+
+  private async loadDeckHookSection(deckId: string): Promise<string[]> {
+    const section = HOOK_SECTION_BY_DECK[deckId];
+    if (!section) return [];
+    return loadSpotlightV3Hooks({
+      dataRoot: this.dataRoot,
+      docId: HOOK_DOC_ID,
+      cacheFileName: `${section.key}-hooks.json`,
+      sectionHeadingIncludes: section.headingIncludes,
+    });
+  }
+
+  private async resolveDeckHookCoverTitle(deckId: string, seed: string): Promise<string> {
+    const hooks = await this.loadDeckHookSection(deckId);
+    if (!hooks.length) {
+      throw new BadRequestException(`Không tải được nhóm hook Google Docs dành cho mẫu ${deckId}. Vui lòng kiểm tra mạng rồi thử lại.`);
+    }
+    const sectionKey = HOOK_SECTION_BY_DECK[deckId].key;
+    const used = Object.entries(HOOK_SECTION_BY_DECK)
+      .filter(([, section]) => section.key === sectionKey)
+      .flatMap(([id]) => this.getUsedCaptionTitles(id));
+    return pickSpotlightV3Hook(hooks, used, seed);
   }
 
   /** Máy mới: tự tải ảnh Drive còn thiếu vào backend/data/drive-file-cache (chạy nền). */
@@ -836,33 +885,24 @@ export class GuideService implements OnApplicationBootstrap {
     }
 
     const prompt = this.buildDeepSeekPrompt(deck, deckList, tone, target, current, this.getUsedCaptionTitles(deck.id));
-    const deepseekController = new AbortController();
-    const deepseekTimeout = setTimeout(() => deepseekController.abort(), 30_000);
     let response: Response;
     try {
-      response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            { role: 'system', content: 'Bạn là content creator du lịch TikTok. Chỉ trả về đúng JSON object hợp lệ, không thêm markdown, không giải thích.' },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 1.1,
-          max_tokens: 900,
-          stream: false,
-        }),
-        signal: deepseekController.signal,
+      response = await this.fetchDeepSeekChat(apiKey, {
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: 'Bạn là content creator du lịch TikTok. Chỉ trả về đúng JSON object hợp lệ, không thêm markdown, không giải thích.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 1.1,
+        max_tokens: 900,
+        stream: false,
       });
     } catch (fetchError: any) {
-      clearTimeout(deepseekTimeout);
       if (fetchError?.name === 'AbortError') {
         throw new BadRequestException('DeepSeek API không phản hồi sau 30 giây. Vui lòng thử lại.');
       }
-      throw new BadRequestException(`Không kết nối được DeepSeek: ${fetchError?.message || fetchError}`);
-    } finally {
-      clearTimeout(deepseekTimeout);
+      const cause = fetchError?.cause ? (fetchError.cause.code || fetchError.cause.message || String(fetchError.cause)) : '';
+      throw new BadRequestException(`Không kết nối được DeepSeek: ${fetchError?.message || fetchError}${cause ? ` (${cause})` : ''}`);
     }
 
     const responseText = await response.text();
@@ -891,6 +931,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   deleteGeneratedList(deckId: string, listId: string): void {
     this.ensureGeneratedListsLoaded();
+    this.deletePageTextOverrides(deckId, listId);
     const existing = this.generatedListsByDeckId.get(deckId);
     // Idempotent: list/deck đã mất (cache UI lệch, đã xóa trước đó) → coi như xóa thành công.
     if (!existing) return;
@@ -904,50 +945,93 @@ export class GuideService implements OnApplicationBootstrap {
     this.persistGeneratedLists();
   }
 
+  deleteGeneratedLists(groups: Array<{ deckId?: string; listIds?: string[] }> = []): DeleteGeneratedListsResponse {
+    this.ensureGeneratedListsLoaded();
+    const requested = new Map<string, Set<string>>();
+    for (const group of groups) {
+      const deckId = String(group?.deckId || '').trim();
+      if (!deckId) continue;
+      const ids = requested.get(deckId) || new Set<string>();
+      for (const rawId of group?.listIds || []) {
+        const id = String(rawId || '').trim();
+        if (id) ids.add(id);
+      }
+      if (ids.size) requested.set(deckId, ids);
+    }
+
+    let deletedCount = 0;
+    for (const [deckId, ids] of requested) {
+      const existing = this.generatedListsByDeckId.get(deckId) || [];
+      const filtered = existing.filter((list) => {
+        if (!ids.has(list.id)) return true;
+        deletedCount += 1;
+        this.deletePageTextOverrides(deckId, list.id);
+        return false;
+      });
+      if (filtered.length) this.generatedListsByDeckId.set(deckId, filtered);
+      else this.generatedListsByDeckId.delete(deckId);
+    }
+    if (deletedCount) this.persistGeneratedLists();
+
+    const remainingIds = [...requested.entries()].flatMap(([deckId, ids]) => {
+      const existingIds = new Set((this.generatedListsByDeckId.get(deckId) || []).map((list) => list.id));
+      return [...ids].filter((id) => existingIds.has(id));
+    });
+    return {
+      requestedCount: [...requested.values()].reduce((sum, ids) => sum + ids.size, 0),
+      deletedCount,
+      remainingIds,
+    };
+  }
+
   updateGeneratedListCover(
     deckId: string,
     listId: string,
     request: UpdateGeneratedListCoverRequest,
   ): UpdateGeneratedListCoverResponse {
-    this.ensureGeneratedListsLoaded();
-    const existing = this.generatedListsByDeckId.get(deckId);
-    if (!existing) throw new NotFoundException(`Khong tim thay deck: ${deckId}`);
-
-    const listIndex = existing.findIndex((list) => list.id === listId);
-    if (listIndex < 0) throw new NotFoundException(`Khong tim thay list: ${listId}`);
-
-    const coverTitle = this.sanitizeContentText(sanitizeDeckHeadline(String(request.coverTitle ?? '').trim())).slice(0, 60);
-    const coverSubtitle = this.sanitizeContentText(String(request.coverSubtitle ?? '').replace(/\s+/g, ' ').trim()).slice(0, 220);
-    const list = this.cloneJson(existing[listIndex]);
-    const pages = (list.pages || []).map((page, index) => {
-      if (index !== 0 || page.type !== 'cover') return page;
-      return {
-        ...page,
-        title: coverTitle || page.title,
-        subtitle: coverSubtitle,
-      };
+    const updated = this.updatePageText(deckId, listId, 0, {
+      title: request.coverTitle,
+      subtitle: request.coverSubtitle,
     });
-
-    const nextList: GuideDeckList = {
-      ...list,
-      title: coverTitle || list.title,
-      coverTitle: coverTitle || list.coverTitle || list.title,
-      pages,
-    };
-    const sanitizedNextList = this.sanitizeGeneratedListText(nextList, deckId);
-
-    const nextLists = [...existing];
-    nextLists[listIndex] = sanitizedNextList;
-    this.generatedListsByDeckId.set(deckId, nextLists);
-    this.persistGeneratedLists();
-
-    const coverPage = sanitizedNextList.pages[0]?.type === 'cover' ? sanitizedNextList.pages[0] : null;
     return {
       deckId,
       listId,
-      coverTitle: sanitizedNextList.coverTitle || sanitizedNextList.title,
-      coverSubtitle: coverPage?.subtitle || '',
+      coverTitle: updated.title,
+      coverSubtitle: updated.subtitle,
     };
+  }
+
+  updatePageText(
+    deckId: string,
+    listId: string,
+    pageIndex: number,
+    request: UpdatePageTextRequest,
+  ): UpdatePageTextResponse {
+    if (!Number.isInteger(pageIndex) || pageIndex < 0) {
+      throw new BadRequestException('So trang khong hop le.');
+    }
+    this.ensureGeneratedListsLoaded();
+    const derived = this.ensureWorkbookDerivedContext();
+    const baseList = derived.baseDecks.find((deck) => deck.id === deckId)?.lists.find((list) => list.id === listId);
+    const generatedList = (this.generatedListsByDeckId.get(deckId) ?? []).find((list) => list.id === listId);
+    const list = generatedList || baseList;
+    if (!list) throw new NotFoundException(`Khong tim thay list: ${listId}`);
+    const page = list.pages?.[pageIndex];
+    if (!page) throw new NotFoundException(`Khong tim thay trang: ${pageIndex + 1}`);
+
+    const titleLimit = page.type === 'cover' ? 60 : 90;
+    const title = this.normalizeEditablePageText(request.title ?? page.title).slice(0, titleLimit);
+    const subtitle = this.normalizeEditablePageText(request.subtitle ?? page.subtitle).slice(0, 220);
+
+    const store = this.loadPageTextOverrides();
+    store.decks[deckId] ||= {};
+    store.decks[deckId][listId] ||= {};
+    store.decks[deckId][listId][String(pageIndex)] = { title, subtitle };
+    store.savedAt = new Date().toISOString();
+    this.ensureDataRoot();
+    this.writeJsonFileSafe(this.getDestinationDataPath('page-text-overrides'), store);
+
+    return { deckId, listId, pageIndex, title, subtitle };
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
@@ -974,9 +1058,8 @@ export class GuideService implements OnApplicationBootstrap {
       deckId,
     );
 
-    if (!caption.body) throw new BadRequestException('Cần có body caption trước khi tạo list mới.');
-    if (deckId !== 'spotlight-v3' && !caption.coverTitle) {
-      throw new BadRequestException('Cần có tiêu đề cover (≤ 35 ký tự) trước khi tạo list mới.');
+    if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && !caption.coverTitle) {
+      throw new BadRequestException('Cần có tiêu đề cover trước khi tạo list mới.');
     }
 
     await this.prepareWorkbookForDataset(false);
@@ -1006,9 +1089,12 @@ export class GuideService implements OnApplicationBootstrap {
         }
       }
     }
-    if (deckId === 'spotlight-v3') {
-      await this.warmSpotlightV3Hooks();
+    if (isGoogleDocHookDeck(deckId)) {
+      const hooks = isSectionedGoogleDocHookDeck(deckId)
+        ? await this.loadDeckHookSection(deckId)
+        : (await this.warmSpotlightV3Hooks(), undefined);
       setSpotlightV3BuildContext({
+        ...(hooks ? { hooks } : {}),
         destinationId: this.activeDestinationId,
         usedHookTitles: this.getUsedCaptionTitles(deckId),
       });
@@ -1028,9 +1114,13 @@ export class GuideService implements OnApplicationBootstrap {
     } finally {
       clearSpotlightV3BuildContext();
     }
-    const hookCoverTitle = deckId === 'spotlight-v3'
-      ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
-      : '';
+    const hookCoverTitle = isSectionedGoogleDocHookDeck(deckId)
+      ? await this.resolveDeckHookCoverTitle(deckId, seed)
+      : isLegacyGoogleDocHookDeck(deckId)
+        ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
+      : isPremadeHookDeck(deckId)
+        ? this.resolvePremadeHookCoverTitle(deckId, seed)
+        : '';
     const safeCaption = {
       ...caption,
       coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(hookCoverTitle || caption.coverTitle)),
@@ -1038,14 +1128,25 @@ export class GuideService implements OnApplicationBootstrap {
       body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
     };
     const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story' || deckId === 'budget-72h-summary'
-      ? this.budget3N2DCoverCaption(safeCaption, requestedTone, seed, generatedNumber)
+      ? this.budget3N2DCoverCaption(safeCaption)
       : safeCaption;
     let generatedPages = applyCaptionToPages(basePages, finalCaption);
     if (deckId === 'pov-3-v2') {
       generatedPages = await this.enrichPov3V2StackTaglines(generatedPages);
     }
+    generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
 
-    const generatedList = buildDeckList(deckId, `caption-${generatedSuffix}`, `AI ${String(generatedNumber).padStart(2, '0')}`, finalCaption.coverTitle, finalCaption.body, generatedPages);
+    if (isNonAiDeck(deckId) && generatedPages.length !== 14) {
+      throw new BadRequestException(`Mẫu 1 phải có đúng 14 trang, hiện có ${generatedPages.length}.`);
+    }
+    const generatedList = buildDeckList(
+      deckId,
+      `caption-${generatedSuffix}`,
+      isNonAiDeck(deckId) ? `Mẫu ${String(generatedNumber).padStart(2, '0')}` : `AI ${String(generatedNumber).padStart(2, '0')}`,
+      finalCaption.coverTitle,
+      isNonAiDeck(deckId) ? '' : finalCaption.body,
+      generatedPages,
+    );
     generatedList.coverTitle = finalCaption.coverTitle;
     generatedList.postCaption = finalCaption.headline;
     generatedList.captionHashtags = finalCaption.hashtags;
@@ -1063,7 +1164,47 @@ export class GuideService implements OnApplicationBootstrap {
 
   // ─── Batch list generation ────────────────────────────────────────────────
 
+  /** Gọi DeepSeek chat completions với 1 lần retry nếu fetch lỗi mạng (không retry khi timeout/abort). */
+  private async fetchDeepSeekChat(apiKey: string, body: Record<string, unknown>, timeoutMs = 30_000): Promise<Response> {
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+      } catch (error: any) {
+        if (error?.name === 'AbortError' || attempt === 2) throw error;
+        const cause = error?.cause ? (error.cause.code || error.cause.message || String(error.cause)) : '';
+        console.warn(`[deepseek] fetch lỗi (thử lại lần 2/2)${cause ? `, nguyên nhân: ${cause}` : ''}: ${error?.message || error}`);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    throw new Error('DeepSeek fetch thất bại.');
+  }
+
   async generateBatchLists(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    const requestId = String(request.requestId || '').trim().slice(0, 100);
+    if (requestId) {
+      const existingRequest = this.batchGenerationRequests.get(requestId);
+      if (existingRequest) return existingRequest;
+      const task = this.generateBatchListsOnce(request);
+      this.batchGenerationRequests.set(requestId, task);
+      try {
+        return await task;
+      } finally {
+        setTimeout(() => this.batchGenerationRequests.delete(requestId), 10 * 60 * 1000).unref?.();
+      }
+    }
+    return this.generateBatchListsOnce(request);
+  }
+
+  private async generateBatchListsOnce(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
     this.assertDriveCacheReady();
     const deckId = String(request.deckId ?? '').trim();
     if (deckId === 'spotlight-partner') {
@@ -1071,7 +1212,29 @@ export class GuideService implements OnApplicationBootstrap {
     }
     if (!deckId) throw new BadRequestException('Thiếu deckId để tạo batch list.');
 
-    const count = Math.min(Math.max(Number(request.count ?? 5), 1), 10);
+    const requestedCount = Number(request.count ?? 5);
+    const count = Number.isFinite(requestedCount)
+      ? Math.min(Math.max(Math.trunc(requestedCount), 1), 10)
+      : 5;
+
+    if (isNonAiDeck(deckId)) {
+      const results: Array<{ listId: string; navTitle: string; tone: string }> = [];
+      let failCount = 0;
+      for (let i = 0; i < count; i += 1) {
+        try {
+          const generated = await this.generateDeckFromCaption({
+            deckId,
+            tone: 'lich_trinh_huu_ich',
+            caption: { coverTitle: '', headline: '', body: '', hashtags: [] },
+          });
+          results.push({ listId: generated.listId, navTitle: generated.navTitle, tone: 'không AI' });
+        } catch (error) {
+          console.warn(`[batch] Lỗi tạo Mẫu 1 ${i + 1}/${count}:`, error instanceof Error ? error.message : error);
+          failCount += 1;
+        }
+      }
+      return { deckId, lists: results, successCount: results.length, failCount };
+    }
 
     const apiKey = String(process.env.DEEPSEEK_API_KEY ?? '').trim();
     if (!apiKey) {
@@ -1090,6 +1253,7 @@ export class GuideService implements OnApplicationBootstrap {
 
     const results: Array<{ listId: string; navTitle: string; tone: string }> = [];
     let failCount = 0;
+    const errors: Array<{ index: number; tone: string; message: string }> = [];
 
     // Get existing generated lists to know which tones have been used
     this.ensureGeneratedListsLoaded();
@@ -1110,41 +1274,40 @@ export class GuideService implements OnApplicationBootstrap {
         const current = { coverTitle: '', headline: '', body: '', hashtags: [] as string[] };
         const prompt = this.buildDeepSeekPrompt(deck, deckList, tone, 'full', current, usedTitles);
 
-        const deepseekController = new AbortController();
-        const deepseekTimeout = setTimeout(() => deepseekController.abort(), 30_000);
-        let response: Response;
-        try {
-          response = await fetch('https://api.deepseek.com/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-            body: JSON.stringify({
-              model: 'deepseek-chat',
-              messages: [
-                { role: 'system', content: 'Bạn là content creator du lịch TikTok. Chỉ trả về đúng JSON object hợp lệ, không thêm markdown, không giải thích.' },
-                { role: 'user', content: prompt },
-              ],
-              temperature: 1.1,
-              max_tokens: 900,
-              stream: false,
-            }),
-            signal: deepseekController.signal,
-          });
-        } finally {
-          clearTimeout(deepseekTimeout);
-        }
+        const response = await this.fetchDeepSeekChat(apiKey, {
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: 'Bạn là content creator du lịch TikTok. Chỉ trả về đúng JSON object hợp lệ, không thêm markdown, không giải thích.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 1.1,
+          max_tokens: 900,
+          stream: false,
+        });
 
         if (!response.ok) {
-          console.warn(`[batch] DeepSeek lỗi HTTP ${response.status} cho tone ${tone}`);
+          const responseBody = (await response.text()).replace(/\s+/g, ' ').trim().slice(0, 300);
+          const message = `DeepSeek HTTP ${response.status}${responseBody ? `: ${responseBody}` : ''}`;
+          console.warn(`[batch] ${message} cho tone ${tone}`);
+          errors.push({ index: i + 1, tone, message });
           failCount++;
           continue;
         }
 
         const responseText = await response.text();
         let payload: any;
-        try { payload = JSON.parse(responseText); } catch { failCount++; continue; }
+        try { payload = JSON.parse(responseText); } catch {
+          errors.push({ index: i + 1, tone, message: 'DeepSeek trả dữ liệu không phải JSON hợp lệ.' });
+          failCount++;
+          continue;
+        }
 
         const content = String(payload?.choices?.[0]?.message?.content ?? '').trim();
-        if (!content) { failCount++; continue; }
+        if (!content) {
+          errors.push({ index: i + 1, tone, message: 'DeepSeek không trả nội dung.' });
+          failCount++;
+          continue;
+        }
 
         const parsed = this.parseDeepSeekJson(content);
         const caption = this.normalizeCaptionPayload(
@@ -1156,8 +1319,11 @@ export class GuideService implements OnApplicationBootstrap {
           this.collectCaptionForbiddenNames(deckList),
         );
 
-        if (deckId !== 'spotlight-v3' && (!caption.coverTitle || !caption.body)) { failCount++; continue; }
-        if (deckId === 'spotlight-v3' && !caption.body) { failCount++; continue; }
+        if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && !caption.coverTitle) {
+          errors.push({ index: i + 1, tone, message: 'Phản hồi AI thiếu tiêu đề cover.' });
+          failCount++;
+          continue;
+        }
 
         const generated = await this.generateDeckFromCaption({
           deckId,
@@ -1171,8 +1337,11 @@ export class GuideService implements OnApplicationBootstrap {
         });
 
         results.push({ listId: generated.listId, navTitle: generated.navTitle, tone });
-      } catch (error) {
-        console.warn(`[batch] Lỗi tạo list ${i + 1}/${count} (tone=${tone}):`, error instanceof Error ? error.message : error);
+      } catch (error: any) {
+        const cause = error?.cause ? (error.cause.code || error.cause.message || String(error.cause)) : '';
+        const message = (error instanceof Error ? error.message : String(error)) + (cause ? ` (${cause})` : '');
+        console.warn(`[batch] Lỗi tạo list ${i + 1}/${count} (tone=${tone}):`, message);
+        errors.push({ index: i + 1, tone, message });
         failCount++;
       }
     }
@@ -1182,6 +1351,7 @@ export class GuideService implements OnApplicationBootstrap {
       lists: results,
       successCount: results.length,
       failCount,
+      errors,
     };
   }
 
@@ -1267,7 +1437,7 @@ export class GuideService implements OnApplicationBootstrap {
     );
     generatedList.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
     generatedList.postCaption = SPOTLIGHT_PARTNER_POST_CAPTION;
-    generatedList.description = SPOTLIGHT_PARTNER_CAPTION_BODY;
+    generatedList.description = '';
     generatedList.captionHashtags = buildCaptionHashtags([], 'lich_trinh_huu_ich', this.activeDestinationId, 'spotlight-partner');
     generatedList.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
 
@@ -1422,6 +1592,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   private mergeGeneratedLists(decks: GuideDeck[], coverImageUrls: string[] = []): GuideDeck[] {
     const usedCoverUrls = new Set<string>();
+    const pageTextOverrides = this.loadPageTextOverrides();
     return decks.map((deck) => {
       const templateVersion = this.templateVersionForDeck(deck.id);
       const baseLists = deck.lists.map((list) => {
@@ -1437,8 +1608,109 @@ export class GuideService implements OnApplicationBootstrap {
             this.sanitizeGeneratedListForDisplay(list, coverImageUrls, usedCoverUrls, deck.id)
           )),
         ];
-      return { ...deck, lists: this.applyRecentImageReuseGuard(displayLists) };
+      // Một số bước làm sạch giao diện có fallback chữ để cứu dữ liệu cũ. Áp lại
+      // cấu trúc mẫu mẹ sau cùng để fallback không tái tạo trường đã bị xóa.
+      const structuredDisplayLists = displayLists.map((list) => (
+        /-main$/i.test(String(list.id || ''))
+          || String(list.id || '').toLowerCase() === 'main'
+          || String(list.navTitle || '').trim().toLowerCase() === 'list chính'
+          ? list
+          : { ...list, pages: this.applyMainTemplateFieldStructure(deck, list.pages) }
+      ));
+      const guardedLists = this.applyRecentImageReuseGuard(structuredDisplayLists);
+      return { ...deck, lists: this.applyPageTextOverrides(deck.id, guardedLists, pageTextOverrides) };
     });
+  }
+
+  private normalizeEditablePageText(value: unknown): string {
+    return String(value ?? '')
+      .normalize('NFC')
+      .replace(/[\u0000-\u001f\u007f]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private loadPageTextOverrides(): PageTextOverrideStore {
+    const empty: PageTextOverrideStore = { version: 1, savedAt: '', decks: {} };
+    const filePath = this.resolveDestinationDataPath('page-text-overrides');
+    if (!fs.existsSync(filePath)) return empty;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Partial<PageTextOverrideStore>;
+      return {
+        version: 1,
+        savedAt: String(parsed.savedAt || ''),
+        decks: parsed.decks && typeof parsed.decks === 'object' ? parsed.decks : {},
+      };
+    } catch {
+      return empty;
+    }
+  }
+
+  private applyPageTextOverrides(
+    deckId: string,
+    lists: GuideDeckList[],
+    store: PageTextOverrideStore,
+  ): GuideDeckList[] {
+    const deckOverrides = store.decks[deckId];
+    if (!deckOverrides) return lists;
+    return lists.map((list) => {
+      const listOverrides = deckOverrides[list.id];
+      if (!listOverrides) return list;
+      const pages = list.pages.map((page, pageIndex) => {
+        const ownOverride = listOverrides?.[String(pageIndex)];
+        return ownOverride ? { ...page, title: ownOverride.title, subtitle: ownOverride.subtitle } : page;
+      });
+      const coverOverride = pages[0]?.type === 'cover'
+        ? listOverrides?.['0']
+        : undefined;
+      return coverOverride
+        ? { ...list, title: coverOverride.title, coverTitle: coverOverride.title, pages }
+        : { ...list, pages };
+    });
+  }
+
+  private applyMainTemplateFieldStructure(deck: GuideDeck, pages: DeckPage[]): DeckPage[] {
+    const mainList = deck.lists.find((list) => (
+      /-main$/i.test(String(list.id || ''))
+      || String(list.id || '').toLowerCase() === 'main'
+      || String(list.navTitle || '').trim().toLowerCase() === 'list chính'
+    ));
+    if (!mainList) return pages;
+
+    const templateOverrides = this.loadPageTextOverrides().decks[deck.id]?.[mainList.id];
+    return pages.map((page, pageIndex) => {
+      // Trang bìa: tiêu đề là hook riêng của từng list (AI/pool), không đồng bộ/ghi đè
+      // theo override của list mẫu (main) — nếu không mọi list mới sẽ bị ép về cùng 1 câu.
+      if (page.type === 'cover') return page;
+      const templatePage = mainList.pages?.[pageIndex];
+      if (!templatePage) return page;
+      const override = templateOverrides?.[String(pageIndex)];
+      if (override) {
+        return {
+          ...page,
+          title: override.title,
+          subtitle: override.subtitle,
+        };
+      }
+      const templateTitle = templatePage.title;
+      const templateSubtitle = templatePage.subtitle;
+      return {
+        ...page,
+        ...(String(templateTitle ?? '').trim() ? {} : { title: '' }),
+        ...(String(templateSubtitle ?? '').trim() ? {} : { subtitle: '' }),
+      };
+    });
+  }
+
+  private deletePageTextOverrides(deckId: string, listId: string): void {
+    const store = this.loadPageTextOverrides();
+    const deck = store.decks[deckId];
+    if (!deck?.[listId]) return;
+    delete deck[listId];
+    if (Object.keys(deck).length === 0) delete store.decks[deckId];
+    store.savedAt = new Date().toISOString();
+    this.ensureDataRoot();
+    this.writeJsonFileSafe(this.getDestinationDataPath('page-text-overrides'), store);
   }
 
   private applyRecentImageReuseGuard(lists: GuideDeckList[]): GuideDeckList[] {
@@ -1536,6 +1808,7 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'grid-8-quaytung') return GRID_8_QUAYTUNG_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v2') return SPOTLIGHT_V2_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v3') return SPOTLIGHT_V3_TEMPLATE_VERSION;
+    if (deckId === 'carousel-mau-1') return CAROUSEL_MAU_1_TEMPLATE_VERSION;
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n3d-stack') return ITINERARY_4N3D_STACK_TEMPLATE_VERSION;
     if (deckId === 'itinerary-timeline') return ITINERARY_TIMELINE_TEMPLATE_VERSION;
@@ -1548,74 +1821,14 @@ export class GuideService implements OnApplicationBootstrap {
     return allowed.includes(value as CaptionTone) ? value as CaptionTone : 'lich_trinh_huu_ich';
   }
 
-  private budget3N2DCoverCaption(
-    caption: CaptionBlocks,
-    tone: CaptionTone,
-    seed: string,
-    ordinal: number,
-  ): CaptionBlocks {
-    const toneTitles: Record<CaptionTone, string[]> = {
-      gen_z: ['72H ĐÀ LẠT GỌN VÍ', '3 NGÀY ĐI ĐÀ LẠT CỰC GỌN', 'ĐÀ LẠT 3TR ĐI SAO CHO ĐÃ'],
-      tinh_te: ['72H ĐÀ LẠT THẬT CHẬM', 'MỘT CHUYẾN ĐÀ LẠT GỌN GHẼ', '3 NGÀY Ở ĐÀ LẠT THẬT ÊM'],
-      review_chan_that: ['72H ĐÀ LẠT DỄ ĐI', '3 NGÀY ĐÀ LẠT KHỎI RỐI', 'LỊCH ĐÀ LẠT GỌN CHO NGƯỜI MỚI'],
-      ban_hang_nhe: ['LỊCH ĐÀ LẠT 3TR NÊN LƯU', '72H ĐÀ LẠT ĐI GỌN HƠN', 'ĐÀ LẠT 3 NGÀY CÓ SẴN LIST'],
-      lich_trinh_huu_ich: ['72H ĐÀ LẠT TỐI ƯU', '3N2Đ ĐÀ LẠT GỌN LỊCH', 'LỊCH 72H ĐÀ LẠT DỄ THEO'],
-    };
-
-    const toneBodies: Record<CaptionTone, string[]> = {
-      gen_z: [
-        'Một list gọn để lên Đà Lạt mà không phải loay hoay chọn chỗ. Có giờ đi, điểm ghé và chi phí dự kiến để lưu liền tay.',
-        'Đi Đà Lạt 3 ngày mà muốn gọn ví thì lưu lại ngay. Lịch đã chia sẵn theo buổi, dễ nhìn và dễ đi theo.',
-        'Dành cho ai muốn xách balo lên Đà Lạt mà vẫn kiểm soát chi phí. Mở list ra là biết nên ghé đâu trước.',
-      ],
-      tinh_te: [
-        'Một lịch trình vừa đủ chậm để tận hưởng Đà Lạt, vừa đủ rõ để không mất thời gian tìm từng điểm. Lưu lại cho chuyến đi nhẹ nhàng hơn.',
-        'Ba ngày ở Đà Lạt sẽ dễ thở hơn khi có sẵn điểm ghé, giờ đi và khoản chi. Hợp cho một chuyến đi nhẹ, gọn và có nhịp.',
-        'Gợi ý này gom lại những điểm cần thiết cho 72 giờ ở Đà Lạt. Không quá dày, không quá rối, chỉ đủ để đi thật thoải mái.',
-      ],
-      review_chan_that: [
-        'List này hợp cho người muốn đi Đà Lạt tự túc nhưng không muốn ngồi dò từng quán. Có lịch, có địa chỉ và chi phí để kiểm nhanh.',
-        'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.',
-        'Một bản gợi ý thực tế cho chuyến 3N2Đ: ăn gì, ghé đâu, chi khoảng bao nhiêu đều có sẵn để dễ so lại.',
-      ],
-      ban_hang_nhe: [
-        'Lưu lại trước khi lên Đà Lạt để chọn điểm nhanh hơn. List có sẵn lịch trình, quán nên ghé và chi phí dự kiến cho cả chuyến.',
-        'Một gợi ý 72H giúp chuyến đi gọn hơn từ lúc lên lịch đến lúc chọn quán. Phù hợp cho nhóm nhỏ muốn đi vui mà vẫn canh ngân sách.',
-        'Để chuyến Đà Lạt đỡ mất công chuẩn bị, list này gom sẵn điểm ghé và mức chi tham khảo. Lưu ngay để mở ra dùng khi cần.',
-      ],
-      lich_trinh_huu_ich: [
-        'Lịch trình 3N2Đ được chia theo từng buổi, kèm địa chỉ và chi phí dự kiến. Phù hợp để lưu lại rồi điều chỉnh theo nhóm đi.',
-        'Một bản gợi ý gọn cho 72 giờ ở Đà Lạt: đi đâu, ăn gì, dự trù bao nhiêu đều được xếp sẵn để dễ theo dõi.',
-        'List này giúp bạn có khung lịch rõ trước khi đi Đà Lạt. Chỉ cần lưu lại, xem từng mốc giờ và thay đổi nhẹ theo nhu cầu.',
-      ],
-    };
-
-    const titlePool = toneTitles[tone] || toneTitles.lich_trinh_huu_ich;
-    const bodyPool = toneBodies[tone] || toneBodies.lich_trinh_huu_ich;
-    const title = titlePool[(stableHash(`${seed}:title:${ordinal}`) + ordinal) % titlePool.length];
-    const body = bodyPool[(stableHash(`${seed}:body:${ordinal}`) + Math.floor(ordinal / titlePool.length)) % bodyPool.length];
-
+  private budget3N2DCoverCaption(caption: CaptionBlocks): CaptionBlocks {
+    // Tiêu đề cover 3 mẫu budget giờ lấy từ pool hook tĩnh (resolvePremadeHookCoverTitle),
+    // không còn ghi đè bằng pool tiêu đề theo tone cũ ở đây nữa.
+    // Người dùng đã quyết định bỏ hẳn mô tả (body) khỏi app — không còn pool body mặc định cho 3 mẫu budget nữa.
     return {
       ...caption,
-      coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(localizeText(title, this.activeDestinationId))),
-      body: this.sanitizeContentText(localizeText(body, this.activeDestinationId)),
+      body: '',
     };
-  }
-
-  private generatedListOrdinal(list: GuideDeckList, fallbackIndex: number): number {
-    const match = String(list.id || '').match(/caption-(\d+)/i);
-    const parsed = match ? Number(match[1]) : Number.NaN;
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackIndex + 1;
-  }
-
-  private toneForGeneratedList(list: GuideDeckList, fallbackIndex: number): CaptionTone {
-    const toneRotation: CaptionTone[] = ['gen_z', 'tinh_te', 'review_chan_that', 'ban_hang_nhe', 'lich_trinh_huu_ich'];
-    const titleAndBody = normalizeText(`${list.coverTitle || list.title || ''} ${list.description || ''} ${list.postCaption || ''}`);
-    if (titleAndBody.includes('gon_vi') || titleAndBody.includes('cuc_gon') || titleAndBody.includes('di_sao_cho_da')) return 'gen_z';
-    if (titleAndBody.includes('that_cham') || titleAndBody.includes('gon_ghe') || titleAndBody.includes('that_em')) return 'tinh_te';
-    if (titleAndBody.includes('de_di') || titleAndBody.includes('khoi_roi') || titleAndBody.includes('nguoi_moi')) return 'review_chan_that';
-    if (titleAndBody.includes('nen_luu') || titleAndBody.includes('di_gon_hon') || titleAndBody.includes('co_san_list')) return 'ban_hang_nhe';
-    return toneRotation[(this.generatedListOrdinal(list, fallbackIndex) - 1) % toneRotation.length];
   }
 
   private hasGeneratedListsNeedingTemplateRefresh(): boolean {
@@ -1672,8 +1885,8 @@ export class GuideService implements OnApplicationBootstrap {
 
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
     const cleanPage = this.sanitizeDeckPageText(page);
-    if (cleanPage.type === 'cover' && (cleanPage.layoutVariant === 'spotlight-v2' || cleanPage.layoutVariant === 'spotlight-v3')) {
-      if (cleanPage.layoutVariant === 'spotlight-v3') {
+    if (cleanPage.type === 'cover' && (cleanPage.layoutVariant === 'spotlight-v2' || cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'carousel-mau-1-cover')) {
+      if (cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'carousel-mau-1-cover') {
         return { ...cleanPage, subtitle: '' };
       }
       return {
@@ -1750,7 +1963,7 @@ export class GuideService implements OnApplicationBootstrap {
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
     if (page.type === 'cover') {
       const layout = String(page.layoutVariant || '');
-      if (layout === 'spotlight-v3') {
+      if (layout === 'spotlight-v3' || layout === 'carousel-mau-1-cover') {
         return { ...page, subtitle: '' };
       }
       if (layout === 'spotlight-v2') {
@@ -1980,6 +2193,7 @@ export class GuideService implements OnApplicationBootstrap {
   ): void {
     if (this.generatedListsByDeckId.size === 0) return;
     let changed = false;
+    const pageTextOverrides = this.loadPageTextOverrides();
 
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
       const templateVersion = this.templateVersionForDeck(deckId);
@@ -1991,7 +2205,7 @@ export class GuideService implements OnApplicationBootstrap {
           const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
           if (!partnerItem) return list;
           const pools = this.createDeckBuildPoolsFromSection(itemsBySection);
-          const regeneratedPages = buildSpotlightPartnerPages(
+          let regeneratedPages = buildSpotlightPartnerPages(
             partnerItem,
             pools,
             imageUrls,
@@ -2001,6 +2215,7 @@ export class GuideService implements OnApplicationBootstrap {
             deckUsage.imageUrls,
             coverImageUrls,
           );
+          if (baseDeck) regeneratedPages = this.applyMainTemplateFieldStructure(baseDeck, regeneratedPages);
           this.markUsedInDeck(regeneratedPages, deckUsage);
           this.markUsedInDeck(regeneratedPages, renderUsage);
           const partnerCaptionHashtags = buildCaptionHashtags([], 'lich_trinh_huu_ich', this.activeDestinationId, 'spotlight-partner');
@@ -2009,7 +2224,7 @@ export class GuideService implements OnApplicationBootstrap {
             list.title !== partnerItem.name.toUpperCase() ||
             list.coverTitle !== partnerItem.name.toUpperCase().slice(0, 35) ||
             list.postCaption !== SPOTLIGHT_PARTNER_POST_CAPTION ||
-            list.description !== SPOTLIGHT_PARTNER_CAPTION_BODY ||
+            list.description !== '' ||
             JSON.stringify(list.captionHashtags || []) !== JSON.stringify(partnerCaptionHashtags) ||
             list.templateVersion !== templateVersion ||
             JSON.stringify(list.pages) !== JSON.stringify(regeneratedPages)
@@ -2020,7 +2235,7 @@ export class GuideService implements OnApplicationBootstrap {
             title: partnerItem.name.toUpperCase(),
             coverTitle: partnerItem.name.toUpperCase().slice(0, 35),
             postCaption: SPOTLIGHT_PARTNER_POST_CAPTION,
-            description: SPOTLIGHT_PARTNER_CAPTION_BODY,
+            description: '',
             captionHashtags: partnerCaptionHashtags,
             templateVersion,
             pages: regeneratedPages,
@@ -2028,14 +2243,22 @@ export class GuideService implements OnApplicationBootstrap {
           return this.sanitizeGeneratedListText(nextList, deckId);
         }
 
+        // Nếu người dùng đã tự sửa/xóa tiêu đề cover (page-text-overrides), giữ đúng giá trị đó khi
+        // refresh — không random lại hook mới rồi ghi đè lên bản người dùng đã chỉnh.
+        const coverOverride = pageTextOverrides.decks[deckId]?.[list.id]?.['0'];
+        const hasCoverOverride = coverOverride !== undefined;
+
         const caption: CaptionBlocks = {
-          coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title)),
+          coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(
+            hasCoverOverride ? coverOverride.title : (list.coverTitle || list.title),
+          )),
           headline: this.sanitizeContentText(String(list.postCaption ?? '').trim()),
-          body: this.sanitizeContentText(list.description),
+          // Người dùng đã quyết định bỏ hẳn mô tả — ép rỗng ở đây để list AI cũ (còn description lưu từ trước) cũng được dọn sạch khi refresh.
+          body: '',
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
         const refreshSeed = `refresh:${deckId}:${list.id}:${listIndex}:${caption.coverTitle}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`;
-        if (deckId === 'spotlight-v3') {
+        if (isLegacyGoogleDocHookDeck(deckId)) {
           setSpotlightV3BuildContext({
             destinationId: this.activeDestinationId,
             usedHookTitles: this.getUsedCaptionTitles(deckId),
@@ -2054,11 +2277,17 @@ export class GuideService implements OnApplicationBootstrap {
             coverImageUrls,
           );
         } finally {
-          if (deckId === 'spotlight-v3') clearSpotlightV3BuildContext();
+          clearSpotlightV3BuildContext();
         }
-        const hookCoverTitle = deckId === 'spotlight-v3'
-          ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
-          : '';
+        const hookCoverTitle = hasCoverOverride
+          ? ''
+          : isLegacyGoogleDocHookDeck(deckId)
+            ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
+            : isSectionedGoogleDocHookDeck(deckId)
+              ? ''
+            : isPremadeHookDeck(deckId)
+              ? this.resolvePremadeHookCoverTitle(deckId, refreshSeed)
+              : '';
         const safeCaption = {
           ...caption,
           coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(hookCoverTitle || caption.coverTitle)),
@@ -2066,9 +2295,10 @@ export class GuideService implements OnApplicationBootstrap {
           body: this.sanitizeContentText(sanitizeCaptionBodyForPages(caption.body, basePages)),
         };
         const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story' || deckId === 'budget-72h-summary'
-          ? this.budget3N2DCoverCaption(safeCaption, this.toneForGeneratedList(list, listIndex), refreshSeed, this.generatedListOrdinal(list, listIndex))
+          ? this.budget3N2DCoverCaption(safeCaption)
           : safeCaption;
         let regeneratedPages = applyCaptionToPages(basePages, finalCaption);
+        if (baseDeck) regeneratedPages = this.applyMainTemplateFieldStructure(baseDeck, regeneratedPages);
         this.markUsedInDeck(regeneratedPages, deckUsage);
         this.markUsedInDeck(regeneratedPages, renderUsage);
         if (
@@ -2265,6 +2495,8 @@ export class GuideService implements OnApplicationBootstrap {
                 ? this.budgetGalleryItemMetaFromSource(sourceItem)
                 : page.layoutVariant === 'spotlight-v3'
                   ? this.spotlightV3ItemMetaFromSource(sourceItem, page.chipText)
+                  : page.layoutVariant === 'carousel-mau-1-page'
+                    ? [String(sourceItem.address || '').trim(), ''] as [string, string]
                   : this.pageItemMetaFromSource(sourceItem);
               const metaSecondary = page.layoutVariant === 'itinerary-timeline-day'
                 ? this.mergeTimelineDayMetaSecondary(String(pageItem.metaSecondary || ''), metaSecondaryRaw)
@@ -2715,6 +2947,20 @@ export class GuideService implements OnApplicationBootstrap {
     return [...new Set(titles)];
   }
 
+  /** Gộp used titles của mọi deck dùng chung 1 pool hook tĩnh — tránh lặp hook giữa các mẫu cùng nhóm. */
+  private getUsedCaptionTitlesForPool(poolKey: PremadeHookPoolKey): string[] {
+    return getDeckIdsForPremadeHookPool(poolKey).flatMap((id) => this.getUsedCaptionTitles(id));
+  }
+
+  /** Chọn hook trang bìa từ pool tĩnh (không AI) cho các mẫu ngoài spotlight-v3/carousel-mau-1/spotlight-guide. */
+  private resolvePremadeHookCoverTitle(deckId: string, seed: string): string {
+    const poolKey = getPremadeHookPoolKey(deckId);
+    if (!poolKey) return '';
+    const hooks = loadPremadeHookPool(poolKey, this.dataRoot);
+    if (!hooks.length) return '';
+    return pickSpotlightV3Hook(hooks, this.getUsedCaptionTitlesForPool(poolKey), seed);
+  }
+
   /** Cụm cover/caption mẫu — list mới không được dùng lại nguyên văn. */
   private bannedSampleCaptionPhrases(): string[] {
     return [
@@ -2770,8 +3016,23 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   private coverTitleMaxLen(deckId = ''): number {
-    if (deckId === 'grid-8' || deckId === 'grid-8-feed' || deckId === 'itinerary-4n2d-grid8') return 48;
-    return 35;
+    // Nới thêm ~20% so với giới hạn prompt yêu cầu AI nhắm tới (35/48) làm vùng đệm an toàn —
+    // AI hay viết hơi dài hơn target, nới nhẹ giúp giảm tần suất phải cắt câu giữa chừng.
+    if (deckId === 'grid-8' || deckId === 'grid-8-feed' || deckId === 'itinerary-4n2d-grid8') return 56;
+    return 42;
+  }
+
+  /**
+   * Cắt chuỗi về đúng maxLen nhưng lùi về ranh giới từ gần nhất (AI hay bỏ qua giới hạn ký tự,
+   * nếu cắt cứng bằng slice() sẽ đứt ngang từ/dấu ngoặc giữa chừng, đọc rất kỳ trên trang cover thật).
+   */
+  private truncateCaptionText(value: string, maxLen: number): string {
+    const clean = String(value || '').trim();
+    if (clean.length <= maxLen) return clean;
+    const hardCut = clean.slice(0, maxLen);
+    const lastSpace = hardCut.lastIndexOf(' ');
+    const safeCut = lastSpace >= Math.floor(maxLen * 0.6) ? hardCut.slice(0, lastSpace) : hardCut;
+    return safeCut.replace(/["'“‘'"()\[{,;:\-–—]+$/u, '').trim();
   }
 
   private itineraryGrid8CoverTitleFallback(seed = ''): string {
@@ -2824,7 +3085,7 @@ export class GuideService implements OnApplicationBootstrap {
     });
 
     const toneInstructions: Record<DeepSeekCaptionResponse['tone'], string> = {
-      gen_z: 'Sử dụng ngôn ngữ trẻ trung, năng động, dùng nhiều từ lóng Gen Z (chill, đỉnh nóc, chốt đơn, mlem, cháy...), cấu trúc câu ngắn gọn, có thể dùng icon linh hoạt. Headline ví dụ: "ĐÀ LẠT PHÁ ĐẢO CÙNG BESTIE", "CHÁY PHỐ ĐÀ LẠT 0Đ", "TOP SPOT CHILL CỰC ĐỈNH".',
+      gen_z: 'Sử dụng ngôn ngữ trẻ trung, năng động, dùng từ lóng Gen Z phù hợp NGỮ CẢNH DU LỊCH (chill, đỉnh nóc, mlem, cháy, xịn, đu trend...), cấu trúc câu ngắn gọn, có thể dùng icon linh hoạt. TRÁNH dùng từ lóng mua sắm/sale không hợp cảnh (như "chốt đơn", "săn sale", "add to cart") vì đây là list ảnh du lịch để lưu lại, không phải sản phẩm để mua — dùng "lưu ngay", "note lại", "úp lên là đi" thay thế. Headline ví dụ: "ĐÀ LẠT PHÁ ĐẢO CÙNG BESTIE", "CHÁY PHỐ ĐÀ LẠT 0Đ", "TOP SPOT CHILL CỰC ĐỈNH".',
       tinh_te: 'Giọng văn nhẹ nhàng, bay bổng, giàu cảm xúc và hình ảnh. Tập trung vào không gian, cảm giác yên bình và vẻ đẹp thơ mộng của Đà Lạt. Headline ví dụ: "ĐÀ LẠT VÀ NHỮNG BẢN TÌNH CA", "NƠI TÌM VỀ MIỀN KÝ ỨC", "CHÚT TÌNH GỬI GIÓ ĐÀ LẠT".',
       review_chan_that: 'Giọng văn thực tế, đi thẳng vào vấn đề, chia sẻ trải nghiệm thật (khen chê rõ ràng nhưng vẫn giữ thái độ tích cực). Nhấn mạnh vào tính hữu ích. Headline ví dụ: "SỰ THẬT VỀ ĐÀ LẠT MÙA NÀY", "LIST QUÁN ĂN NGON BẤT BẠI", "ĐI ĐÀ LẠT ĐỪNG BỎ QUA NƠI NÀY".',
       ban_hang_nhe: 'Giọng văn mời gọi nhưng không quá lộ liễu, khéo léo lồng ghép lợi ích khi sử dụng dịch vụ/địa điểm. Tập trung vào sự tiện lợi và chất lượng. Headline ví dụ: "TRẢI NGHIỆM ĐÀ LẠT KHÁC BIỆT", "DỊCH VỤ TOUR ĐÀ LẠT CHẤT LƯỢNG", "ƯU ĐÃI ĐỘC QUYỀN TẠI ĐÀ LẠT".',
@@ -2841,14 +3102,6 @@ export class GuideService implements OnApplicationBootstrap {
       'viet gon nhu caption de dang copy dang TikTok, nhung van co chat rieng',
       'uu tien nhac den nhom ban, cap doi hoac nguoi moi di Da Lat lan dau',
     ];
-    const bodyShapes = [
-      '2 cau ngan: cau 1 tao ly do luu lai, cau 2 noi loi ich cua list, khong goi ten hay liet ke dia diem',
-      '3 menh de lien tiep, nhip nhanh, khong liet ke may moc',
-      'mot cau mo dau co cam giac, mot cau sau noi ro list nay giup gi',
-      'viet nhu loi ru ban di choi, cuoi bang loi nhac luu lai nhe',
-      'review that gon: noi list hop voi ai, khong goi ten dia diem cu the',
-      'caption nhe nha: co canh, co mon hoac quan, co ly do nen luu',
-    ];
     const variationSeed = stableHash([
       deck.id,
       deckList.id,
@@ -2862,23 +3115,22 @@ export class GuideService implements OnApplicationBootstrap {
       Math.random().toString(36).slice(2),
     ].join('|'));
     const diversityAngle = diversityAngles[variationSeed % diversityAngles.length];
-    const bodyShape = bodyShapes[Math.floor(variationSeed / diversityAngles.length) % bodyShapes.length];
 
     const deckNotes = deck.id === 'itinerary-4n2d-grid8'
       ? [
         'Lưu ý đặc biệt: đây là lịch trình 4N3Đ (4 đêm 3 ngày), mỗi ngày một trang lưới 8 ô. Không gọi là 3N2Đ hay 4N2Đ trong caption.',
-        'coverTitle phải thơ / cảm xúc, kiểu “Đà Lạt – …” hoặc “Đà Lạt 4N3Đ – …”.',
-        'VD tốt: "ĐÀ LẠT 4N3Đ – CHUYẾN ĐI KHÔNG MUỐN KẾT THÚC", "BỐN NGÀY NHƯ MỘT BỨC TRANH", "ĐÀ LẠT 4N3Đ – Ở LẠI THÊM MỘT CHÚT".',
-        'TRÁNH title máy móc: "LƯU LIỀN 4 NGÀY ĐÀ LẠT", "LƯU NGAY LỊCH TRÌNH", "4 NGÀY ĐÀ LẠT GỌN", "NHỮNG ĐIỂM KHÔNG THỂ BỎ LỠ".',
+        'KHÔNG BẮT BUỘC phải nhét "4N3Đ" vào coverTitle — chỉ thêm nếu ghép tự nhiên, gọn, TUYỆT ĐỐI không ghép gượng gạo kiểu "đà lạt 4n3đ đi trong 72 giờ của…" (sai ngữ pháp, nghe rất kỳ). Ưu tiên câu sạch, không số, hơn là câu có số nhưng gãy.',
+        'VD tốt (đúng văn phong casual chung — xem "Lưu ý văn phong chung" bên dưới): "4n3đ ở đà lạt thì nên đi đâu nè??", "đi đà lạt 4 ngày 3 đêm thì lịch trình sao cho hợp lý?".',
       ].join(' ')
-      : deck.id === 'grid-8' || deck.id === 'grid-8-feed'
-        ? [
-          'Body cho cover nên 1–2 câu ngắn (≤118 ký tự), dễ đọc trong 3 dòng.',
-          'coverTitle phải thơ / cảm xúc, cấu trúc "ĐÀ LẠT – …".',
-          'VD tốt: "ĐÀ LẠT – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH", "ĐÀ LẠT – CHUYẾN ĐI MÀ MÌNH KHÔNG MUỐN KẾT THÚC", "ĐÀ LẠT – NƠI LÒNG MUỐN Ở LẠI".',
-          'TRÁNH title máy móc/meta/listicle: "GỌN TRONG TỪNG LIST", "8 ĐIỂM / 1 TRANG", "NHỮNG ĐIỂM KHÔNG THỂ BỎ LỠ", "CHECK-IN ĐỪNG BỎ LỠ", "CÓ GÌ MÀ ĐI HOÀI".',
-        ].join(' ')
-        : '';
+      : '';
+
+    const globalStyleNote = [
+      'LƯU Ý VĂN PHONG CHUNG CHO MỌI MẪU (áp dụng thống nhất, người dùng đã duyệt qua thực tế theo đúng mẫu 3N2Đ, ưu tiên phong cách này hơn mọi phong cách khác đã đề cập trước đó trong prompt):',
+      'coverTitle viết CASUAL, viết THƯỜNG (không viết hoa chữ đầu từng từ, không viết hoa toàn bộ) — giống hệt văn phong 1 caption TikTok đời thường, tự nhiên như đang gõ chat, được phép dùng dấu "??" hoặc lặp chữ cuối câu cho cảm giác thật (vd "nhiềuuu", "đẹppp" khi hợp tone).',
+      'coverTitle nên là 1 câu hỏi ngắn, thân thiện, viết thường — ví dụ mẫu THẬT đã duyệt: "3n2d ở đà lạt thì nên đi đâu??".',
+      'QUAN TRỌNG: ví dụ trên CHỈ để học văn phong/độ dài/cách viết thường — TUYỆT ĐỐI KHÔNG chép lại y nguyên hay gần giống câu chữ của ví dụ. Mỗi lần sinh phải là câu HOÀN TOÀN MỚI, đổi cách hỏi/cách kể khác nhau, và phải hợp với chủ đề/địa điểm của TỪNG mẫu (không phải lúc nào cũng hỏi kiểu 3n2d, có thể kể/tâm sự/mời gọi tuỳ Tone yêu cầu).',
+      'LƯU Ý QUAN TRỌNG: người dùng đã quyết định KHÔNG dùng phần mô tả (body) nữa — trang cover chỉ còn tiêu đề. Chỉ cần tập trung chất lượng vào coverTitle (và headline để đăng bài). Xem thêm hướng dẫn body ở cuối prompt.',
+    ].join(' ');
 
     const destinationLabel = cityLabel(this.activeDestinationId);
     const coreHashtags = getMarketingCopy(this.activeDestinationId).hashtags.slice(0, 3).join(' ');
@@ -2888,6 +3140,7 @@ export class GuideService implements OnApplicationBootstrap {
       `Tạo nội dung TikTok cho bộ ảnh du lịch ${destinationLabel} sau.`,
       `Tên chủ đề: ${deck.title}`,
       `Mô tả chung: ${deck.description}`,
+      globalStyleNote,
       deckNotes,
       `Danh sách địa điểm: ${deckList.title}`,
       `Mô tả danh sách: ${deckList.description}`,
@@ -2895,13 +3148,11 @@ export class GuideService implements OnApplicationBootstrap {
       `Hướng dẫn giọng văn: ${toneInstructions[tone]}`,
       `Phần cần sinh: ${target}`,
       `Goc trien khai bat buoc cho lan sinh nay: ${diversityAngle}.`,
-      `Kieu body bat buoc cho lan sinh nay: ${bodyShape}.`,
       current.coverTitle ? `Tiêu đề cover hiện tại: ${current.coverTitle}` : '',
       current.headline ? `Caption đăng bài hiện tại: ${current.headline}` : '',
-      current.body ? `Body hiện tại: ${current.body}` : '',
       current.hashtags.length ? `Hashtags hiện tại: ${current.hashtags.join(' ')}` : '',
       '',
-      (current.coverTitle || current.headline || current.body)
+      (current.coverTitle || current.headline)
         ? 'QUAN TRỌNG: Nội dung bạn sinh ra lần này PHẢI HOÀN TOÀN KHÁC với nội dung hiện tại ở trên. Không được dùng lại cùng ý, cùng cấu trúc câu, cùng từ mở đầu, hay cùng góc nhìn. Hãy đổi hoàn toàn cách tiếp cận, dùng từ vựng khác, mở đầu khác, và truyền tải thông điệp theo hướng mới.'
         : '',
       usedTitles.length > 0
@@ -2911,20 +3162,52 @@ export class GuideService implements OnApplicationBootstrap {
       'DỮ LIỆU ĐỊA ĐIỂM CHI TIẾT:',
       ...pageLines,
       '',
+      'VĂN PHONG MẪU THAM KHẢO (đây là các câu hook TikTok Đà Lạt thật, được người dùng chọn lọc — KHÔNG copy y nguyên bất kỳ câu nào dưới đây, chỉ học giọng văn: ngắn, đời thường, tự nhiên như người thật đang nói, có cảm xúc/lý do cụ thể, không sáo rỗng, không nghe như quảng cáo hay liệt kê máy móc):',
+      '- "Nhận đi Đà Lạt giùm cho ai đang nhớ Đà Lạt."',
+      '- "Đi Đà Lạt cả chục lần rồi, đây là những kinh nghiệm đáng tiền nhất."',
+      '- "Có cái list này là đi Đà Lạt khỏe hơn hẳn."',
+      '- "Nếu chỉ có 3 ngày ở Đà Lạt thì mình sẽ đi như thế này."',
+      '- "Sống ở Đà Lạt hơn 20 năm, đây là những quán mình vẫn quay lại."',
+      '- "Luỵ Đà Lạt mãi."',
+      '- "Đây không phải Pinterest. Đây là Đà Lạt."',
+      '- "POV: Chỉ còn 48 giờ ở Đà Lạt."',
+      '- "Đà Lạt tháng 7 có gì?"',
+      '- "Ai nói Đà Lạt hết đẹp?"',
+      '',
+      'YÊU CẦU BẮT BUỘC VỀ CHẤT LƯỢNG CÂU (áp dụng cho MỌI mẫu, không chỉ riêng lưới 8 — đây là lỗi hay gặp nhất, phải tuân thủ nghiêm):',
+      '- coverTitle và headline PHẢI là câu hoặc cụm từ HOÀN CHỈNH, đọc lên hiểu ngay, giống đúng giọng văn ở phần "VĂN PHONG MẪU THAM KHẢO" trên.',
+      '- TỰ KIỂM TRA bắt buộc trước khi trả lời: đọc lại coverTitle và headline, tự hỏi "câu này có nói được 1 ý CỤ THỂ không — 1 lý do, 1 cảm giác thật, 1 câu hỏi, hay 1 tình huống — hay chỉ là mỹ từ/số liệu không gắn với điều gì cả?". Nếu không trả lời được, viết lại.',
+      '- 9 KIỂU LỖI CẤM TUYỆT ĐỐI (đây là lỗi AI hay mắc nhất, ví dụ THẬT đã bị từ chối):',
+      '  (1) Nghe như slogan/quảng cáo du lịch chung: TRÁNH "ĐÀ LẠT – NÉT ĐẸP KHÔNG CẦN TỐN TIỀN", "ĐÀ LẠT — VẺ ĐẸP BẤT TẬN". Slogan không có góc nhìn cá nhân, ai viết cũng được, nghe rất sáo.',
+      '  (2) Chỉ liệt kê thông số như bảng specs, không có cảm xúc/lý do: TRÁNH "ĐÀ LẠT 72 GIỜ, GỌN VÍ 3TR", "ĐÀ LẠT 3N2Đ – 8 ĐIỂM 500K". Số giờ/số tiền/số điểm không tự nó tạo thành 1 câu có hồn.',
+      '  (3) Hoa mỹ/trừu tượng nhưng rỗng nghĩa, không nói được điều gì cụ thể: TRÁNH "CHẶNG DỪNG CHO TÂM HỒN", "ĐÀ LẠT VÀ NHỮNG SẮC MÀU", "ĐÀ LẠT CỦA RIÊNG BẠN", "ĐÀ LẠT TRONG TỪNG KHUNG HÌNH", "ĐÀ LẠT — GÓC NHÌN RIÊNG". Nếu dùng chữ "riêng"/"của bạn"/"góc nhìn" thì PHẢI nói rõ riêng cái gì, góc nhìn về cái gì cụ thể — không được để lửng.',
+      '  (4) Nhắc tên địa danh/quán cụ thể trong coverTitle: TRÁNH "Sáng 6h dậy đi Cầu Đất" (lộ tên "Cầu Đất" — vi phạm ngay quy tắc không nêu tên địa điểm cụ thể ở dưới). Chỉ được nói chung "Đà Lạt", không nêu tên đồi/hồ/quán/khu vực cụ thể nào.',
+      '  (5) Kết câu bằng 1 từ đơn lẻ mơ hồ, đọc xong không rõ nghĩa: TRÁNH kiểu "…, gửi chút lạc" (từ "lạc" đứng một mình không rõ là an lạc, lạc lối, hay gì khác). Nếu dùng từ trừu tượng/đa nghĩa, phải có từ đi kèm làm rõ nghĩa (vd. "an lạc", "lạc quan"), không để trơ một mình gây khó hiểu.',
+      '  (6) Lặp lại 1 từ để tạo vần/nhịp cho vui tai nhưng nghĩa không khớp với danh từ đi kèm: TRÁNH "Đà Lạt 8 spots xịn, ví cũng xịn luôn!" — "xịn" hợp với "spots" (đẹp/chất) nhưng vô nghĩa khi gắn với "ví" (ví không có khái niệm "xịn", nói vậy không ai hiểu ý là "không tốn tiền"). Muốn nói ví không hao tiền thì viết đúng nghĩa: "ví không hao", "ví vẫn dày", "đỡ tốn ví" — TUYỆT ĐỐI không tái dùng nguyên 1 từ khen sang vế sau nếu nghĩa không khớp, chỉ vì nghe vần.',
+      '  (7) Nêu SỐ LƯỢNG cụ thể trong coverTitle/headline — đây là lỗi RẤT hay tái phát, kiểm tra kỹ nhất: TRÁNH "8 điểm", "8 chỗ", "8 góc", "5 điểm", "6 điểm", "lưới 8 ô", "2 homestay", "4 địa điểm", hay bất kỳ số + danh từ nào nói về số lượng ảnh/địa điểm/ô lưới. Số lượng ô ảnh là thông tin về CẤU TRÚC LAYOUT, không phải nội dung cảm xúc — tuyệt đối không được xuất hiện trong coverTitle hay headline dưới bất kỳ danh từ nào đi kèm (kể cả từ đồng nghĩa với "điểm"). Cũng TRÁNH số tiền cụ thể kiểu "500k", "48h chỉ cần 500k" trong coverTitle. Ngoại lệ duy nhất: số 0 trong "0đ" (giá) và số ngày/giờ khi đúng là lịch trình theo ngày (ví dụ "4N3Đ", "72H") — những số đó KHÔNG bị cấm.',
+      '  (8) Câu quá chung chung, không gắn với NỘI DUNG CỤ THỂ của bộ ảnh này, đọc xong không biết bộ ảnh nói về cái gì: TRÁNH "mê đà lạt quá thì làm sao", "đà lạt vậy mà đáng đi nhỉ", "đà lạt sương mù chill cực xịn" — những câu này đúng ngữ pháp nhưng không gắn với chủ đề/nội dung riêng của bộ ảnh (ăn uống, lịch trình, quán cà phê, homestay...), đổi tên mẫu nào vào cũng dùng được thì coi như chưa đạt. coverTitle PHẢI cho biết mơ hồ được là bộ ảnh này giúp ích gì cụ thể (chọn quán, lên lịch, tìm góc chụp, tiết kiệm chi phí...).',
+      '  (9) Chèn cụm từ trong dấu ngoặc kép/nháy vào giữa câu để tạo hiệu ứng: TRÁNH "đà lạt đi chỗ này là \'ghiền\' liền", "ghi liền chỗ này để né \'đi lại vòng vòng\'" — cách chèn ngoặc kép giữa câu đọc kỳ, không tự nhiên như văn phong caption thật. Nếu muốn nhấn mạnh 1 từ thì viết thẳng vào câu, không cần đóng mở ngoặc kép.',
+      '- Thay vào đó hãy bám sát đúng dạng câu trong "VĂN PHONG MẪU THAM KHẢO": có 1 tình huống/cảm giác/lý do CỤ THỂ (ví dụ: nhớ Đà Lạt, sắp đi, vừa đi về, tiếc tiền oan, chỉ có ít ngày, sống lâu năm nên biết chỗ hay...).',
+      '- CẤM ghép từ gượng gạo, sai ngữ pháp, thiếu chủ ngữ/vị ngữ, hoặc nghe kỳ cục khi đọc thành tiếng.',
+      '- Ưu tiên 1 ý rõ ràng, câu ngắn hơn là câu dài mà lan man. Trước khi trả lời, tự đọc lại câu — nếu thấy tối nghĩa hoặc dài dòng thì viết lại đơn giản, ngắn gọn hơn.',
+      '- coverTitle phải NẰM TRONG giới hạn ký tự cho phép (xem mục "YÊU CẦU QUAN TRỌNG VỀ COVER TITLE" bên dưới) — trước khi trả lời, tự đếm số ký tự, nếu vượt quá giới hạn thì viết lại ngắn hơn thay vì viết dài rồi để bị cắt mất chữ cuối.',
+      '',
       'YÊU CẦU QUAN TRỌNG VỀ COVER TITLE (TIÊU ĐỀ TRANG COVER):',
       '- `coverTitle` là chữ in đậm ở trang bìa của bộ ảnh. Phải dễ scan, có hồn.',
+      '- BẮT BUỘC viết THƯỜNG, casual theo đúng "Lưu ý văn phong chung cho mọi mẫu" ở trên (giống mẫu 3N2Đ: "3n2d ở đà lạt thì nên đi đâu??"). TUYỆT ĐỐI KHÔNG viết hoa toàn bộ chữ, KHÔNG viết hoa chữ đầu từng từ (không phải "LỊCH TRÌNH 3N2Đ TỐI ƯU NHẤT", cũng không phải "Lịch Trình 3N2Đ Tối Ưu Nhất" — mà là "lịch trình 3n2đ thì nên đi đâu ta??" kiểu vậy) — viết hoa (dù toàn bộ hay từng chữ) đều đọc trịnh trọng/quảng cáo, không giống văn phong đời thường người dùng muốn.',
+      '- Có thể là câu hỏi (như ví dụ 3N2Đ), câu tâm sự, hoặc lời mời — miễn viết thường, tự nhiên, đúng 1 ý cụ thể.',
+      '- ĐA DẠNG CÁCH VIẾT — không phải lúc nào cũng là câu hỏi kết bằng "??" giống hệt mẫu 3N2Đ. Có thể đổi sang câu kể, câu rủ rê, câu tự trào, tuỳ Tone yêu cầu — miễn giữ đúng tinh thần viết thường/casual.',
       deck.id === 'grid-8' || deck.id === 'grid-8-feed' || deck.id === 'itinerary-4n2d-grid8'
-        ? '- Với lưới 8 / lịch trình lưới 8: tối đa 48 ký tự. Ưu tiên cấu trúc "ĐÀ LẠT – …" (thơ, cảm xúc).'
+        ? '- Với lưới 8 / lịch trình lưới 8: tối đa 48 ký tự.'
         : '- Tuyệt đối KHÔNG vượt quá 35 ký tự (tính cả khoảng trắng).',
-      '- Viết hoa hoặc rất nổi bật, bám sát "Tone yêu cầu". Không được trùng với "Caption đăng bài".',
-      '- Không dùng chữ "free" trong cover title. Thay bằng "0đ", "dễ đi", "gọn ví" hoặc bỏ luôn.',
-      '- Không nhắc tên quán/địa điểm cụ thể trong cover title.',
-      '- KHÔNG copy tiêu đề mẫu kiểu "… 8 ĐIỂM / 1 TRANG", "8 điểm một trang", hay bất kỳ tiêu đề nào trong danh sách đã dùng.',
+      '- Bám sát "Tone yêu cầu". Không được trùng với "Caption đăng bài".',
+      '- Không dùng chữ "free" trong cover title. Thay bằng "0đ", "dễ đi", "nhẹ tiền" hoặc bỏ luôn.',
+      '- Với nội dung 0đ/miễn phí, ưu tiên cách nói dí dỏm kiểu "không tốn tiền, chỉ tốn thời gian thôi" thay vì chỉ nói cụt "không tốn 1 xu" — nghe có duyên và đúng thực tế hơn (vẫn cần bỏ thời gian đi, chỉ là không mất tiền).',
+      '- HẠN CHẾ TỐI ĐA số tiền cụ thể ("triệu", "tr", "3tr", "500k"...) trong coverTitle — nghe như quảng cáo giá, không giống văn phong đời thường. Nói về tiền thì dùng cảm giác thay số cụ thể, ĐỔI VÒNG nhiều cách khác nhau — không chỉ mỗi "ví": "nhẹ tiền", "giá mềm", "không lo chi phí", "chi tiêu thoải mái", "hợp túi" — chỉ giữ số tiền trong headline/body nếu cần, không phải trong coverTitle. Ngoại lệ: "0đ" vẫn được phép.',
+      '- TUYỆT ĐỐI không nhắc tên quán/địa điểm/khu vực cụ thể trong cover title (xem lỗi (4) ở trên) — chỉ dùng "đà lạt" chung.',
+      '- KHÔNG copy tiêu đề mẫu kiểu "… 8 điểm / 1 trang", hay bất kỳ tiêu đề nào trong danh sách đã dùng.',
       deck.id === 'grid-8' || deck.id === 'grid-8-feed'
-        ? '- Với mẫu lưới 8: coverTitle kiểu "ĐÀ LẠT – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH". CẤM meta layout / listicle cứng. Body ≤118 ký tự, 1–2 câu.'
-        : '',
-      deck.id === 'itinerary-4n2d-grid8'
-        ? '- Với lịch trình 4N3Đ lưới 8: coverTitle kiểu "ĐÀ LẠT 4N3Đ – CHUYẾN ĐI KHÔNG MUỐN KẾT THÚC", tránh "LƯU LIỀN … NGÀY". Body 1–2 câu ngắn.'
+        ? '- Với mẫu lưới 8: CẤM meta layout / listicle cứng.'
         : '',
       '',
       'YÊU CẦU QUAN TRỌNG VỀ HEADLINE (CAPTION ĐĂNG BÀI):',
@@ -2934,21 +3217,27 @@ export class GuideService implements OnApplicationBootstrap {
       '- Không lặp lại nguyên văn cover title. Không dùng chữ "free" / "deck".',
       '- Có thể mời người xem lưu lại bộ ảnh, nhưng tuyệt đối không gọi tên địa điểm/quán cụ thể.',
       '- KHÔNG dùng lại caption mẫu kiểu "BỎ TÚI NGAY LIST NÀY RỦ BÉ BẠN XÁCH BA LÔ...".',
+      '- NHẮC LẠI lỗi (7) — RẤT hay tái phát ở headline dù coverTitle đã tránh được: TUYỆT ĐỐI không nêu số lượng cụ thể trong headline (TRÁNH "8 điểm check-in xịn mà không tốn một xu", "Ghé 4 homestay xinh như mơ" — đều lộ số lượng ô lưới/địa điểm). Kiểm tra riêng câu headline này một lần nữa trước khi trả lời — không chỉ kiểm tra coverTitle.',
+      '- Không dùng từ hiếm/mơ hồ mà người đọc phải đoán nghĩa (TRÁNH "góc ém", "chốn ẩn"...) — chỉ dùng từ phổ thông, ai đọc cũng hiểu ngay không cần suy nghĩ.',
       '',
       'CÁC YÊU CẦU KHÁC:',
-      '- TUYỆT ĐỐI không dùng từ "deck" trong nội dung. Thay vào đó hãy dùng: "hình", "ảnh", "bộ ảnh", "cẩm nang", "lịch trình", "list này"...',
-      '- Không dùng từ "ảnh" để chỉ bộ nội dung — dùng "list" hoặc "bộ" thay thế.',
+      '- TUYỆT ĐỐI không dùng từ "deck" trong nội dung. Thay vào đó hãy dùng: "hình", "ảnh", "bộ ảnh", "cẩm nang", "lịch trình", "bộ này", "tuyển tập này"...',
+      '- Không dùng từ "ảnh" để chỉ bộ nội dung — dùng "bộ", "cẩm nang", "tuyển tập" thay thế.',
+      '- HẠN CHẾ TỐI ĐA (không cấm tuyệt đối, nhưng KHÔNG lặp lại nhiều lần trong cùng 1 lần sinh) 3 từ đang bị dùng quá tay: "miễn phí", "list", "ví". Mỗi từ chỉ được xuất hiện tối đa 1 lần trong toàn bộ coverTitle+headline+body, và ưu tiên KHÔNG dùng nếu có cách nói khác:',
+      '  + Thay "miễn phí" bằng "0đ", "không tốn xu", "đỡ tốn tiền", hoặc dí dỏm kiểu "không tốn tiền, chỉ tốn thời gian thôi" — đổi cách nói mỗi lần, không lặp "miễn phí" ở cả coverTitle và headline.',
+      '  + Thay "list" bằng "bộ này", "cẩm nang này", "tuyển tập này", "loạt ảnh này" — không dùng "list" làm từ mặc định lặp đi lặp lại.',
+      '  + "ví" đang bị lặp CỰC NHIỀU vì hay bị gợi ý làm cách nói giảm về tiền — ĐỔI VÒNG các cách khác nhau mỗi lần, KHÔNG lặp lại "ví" nhiều lần liên tiếp giữa các mẫu: "nhẹ tiền", "không tốn kém", "giá mềm", "chi tiêu thoải mái", "dễ chịu về giá", "không lo chi phí", "hợp túi". Chỉ dùng "ví" như MỘT trong nhiều lựa chọn, không phải lựa chọn mặc định.',
+      '- (Nhắc lại lỗi (7) ở trên vì rất hay tái phát): coverTitle/headline TUYỆT ĐỐI không được có số lượng ô ảnh/địa điểm dưới bất kỳ hình thức nào.',
       '- Không dùng các cụm diễn đạt nội bộ như "ảnh đã chọn", "bộ ảnh này", "ghim ảnh".',
       '- Tránh lỗi chính tả: "đông đúc" (không phải "đông đúng"), "nơi đẹp mê ly" (không phải "nơi đẹp thẳng thừng").',
       '- Không để câu bị cụt hoặc dư ký tự lạ ở cuối (như "ng", "c", "ghim").',
-      '- Body: Phải đa dạng cấu trúc câu, không lặp lại các motif cũ. Tối đa 250 ký tự. Tuyệt đối không liệt kê hoặc gọi tên địa điểm/quán cụ thể trong list.',
-      '- Body không được viết kiểu lịch trình theo từng chặng/ngày như "ngày đầu ghé...", "ngày hai...", "tối lượn..."; chỉ nói lợi ích tổng quát của list.',
-      '- Dữ liệu địa điểm chỉ dùng để hiểu tinh thần list; không chép tên địa điểm/quán vào cover title, headline, hay body caption.',
-      '- Khong mo ta bo cuc thiet ke hoac kich thuoc layout trong caption. Tranh cac cum: "2x3", "3x3", "2x4", "luoi", "layout", "grid", "o anh", "o hinh", "8 diem / 1 trang".',
+      '- KHÔNG viết body/mô tả nữa — người dùng đã quyết định trang cover chỉ còn tiêu đề, không còn mô tả bên dưới. Trường "body" trong JSON trả về LUÔN LUÔN là chuỗi rỗng "".',
+      '- Dữ liệu địa điểm chỉ dùng để hiểu tinh thần bộ ảnh; không chép tên địa điểm/quán vào cover title hay headline.',
+      '- Khong mo ta bo cuc thiet ke hoac kich thuoc layout trong caption. Tranh cac cum: "2x3", "3x3", "2x4", "luoi", "layout", "grid", "o anh", "o hinh", "8 diem / 1 trang", "N diem / 1 trang".',
       '- Moi lan bam sinh lai phai doi goc viet, doi nhip cau, doi dong tu mo dau; khong chi thay vai tu dong nghia.',
       `- Hashtags: đúng 5 hashtag. 3 hashtag đầu BẮT BUỘC cố định: ${coreHashtags}. 2 hashtag cuối cố định theo mẫu "${deck.navTitle || deck.id}": ${deckHashtagExtras}. Không đổi thứ tự, không thay 3 hashtag đầu.`,
-      '- Trả về JSON object đúng schema:',
-      '{"coverTitle":"...","headline":"...","body":"...","hashtags":["#...","#...","#...","#...","#..."]}',
+      '- Trả về JSON object đúng schema (body LUÔN là chuỗi rỗng):',
+      '{"coverTitle":"...","headline":"...","body":"","hashtags":["#...","#...","#...","#...","#..."]}',
     ].filter(Boolean).join('\n');
   }
 
@@ -3406,14 +3695,6 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
-  private bodyListsStops(value: string, forbiddenPlaceNames: string[]): boolean {
-    if (this.hasForbiddenPlaceName(value, forbiddenPlaceNames)) return true;
-
-    const dayMarkers = value.match(/\b(?:ngày\s*(?:đầu|một|hai|ba|bốn|1|2|3|4)|sáng|trưa|chiều|tối)\b/giu) ?? [];
-    const stopVerbs = value.match(/\b(?:ghé|qua|đi|lượn|chạy|săn|ăn|uống|check-?in|chụp)\b/giu) ?? [];
-    return dayMarkers.length >= 2 && stopVerbs.length >= 2;
-  }
-
   private escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
@@ -3456,33 +3737,27 @@ export class GuideService implements OnApplicationBootstrap {
       .replace(/\s{2,}/g, ' ')
       .replace(/\s+([,.!?])/g, '$1')
       .trim();
-    const copy = getMarketingCopy(this.activeDestinationId);
     const normalizeCoverTitle = (v: string) => {
       const maxLen = this.coverTitleMaxLen(deckId);
       const fallback = this.coverTitleFallbackForDeck(deckId, `${deckId}:${v}:${tone}`);
       const withoutLayout = removeLayoutTerms(this.sanitizeContentText(sanitizeDeckHeadline(v || fallback)));
       const clean = withoutLayout.replace(/\s+/g, ' ').trim();
-      if (this.isBannedSampleCaptionText(clean)) return fallback.slice(0, maxLen);
-      return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, maxLen);
+      // coverTitle luôn viết thường theo văn phong casual đã chốt — ép ở code thay vì chỉ nhờ AI tuân thủ.
+      const finalize = (text: string) => this.truncateCaptionText(text, maxLen).toLowerCase();
+      if (this.isBannedSampleCaptionText(clean)) return finalize(fallback);
+      return finalize(this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback);
     };
     const normalizeHeadline = (v: string) => {
       const fallback = localizeText('Lưu list này rồi đi Đà Lạt cho đỡ mò từng nơi nhé.', this.activeDestinationId);
       const withoutLayout = removeLayoutTerms(this.sanitizeContentText(v || fallback));
       const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
       const clean = this.sanitizeContentText(withoutPlaces).replace(/\s+/g, ' ').trim();
-      if (this.isBannedSampleCaptionText(clean)) return fallback.slice(0, 80);
-      return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 80);
+      if (this.isBannedSampleCaptionText(clean)) return this.truncateCaptionText(fallback, 80);
+      return this.truncateCaptionText(this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback, 80);
     };
-    const normalizeBody = (v: string) => {
-      const fallback = copy.captionBodyFallback;
-      const withoutLayout = removeLayoutTerms(this.sanitizeContentText(v || fallback));
-      if (this.isBannedSampleCaptionText(withoutLayout)) return fallback;
-      if (this.bodyListsStops(withoutLayout, forbiddenPlaceNames)) return fallback;
-      const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
-      const clean = this.sanitizeContentText(withoutPlaces).replace(/\s+/g, ' ').trim();
-      if (this.isBannedSampleCaptionText(clean)) return fallback;
-      return (this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback).slice(0, 250);
-    };
+    // Người dùng đã quyết định bỏ hẳn mô tả (body) khỏi app — ép cứng luôn rỗng bất kể AI trả về gì,
+    // không chỉ khi AI trả rỗng. Không dựa vào việc AI có tuân thủ hướng dẫn prompt hay không.
+    const normalizeBody = (_v: string) => '';
     const normalizeHashtags = (values: string[]): string[] => buildCaptionHashtags(values, tone, this.activeDestinationId, deckId || undefined);
 
     if (target === 'cover_title') {

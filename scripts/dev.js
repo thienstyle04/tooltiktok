@@ -14,11 +14,14 @@ const defaultBackendPort = 3000;
 const defaultFrontendPort = 3001;
 let shuttingDown = false;
 let processes = [];
+let activeBackendPort = null;
+let activeFrontendPort = null;
 
 main().catch((error) => {
   shuttingDown = true;
   console.error(`[dev] ${error.message || error}`);
   stopAll();
+  killProcessesOnPorts([activeBackendPort, activeFrontendPort]);
   process.exit(1);
 });
 
@@ -32,9 +35,12 @@ async function main() {
   );
 
   stopExistingWorkspaceDevProcesses();
+  killProcessesOnPorts([requestedBackendPort, requestedFrontendPort]);
 
   const backendPort = await findAvailablePort(requestedBackendPort, host);
   const frontendPort = await findAvailablePort(requestedFrontendPort, host, new Set([backendPort]));
+  activeBackendPort = backendPort;
+  activeFrontendPort = frontendPort;
   const backendOrigin = `http://${backendOriginHost(host)}:${backendPort}`;
   const frontendOrigin = `http://${backendOriginHost(host)}:${frontendPort}`;
   const networkHost = firstNetworkHost();
@@ -204,6 +210,7 @@ function startProcess(label, command, args, cwd, env) {
     shuttingDown = true;
     console.error(`[dev] ${label} stopped${signal ? ` by ${signal}` : ` with code ${code}`}.`);
     stopAll();
+    killProcessesOnPorts([activeBackendPort, activeFrontendPort]);
     process.exit(code || 1);
   });
 
@@ -258,6 +265,48 @@ function parsePort(value, fallbackPort, envName) {
 function warnIfPortMoved(label, requestedPort, selectedPort) {
   if (requestedPort === selectedPort) return;
   console.warn(`[dev] ${label} port ${requestedPort} is busy; using ${selectedPort} instead.`);
+}
+
+function killProcessesOnPorts(ports) {
+  const uniquePorts = [...new Set(ports)].filter((port) => Number.isInteger(port));
+  if (!uniquePorts.length) return;
+
+  const pids = findProcessIdsOnPorts(uniquePorts).filter((pid) => pid !== process.pid);
+  if (!pids.length) return;
+
+  console.warn(`[dev] stopping stray process(es) on port(s) ${uniquePorts.join(', ')}: ${pids.join(', ')}`);
+  for (const pid of pids) {
+    stopProcessTreeSync(pid);
+  }
+}
+
+function findProcessIdsOnPorts(ports) {
+  if (process.platform === 'win32') {
+    try {
+      const portFilter = ports.join(',');
+      const output = execFileSync(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-Command',
+          `Get-NetTCPConnection -State Listen -LocalPort ${portFilter} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess`,
+        ],
+        { encoding: 'utf8' },
+      );
+      return parseProcessIds(output);
+    } catch {
+      return [];
+    }
+  }
+
+  try {
+    const output = execFileSync('lsof', ['-t', ...ports.flatMap((port) => ['-i', `:${port}`])], { encoding: 'utf8' });
+    return parseProcessIds(output);
+  } catch {
+    return [];
+  }
 }
 
 function stopExistingWorkspaceDevProcesses() {
@@ -418,7 +467,10 @@ function shutdown(signal) {
   shuttingDown = true;
   console.log(`\n[dev] Received ${signal}. Stopping backend and frontend...`);
   stopAll();
-  setTimeout(() => process.exit(0), 300);
+  setTimeout(() => {
+    killProcessesOnPorts([activeBackendPort, activeFrontendPort]);
+    process.exit(0);
+  }, 300);
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'));

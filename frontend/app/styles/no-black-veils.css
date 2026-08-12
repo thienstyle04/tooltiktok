@@ -1,58 +1,12 @@
-﻿/* Tắt màng đen (shade/dim) trên slide mẫu — giữ text/copy.
-   Import cuối globals.css. Bật từng nhóm khi đã kiểm tra. */
+/* Lịch sử: file này từng dùng để tắt màng đen (shade/dim) trên nhiều mẫu theo
+   yêu cầu "bớt rối mắt". Nay đổi hướng ngược lại — người dùng muốn chữ trắng
+   viền đen + giữ màn đen gốc cho MỌI mẫu để luôn đọc được chữ trên ảnh nền.
+   Vì vậy toàn bộ các rule tắt màn đen của mẫu đang hoạt động đã được gỡ khỏi
+   đây (2026-08-10). Chỉ còn giữ lại rule cho các mẫu đã retire (không còn hiển
+   thị trong app) để không phải xoá code liên quan ở nơi khác. */
 
-/* ── 1. grid-8-feed ── */
-.story-page.grid8-feed-cover .grid8-feed-cover-dim,
-.story-page.grid8-feed-page .grid8-feed-page-dim {
-  display: none !important;
-}
-
-/* ── 2. spotlight-v2 / v3 / partner-v2 ── */
-.story-page.spotlight-v2-cover .spotlight-v2-cover-dim,
-.story-page.spotlight-v2-page .spotlight-v2-shade,
-.story-page.spotlight-v2-list-page .spotlight-v2-list-shade,
-.story-page.spotlight-partner-v2-info-page .spotlight-v2-shade {
-  display: none !important;
-}
-
-/* ── 3. spotlight (classic) / partner ── */
-.story-page .spotlight-shade,
-.story-page .spotlight-list-shade {
-  display: none !important;
-}
-
-/* ── 4. grid-8-quaytung ── */
-.story-page.grid8-quaytung-cover .grid8-quaytung-cover-dim,
-.story-page.grid8-quaytung-page .grid8-quaytung-shade,
-.story-page.grid8-quaytung-page .grid8-quaytung-center-shade,
-.story-page.grid8-quaytung-menu-page .grid8-quaytung-menu-dim {
-  display: none !important;
-}
-
-/* ── 5. grid-6-quaytung ── */
-.story-page.grid6-quaytung-cover .grid6qt-cover-dim,
-.story-page.grid6-quaytung-page .grid6qt-shade {
-  display: none !important;
-}
-
-/* ── 6. itinerary-4n3d-stack ── */
-.story-page.itinerary-4n3d-stack-cover .itinerary-4n3d-stack-cover-dim,
-.story-page.itinerary-4n3d-stack-page .itinerary-4n3d-stack-page-cell-shade {
-  display: none !important;
-}
-
-/* ── 7. itinerary-timeline ── */
-.story-page.itinerary-timeline-cover .itl-cover-shade {
-  display: none !important;
-}
-
-/* ── 8. grid-5 ── */
-.story-page.grid5-cover .grid5-cover-shade,
-.story-page.grid5-page .grid5-photo-shade {
-  display: none !important;
-}
-
-/* ── 9. pov-maikem / pov-3-v2 ── */
+/* ── pov-maikem / pov-3-v2 / pov-3-day: đã retire khỏi danh sách mẫu, giữ rule
+   này chỉ để không phải dọn CSS liên quan ở các file khác. ── */
 .story-page.pov-maikem-cover .pov-maikem-cover-shade,
 .story-page.pov-maikem-page .pov-maikem-slide-shade,
 .story-page.pov-3-v2-cover .pov-3-v2-cover-shade,
@@ -60,48 +14,8 @@
   display: none !important;
 }
 
-/* ── 10. budget wallet / 72h story ── */
-.story-page.budget-wallet-cover .budget-wallet-cover-shade,
-.story-page .budget72-cover-shade,
-.story-page .budget72-story-cover-shade,
-.story-page .budget72-story-day-shade,
-.story-page .budget72-story-total-shade {
-  display: none !important;
-}
-
-/* ── 11. grid-4 / grid-4-mutant / zigzag / grid-8 cover ── */
-.story-page .grid4-feature-shade,
-.story-page .grid4-mutant-cover-shade,
-.story-page .zigzag-cover-shade,
-.story-page .zigzag-page-shade,
-.story-page .grid8-cover-shade {
-  display: none !important;
-}
-
-/* ── 12. overlay có chữ bên trong: chỉ bỏ nền đen, giữ copy ── */
-.story-page .grid6-overlay,
-.story-page .grid6-cover-overlay,
-.story-page .grid4-mutant-overlay {
-  background: none !important;
-  background-image: none !important;
-}
-
-/* ── 13. photomode (pov-3-day) ── */
 .story-page.photomode .photomode-item::after {
   display: none !important;
   content: none !important;
   background: none !important;
 }
-
-/* ── 14. journey / grid-8 cell overlays (::after) ── */
-.story-page .journey-bg::after,
-.story-page .grid8-cell::after,
-.story-page .grid8-hero::after,
-.story-page .grid8-center::after,
-.story-page .budget72-gallery-hero::after,
-.story-page .budget72-gallery-backdrop::after {
-  display: none !important;
-  content: none !important;
-  background: none !important;
-}
-

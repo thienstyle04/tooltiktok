@@ -14,7 +14,7 @@ export default function DeckCanvas({ list, selectedPageIndex, onPageSelect, cove
       <div className="list-preview-grid" role="list" aria-label={`Preview ${list.title}`}>
         {list.pages.map((page, index) => (
           <SlideCard
-            key={`${list.id}-${index}-${page.type || 'page'}`}
+            key={`${list.id}-${index}-${page.type || 'page'}-${page.title || ''}-${page.subtitle || ''}`}
             list={list}
             page={page}
             index={index}

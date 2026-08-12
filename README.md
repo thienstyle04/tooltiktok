@@ -15,8 +15,7 @@ Công cụ tạo bộ ảnh TikTok Carousel cho nội dung du lịch Đà Lạt.
 
 ```text
 dalat-tiktok-carousel-tool/
-├── setup.bat                  # Cài dependency và tạo backend/.env từ mẫu
-├── start.bat                  # Chạy backend + frontend cho người dùng Windows
+├── start.bat                  # Tự kiểm tra + cài môi trường (Node.js, dependencies, API key) roi chạy backend + frontend
 ├── package.json               # Script workspace, chủ yếu là npm run dev
 ├── scripts/
 │   └── dev.js                 # Chạy dev server, tự chọn port trống và dọn server cũ
@@ -58,16 +57,15 @@ Yêu cầu trước khi cài:
 - Có kết nối mạng để tải package npm, Google Sheet và Google Drive.
 - Nếu dùng caption AI, cần DeepSeek API key.
 
-Các bước cài:
+Các bước chạy:
 
 1. Clone hoặc tải project về máy.
 2. Mở thư mục gốc `dalat-tiktok-carousel-tool`.
-3. Chạy `setup.bat`.
-4. Mở `backend/.env` và kiểm tra cấu hình cần thiết.
-5. Chạy `start.bat`.
-6. Mở trình duyệt tại `http://localhost:3001`.
+3. Chạy thẳng `start.bat`.
+4. Trong lần chạy đầu tiên, mở `backend/.env` và kiểm tra API key nếu được yêu cầu.
+5. Mở trình duyệt tại `http://localhost:3001`.
 
-`setup.bat` sẽ cài package cho root, backend, frontend và tạo `backend/.env` từ `backend/.env.example` nếu file này chưa tồn tại.
+`start.bat` tự kiểm tra Node.js (tự cài qua winget nếu thiếu), tự dùng lại dependencies và `backend/.env` được lưu trong `%LOCALAPPDATA%\DalatTikTokCarouselTool`, và tự hỏi `DEEPSEEK_API_KEY` nếu file `.env` chưa có key hợp lệ. Khi giải nén phiên bản mới trên cùng máy, không cần chạy file cài đặt nào riêng — chỉ `start.bat`. Hệ thống chỉ cài lại dependencies một lần khi danh sách dependencies thực sự thay đổi.
 
 ## Cấu Hình Backend
 

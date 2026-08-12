@@ -4,6 +4,8 @@ node_modules/
 release/
 .tmp-*
 *.log
+.claude/
+dev-log*.txt
 .omx/
 .test-runtime/
 backend/src/modules/guide/tools/export-quality-test-output/
@@ -12,4 +14,14 @@ backend/data/drive-file-cache-sim-*/
 backend/data/workbook-cache.*.xlsx
 backend/data/*.backup.json
 backend/reports/*.json
+backend/reports/*.xlsx
+backend/reports/ai-caption-sample-*.md
 backend/parity-*.txt
+backend/data/generated-caption-lists.*.json
+backend/data/page-text-overrides.*.json
+backend/data/destination-stats.*.json
+backend/data/used-inventory.*.json
+backend/data/sheet-drive-images.*.json
+backend/data/active-destination.json
+backend/data/*-hooks.json
+backend/data/premade-hooks.json

@@ -1,7 +1,7 @@
 export async function apiFetch(path, init = {}) {
   let sameOriginResponse = null;
   let sameOriginError = null;
-  const canFallback = shouldTryBackendFallback(path);
+  const canFallback = shouldTryBackendFallback(path) && isRetrySafeMethod(init);
 
   try {
     sameOriginResponse = await fetch(path, init);
@@ -28,6 +28,14 @@ export async function apiFetch(path, init = {}) {
 
 function shouldTryBackendFallback(path) {
   return typeof window !== 'undefined' && String(path || '').startsWith('/api/');
+}
+
+// Gọi lại request qua origin backend khác chỉ an toàn với GET/HEAD (không tạo/xóa dữ liệu).
+// Nếu cho phép fallback với POST/PATCH/DELETE, một request tạo list đã thành công ở backend
+// nhưng bị proxy Next.js trả lỗi (500/502/503/504, hoặc timeout) sẽ bị gọi lại và tạo trùng list.
+function isRetrySafeMethod(init) {
+  const method = String(init?.method || 'GET').toUpperCase();
+  return method === 'GET' || method === 'HEAD';
 }
 
 function shouldFallbackResponse(response) {

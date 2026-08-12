@@ -1,0 +1,310 @@
+/* Final responsive contract. Keep this file last so older breakpoint guards cannot
+   re-introduce fixed heights or competing sidebar layouts. */
+
+@media (max-width: 1100px) {
+  html,
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    height: auto;
+    min-height: 64px;
+    padding: 8px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--studio-line);
+    overflow: hidden;
+  }
+
+  .window-dots,
+  .sidebar-footer {
+    display: none;
+  }
+
+  .brand-block {
+    gap: 9px;
+    padding: 0;
+    border: 0;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand-title {
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .brand-version {
+    display: none;
+  }
+
+  .sidebar-menu {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(92px, 1fr);
+    gap: 4px;
+    min-width: 0;
+    padding: 0 0 3px;
+    border: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    overscroll-behavior-inline: contain;
+  }
+
+  .sidebar-menu-item {
+    justify-content: center;
+    gap: 7px;
+    min-height: 42px;
+    padding: 0 9px;
+    white-space: nowrap;
+  }
+
+  .side-icon {
+    flex: 0 0 18px;
+  }
+
+  .studio-shell {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: calc(100vh - 64px);
+    overflow: visible;
+  }
+
+  .studio-topbar {
+    min-height: 0;
+    padding: 12px 16px;
+  }
+
+  .deck-subtitle {
+    max-width: 72ch;
+  }
+
+  .status-strip {
+    min-height: 38px;
+    border-inline: 0;
+    border-radius: 0;
+  }
+
+  .workspace-grid,
+  .workspace-grid.list-focus-mode,
+  .workspace-grid.list-focus-mode.show-caption-tools,
+  .workspace-grid.caption-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: auto;
+    min-height: 0;
+    padding: 14px 16px 22px;
+    overflow: visible;
+  }
+
+  .preview-panel,
+  .inspector-shell,
+  .ai-shell,
+  .preview-dashboard {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  /* Editing remains available on tablet/mobile instead of disappearing at the
+     legacy preview breakpoint. It follows the preview in the vertical flow. */
+  .workspace-grid.preview-mode .inspector-shell {
+    display: flex;
+  }
+
+  .page-grid,
+  .page-inspector,
+  .workspace-grid .ai-grid {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .inspector-shell {
+    margin-top: 0;
+  }
+
+  .page-inspector {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.15fr);
+    gap: 12px 16px;
+    align-items: start;
+  }
+
+  .page-inspector > .inspector-summary,
+  .page-inspector > .inspector-page-editor,
+  .page-inspector > .inspector-cover-note {
+    grid-column: 1;
+  }
+
+  .page-inspector > .inspector-stats,
+  .page-inspector > .inspector-list,
+  .page-inspector > .inspector-export-actions {
+    grid-column: 2;
+  }
+
+  .page-inspector > .inspector-stats {
+    margin-top: 0;
+  }
+
+  .page-inspector > .inspector-list {
+    max-height: 330px;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-sidebar {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 12px 8px;
+  }
+
+  .brand-block {
+    justify-content: center;
+  }
+
+  .sidebar-menu {
+    grid-auto-columns: minmax(96px, 1fr);
+  }
+
+  .studio-topbar {
+    padding: 12px;
+  }
+
+  .deck-heading-row {
+    align-items: flex-start;
+  }
+
+  .section-title {
+    font-size: clamp(1.18rem, 5.4vw, 1.48rem);
+  }
+
+  .deck-subtitle {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .toolbar-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-grid,
+  .workspace-grid.list-focus-mode,
+  .workspace-grid.list-focus-mode.show-caption-tools,
+  .workspace-grid.caption-mode {
+    padding: 10px;
+  }
+
+  .panel-head,
+  .list-preview-head {
+    gap: 6px;
+    padding: 12px;
+  }
+
+  .page-grid {
+    padding: 10px;
+  }
+
+  .page-inspector {
+    display: block;
+    padding: 10px;
+  }
+
+  .page-inspector > * + * {
+    margin-top: 10px;
+  }
+
+  .page-inspector > .inspector-list {
+    max-height: 360px;
+  }
+
+  .inspector-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .brand-block {
+    justify-content: flex-start;
+  }
+
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .sidebar-menu-item {
+    min-height: 40px;
+    font-size: 0.78rem;
+  }
+
+  .deck-subtitle {
+    display: none;
+  }
+
+  .deck-avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .toolbar-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inspector-summary {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .inspector-thumb {
+    width: 54px;
+    height: 68px;
+  }
+
+  .inspector-editor-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inspector-editor-actions .toolbar-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .inspector-item.rich {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .inspector-item-thumb {
+    width: 40px;
+    height: 40px;
+  }
+
+  .inspector-item-source {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

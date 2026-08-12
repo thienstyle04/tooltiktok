@@ -56,7 +56,7 @@
   z-index: 2;
   width: 88%;
   text-align: center;
-  color: var(--itl-cream);
+  color: #fff;
 }
 
 .story-page.itinerary-timeline-cover .itl-cover-serif {
@@ -67,7 +67,11 @@
   font-style: italic;
   line-height: 1.05;
   letter-spacing: 0.02em;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+  text-shadow:
+    -1px -1px 0 #000, 1px -1px 0 #000,
+    -1px 1px 0 #000, 1px 1px 0 #000,
+    0 2px 14px rgba(0, 0, 0, 0.55);
+  -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.7);
 }
 
 .story-page.itinerary-timeline-cover .itl-cover-script {
@@ -76,8 +80,12 @@
   font-size: clamp(1.45rem, 4.4vw, 2.15rem);
   font-weight: 600;
   line-height: 1.05;
-  color: var(--itl-gold);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  text-shadow:
+    -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000,
+    -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000,
+    0 2px 12px rgba(0, 0, 0, 0.45);
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.75);
 }
 
 .story-page.itinerary-timeline-cover .itl-cover-spark {
@@ -86,6 +94,10 @@
   font-size: clamp(0.72rem, 2vw, 0.9rem);
   letter-spacing: 0.28em;
   opacity: 0.92;
+  text-shadow:
+    -1px -1px 0 #000, 1px -1px 0 #000,
+    -1px 1px 0 #000, 1px 1px 0 #000;
+  -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.65);
 }
 
 /* ── Day timeline ── */
@@ -267,11 +279,23 @@
   font-size: var(--itl-addr-size);
   line-height: 1.15;
   color: var(--itl-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  -webkit-box-orient: vertical;
+  display: block;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.story-page.itinerary-timeline-day .itl-day-price {
+  margin: 1px 0 0;
+  font-family: var(--itl-body);
+  font-size: var(--itl-addr-size);
+  line-height: 1.15;
+  color: var(--itl-accent);
+  font-weight: 700;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .story-page.itinerary-timeline-day .itl-day-pin {
