@@ -18,7 +18,6 @@ backend/reports/*.xlsx
 backend/reports/ai-caption-sample-*.md
 backend/parity-*.txt
 backend/data/generated-caption-lists.*.json
-backend/data/page-text-overrides.*.json
 backend/data/destination-stats.*.json
 backend/data/used-inventory.*.json
 backend/data/sheet-drive-images.*.json
