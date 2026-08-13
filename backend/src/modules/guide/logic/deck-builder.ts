@@ -1515,16 +1515,18 @@ function pickItineraryListItems(
 // ─── Pool helpers ─────────────────────────────────────────────────────────────
 
 export function createDeckBuildPools(itemsBySection: WorkbookItemsBySection): DeckBuildPools {
-  const foodItems = itemsBySection.quan_an;
-  const cafeItems = itemsBySection.cafe;
-  const stayItems = itemsBySection.homestay;
-  const checkinItems = itemsBySection.check_in;
-  const serviceItems = itemsBySection.dich_vu;
-  const nightlifeItems = itemsBySection.choi_dem;
+  // Item chưa lấy được ảnh riêng (imageSource: 'fallback') tạm gác lại, ưu tiên dùng item
+  // đang có ảnh thật; nếu cả nhóm đều chưa có ảnh thì mới dùng lại toàn bộ (tránh chặn deck).
+  const foodItems = preferMappedImageItems(itemsBySection.quan_an);
+  const cafeItems = preferMappedImageItems(itemsBySection.cafe);
+  const stayItems = preferMappedImageItems(itemsBySection.homestay);
+  const checkinItems = preferMappedImageItems(itemsBySection.check_in);
+  const serviceItems = preferMappedImageItems(itemsBySection.dich_vu);
+  const nightlifeItems = preferMappedImageItems(itemsBySection.choi_dem);
   const nightlifeImageItems = dedupeItems([...foodItems, ...cafeItems, ...serviceItems, ...nightlifeItems].filter(isImageBackedNightlifeItem));
-  const activityItems = itemsBySection.hoat_dong;
-  const historyItems = itemsBySection.dia_diem_lich_su;
-  const tourismItems = itemsBySection.khu_du_lich;
+  const activityItems = preferMappedImageItems(itemsBySection.hoat_dong);
+  const historyItems = preferMappedImageItems(itemsBySection.dia_diem_lich_su);
+  const tourismItems = preferMappedImageItems(itemsBySection.khu_du_lich);
   const famousItems = dedupeItems([...historyItems, ...tourismItems]);
   const freeCheckinItems = checkinItems.filter(isFreeCheckinItem);
   const paidCheckinItems = checkinItems.filter((i) => !isFreeCheckinItem(i));

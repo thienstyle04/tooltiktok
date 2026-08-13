@@ -91,15 +91,22 @@ function firstLinkValue(row: Record<string, string>): string {
   return String(linkEntry?.[1] ?? '').trim();
 }
 
-async function runLimited<T>(tasks: Array<() => Promise<T>>, concurrency: number): Promise<T[]> {
+async function runLimited<T>(
+  tasks: Array<() => Promise<T>>,
+  concurrency: number,
+  onProgress?: (completed: number, total: number) => void,
+): Promise<T[]> {
   const results: T[] = new Array(tasks.length);
   let nextIndex = 0;
+  let completedCount = 0;
 
   const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
     while (nextIndex < tasks.length) {
       const currentIndex = nextIndex;
       nextIndex += 1;
       results[currentIndex] = await tasks[currentIndex]();
+      completedCount += 1;
+      onProgress?.(completedCount, tasks.length);
     }
   });
 
@@ -156,7 +163,7 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
 export async function buildSheetDriveManifest(
   source: SheetWorkbookSource,
   previousManifest = emptySheetDriveManifest(),
-  options: { forceRevalidate?: boolean } = {},
+  options: { forceRevalidate?: boolean; onProgress?: (completed: number, total: number) => void } = {},
 ): Promise<SheetDriveImageManifest> {
   const forceRevalidate = Boolean(options.forceRevalidate);
   const workbook = source.workbook;
@@ -291,7 +298,7 @@ export async function buildSheetDriveManifest(
     }
   }
 
-  await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY);
+  await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY, options.onProgress);
 
   console.log(
     `[sync] Drive manifest: resolved=${syncStats.resolved}`

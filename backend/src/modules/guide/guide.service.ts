@@ -3903,10 +3903,39 @@ export class GuideService implements OnApplicationBootstrap {
   private async refreshSheetDriveManifest(source: SheetWorkbookSource, retryKnownFailures = false): Promise<void> {
     if (this.manifestSyncPromise) return this.manifestSyncPromise;
 
+    const token = this.driveCacheWarmToken;
+    // Bước xác thực ảnh Drive (retryKnownFailures) cố ý concurrency thấp (xem sheet-drive-manifest.ts)
+    // nên có thể mất nhiều phút với Sheet lớn — cập nhật driveCacheWarmStatus theo tiến độ thật để
+    // nút "Tải lại dữ liệu" không trông như bị treo trong lúc đó.
+    if (retryKnownFailures && source.destinationId === this.activeDestinationId) {
+      this.driveCacheWarmStatus = {
+        ...this.driveCacheWarmStatus,
+        phase: 'warming',
+        ready: false,
+        destinationId: this.activeDestinationId,
+        total: 0,
+        completed: 0,
+        percent: 0,
+        message: 'Đang xác thực ảnh Drive...',
+      };
+    }
     this.manifestSyncPromise = (async () => {
       try {
         const manifest = await buildSheetDriveManifest(source, this.loadSheetDriveManifest(), {
           forceRevalidate: retryKnownFailures,
+          onProgress: (completed, total) => {
+            if (!retryKnownFailures || token !== this.driveCacheWarmToken || source.destinationId !== this.activeDestinationId) return;
+            this.driveCacheWarmStatus = {
+              ...this.driveCacheWarmStatus,
+              phase: 'warming',
+              ready: false,
+              destinationId: this.activeDestinationId,
+              total,
+              completed,
+              percent: total ? Math.min(99, Math.round((completed / total) * 100)) : 0,
+              message: `Đang xác thực ảnh Drive (${completed}/${total})...`,
+            };
+          },
         });
         writeSheetDriveManifest(this.dataRoot, manifest, source.destinationId);
         this.invalidateDatasetCache();
@@ -3919,6 +3948,17 @@ export class GuideService implements OnApplicationBootstrap {
         // Sheet vừa sync xong đã đổi this.workbookSource — vẫn phải invalidate để dataset không bị
         // "kẹt" với dữ liệu Sheet cũ mãi, dù ảnh Drive đợt này lỗi.
         this.invalidateDatasetCache();
+        // Nếu đã báo "Đang xác thực ảnh Drive..." ở trên mà bước này lỗi giữa đường, phải gỡ trạng thái
+        // "chưa sẵn sàng" đó ra, không thì nút cập nhật dữ liệu sẽ trông như treo mãi ở % cũ.
+        if (retryKnownFailures && token === this.driveCacheWarmToken && source.destinationId === this.activeDestinationId) {
+          this.driveCacheWarmStatus = {
+            ...this.driveCacheWarmStatus,
+            phase: 'error',
+            ready: false,
+            destinationId: this.activeDestinationId,
+            message: `Xác thực ảnh Drive thất bại: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
       } finally {
         this.manifestSyncPromise = null;
       }
