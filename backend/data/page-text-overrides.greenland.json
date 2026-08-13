@@ -1,0 +1,466 @@
+{
+  "version": 1,
+  "savedAt": "2026-08-11T01:32:17.737Z",
+  "decks": {
+    "itinerary-3n2d": {
+      "itinerary-3n2d-main": {
+        "0": {
+          "title": "Gợi ý lịch trình 3N2Đ",
+          "subtitle": ""
+        },
+        "1": {
+          "title": "Ngày 1",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "Ngày 2",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "Ngày 3",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "Một số dịch vụ cần lưu ý cho bạn",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "Homestay nên lưu trước chuyến đi",
+          "subtitle": ""
+        }
+      }
+    },
+    "budget-3n2d": {
+      "budget-3n2d-main": {
+        "0": {
+          "title": "\"72H\" Ở ĐÀ LẠT THÌ NÊN ĐI ĐÂU TA",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "QUÁN ĂN NÈ",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "QUÁN CÀ PHÊ VIEW ĐẸP",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "DỊCH VỤ NÊN LƯU",
+          "subtitle": ""
+        }
+      }
+    },
+    "itinerary-4n3d": {
+      "itinerary-4n3d-main": {
+        "0": {
+          "title": "4N3Đ ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "1": {
+          "title": "Vào phố nhẹ nhàng",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "Săn ảnh và ăn sáng",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "Đi sâu hơn một nhịp",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "Sáng chậm rồi rời phố",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "Homestay Đà Lạt",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "Dịch vụ cần chú ý",
+          "subtitle": ""
+        }
+      }
+    },
+    "budget-3n2d-story": {
+      "budget-3n2d-story-main": {
+        "0": {
+          "title": "\"72H\" Ở ĐÀ LẠT",
+          "subtitle": "Với lịch trình 3 ngày 2 đêm này bạn không cần phải no gì nữa cả"
+        },
+        "5": {
+          "title": "QUÁN ĂN NÈ",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "QUÁN CÀ PHÊ VIEW ĐẸP",
+          "subtitle": ""
+        },
+        "7": {
+          "title": "DỊCH VỤ NÊN LƯU",
+          "subtitle": ""
+        }
+      }
+    },
+    "budget-72h-summary": {
+      "budget-72h-summary-main": {
+        "0": {
+          "title": "\"72H\" Ở ĐÀ LẠT NÊN ĐI ĐÂU NHỈ!!",
+          "subtitle": ""
+        }
+      }
+    },
+    "itinerary-4n2d-grid8": {
+      "itinerary-4n2d-grid8-main": {
+        "1": {
+          "title": "Vào phố nhẹ nhàng",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "Săn ảnh và ăn sáng",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "Đi sâu hơn một nhịp",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "Sáng chậm rồi rời phố",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "Dịch vụ cần chú ý",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "Homestay Đà Lạt",
+          "subtitle": ""
+        }
+      }
+    },
+    "grid-6": {
+      "grid-6-main": {
+        "1": {
+          "title": "QUÁN ĂN ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "QUÁN CAFE ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "ĐỊA ĐIỂM CHECK-IN",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "CHƠI ĐÊM ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "DỊCH VỤ CẦN CHÚ Ý",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "HOMESTAY ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "7": {
+          "title": "KHU DU LỊCH GREEN LAND",
+          "subtitle": ""
+        }
+      }
+    },
+    "grid-6-zigzag": {
+      "grid-6-zigzag-main": {
+        "1": {
+          "title": "MÓN NGON ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "QUÁN CAFE ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "ĐỊA ĐIỂM CHECK-IN",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "CHƠI ĐÊM ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "DỊCH VỤ CẦN CHÚ Ý",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "HOMESTAY ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "7": {
+          "title": "KHU DU LỊCH GREEN LAND",
+          "subtitle": ""
+        }
+      }
+    },
+    "grid-8": {
+      "grid-8-main": {
+        "0": {
+          "title": "Đà Lạt – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH",
+          "subtitle": ""
+        },
+        "1": {
+          "title": "QUÁN ĂN ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "QUÁN CAFE CHILL VIEW ĐẸP",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "ĐIỂM CHECK-IN",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "ĐIỂM CHƠI ĐÊM",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "LƯU Ý CẦN NHỚ",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "HOMESTAY ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "7": {
+          "title": "KHU DU LỊCH ĐÀ LẠT",
+          "subtitle": ""
+        }
+      }
+    },
+    "grid-4": {
+      "grid-4-main": {
+        "0": {
+          "title": "TOP 4 ĐỊA ĐIỂM ĐÀ LẠT BẠN NÊN BIẾT",
+          "subtitle": ""
+        },
+        "1": {
+          "title": "MÓN NGON ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "QUÁN CAFE ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "ĐỊA ĐIỂM CHECK-IN",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "CHƠI ĐÊM ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "DỊCH VỤ CẦN CHÚ Ý",
+          "subtitle": ""
+        }
+      }
+    },
+    "grid-4-mutant": {
+      "grid-4-mutant-main": {
+        "0": {
+          "title": "TOP 4 ĐỊA ĐIỂM ĐÀ LẠT",
+          "subtitle": ""
+        }
+      }
+    },
+    "grid-5": {
+      "grid-5-main": {
+        "0": {
+          "title": "MỘT SỐ GỢI Ý GIÚP BẠN CO CHUYẾN ĐI CHUẨN CHỈ NHẤT",
+          "subtitle": ""
+        }
+      }
+    },
+    "spotlight-guide": {
+      "spotlight-guide-main": {
+        "0": {
+          "title": "GỢI Ý CÁC ĐỊA ĐIỂM VIEW ĐẸP MÀ BẠN NÊN BIẾT",
+          "subtitle": "Đi Đà Lạt hoài không biết chán"
+        }
+      }
+    },
+    "grid-6-quaytung": {
+      "grid-6-quaytung-main": {
+        "1": {
+          "title": "MÓN NGON",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "CAFE",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "MẢNG XANH",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "CHƠI ĐÊM",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "TIỆN ÍCH",
+          "subtitle": ""
+        },
+        "7": {
+          "title": "KHU DU LỊCH",
+          "subtitle": ""
+        }
+      }
+    },
+    "grid-8-feed": {
+      "grid-8-feed-main": {
+        "0": {
+          "title": "ĐÀ LẠT – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH",
+          "subtitle": "Một số địa điểm đáng lưu để đi chơi đỡ phải mò từng nơi."
+        },
+        "1": {
+          "title": "QUÁN ĂN ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "QUÁN CAFE",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "ĐIỂM CHECK-IN",
+          "subtitle": "Một trang scan nhanh 8 điểm, ưu tiên ảnh rõ và tên ngắn."
+        },
+        "4": {
+          "title": "ĐIỂM CHƠI ĐÊM",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "LƯU Ý CẦN NHỚ",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "HOMESTAY ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "7": {
+          "title": "KHU DU LỊCH ĐÀ LẠT",
+          "subtitle": ""
+        }
+      }
+    },
+    "grid-8-quaytung": {
+      "grid-8-quaytung-main": {
+        "0": {
+          "title": "List này toàn địa điểm \"vuýp\"",
+          "subtitle": "Lưu list này cho chuyến đi sắp tới"
+        },
+        "1": {
+          "title": "CAFE SÁNG",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "checkin",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "CHỖ NGHỈ XINH",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "ĂN VẶT",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "ĐỊA điểm ăn NGON",
+          "subtitle": ""
+        }
+      }
+    },
+    "spotlight-v2": {
+      "spotlight-v2-main": {
+        "0": {
+          "title": "MỘT SỐ ĐẠI ĐIỂM BẠN NÊN ĐI KHI ĐẾN ĐÀ LẠT",
+          "subtitle": ""
+        },
+        "1": {
+          "title": "Quán cafe Đà Lạt",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "Đà Lạt",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "Đà Lạt",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "Đà Lạt",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "Đà Lạt",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "Quán cafe Đà Lạt",
+          "subtitle": ""
+        },
+        "7": {
+          "title": "Đà Lạt",
+          "subtitle": ""
+        },
+        "8": {
+          "title": "Đà Lạt",
+          "subtitle": ""
+        },
+        "9": {
+          "title": "Dịch vụ cần lưu",
+          "subtitle": ""
+        },
+        "10": {
+          "title": "Homestay cần lưu",
+          "subtitle": ""
+        }
+      }
+    },
+    "itinerary-4n3d-stack": {
+      "itinerary-4n3d-stack-main": {
+        "1": {
+          "title": "ĂN SÁNG",
+          "subtitle": ""
+        },
+        "2": {
+          "title": "ĂN TRƯA",
+          "subtitle": ""
+        },
+        "3": {
+          "title": "ĂN TỐI",
+          "subtitle": ""
+        },
+        "4": {
+          "title": "CAFE",
+          "subtitle": ""
+        },
+        "5": {
+          "title": "CHECK-IN",
+          "subtitle": ""
+        },
+        "6": {
+          "title": "KHU DU LỊCH",
+          "subtitle": ""
+        },
+        "7": {
+          "title": "DỊCH VỤ · LƯU TRÚ & ĐÊM",
+          "subtitle": ""
+        }
+      }
+    }
+  }
+}
