@@ -1382,7 +1382,9 @@ export class GuideService implements OnApplicationBootstrap {
     const context = this.buildDatasetContext();
     const allItems = Object.values(context.itemsBySection).flat();
     return allItems
-      .filter((item) => item.isPartner)
+      // Đối tác chưa lấy được ảnh Drive riêng (chưa 'manual') tạm ẩn khỏi danh sách chọn, tránh
+      // tạo spotlight với ảnh sai/chưa có; đối tác sẽ tự xuất hiện lại khi ảnh lấy được ở lần sync sau.
+      .filter((item) => item.isPartner && item.imageSource === 'manual')
       .map((item) => ({
         id: item.id,
         name: item.name,
@@ -1414,6 +1416,9 @@ export class GuideService implements OnApplicationBootstrap {
     );
     if (!partnerItem) {
       throw new NotFoundException(`Không tìm thấy đối tác: ${partnerName || partnerId}`);
+    }
+    if (partnerItem.imageSource !== 'manual') {
+      throw new BadRequestException(`Đối tác "${partnerItem.name}" chưa lấy được ảnh Drive riêng, chưa thể tạo spotlight. Sẽ dùng được sau khi ảnh cập nhật lại.`);
     }
 
     const deckId = 'spotlight-partner';

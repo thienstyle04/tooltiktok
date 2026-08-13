@@ -63,8 +63,8 @@ for (const sectionKey of sectionKeys) {
 }
 console.log('PASS mixed sections: fallback items excluded, real-image items kept');
 
-// Trường hợp 2: một nhóm toàn bộ là fallback -> pool phải giảm nhẹ về danh sách gốc (không rỗng),
-// tránh chặn hẳn deck dùng nhóm đó (đúng tinh thần fix Mẫu 1 cho Green Land).
+// Trường hợp 2: một nhóm toàn bộ là fallback -> pool phải RỖNG, KHÔNG được dùng lại các item đó
+// (theo yêu cầu: item chưa có ảnh riêng thì tuyệt đối không dùng, kể cả khi cả nhóm đều vậy).
 const allFallbackItemsBySection = Object.fromEntries(
   sectionKeys.map((sectionKey) => [
     sectionKey,
@@ -72,10 +72,9 @@ const allFallbackItemsBySection = Object.fromEntries(
   ]),
 ) as WorkbookItemsBySection;
 
-const degradedPools = createDeckBuildPools(allFallbackItemsBySection);
-assert.equal(degradedPools.checkinItems.length, 5, 'checkinItems toàn fallback vẫn phải giảm nhẹ về đủ 5 item gốc, không rỗng');
-assert.ok(degradedPools.checkinItems.every((item) => item.imageSource === 'fallback'));
-console.log('PASS all-fallback section degrades to full pool instead of going empty');
+const emptiedPools = createDeckBuildPools(allFallbackItemsBySection);
+assert.equal(emptiedPools.checkinItems.length, 0, 'checkinItems toàn fallback phải rỗng, không được dùng lại item chưa có ảnh riêng');
+console.log('PASS all-fallback section is excluded entirely, not reused');
 
 // Trường hợp 3: item 'auto' (ảnh mượn thư viện chung, KHÔNG phải ảnh Drive riêng của địa điểm) phải
 // bị gác lại như 'fallback' khi vẫn còn item 'manual' (ảnh Drive riêng thật) trong nhóm — đây là kẽ hở
@@ -92,7 +91,7 @@ for (const sectionKey of sectionKeys) {
 }
 console.log("PASS mixed manual+auto sections: 'auto' (borrowed library image) excluded like fallback");
 
-// Trường hợp 4: nhóm toàn 'auto' (không có 'manual' nào) cũng phải giảm nhẹ về danh sách gốc, không rỗng.
+// Trường hợp 4: nhóm toàn 'auto' (không có 'manual' nào) cũng phải RỖNG, không dùng lại.
 const allAutoItemsBySection = Object.fromEntries(
   sectionKeys.map((sectionKey) => [
     sectionKey,
@@ -100,6 +99,5 @@ const allAutoItemsBySection = Object.fromEntries(
   ]),
 ) as WorkbookItemsBySection;
 const allAutoPools = createDeckBuildPools(allAutoItemsBySection);
-assert.equal(allAutoPools.cafeItems.length, 4, "cafeItems toàn 'auto' vẫn phải giảm nhẹ về đủ 4 item gốc, không rỗng");
-assert.ok(allAutoPools.cafeItems.every((item) => item.imageSource === 'auto'));
-console.log("PASS all-'auto' section degrades to full pool instead of going empty");
+assert.equal(allAutoPools.cafeItems.length, 0, "cafeItems toàn 'auto' phải rỗng, không được dùng lại ảnh mượn thư viện");
+console.log("PASS all-'auto' section is excluded entirely, not reused");

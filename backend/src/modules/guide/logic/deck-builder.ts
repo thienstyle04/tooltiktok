@@ -128,14 +128,15 @@ function hasOwnDriveImage(item: GuideItem): boolean {
 }
 
 /**
- * Item chưa lấy được ảnh Drive riêng (đang dùng ảnh mượn thư viện 'auto'/'fallback') tạm gác lại,
- * chỉ dùng item đã có ảnh thật; nếu cả nhóm đều chưa có ảnh riêng thì mới dùng lại toàn bộ
- * (tránh chặn hẳn deck) — item sẽ tự quay lại khi ảnh Drive lấy được ở lần đồng bộ sau.
+ * Item chưa lấy được ảnh Drive riêng (đang dùng ảnh mượn thư viện 'auto'/'fallback') bị loại thẳng
+ * khỏi pool — KHÔNG có bước "giảm nhẹ dùng lại toàn bộ" như trước, để không lọt bất kỳ dữ liệu nào
+ * thuộc các item này vào list. Nếu một pool bị rỗng do cả nhóm đều chưa có ảnh riêng, các lớp dự
+ * phòng đa tầng khác đã có sẵn trong deck-builder (pickWithUsedFallback, pool rộng hơn của budget...)
+ * sẽ tự lấp bằng item từ nhóm khác — không dùng lại chính các item đã bị loại ở đây. Item sẽ tự
+ * xuất hiện lại khi ảnh Drive lấy được ở lần đồng bộ sau (tính theo imageSource, không cần bật tay).
  */
 function preferOwnImageItems(items: GuideItem[]): GuideItem[] {
-  const deduped = dedupeItems(items);
-  const ownImageItems = deduped.filter(hasOwnDriveImage);
-  return ownImageItems.length > 0 ? ownImageItems : deduped;
+  return dedupeItems(items).filter(hasOwnDriveImage);
 }
 
 function listOrdinalFromSeed(seed: string): number {
