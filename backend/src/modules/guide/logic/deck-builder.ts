@@ -122,6 +122,22 @@ function preferMappedImageItems(items: GuideItem[]): GuideItem[] {
   return mappedItems.length > 0 ? mappedItems : deduped;
 }
 
+/** Chỉ tính ảnh Drive thật của chính địa điểm (map từ Sheet, không phải ảnh mượn thư viện chung). */
+function hasOwnDriveImage(item: GuideItem): boolean {
+  return hasUsableImage(item) && item.imageSource === 'manual';
+}
+
+/**
+ * Item chưa lấy được ảnh Drive riêng (đang dùng ảnh mượn thư viện 'auto'/'fallback') tạm gác lại,
+ * chỉ dùng item đã có ảnh thật; nếu cả nhóm đều chưa có ảnh riêng thì mới dùng lại toàn bộ
+ * (tránh chặn hẳn deck) — item sẽ tự quay lại khi ảnh Drive lấy được ở lần đồng bộ sau.
+ */
+function preferOwnImageItems(items: GuideItem[]): GuideItem[] {
+  const deduped = dedupeItems(items);
+  const ownImageItems = deduped.filter(hasOwnDriveImage);
+  return ownImageItems.length > 0 ? ownImageItems : deduped;
+}
+
 function listOrdinalFromSeed(seed: string): number {
   const captionMatch = seed.match(/caption-(\d+)/i) || seed.match(/\|(\d{2})-/);
   return captionMatch ? Number(captionMatch[1]) + 1 : 1;
@@ -1515,18 +1531,16 @@ function pickItineraryListItems(
 // ─── Pool helpers ─────────────────────────────────────────────────────────────
 
 export function createDeckBuildPools(itemsBySection: WorkbookItemsBySection): DeckBuildPools {
-  // Item chưa lấy được ảnh riêng (imageSource: 'fallback') tạm gác lại, ưu tiên dùng item
-  // đang có ảnh thật; nếu cả nhóm đều chưa có ảnh thì mới dùng lại toàn bộ (tránh chặn deck).
-  const foodItems = preferMappedImageItems(itemsBySection.quan_an);
-  const cafeItems = preferMappedImageItems(itemsBySection.cafe);
-  const stayItems = preferMappedImageItems(itemsBySection.homestay);
-  const checkinItems = preferMappedImageItems(itemsBySection.check_in);
-  const serviceItems = preferMappedImageItems(itemsBySection.dich_vu);
-  const nightlifeItems = preferMappedImageItems(itemsBySection.choi_dem);
+  const foodItems = preferOwnImageItems(itemsBySection.quan_an);
+  const cafeItems = preferOwnImageItems(itemsBySection.cafe);
+  const stayItems = preferOwnImageItems(itemsBySection.homestay);
+  const checkinItems = preferOwnImageItems(itemsBySection.check_in);
+  const serviceItems = preferOwnImageItems(itemsBySection.dich_vu);
+  const nightlifeItems = preferOwnImageItems(itemsBySection.choi_dem);
   const nightlifeImageItems = dedupeItems([...foodItems, ...cafeItems, ...serviceItems, ...nightlifeItems].filter(isImageBackedNightlifeItem));
-  const activityItems = preferMappedImageItems(itemsBySection.hoat_dong);
-  const historyItems = preferMappedImageItems(itemsBySection.dia_diem_lich_su);
-  const tourismItems = preferMappedImageItems(itemsBySection.khu_du_lich);
+  const activityItems = preferOwnImageItems(itemsBySection.hoat_dong);
+  const historyItems = preferOwnImageItems(itemsBySection.dia_diem_lich_su);
+  const tourismItems = preferOwnImageItems(itemsBySection.khu_du_lich);
   const famousItems = dedupeItems([...historyItems, ...tourismItems]);
   const freeCheckinItems = checkinItems.filter(isFreeCheckinItem);
   const paidCheckinItems = checkinItems.filter((i) => !isFreeCheckinItem(i));

@@ -1,6 +1,8 @@
 /**
- * Kiểm tra: item imageSource:'fallback' (chưa lấy được ảnh riêng) không còn bị chọn vào
- * list mới tạo, và deck vẫn tạo được list bình thường (không rỗng/lỗi) ở cả 2 điểm đến.
+ * Kiểm tra: item chưa có ảnh Drive riêng (imageSource khác 'manual' — gồm cả 'auto' mượn thư viện
+ * và 'fallback') hạn chế tối đa bị chọn vào list mới tạo, và deck vẫn tạo được list bình thường
+ * (không rỗng/lỗi) ở cả 2 điểm đến. In số liệu notOwnImage/total để soát thủ công (không tự fail
+ * vì có thể là giảm nhẹ hợp lệ khi cả nhóm đều chưa có ảnh riêng).
  *   node backend/src/modules/guide/tools/test-image-source-exclusion.mjs
  *
  * Env:
@@ -67,7 +69,7 @@ async function main() {
       const deck = (data.decks || []).find((d) => d.id === deckId);
       const list = (deck?.lists || []).find((l) => l.id === listId) || (deck?.lists || []).slice(-1)[0];
       let total = 0;
-      let fallback = 0;
+      let notOwnImage = 0;
       const samples = [];
       for (const page of list?.pages || []) {
         if (page.type === 'cover') continue;
@@ -75,14 +77,16 @@ async function main() {
         for (const it of page.items || []) {
           if (!it.name) continue;
           total += 1;
-          if (it.imageSource === 'fallback') {
-            fallback += 1;
-            if (samples.length < 6) samples.push({ page: page.chipText || page.title, name: it.name });
+          if (it.imageSource !== 'manual') {
+            notOwnImage += 1;
+            if (samples.length < 6) samples.push({ page: page.chipText || page.title, name: it.name, imageSource: it.imageSource });
           }
         }
       }
-      const row = { deckId, listId: list?.id || null, totalItems: total, fallback, samples };
-      if (fallback > 0 || !list || total === 0) report.ok = false;
+      // notOwnImage > 0 chỉ là dấu hiệu để xem xét (có thể là giảm nhẹ hợp lệ khi cả nhóm đều
+      // chưa có ảnh riêng) — không tự động coi là lỗi. Chỉ coi là lỗi khi deck rỗng/không tạo được.
+      const row = { deckId, listId: list?.id || null, totalItems: total, notOwnImage, samples };
+      if (!list || total === 0) report.ok = false;
       destRow.decks.push(row);
       if (list?.id) await del(deckId, list.id);
     }

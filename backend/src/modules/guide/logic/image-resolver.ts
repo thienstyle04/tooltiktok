@@ -10,7 +10,7 @@ import {
   PageItem,
   SectionKey,
 } from '../../../common/interfaces/guide.types';
-import { extractDriveFileIdFromProxyUrl, filterKnownAccessibleDriveProxyUrls, hasDriveFileDiskCache, isKnownFailedDriveFileId, isKnownInaccessibleDriveProxyUrl } from '../sync/drive-images';
+import { extractDriveFileIdFromProxyUrl, filterKnownAvailableDriveProxyUrls, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl } from '../sync/drive-images';
 
 // ─── Pure utility helpers ─────────────────────────────────────────────────────
 
@@ -691,10 +691,7 @@ export function createListImageResolver(
   };
 
   const runtimeReadyCandidates = (urls: string[] = []): string[] => {
-    const usable = filterKnownAccessibleDriveProxyUrls(urls).filter((url) => {
-      const fileId = extractDriveFileIdFromProxyUrl(url);
-      return !fileId || !isKnownFailedDriveFileId(fileId);
-    });
+    const usable = filterKnownAvailableDriveProxyUrls(urls);
     const diskReady = usable.filter((url) => {
       const fileId = extractDriveFileIdFromProxyUrl(url);
       return !fileId || hasDriveFileDiskCache(fileId);
@@ -724,7 +721,7 @@ export function createListImageResolver(
       ).sort(
         (a, b) => stableHash(`${seed}:${item.id}:manual:${a}`) - stableHash(`${seed}:${item.id}:manual:${b}`),
       );
-      const pickedManual = pickUnused(manualCandidates.filter((url) => url && !shouldAvoidImageForItem(item.name, url) && !isKnownInaccessibleDriveProxyUrl(url)));
+      const pickedManual = pickUnused(manualCandidates.filter((url) => url && !shouldAvoidImageForItem(item.name, url) && !isKnownUnavailableDriveProxyUrl(url)));
       if (pickedManual) {
         return { ...common, imageUrl: pickedManual, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm từ sheet' };
       }
@@ -749,7 +746,7 @@ export function createListImageResolver(
         item.imageUrl &&
         !shouldAvoidImageForItem(item.name, item.imageUrl) &&
         !localUsedUrls.has(item.imageUrl) &&
-        !isKnownInaccessibleDriveProxyUrl(item.imageUrl)
+        !isKnownUnavailableDriveProxyUrl(item.imageUrl)
       ) {
         rememberPicked(item.imageUrl);
         return { ...common, imageUrl: item.imageUrl, imageMapped: true, imageSource: 'manual', imageNote: 'Ảnh đã map đúng địa điểm' };
@@ -826,13 +823,13 @@ export function createListImageResolver(
     if (resolverOptions.strictMapping) {
       const strictCandidates = preferredImageCandidates(
         item.name,
-        filterKnownAccessibleDriveProxyUrls(
+        filterKnownAvailableDriveProxyUrls(
           [
             ...(item.candidateImageUrls || []),
             item.imageUrl,
           ].filter(Boolean),
         ),
-      ).filter((url) => url && !shouldAvoidImageForItem(item.name, url) && !isKnownInaccessibleDriveProxyUrl(url));
+      ).filter((url) => url && !shouldAvoidImageForItem(item.name, url) && !isKnownUnavailableDriveProxyUrl(url));
       // Không tái dùng ảnh đã gán trong list — tránh lặp hình giữa các địa điểm.
       const strictUrl = pickUnused(strictCandidates);
       if (strictUrl) {
