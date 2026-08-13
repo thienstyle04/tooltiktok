@@ -873,7 +873,7 @@ function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): GuideDeckLi
 }
 
 export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
-  return V2_DECK_IDS.map((deckId) => {
+  return V2_DECK_IDS.filter((deckId) => deckId !== 'carousel-mau-1').map((deckId) => {
     const meta = V2_DECK_META[deckId];
     const mainList = buildV2MainList(deckId, common);
     return {
