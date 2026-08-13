@@ -408,6 +408,33 @@ export class GuideService implements OnApplicationBootstrap {
     });
     if (token !== this.driveCacheWarmToken || warmed.cancelled) return;
     const completed = warmed.skipped + warmed.ok + warmed.fail;
+
+    // Dataset duoc build song song voi warm cache. Tren may moi, ban build ban dau co the
+    // van giu URL duoc access-cache cu danh dau la hop le, du lan tai that vua xac nhan URL
+    // do da hong/bi chan. Session-sticky sau do giu ban sai nay suot phien. Rebuild dung mot
+    // lan truoc khi mo khoa giao dien de loai tung URL that bai, nhung van giu URL tot khac
+    // cua cung dia diem.
+    try {
+      this.rebuildDatasetAfterDriveWarm(token);
+    } catch (error) {
+      if (token !== this.driveCacheWarmToken) return;
+      this.driveCacheWarmStatus = {
+        ...this.driveCacheWarmStatus,
+        phase: 'error',
+        ready: false,
+        destinationId: this.activeDestinationId,
+        total: warmed.total,
+        completed,
+        cached: warmed.skipped,
+        downloaded: warmed.ok,
+        failed: warmed.fail,
+        percent: 100,
+        message: `Da tai xong cache anh nhung khong the lam moi du lieu: ${error instanceof Error ? error.message : String(error)}`,
+      };
+      return;
+    }
+
+    if (token !== this.driveCacheWarmToken) return;
     this.driveCacheWarmStatus = {
       phase: 'ready',
       ready: true,
@@ -422,6 +449,15 @@ export class GuideService implements OnApplicationBootstrap {
         ? `Đã hoàn tất cache ảnh; ${warmed.fail} ảnh Drive không tải được và sẽ dùng ảnh dự phòng.`
         : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
     };
+  }
+
+  private rebuildDatasetAfterDriveWarm(token: number): void {
+    if (token !== this.driveCacheWarmToken || !this.workbookSource) return;
+    this.invalidateDatasetCache({ immediate: true });
+    this.buildDatasetContext();
+    if (this.workbookDerivedCache) {
+      this.workbookDerivedCacheByDestination.set(this.activeDestinationId, this.workbookDerivedCache);
+    }
   }
 
   getDriveCacheWarmStatus(): DriveCacheWarmStatus {
@@ -2764,7 +2800,13 @@ export class GuideService implements OnApplicationBootstrap {
           .filter((entry) => entry.fileId)
           .map((entry) => getDriveImageProxyUrl(entry.fileId))
       : [];
-    const sheetDriveCandidateUrls = filterKnownAvailableDriveProxyUrls(rawSheetDriveCandidateUrls);
+    const knownAvailableSheetUrls = filterKnownAvailableDriveProxyUrls(rawSheetDriveCandidateUrls);
+    // Khi da co access-cache cua destination, chi duoc gan 'manual' cho URL da duoc
+    // xac minh thanh cong. Gia tri undefined (URL moi/chua probe) khong du an toan de dua
+    // vao list; lan dong bo tiep theo se probe va dua URL hop le tro lai.
+    const sheetDriveCandidateUrls = this.hasDriveAccessCache()
+      ? filterVerifiedAccessibleDriveProxyUrls(knownAvailableSheetUrls)
+      : knownAvailableSheetUrls;
     const sheetDriveUrlsBlocked = rawSheetDriveCandidateUrls.length > 0
       && (sheetDriveCandidateUrls.length === 0
         || rawSheetDriveCandidateUrls.every((url) => isKnownUnavailableDriveProxyUrl(url)));
