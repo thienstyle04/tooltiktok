@@ -425,8 +425,15 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   getDriveCacheWarmStatus(): DriveCacheWarmStatus {
-    const datasetIsReady = Boolean(this.workbookSource && this.workbookDerivedCache);
-    if (this.destinationDataLoading && !datasetIsReady) {
+    // Trên máy mới có thể xảy ra race: cache ảnh đã đủ 100% nhưng bước build dataset
+    // nền chưa kịp hạ cờ loading. Khi nguồn Sheet đã có, request guide-data có thể tự
+    // build context; vì vậy không được tiếp tục khóa overlay chỉ vì cờ loading này.
+    const sourceIsReady = Boolean(this.workbookSource);
+    const cacheIsReady = this.driveCacheWarmStatus.ready
+      || (this.driveCacheWarmStatus.total > 0
+        && this.driveCacheWarmStatus.completed >= this.driveCacheWarmStatus.total
+        && this.driveCacheWarmStatus.phase !== 'error');
+    if (this.destinationDataLoading && !(sourceIsReady && cacheIsReady)) {
       return {
         ...this.driveCacheWarmStatus,
         phase: this.driveCacheWarmStatus.phase === 'error' ? 'error' : this.driveCacheWarmStatus.phase,
@@ -447,6 +454,18 @@ export class GuideService implements OnApplicationBootstrap {
         completed: 0,
         percent: 0,
         message: this.destinationDataError,
+      };
+    }
+    if (sourceIsReady && cacheIsReady) {
+      return {
+        ...this.driveCacheWarmStatus,
+        phase: 'ready',
+        ready: true,
+        destinationId: this.activeDestinationId,
+        percent: 100,
+        message: this.driveCacheWarmStatus.failed > 0
+          ? `Đã hoàn tất cache ảnh; ${this.driveCacheWarmStatus.failed} ảnh Drive không tải được và sẽ dùng ảnh dự phòng.`
+          : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
       };
     }
     return { ...this.driveCacheWarmStatus, destinationId: this.activeDestinationId };
