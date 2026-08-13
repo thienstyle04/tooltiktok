@@ -3905,7 +3905,9 @@ export class GuideService implements OnApplicationBootstrap {
 
     this.manifestSyncPromise = (async () => {
       try {
-        const manifest = await buildSheetDriveManifest(source, this.loadSheetDriveManifest());
+        const manifest = await buildSheetDriveManifest(source, this.loadSheetDriveManifest(), {
+          forceRevalidate: retryKnownFailures,
+        });
         writeSheetDriveManifest(this.dataRoot, manifest, source.destinationId);
         this.invalidateDatasetCache();
         if (source.destinationId === this.activeDestinationId) {

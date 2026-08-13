@@ -156,7 +156,9 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
 export async function buildSheetDriveManifest(
   source: SheetWorkbookSource,
   previousManifest = emptySheetDriveManifest(),
+  options: { forceRevalidate?: boolean } = {},
 ): Promise<SheetDriveImageManifest> {
+  const forceRevalidate = Boolean(options.forceRevalidate);
   const workbook = source.workbook;
   const items: Record<string, SheetDriveImageManifestEntry> = {};
   const coverImages = new Map<string, DriveFolderEntry>();
@@ -166,6 +168,7 @@ export async function buildSheetDriveManifest(
   const syncStats = {
     resolved: 0,
     keptPrevious: 0,
+    reusedUnchanged: 0,
     skippedNoPrevious: 0,
     rateLimited: 0,
     blockedPublic: 0,
@@ -214,6 +217,16 @@ export async function buildSheetDriveManifest(
 
       itemTasks.push(async () => {
         const previousEntry = previousManifest.items[key];
+        // Sheet lớn (VD: Đà Lạt ~680 mục) mà re-resolve toàn bộ qua mạng mỗi lần đổi
+        // điểm đến/đồng bộ sẽ rất chậm (concurrency thấp để tránh 401 hàng loạt) và có
+        // thể bị Google rate-limit dồn dập, khiến màn hình chờ trông như bị treo. Nếu
+        // link ảnh không đổi so với lần trước, dùng lại kết quả đã xác minh thay vì
+        // quét lại folder Drive + probe quyền truy cập từ đầu.
+        if (!forceRevalidate && previousEntry?.fileId && previousEntry.sourceLink === imageLink) {
+          items[key] = previousEntry;
+          syncStats.reusedUnchanged += 1;
+          return;
+        }
         let resolveError: unknown = null;
         const candidateImages = await resolveDriveLinkToEntries(imageLink, name, address).catch((error) => {
           resolveError = error;
@@ -282,6 +295,7 @@ export async function buildSheetDriveManifest(
 
   console.log(
     `[sync] Drive manifest: resolved=${syncStats.resolved}`
+    + ` reusedUnchanged=${syncStats.reusedUnchanged}`
     + ` keptPrevious=${syncStats.keptPrevious}`
     + ` rateLimited=${syncStats.rateLimited}`
     + ` blockedPublic=${syncStats.blockedPublic}`
