@@ -487,6 +487,19 @@ export function filterKnownAccessibleDriveProxyUrls(urls: string[]): string[] {
   return urls.filter((url) => !isKnownInaccessibleDriveProxyUrl(url));
 }
 
+// Truy cập được (accessibility probe) và tải xuống được (disk-cache warm) là 2 cache riêng —
+// một ảnh có thể "truy cập được" theo probe nhưng vẫn tải xuống thất bại liên tục (quota, mạng...).
+// Coi cả 2 trường hợp là "chưa có ảnh dùng được" để không map nhầm là 'manual' cho ảnh thực ra chưa lấy được.
+export function isKnownUnavailableDriveProxyUrl(url: string): boolean {
+  const fileId = extractDriveFileIdFromProxyUrl(url);
+  if (!fileId) return false;
+  return getCachedDriveFileAccessibility(fileId) === false || isKnownFailedDriveFileId(fileId);
+}
+
+export function filterKnownAvailableDriveProxyUrls(urls: string[]): string[] {
+  return urls.filter((url) => !isKnownUnavailableDriveProxyUrl(url));
+}
+
 export function filterVerifiedAccessibleDriveProxyUrls(urls: string[]): string[] {
   return urls.filter((url) => {
     const fileId = extractDriveFileIdFromProxyUrl(url);

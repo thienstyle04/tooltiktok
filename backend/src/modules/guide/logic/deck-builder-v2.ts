@@ -490,7 +490,7 @@ type CarouselMau1Slot = {
 };
 
 function hasOwnImage(item: GuideItem): boolean {
-  if (item.imageSource === 'fallback') return false;
+  if (item.imageSource !== 'manual') return false;
   return Boolean(String(item.imageUrl || '').trim())
     || Boolean((item.candidateImageUrls || []).some((url) => String(url || '').trim()));
 }

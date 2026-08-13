@@ -23,6 +23,20 @@ function makeSection(sectionKey: SectionKey, count: number, fallbackCount: numbe
   ));
 }
 
+function makeMixedSourceSection(
+  sectionKey: SectionKey,
+  manualCount: number,
+  autoCount: number,
+  fallbackCount: number,
+): GuideItem[] {
+  const sources: Array<GuideItem['imageSource']> = [
+    ...Array.from({ length: manualCount }, () => 'manual' as const),
+    ...Array.from({ length: autoCount }, () => 'auto' as const),
+    ...Array.from({ length: fallbackCount }, () => 'fallback' as const),
+  ];
+  return sources.map((imageSource, index) => makeItem(sectionKey, index, imageSource));
+}
+
 const POOL_KEY_BY_SECTION: Record<SectionKey, keyof DeckBuildPools> = {
   quan_an: 'foodItems',
   cafe: 'cafeItems',
@@ -62,3 +76,30 @@ const degradedPools = createDeckBuildPools(allFallbackItemsBySection);
 assert.equal(degradedPools.checkinItems.length, 5, 'checkinItems toàn fallback vẫn phải giảm nhẹ về đủ 5 item gốc, không rỗng');
 assert.ok(degradedPools.checkinItems.every((item) => item.imageSource === 'fallback'));
 console.log('PASS all-fallback section degrades to full pool instead of going empty');
+
+// Trường hợp 3: item 'auto' (ảnh mượn thư viện chung, KHÔNG phải ảnh Drive riêng của địa điểm) phải
+// bị gác lại như 'fallback' khi vẫn còn item 'manual' (ảnh Drive riêng thật) trong nhóm — đây là kẽ hở
+// đã gây lỗi "địa điểm chưa có ảnh vẫn được dùng" trước đây (chỉ loại 'fallback', chưa loại 'auto').
+const autoMixedItemsBySection = Object.fromEntries(
+  sectionKeys.map((sectionKey) => [sectionKey, makeMixedSourceSection(sectionKey, 3, 3, 0)]),
+) as WorkbookItemsBySection;
+
+const autoMixedPools = createDeckBuildPools(autoMixedItemsBySection);
+for (const sectionKey of sectionKeys) {
+  const pool = autoMixedPools[POOL_KEY_BY_SECTION[sectionKey]] as GuideItem[];
+  assert.ok(pool.every((item) => item.imageSource === 'manual'), `${sectionKey}: pool phải chỉ còn item 'manual' (ảnh Drive riêng), loại cả 'auto'`);
+  assert.equal(pool.length, 3, `${sectionKey}: pool phải còn đúng 3 item 'manual'`);
+}
+console.log("PASS mixed manual+auto sections: 'auto' (borrowed library image) excluded like fallback");
+
+// Trường hợp 4: nhóm toàn 'auto' (không có 'manual' nào) cũng phải giảm nhẹ về danh sách gốc, không rỗng.
+const allAutoItemsBySection = Object.fromEntries(
+  sectionKeys.map((sectionKey) => [
+    sectionKey,
+    sectionKey === 'cafe' ? makeMixedSourceSection(sectionKey, 0, 4, 0) : makeSection(sectionKey, 4, 0),
+  ]),
+) as WorkbookItemsBySection;
+const allAutoPools = createDeckBuildPools(allAutoItemsBySection);
+assert.equal(allAutoPools.cafeItems.length, 4, "cafeItems toàn 'auto' vẫn phải giảm nhẹ về đủ 4 item gốc, không rỗng");
+assert.ok(allAutoPools.cafeItems.every((item) => item.imageSource === 'auto'));
+console.log("PASS all-'auto' section degrades to full pool instead of going empty");
