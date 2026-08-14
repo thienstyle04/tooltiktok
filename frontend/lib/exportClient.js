@@ -3,6 +3,7 @@
 import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
+import { buildCaptionExportText } from './captionText';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
 import { budget72HListHasLegacyScheduleCosts, formatListSetLabel, listIsMain, parseListSetIndex, resolveBudget72HExportList, sanitizeFilePart } from './utils';
@@ -1550,13 +1551,18 @@ async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(l
   const isSpotlightPartnerList = Array.isArray(list?.pages)
     && list.pages.some((page) => page?.layoutVariant === 'spotlight-partner' || page?.layoutVariant === 'spotlight-partner-info');
   const usePartnerCaptionFallback = isSpotlightPartnerList && !String(list.postCaption || '').trim();
-  const postCaption = String(usePartnerCaptionFallback ? SPOTLIGHT_PARTNER_POST_CAPTION : (list.postCaption || list.title || '')).trim();
-  const body = String(usePartnerCaptionFallback ? SPOTLIGHT_PARTNER_CAPTION_BODY : (list.description || '')).trim();
-  const hashtags = Array.isArray(list.captionHashtags) && list.captionHashtags.length > 0
-    ? list.captionHashtags.join(' ')
-    : (isSpotlightPartnerList ? SPOTLIGHT_PARTNER_CAPTION_HASHTAGS.join(' ') : '');
-  const captionParts = [postCaption, body, hashtags].filter(Boolean);
-  folder.file(`caption-${setLabel}.txt`, captionParts.join('\n\n').trim() || coverTitle);
+  const captionText = buildCaptionExportText(list, usePartnerCaptionFallback
+    ? {
+      title: SPOTLIGHT_PARTNER_POST_CAPTION,
+      description: SPOTLIGHT_PARTNER_CAPTION_BODY,
+      hashtags: SPOTLIGHT_PARTNER_CAPTION_HASHTAGS,
+    }
+    : {
+      hashtags: Array.isArray(list.captionHashtags) && list.captionHashtags.length > 0
+        ? list.captionHashtags
+        : (isSpotlightPartnerList ? SPOTLIGHT_PARTNER_CAPTION_HASHTAGS : []),
+    });
+  folder.file(`caption-${setLabel}.txt`, captionText || coverTitle);
   folder.file(`partners-${setLabel}.xlsx`, await createHorizontalXlsx(collectPartnerNames(list)));
   if ((list.pages || []).some((page) => page?.layoutVariant === 'carousel-mau-1-page')) {
     const rows = (list.pages || []).flatMap((page, pageIndex) => (page.items || []).map((item) => [

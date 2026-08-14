@@ -67,7 +67,7 @@ import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TE
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
-import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, isKnownFailedDriveFileId, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
+import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownFailedDriveFileId, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
   DEFAULT_DESTINATION_ID,
@@ -108,6 +108,7 @@ const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1';
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
+const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
 type CaptionTone = DeepSeekCaptionResponse['tone'];
 
 // Phần dữ liệu "nặng" (đọc Google Sheet, dò ảnh, build 22 mẫu deck) — chỉ cần build lại khi
@@ -407,7 +408,40 @@ export class GuideService implements OnApplicationBootstrap {
       },
     });
     if (token !== this.driveCacheWarmToken || warmed.cancelled) return;
-    const completed = warmed.skipped + warmed.ok + warmed.fail;
+    let completed = warmed.skipped + warmed.ok + warmed.fail;
+
+    // Bản cũ luôn xác thực lại link của địa điểm khi ảnh chính hỏng. Giữ hành vi
+    // đó nhưng chỉ quét lại các entry chưa có bất kỳ candidate nào trên disk;
+    // entry đã tải thành công được tái sử dụng nên không làm chậm toàn bộ Sheet.
+    if (warmed.fail > 0 && this.workbookSource) {
+      this.driveCacheWarmStatus = {
+        ...this.driveCacheWarmStatus,
+        phase: 'warming',
+        ready: false,
+        percent: 99,
+        message: `Đang tìm ảnh thay thế cho ${warmed.fail} mục không tải được...`,
+      };
+      await this.refreshSheetDriveManifest(this.workbookSource, false, false);
+      if (token !== this.driveCacheWarmToken) return;
+      const remaining = listUncachedDriveFileIds(this.collectDriveFileIdsForCacheWarm());
+      completed = Math.max(0, warmed.total - remaining.length);
+    }
+
+    // Dataset có thể đã được dựng song song từ manifest portable trước khi warm
+    // phát hiện file Drive hỏng. Session-sticky sẽ giữ bản đó mãi, nên dựng lại
+    // ngay để các file không có ảnh thật bị loại khỏi pool tạo list.
+    if (this.workbookSource) {
+      this.invalidateDatasetCache({ immediate: true });
+      try {
+        const rebuilt = this.rebuildWorkbookDerivedCacheNow();
+        this.workbookDerivedCacheByDestination.set(this.activeDestinationId, rebuilt);
+      } catch (error) {
+        console.warn(
+          '[drive-cache] Khong build lai duoc dataset sau warm:',
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
     this.driveCacheWarmStatus = {
       phase: 'ready',
       ready: true,
@@ -419,7 +453,7 @@ export class GuideService implements OnApplicationBootstrap {
       failed: warmed.fail,
       percent: 100,
       message: warmed.fail > 0
-        ? `Đã hoàn tất cache ảnh; ${warmed.fail} ảnh Drive không tải được và sẽ dùng ảnh dự phòng.`
+        ? `Đã hoàn tất cache ảnh; ${warmed.fail} ảnh Drive không tải được đã bị loại khỏi pool tạo list.`
         : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
     };
   }
@@ -464,7 +498,7 @@ export class GuideService implements OnApplicationBootstrap {
         destinationId: this.activeDestinationId,
         percent: 100,
         message: this.driveCacheWarmStatus.failed > 0
-          ? `Đã hoàn tất cache ảnh; ${this.driveCacheWarmStatus.failed} ảnh Drive không tải được và sẽ dùng ảnh dự phòng.`
+          ? `Đã hoàn tất cache ảnh; ${this.driveCacheWarmStatus.failed} ảnh Drive không tải được đã bị loại khỏi pool tạo list.`
           : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
       };
     }
@@ -1169,6 +1203,9 @@ export class GuideService implements OnApplicationBootstrap {
     );
     generatedList.coverTitle = finalCaption.coverTitle;
     generatedList.postCaption = finalCaption.headline;
+    // Không dùng chung `description`: trường đó có thể bị làm rỗng để list con
+    // bám đúng cấu trúc chữ của mẫu mẹ, còn caption xuất file vẫn phải giữ mô tả.
+    generatedList.captionBody = this.sanitizeContentText(caption.body) || this.captionBodyFallback();
     generatedList.captionHashtags = finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
     const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList, deckId);
@@ -1462,6 +1499,7 @@ export class GuideService implements OnApplicationBootstrap {
     );
     generatedList.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
     generatedList.postCaption = SPOTLIGHT_PARTNER_POST_CAPTION;
+    generatedList.captionBody = SPOTLIGHT_PARTNER_CAPTION_BODY;
     generatedList.description = '';
     generatedList.captionHashtags = buildCaptionHashtags([], 'lich_trinh_huu_ich', this.activeDestinationId, 'spotlight-partner');
     generatedList.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
@@ -1596,6 +1634,10 @@ export class GuideService implements OnApplicationBootstrap {
   private buildDatasetContext(): DatasetBuildContext {
     this.ensureGeneratedListsLoaded();
     const derived = this.ensureWorkbookDerivedContext();
+    // Generated lists are destination-scoped and may be loaded after a warm workbook
+    // context is restored from memory. Re-attach current Sheet/Drive images here as
+    // well, otherwise old fallback items stay blank until the workbook is rebuilt.
+    this.refreshGeneratedListImages(derived.itemsBySection);
     // Danh sách AI (tạo/xoá/sửa cover) luôn đọc trực tiếp từ generatedListsByDeckId (bộ nhớ, luôn mới
     // nhất) nên bước merge này luôn nhanh (không đụng tới Sheet/ảnh) và không cần cache riêng.
     const referenceSets = this.buildReferenceSets();
@@ -2249,6 +2291,7 @@ export class GuideService implements OnApplicationBootstrap {
             list.title !== partnerItem.name.toUpperCase() ||
             list.coverTitle !== partnerItem.name.toUpperCase().slice(0, 35) ||
             list.postCaption !== SPOTLIGHT_PARTNER_POST_CAPTION ||
+            list.captionBody !== SPOTLIGHT_PARTNER_CAPTION_BODY ||
             list.description !== '' ||
             JSON.stringify(list.captionHashtags || []) !== JSON.stringify(partnerCaptionHashtags) ||
             list.templateVersion !== templateVersion ||
@@ -2260,6 +2303,7 @@ export class GuideService implements OnApplicationBootstrap {
             title: partnerItem.name.toUpperCase(),
             coverTitle: partnerItem.name.toUpperCase().slice(0, 35),
             postCaption: SPOTLIGHT_PARTNER_POST_CAPTION,
+            captionBody: SPOTLIGHT_PARTNER_CAPTION_BODY,
             description: '',
             captionHashtags: partnerCaptionHashtags,
             templateVersion,
@@ -2339,6 +2383,9 @@ export class GuideService implements OnApplicationBootstrap {
           title: finalCaption.coverTitle,
           coverTitle: finalCaption.coverTitle,
           postCaption: finalCaption.headline,
+          // Di chuyển dữ liệu cũ sang trường caption riêng trước khi description
+          // được đồng bộ theo cấu trúc mẫu mẹ.
+          captionBody: list.captionBody || list.description || this.captionBodyFallback(),
           description: finalCaption.body,
           templateVersion,
           pages: regeneratedPages,
@@ -2535,6 +2582,14 @@ export class GuideService implements OnApplicationBootstrap {
               const mappingNote = sourceItem.imageSource === 'manual'
                 ? 'Ảnh đã map đúng địa điểm từ sheet'
                 : pageItem.imageNote;
+              const sourceItemDriveUrls = [...new Set(filterKnownAvailableDriveProxyUrls(
+                [...(sourceItem.candidateImageUrls || []), sourceItem.imageUrl].filter(Boolean),
+              ))].filter((url) => {
+                const fileId = String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || '';
+                return !fileId || !listUncachedDriveFileIds([fileId]).length;
+              });
+              const sourceItemHasReadyImage = sourceItem.imageSource === 'manual'
+                && sourceItemDriveUrls.length > 0;
               const nextPageItem = {
                 ...pageItem,
                 id: sourceItem.id,
@@ -2551,12 +2606,14 @@ export class GuideService implements OnApplicationBootstrap {
                 imageNote: isPov3V2Stack && highlight
                   ? truncatePov3V2StackTagline(highlight)
                   : mappingNote,
-                candidateImageUrls: sourceItem.imageSource === 'manual' && !isMenuTextOnly
-                  ? sourceItem.candidateImageUrls
+                candidateImageUrls: sourceItemHasReadyImage && !isMenuTextOnly
+                  ? sourceItemDriveUrls
                   : pageItem.candidateImageUrls,
-                ...(sourceItem.imageSource === 'manual' && !isMenuTextOnly
+                ...(sourceItemHasReadyImage && !isMenuTextOnly
                   ? {
-                      imageUrl: sourceItem.imageUrl,
+                      imageUrl: sourceItemDriveUrls.includes(sourceItem.imageUrl)
+                        ? sourceItem.imageUrl
+                        : sourceItemDriveUrls[0],
                       imageMapped: true,
                       imageSource: 'manual' as const,
                     }
@@ -2659,7 +2716,12 @@ export class GuideService implements OnApplicationBootstrap {
     try {
       const parsed = JSON.parse(fs.readFileSync(cachePath, 'utf-8')) as { entries?: Record<string, boolean> };
       for (const [fileId, accessible] of Object.entries(parsed.entries || {})) {
-        setCachedDriveFileAccessibility(fileId, Boolean(accessible));
+        // Portable packages keep metadata but intentionally exclude image bytes.
+        // Trust a positive result only when this machine owns the real disk cache.
+        // Negative results can be transient rate limits, so retry them per process.
+        if (Boolean(accessible) && hasDriveFileDiskCache(fileId)) {
+          setCachedDriveFileAccessibility(fileId, true);
+        }
       }
     } catch {
       // Ignore invalid cache files.
@@ -3500,6 +3562,14 @@ export class GuideService implements OnApplicationBootstrap {
     if (this.isBannedSampleCaptionText(title)) title = safeCoverFallback;
     let description = this.sanitizeContentText(localizeText(list.description || '', this.activeDestinationId));
     if (this.isBannedSampleCaptionText(description)) description = safeBodyFallback;
+    const storedCaptionBody = list.captionBody || (
+      list.postCaption || (Array.isArray(list.captionHashtags) && list.captionHashtags.length > 0)
+        ? list.description || safeBodyFallback
+        : ''
+    );
+    const captionBody = storedCaptionBody
+      ? this.sanitizeContentText(localizeText(storedCaptionBody, this.activeDestinationId))
+      : storedCaptionBody;
     const localized = {
       ...list,
       navTitle: this.sanitizeContentText(localizeText(list.navTitle || '', this.activeDestinationId)),
@@ -3507,6 +3577,7 @@ export class GuideService implements OnApplicationBootstrap {
       description,
       coverTitle,
       postCaption,
+      captionBody,
       captionHashtags: Array.isArray(list.captionHashtags)
         ? buildCaptionHashtags(
           list.captionHashtags.map((tag) => String(tag || '').trim()).filter(Boolean),
@@ -3905,7 +3976,11 @@ export class GuideService implements OnApplicationBootstrap {
     return this.syncPromise;
   }
 
-  private async refreshSheetDriveManifest(source: SheetWorkbookSource, retryKnownFailures = false): Promise<void> {
+  private async refreshSheetDriveManifest(
+    source: SheetWorkbookSource,
+    retryKnownFailures = false,
+    scheduleWarmAfterSync = true,
+  ): Promise<void> {
     if (this.manifestSyncPromise) return this.manifestSyncPromise;
 
     const token = this.driveCacheWarmToken;
@@ -3944,7 +4019,7 @@ export class GuideService implements OnApplicationBootstrap {
         });
         writeSheetDriveManifest(this.dataRoot, manifest, source.destinationId);
         this.invalidateDatasetCache();
-        if (source.destinationId === this.activeDestinationId) {
+        if (scheduleWarmAfterSync && source.destinationId === this.activeDestinationId) {
           this.scheduleWarmDriveFileDiskCache({ retryKnownFailures });
         }
         console.log(`[sync] Dong bo anh Drive hoan tat: ${Object.keys(manifest.items).length} anh.`);

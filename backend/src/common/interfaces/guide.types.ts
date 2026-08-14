@@ -133,6 +133,8 @@ export interface GuideDeckList {
   description: string;
   coverTitle?: string;
   postCaption?: string;
+  /** Phần mô tả của caption đăng bài; tách khỏi description của list/trang. */
+  captionBody?: string;
   captionHashtags?: string[];
   templateVersion?: number;
   pages: DeckPage[];

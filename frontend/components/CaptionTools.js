@@ -158,7 +158,7 @@ export default function CaptionTools({
             )}
           </div>
           ) : null}
-          {!isNonAiTemplate ? <button id="copyFullCaptionBtn" className="toolbar-button" type="button" onClick={() => onCopy([caption.headline, caption.hashtags].filter(Boolean).join('\n\n'), 'Đã copy full caption.')}>Copy caption</button> : null}
+          {!isNonAiTemplate ? <button id="copyFullCaptionBtn" className="toolbar-button" type="button" onClick={() => onCopy([caption.headline, caption.body, caption.hashtags].filter(Boolean).join('\n\n'), 'Đã copy full caption.')}>Copy caption</button> : null}
         </div>
       </div>
 

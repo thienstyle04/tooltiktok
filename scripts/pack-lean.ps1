@@ -63,7 +63,15 @@ foreach ($d in $excludeDirs) {
     $robocopyArgs += $d
 }
 $robocopyArgs += '/XF'
-$robocopyArgs += @('*.log', '.env', '__*-markup.mjs', '*.backup.json')
+$robocopyArgs += @(
+    '*.log',
+    '.env',
+    '__*-markup.mjs',
+    '*.backup.json',
+    # Metadata nay chi dung cho may da probe Drive. Portable khong mang file
+    # cache anh that, nen may moi phai tu xac minh lai thay vi ke thua ket qua cu.
+    'drive-access-cache*.json'
+)
 
 Write-Host '[1/4] Copy source (bo qua node_modules, .git, .next*, cache anh, test output)...'
 $null = & robocopy @robocopyArgs

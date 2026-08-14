@@ -6,6 +6,8 @@ const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 /** Fallback SVG chỉ cache ngắn — máy mới hay fail tạm thời; cache 30 phút sẽ “đóng băng” ảnh xám. */
 const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 20 * 1000;
 const DRIVE_FILE_DISK_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+/** Network/rate-limit failures are transient; never blacklist a valid Drive file indefinitely. */
+const DRIVE_FILE_FAILED_ID_TTL_MS = 10 * 60 * 1000;
 const DRIVE_FETCH_TIMEOUT_MS = 15_000;
 /** Backoff dài hơn cho 401/429 — Google hay rate-limit khi sync hàng trăm folder. */
 const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 1_500, 4_000, 8_000];
@@ -73,12 +75,20 @@ function failedDriveFileIdsPath(): string {
 function loadKnownFailedDriveFileIds(): Set<string> {
   if (knownFailedDriveFileIds) return knownFailedDriveFileIds;
   try {
-    const parsed = JSON.parse(fs.readFileSync(failedDriveFileIdsPath(), 'utf8')) as { fileIds?: unknown };
+    const parsed = JSON.parse(fs.readFileSync(failedDriveFileIdsPath(), 'utf8')) as {
+      savedAt?: unknown;
+      fileIds?: unknown;
+    };
+    const savedAt = Date.parse(String(parsed.savedAt || ''));
+    const expired = !Number.isFinite(savedAt) || Date.now() - savedAt > DRIVE_FILE_FAILED_ID_TTL_MS;
     knownFailedDriveFileIds = new Set(
-      (Array.isArray(parsed.fileIds) ? parsed.fileIds : [])
+      (expired || !Array.isArray(parsed.fileIds) ? [] : parsed.fileIds)
         .map((id) => String(id || '').trim())
         .filter(Boolean),
     );
+    if (expired && Array.isArray(parsed.fileIds) && parsed.fileIds.length > 0) {
+      persistKnownFailedDriveFileIds();
+    }
   } catch {
     knownFailedDriveFileIds = new Set();
   }
@@ -513,7 +523,11 @@ export async function probeDriveFileAccessible(fileId: string): Promise<boolean>
   if (!normalized) return false;
 
   const cached = getCachedDriveFileAccessibility(normalized);
-  if (cached !== undefined) return cached;
+  // Access metadata can be copied in a portable ZIP while the multi-GB image
+  // cache is intentionally excluded. A persisted `true` is only trustworthy
+  // when this machine also has the real image bytes on disk.
+  if (cached === true && hasDriveFileDiskCache(normalized)) return true;
+  if (cached === false) return false;
 
   try {
     const asset = await fetchDriveFileAssetUnsafe(normalized);

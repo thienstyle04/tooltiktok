@@ -8,7 +8,11 @@ import { buildSheetDriveManifest, emptySheetDriveManifest } from '../sync/sheet-
 import { SheetWorkbookSource } from '../sync/workbook-source';
 import { itemMappingKey } from '../logic/image-resolver';
 import { resolveSectionKeyFromSheetName } from '../sync/sheet-section';
-import { configureDriveFileDiskCache } from '../sync/drive-images';
+import {
+  clearDriveAccessibilityCache,
+  configureDriveFileDiskCache,
+  setCachedDriveFileAccessibility,
+} from '../sync/drive-images';
 
 const SHEET_NAME = 'quan_an';
 const PLACE_NAME = 'Quan A';
@@ -72,19 +76,31 @@ async function run() {
   configureDriveFileDiskCache(tempCacheDir);
 
   try {
-    // Mac dinh (khong force): link khong doi so voi manifest cu -> khong duoc goi mang.
+    // Simulate access=true metadata copied from the packaging machine while the
+    // portable bundle intentionally contains no real image cache bytes.
+    setCachedDriveFileAccessibility('abc123', true);
+    // Máy mới không có disk cache: manifest cũ chỉ là metadata, bắt buộc xác minh
+    // và tải ảnh thật; nếu tái sử dụng ngay thì list sẽ render placeholder xám.
     const manifest = await buildSheetDriveManifest(source, previousManifest);
-    assert.equal(networkCallCount, 0, 'Khong duoc goi Drive qua mang khi link khong doi va khong force revalidate');
+    assert.ok(networkCallCount > 0, 'May moi thieu disk cache phai goi Drive de xac minh anh that');
     assert.equal(manifest.items[key]?.fileId, 'abc123');
-    console.log('PASS manifest-reuse-unchanged: tai su dung entry cu, khong goi mang');
+    console.log('PASS manifest-reuse-unchanged: may moi xac minh manifest cu qua mang');
 
-    // forceRevalidate=true (VD: nguoi dung bam "Lam moi"): phai thuc su xac minh lai qua mang.
+    // Ảnh đã tải thành công trên chính máy này: lần sync tiếp theo mới được tái sử dụng.
     networkCallCount = 0;
-    await buildSheetDriveManifest(source, previousManifest, { forceRevalidate: true });
-    assert.ok(networkCallCount > 0, 'forceRevalidate=true phai thuc su goi mang de xac minh lai');
-    console.log('PASS manifest-reuse-unchanged: forceRevalidate van xac minh lai qua mang');
+    await buildSheetDriveManifest(source, manifest);
+    assert.equal(networkCallCount, 0, 'Co disk cache that thi link khong doi duoc phep tai su dung');
+    console.log('PASS manifest-reuse-unchanged: chi tai su dung khi co disk cache that');
+
+    // forceRevalidate=true vẫn phải trả lại entry đã xác minh. Cache bộ nhớ của
+    // cùng phiên có thể hợp lệ nên không dùng số lần gọi mạng làm tiêu chí.
+    networkCallCount = 0;
+    const revalidated = await buildSheetDriveManifest(source, previousManifest, { forceRevalidate: true });
+    assert.equal(revalidated.items[key]?.fileId, 'abc123');
+    console.log('PASS manifest-reuse-unchanged: forceRevalidate giu ket qua anh hop le');
   } finally {
     global.fetch = originalFetch;
+    clearDriveAccessibilityCache();
     configureDriveFileDiskCache('');
     fs.rmSync(tempCacheDir, { recursive: true, force: true });
   }

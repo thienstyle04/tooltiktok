@@ -425,6 +425,7 @@ export function localizeList(list: GuideDeckList, id: DestinationId = activeDest
     description: localizeText(list.description || '', id),
     coverTitle: list.coverTitle ? localizeText(list.coverTitle, id) : list.coverTitle,
     postCaption: list.postCaption ? localizeText(list.postCaption, id) : list.postCaption,
+    captionBody: list.captionBody ? localizeText(list.captionBody, id) : list.captionBody,
     captionHashtags: Array.isArray(list.captionHashtags)
       ? list.captionHashtags.map((tag) => localizeText(String(tag || ''), id)).filter(Boolean)
       : list.captionHashtags,

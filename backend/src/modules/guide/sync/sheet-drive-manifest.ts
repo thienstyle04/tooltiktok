@@ -2,7 +2,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as XLSX from 'xlsx';
 
-import { DriveFolderEntry, filterAccessibleDriveEntries, resolveDriveLinkToEntries } from './drive-images';
+import {
+  DriveFolderEntry,
+  filterAccessibleDriveEntries,
+  hasDriveFileDiskCache,
+  resolveDriveLinkToEntries,
+} from './drive-images';
 import { firstValue, itemMappingKey, normalizeText } from '../logic/image-resolver';
 import { DestinationId } from './destination-config';
 import { PREFERRED_WORKBOOK_NAME, SheetWorkbookSource } from './workbook-source';
@@ -229,8 +234,24 @@ export async function buildSheetDriveManifest(
         // thể bị Google rate-limit dồn dập, khiến màn hình chờ trông như bị treo. Nếu
         // link ảnh không đổi so với lần trước, dùng lại kết quả đã xác minh thay vì
         // quét lại folder Drive + probe quyền truy cập từ đầu.
-        if (!forceRevalidate && previousEntry?.fileId && previousEntry.sourceLink === imageLink) {
-          items[key] = previousEntry;
+        const previousCandidates = previousEntry
+          ? (previousEntry.candidateImages?.length
+              ? previousEntry.candidateImages
+              : [{ fileId: previousEntry.fileId, fileName: previousEntry.fileName, viewUrl: '' }])
+            .filter((entry) => entry.fileId && hasDriveFileDiskCache(entry.fileId))
+          : [];
+        // Chỉ tái sử dụng manifest khi máy HIỆN TẠI đã có file ảnh thật trên disk.
+        // Manifest mang từ máy khác chỉ là metadata; tin ngay sẽ làm list nhận URL
+        // Drive chưa tải được và render placeholder xám.
+        if (!forceRevalidate && previousEntry?.fileId && previousEntry.sourceLink === imageLink && previousCandidates.length > 0) {
+          const primary = previousCandidates.find((entry) => entry.fileId === previousEntry.fileId)
+            || previousCandidates[0];
+          items[key] = {
+            ...previousEntry,
+            fileId: primary.fileId,
+            fileName: primary.fileName,
+            candidateImages: previousCandidates,
+          };
           syncStats.reusedUnchanged += 1;
           return;
         }

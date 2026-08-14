@@ -124,6 +124,9 @@ function preferMappedImageItems(items: GuideItem[]): GuideItem[] {
 
 /** Chỉ tính ảnh Drive thật của chính địa điểm (map từ Sheet, không phải ảnh mượn thư viện chung). */
 function hasOwnDriveImage(item: GuideItem): boolean {
+  // Không thu nhỏ pool theo cache của riêng máy đang chạy. Màn hình đồng bộ đã
+  // khóa tạo list cho đến khi manifest ảnh được kiểm tra. Lọc tại đây khiến máy
+  // mới chỉ còn vài địa điểm và làm mất/lặp slot của mẫu lịch trình.
   return hasUsableImage(item) && item.imageSource === 'manual';
 }
 
