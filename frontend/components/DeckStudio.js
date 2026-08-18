@@ -409,12 +409,49 @@ export default function DeckStudio({ initialDataset = null }) {
     return payload;
   }, []);
 
+  const applyDestinationMutation = useCallback(async (payload) => {
+    let latestDestinationInfo = null;
+    try {
+      const destinationsResponse = await apiFetch('/api/destinations', { cache: 'no-store' });
+      if (destinationsResponse.ok) latestDestinationInfo = await destinationsResponse.json();
+    } catch {
+      // Keep the current destination list if the follow-up refresh fails.
+    }
+
+    const updatedActive = payload?.active
+      ? {
+          ...payload.active,
+          totalItems: payload?.dataset?.source?.totalItems ?? payload?.active?.totalItems,
+          syncedAt: payload?.dataset?.generatedAt || payload?.active?.syncedAt,
+        }
+      : (latestDestinationInfo?.active || null);
+
+    setDestinationInfo((previous) => ({
+      active: updatedActive || previous?.active || null,
+      destinations: mergeDestinations(
+        BUILTIN_DESTINATION_FALLBACKS,
+        previous?.destinations,
+        latestDestinationInfo?.destinations,
+        payload?.destinations,
+        updatedActive ? [updatedActive] : [],
+      ),
+    }));
+
+    if (payload?.dataset) {
+      clearCachedDataset();
+      writeCachedDataset(payload.dataset);
+      markCatalogRevisionStored();
+      applyDataset(payload.dataset, currentSelectionRef.current);
+    }
+
+    return updatedActive;
+  }, [applyDataset]);
+
   const switchDestination = useCallback(async (destinationId) => {
     if (!destinationId || destinationId === destinationInfo?.active?.id || switchingDestination) return;
     setSwitchingDestination(true);
     setRefreshing(true);
-    clearCachedDataset();
-    setStatus('Đang chuyển nguồn Google Sheet...');
+    setStatus('Đang chuyển nguồn dữ liệu...');
     try {
       const response = await apiFetch('/api/destination', {
         method: 'POST',
@@ -423,72 +460,96 @@ export default function DeckStudio({ initialDataset = null }) {
         cache: 'no-store',
       });
       const payload = await readApiPayload(response);
-      if (!response.ok) throw new Error(apiErrorMessage(payload, `Không chuyển được nguồn Sheet: HTTP ${response.status}`));
-      let latestDestinationInfo = null;
-      try {
-        const destinationsResponse = await apiFetch('/api/destinations', { cache: 'no-store' });
-        if (destinationsResponse.ok) latestDestinationInfo = await destinationsResponse.json();
-      } catch {
-        // Giữ danh sách hiện có; fallback mặc định bên dưới bảo đảm ba nguồn gốc không biến mất.
-      }
-      const updatedActive = {
-        ...payload.active,
-        totalItems: payload.dataset?.source?.totalItems,
-        syncedAt: payload.dataset?.generatedAt,
-      };
-      setDestinationInfo((previous) => ({
-        active: updatedActive,
-        destinations: mergeDestinations(
-          BUILTIN_DESTINATION_FALLBACKS,
-          previous?.destinations,
-          latestDestinationInfo?.destinations,
-          [updatedActive],
-        ),
-      }));
-      writeCachedDataset(payload.dataset);
-      markCatalogRevisionStored();
-      applyDataset(payload.dataset, currentSelectionRef.current);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Không chuyển được nguồn dữ liệu: HTTP ${response.status}`));
+      await applyDestinationMutation(payload);
       const label = payload?.active?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
       setStatus(`Đã chuyển sang ${label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
     } catch (error) {
-      setStatus(`Không thể chuyển nguồn: ${error?.message || 'Google Sheet không truy cập được'}. Hệ thống đã giữ nguyên nguồn đang dùng.`);
+      setStatus(`Không thể chuyển nguồn: ${error?.message || 'Không truy cập được dữ liệu'}. Hệ thống đã giữ nguyên nguồn đang dùng.`);
     } finally {
       setSwitchingDestination(false);
       setRefreshing(false);
     }
-  }, [applyDataset, destinationInfo?.active?.id, switchingDestination]);
+  }, [applyDestinationMutation, destinationInfo?.active?.id, switchingDestination]);
 
-  const addDestination = useCallback(async ({ label, sheetUrl }) => {
+  const addDestination = useCallback(async ({ label, sheetUrl, file }) => {
     if (switchingDestination) return;
     setSwitchingDestination(true);
     setRefreshing(true);
-    setStatus(`Đang kiểm tra và tải Google Sheet ${label}...`);
+    setStatus(`Đang kiểm tra workbook ${label}...`);
     try {
-      const response = await apiFetch('/api/destinations', {
+      const body = new FormData();
+      body.set('label', label);
+      if (sheetUrl) body.set('sheetUrl', sheetUrl);
+      if (file) body.set('file', file);
+      const response = await apiFetch('/api/destinations/xlsx', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label, sheetUrl }),
+        body,
         cache: 'no-store',
       });
       const payload = await readApiPayload(response);
       if (!response.ok) {
-        throw new Error(apiErrorMessage(payload, `Không thêm được Google Sheet: HTTP ${response.status}`));
+        throw new Error(apiErrorMessage(payload, `Không thêm được workbook XLSX: HTTP ${response.status}`));
       }
-      clearCachedDataset();
-      setDestinationInfo({
-        active: payload.active,
-        destinations: payload.destinations || [],
-      });
-      writeCachedDataset(payload.dataset);
-      markCatalogRevisionStored();
-      applyDataset(payload.dataset, currentSelectionRef.current);
+      await applyDestinationMutation(payload);
       setStatus(`Đã thêm và chuyển sang ${payload.active?.label || label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
       return payload.active;
     } finally {
       setSwitchingDestination(false);
       setRefreshing(false);
     }
-  }, [applyDataset, switchingDestination]);
+  }, [applyDestinationMutation, switchingDestination]);
+
+  const replaceDestinationWorkbook = useCallback(async (destinationId, file) => {
+    if (!destinationId || !file || switchingDestination) return null;
+    setSwitchingDestination(true);
+    setRefreshing(true);
+    setStatus('Đang thay file XLSX...');
+    try {
+      const body = new FormData();
+      body.set('file', file);
+      const response = await apiFetch(`/api/destinations/${encodeURIComponent(destinationId)}/xlsx`, {
+        method: 'PUT',
+        body,
+        cache: 'no-store',
+      });
+      const payload = await readApiPayload(response);
+      if (!response.ok) {
+        throw new Error(apiErrorMessage(payload, `Không thay được file XLSX: HTTP ${response.status}`));
+      }
+      const updatedActive = await applyDestinationMutation(payload);
+      const label = updatedActive?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
+      setStatus(`Đã cập nhật workbook cho ${label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
+      return updatedActive;
+    } finally {
+      setSwitchingDestination(false);
+      setRefreshing(false);
+    }
+  }, [applyDestinationMutation, switchingDestination]);
+
+  const refreshDestinationFromSheet = useCallback(async (destinationId) => {
+    if (!destinationId || switchingDestination) return null;
+    setSwitchingDestination(true);
+    setRefreshing(true);
+    setStatus('Đang tải mới từ Google Sheet...');
+    try {
+      const response = await apiFetch(`/api/destinations/${encodeURIComponent(destinationId)}/refresh-from-sheet`, {
+        method: 'POST',
+        cache: 'no-store',
+      });
+      const payload = await readApiPayload(response);
+      if (!response.ok) {
+        throw new Error(apiErrorMessage(payload, `Không tải mới được từ Google Sheet: HTTP ${response.status}`));
+      }
+      const updatedActive = await applyDestinationMutation(payload);
+      const label = updatedActive?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
+      setStatus(`Đã tải mới ${label} từ Google Sheet (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
+      return updatedActive;
+    } finally {
+      setSwitchingDestination(false);
+      setRefreshing(false);
+    }
+  }, [applyDestinationMutation, switchingDestination]);
 
   useEffect(() => {
     const stored = readStoredSelection();
@@ -1511,6 +1572,8 @@ export default function DeckStudio({ initialDataset = null }) {
                 switchDestination(destinationId).catch((error) => setStatus(error.message));
               }}
               onAddDestination={addDestination}
+              onReplaceDestinationWorkbook={(destinationId, file) => replaceDestinationWorkbook(destinationId, file)}
+              onRefreshFromSheet={(destinationId) => refreshDestinationFromSheet(destinationId)}
               onRefresh={() => {
                 loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message));
               }}

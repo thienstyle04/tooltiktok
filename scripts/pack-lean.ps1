@@ -25,6 +25,8 @@ Write-Host ''
 $excludeDirs = @(
     'node_modules',
     '.git',
+    '.claude',
+    '.cursor',
     '.next',
     'export-quality-test-output',
     'drive-file-cache',
@@ -65,9 +67,14 @@ foreach ($d in $excludeDirs) {
 $robocopyArgs += '/XF'
 $robocopyArgs += @(
     '*.log',
+    'dev-log*.txt',
     '.env',
     '__*-markup.mjs',
     '*.backup.json',
+    # Workbook runtime là dữ liệu theo máy/người dùng. Bản mặc định đã nằm trong
+    # backend/resources/workbooks nên không mang cache XLSX cũ sang máy khác.
+    'workbook-cache.*.xlsx',
+    'workbook-source-meta.*.json',
     # Metadata nay chi dung cho may da probe Drive. Portable khong mang file
     # cache anh that, nen may moi phai tu xac minh lai thay vi ke thua ket qua cu.
     'drive-access-cache*.json'
@@ -76,6 +83,16 @@ $robocopyArgs += @(
 Write-Host '[1/4] Copy source (bo qua node_modules, .git, .next*, cache anh, test output)...'
 $null = & robocopy @robocopyArgs
 if ($LASTEXITCODE -gt 7) { throw "Robocopy that bai (exit $LASTEXITCODE)" }
+
+$requiredWorkbooks = @(
+    (Join-Path $staging 'backend\resources\workbooks\dalat.xlsx'),
+    (Join-Path $staging 'backend\resources\workbooks\greenland.xlsx')
+)
+foreach ($workbook in $requiredWorkbooks) {
+    if (-not (Test-Path -LiteralPath $workbook -PathType Leaf)) {
+        throw "Thieu workbook XLSX mac dinh trong goi portable: $workbook"
+    }
+}
 
 # An toan: xoa cache anh / Next build / test output neu van lot vao staging
 Get-ChildItem -Path $staging -Directory -Recurse -Force -ErrorAction SilentlyContinue |
@@ -103,6 +120,7 @@ $readmeLines = @(
     '5. Mo trinh duyet: http://localhost:3001',
     '',
     'LUU Y VE ANH:',
+    '- Du lieu dia diem mac dinh doc tu XLSX dong kem cho Da Lat va Green Land.',
     '- Anh dia diem lay tu Google Drive luc chay (khong dong san trong zip).',
     '- Khi start.bat, backend TU TAO cache anh vao backend/data/drive-file-cache (chay nen).',
     '- May moi can mang lan dau de tai anh; lan sau dung lai cache local.',
@@ -112,8 +130,8 @@ $readmeLines = @(
     'LUU Y KHAC:',
     '- Goi nay KHONG co node_modules. start.bat tu tao/tai su dung kho thu vien tren cung o dia voi tool.',
     '- Goi nay KHONG co backend/.env. start.bat tu khoi phuc cau hinh da luu tren cung may.',
-    '- Du lieu Sheet: mac dinh chi tai 1 lan luc mo tool. Bat DALAT_AUTO_SYNC_SHEET=true neu muon sync dinh ky.',
-    '- Bam "Lam moi" tren giao dien khi can keo Sheet moi ngay.',
+    '- XLSX la nguon chinh. Google Sheet chi la du phong va chi tai khi bam "Tai moi tu Google Sheet".',
+    '- Co the nhap hoac thay file XLSX trong muc Cai dat ma khong can sua Google Sheet.',
     '',
     "Tao luc: $timestamp"
 )

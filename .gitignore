@@ -12,6 +12,7 @@ backend/src/modules/guide/tools/export-quality-test-output/
 backend/data/drive-file-cache/
 backend/data/drive-file-cache-sim-*/
 backend/data/workbook-cache.*.xlsx
+backend/data/workbook-source-meta.*.json
 backend/data/*.backup.json
 backend/reports/*.json
 backend/reports/*.xlsx

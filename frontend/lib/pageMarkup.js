@@ -1030,17 +1030,16 @@ function itinerary4N3DStackBracketLead(lead) {
 }
 
 function renderItinerary4N3DStackCell(item) {
-  // Bỏ dòng địa chỉ — người dùng chỉ muốn giữ tiêu đề lớn cho gọn, đỡ rối chữ.
-  const dayLabel = String(item.label || '').trim();
   const name = gridDisplayName(item);
+  const address = cleanGridAddress(item?.metaPrimary);
   const focusClass = itinerary4N3DStackRowFocusClass(item);
   return `
     <div class="itinerary-4n3d-stack-page-cell${focusClass} ${escapeHtml(imageSourceClass(item))}">
       ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
       <div class="itinerary-4n3d-stack-page-cell-shade"></div>
       <div class="itinerary-4n3d-stack-row-copy">
-        ${dayLabel ? `<div class="itinerary-4n3d-stack-day">${escapeHtml(dayLabel)}</div>` : ''}
         <h3 class="itinerary-4n3d-stack-name">${escapeHtml(name)}</h3>
+        ${address ? `<p class="itinerary-4n3d-stack-address">${escapeHtml(address)}</p>` : ''}
       </div>
     </div>
   `;
@@ -1086,22 +1085,18 @@ function renderItineraryTimelineCover(page, index, listId, coverTitle, coverSubt
       </div>
       <div class="itl-cover-shade" aria-hidden="true"></div>
       <div class="itl-cover-copy">
-        <p class="itl-cover-serif">Lịch trình</p>
         ${hero ? `<p class="itl-cover-script" lang="vi">${hero}</p>` : ''}
-        <p class="itl-cover-serif">đi đâu?</p>
-        <div class="itl-cover-spark">— ✦ —</div>
+        ${hero ? '<div class="itl-cover-spark">— ✦ —</div>' : ''}
       </div>
     </article>
   `;
 }
 
 function renderItineraryTimelineRow(item) {
-  // Cấu trúc mô tả: giờ - tên | địa chỉ | giá (3 dòng rõ ràng, không nhồi
-  // chung "Khung giờ: ... · Giá: ..." thô từ metaSecondary vào 1 dòng như cũ).
+  // Cấu trúc người dùng chốt: giờ / tên địa điểm / địa chỉ.
   const time = String(item?.label || '').trim();
-  const place = String(item?.name || '').trim();
+  const place = gridDisplayName(item);
   const address = cleanGridAddress(item?.metaPrimary) || String(item?.metaPrimary || '').trim();
-  const price = gridPriceMetaFromSecondary(item?.metaSecondary).replace(/^Giá:\s*/i, '').trim();
   const placeHtml = place ? `<strong class="itl-day-place">${escapeHtml(place)}</strong>` : '';
   return `
     <div class="itl-day-row ${escapeHtml(imageSourceClass(item))}">
@@ -1110,11 +1105,9 @@ function renderItineraryTimelineRow(item) {
       </div>
       <div class="itl-day-track"><span class="itl-day-dot" aria-hidden="true"></span></div>
       <div class="itl-day-copy">
-        <p class="itl-day-line">
-          ${time ? `<span class="itl-day-time">${escapeHtml(time)}</span>` : ''}${time && place ? ' - ' : ''}${placeHtml}
-        </p>
+        ${time ? `<p class="itl-day-time">${escapeHtml(time)}</p>` : ''}
+        ${placeHtml}
         ${address ? `<p class="itl-day-address"><span class="itl-day-pin">📍</span>${escapeHtml(address)}</p>` : ''}
-        ${price ? `<p class="itl-day-price"><span class="itl-day-pin">💰</span>${escapeHtml(price)}</p>` : ''}
       </div>
     </div>
   `;
@@ -1172,14 +1165,12 @@ function formatGrid8QuaytungCoverTitle(title) {
     .replace(/\s+\bVN\b(?=\s|$|[./])/giu, '')
     .replace(/\s+/g, ' ')
     .trim();
-  const words = raw.split(' ');
-  if (words.length <= 4) return escapeHtml(raw);
-  const splitAt = Math.ceil(words.length / 2);
-  return `${escapeHtml(words.slice(0, splitAt).join(' '))}<br>${escapeHtml(words.slice(splitAt).join(' '))}`;
+  return formatBalancedTitleLines(raw, raw.length >= 44 ? 3 : 2);
 }
 
 function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
   const subtitle = String(coverSubtitle || '').replace(/^\[+|\]+$/g, '').trim();
+  const titleFitClass = responsiveTitleFitClass(coverTitle, 'grid8-quaytung-cover-title', 28, 44);
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'grid8-quaytung-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       <div class="grid8-quaytung-cover-photo">
@@ -1188,7 +1179,7 @@ function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle
       <div class="grid8-quaytung-cover-dim"></div>
       <div class="grid8-quaytung-cover-center">
         ${renderGrid8QuaytungDalatBadge()}
-        <h1 class="grid8-quaytung-cover-title">${formatGrid8QuaytungCoverTitle(coverTitle)}</h1>
+        <h1 class="grid8-quaytung-cover-title ${escapeHtml(titleFitClass)}">${formatGrid8QuaytungCoverTitle(coverTitle)}</h1>
         <p class="grid8-quaytung-cover-sub">${escapeHtml(subtitle)}</p>
       </div>
     </article>
@@ -1778,6 +1769,46 @@ function truncateMenuLine(value, maxLen = 42) {
   return `${(sp > maxLen * 0.45 ? cut.slice(0, sp) : cut).trim()}…`;
 }
 
+function responsiveTitleFitClass(value, prefix, mediumAt = 32, smallAt = 48) {
+  const length = String(value || '').replace(/\s+/g, ' ').trim().length;
+  if (length >= smallAt) return `${prefix}-fit-xs`;
+  if (length >= mediumAt) return `${prefix}-fit-sm`;
+  return '';
+}
+
+function formatBalancedTitleLines(value, maxLines = 2) {
+  const raw = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  const words = raw.split(' ');
+  if (words.length <= 3 || maxLines <= 1) return escapeHtml(raw);
+
+  const lines = [];
+  let remaining = [...words];
+  for (let lineIndex = 0; lineIndex < maxLines - 1 && remaining.length > 1; lineIndex += 1) {
+    const remainingLineCount = maxLines - lineIndex;
+    const remainingChars = remaining.join(' ').length;
+    const target = remainingChars / remainingLineCount;
+    let bestSplit = 1;
+    let bestDiff = Number.POSITIVE_INFINITY;
+    for (let split = 1; split <= remaining.length - (remainingLineCount - 1); split += 1) {
+      const length = remaining.slice(0, split).join(' ').length;
+      const diff = Math.abs(length - target);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestSplit = split;
+      }
+    }
+    lines.push(remaining.slice(0, bestSplit).join(' '));
+    remaining = remaining.slice(bestSplit);
+  }
+  if (remaining.length > 0) lines.push(remaining.join(' '));
+  return lines.map((line) => escapeHtml(line)).join('<br>');
+}
+
+function normalizeVietnameseDisplayText(value) {
+  return String(value || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+}
+
 function isCompletePov3V2Tagline(text) {
   const t = String(text || '').trim();
   if (t.length < 18) return false;
@@ -2160,6 +2191,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
   }
   if (isBudget3N2DCover(page)) {
     const title = String(coverTitle || '').trim();
+    const titleFitClass = responsiveTitleFitClass(title, 'budget72-title', 32, 50);
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'budget72-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
         <div class="budget72-cover-bg">
@@ -2168,7 +2200,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         <div class="budget72-cover-shade"></div>
         <div class="budget72-cover-copy">
           <div class="budget72-script">dalat.</div>
-          ${title ? `<h1 class="budget72-title">${escapeHtml(title)}</h1>` : ''}
+          ${title ? `<h1 class="budget72-title ${escapeHtml(titleFitClass)}">${formatBalancedTitleLines(title, 3)}</h1>` : ''}
           ${coverSubtitle ? `<p class="budget72-subtitle">${escapeHtml(coverSubtitle)}</p>` : ''}
         </div>
       </article>
@@ -2203,7 +2235,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         <div class="grid4-feature-shade"></div>
         <div class="grid4-feature-copy">
           ${isSpotlightPartnerCover(page) ? `<div class="spotlight-partner-cover-script">dalat.</div>` : ''}
-          ${isSpotlightPartnerCover(page) ? `<h1 class="grid4-feature-title">${escapeHtml(coverTitle || '')}</h1>` : ''}
+          ${coverTitle ? `<h1 class="grid4-feature-title spotlight-cover-hook">${escapeHtml(coverTitle)}</h1>` : ''}
           ${coverSubtitle ? `<p class="grid4-feature-subtitle spotlight-cover-caption">${escapeHtml(coverSubtitle)}</p>` : ''}
         </div>
       </article>
@@ -2253,7 +2285,7 @@ export function renderCoverPage(page, index, total, listId, hashtags = [], list 
         </div>
         <div class="grid6-cover-overlay">
            <div class="grid6-cover-header">ĐÀ LẠT</div>
-           <h1 class="grid6-cover-title">${escapeHtml(coverTitle)}</h1>
+           <h1 class="grid6-cover-title ${escapeHtml(responsiveTitleFitClass(coverTitle, 'grid6-cover-title', 34, 52))}">${escapeHtml(coverTitle)}</h1>
             <div class="grid6-cover-subtitle">${escapeHtml(coverSubtitle)}</div>
         </div>
       </article>
@@ -2832,17 +2864,17 @@ function budgetStoryActivityType(value) {
 }
 
 function budgetStoryDisplayTitle(value) {
-  const clean = String(value || '').replace(/\s+/g, ' ').trim();
+  const clean = normalizeVietnameseDisplayText(value);
   if (/di chuy[eể]n b[aằ]ng xe/i.test(clean) || /ph[uươ]ng trang/i.test(clean)) {
     return 'Xe SG - \u0110\u00e0 L\u1ea1t';
   }
   if (/check\s*out|l[eê]n xe|v[eề]\s+l[aạ]i\s+sg/i.test(clean)) {
     return 'V\u1ec1 l\u1ea1i SG';
   }
-  return budgetStoryActivityTitle(clean)
+  return normalizeVietnameseDisplayText(budgetStoryActivityTitle(clean)
     .replace(/^\s*(\u0102n s\u00e1ng|\u0102n tr\u01b0a|\u0102n t\u1ed1i|C\u00e0 ph\u00ea chi\u1ec1u|C\u00e0 ph\u00ea|Check-in|Ch\u01a1i \u0111\u00eam|Mua qu\u00e0|Ho\u1ea1t \u0111\u1ed9ng|D\u1ecbch v\u1ee5|L\u01b0u tr\u00fa|Cafe|\u0102n nh\u1eb9)\s*:\s*/i, '')
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim());
 }
 
 function budgetStoryDisplayType(value) {
@@ -3046,7 +3078,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
           <div class="grid8-cell-copy">
             ${showTime && item.label ? `<span class="grid8-cell-time">${escapeHtml(item.label)}</span>` : ''}
             ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
-            <strong class="story-image-title">${escapeHtml(displayName)}</strong>
+            <strong class="story-image-title ${escapeHtml(responsiveTitleFitClass(displayName, 'grid8-title', 34, 52))}">${escapeHtml(displayName)}</strong>
             ${showMeta && shouldShowItemAddress(item, showAddress) ? renderGrid8Meta(item.metaPrimary) : ''}
             ${showMeta ? renderGrid8Secondary(item.metaSecondary, { includeOpenHours: options.includeOpenHours === true }) : ''}
           </div>
@@ -3067,7 +3099,7 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
             <div class="grid8-cell-copy">
               ${showTime && item.label ? `<span class="grid8-cell-time">${escapeHtml(item.label)}</span>` : ''}
               ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ''}
-              <strong class="story-image-title">${escapeHtml(displayName)}</strong>
+              <strong class="story-image-title ${escapeHtml(responsiveTitleFitClass(displayName, 'grid8-title', 34, 52))}">${escapeHtml(displayName)}</strong>
               ${showMeta && shouldShowItemAddress(item, showAddress) ? renderGrid8Meta(item.metaPrimary) : ''}
               ${showMeta ? renderGrid8Secondary(item.metaSecondary, { includeOpenHours: options.includeOpenHours === true }) : ''}
             </div>
@@ -3078,22 +3110,24 @@ export function renderGrid8Items(items, title, chipText, backgroundImage, introT
 }
 
 export function renderItineraryItems(items) {
-  return items.map((item) => `
-    <div class="item-row itinerary-row">
-      <div class="thumb-block itinerary-thumb ${item.imageSource || (item.imageMapped ? 'manual' : 'fallback')}">
-        ${renderPreviewImage(item.imageUrl, item.name, '', item.candidateImageUrls)}
-      </div>
-      <div class="item-copy itinerary-copy">
-        <div class="itinerary-topline">
-          <div class="item-label itinerary-time">${escapeHtml(item.label)}</div>
-          <div class="itinerary-name story-image-title">${escapeHtml(item.name)}</div>
+  return items.map((item) => {
+    const displayName = gridDisplayName(item);
+    const secondary = String(item?.metaSecondary || '').replace(/\s+/g, ' ').trim();
+    const hoursMatch = secondary.match(/(?:Khung giờ|Open|Hoạt động):\s*([^·]+)/i);
+    const hours = hoursMatch?.[1]?.trim() || '';
+    return `
+      <div class="item-row itinerary-row">
+        <div class="thumb-block itinerary-thumb ${item.imageSource || (item.imageMapped ? 'manual' : 'fallback')}">
+          ${renderPreviewImage(item.imageUrl, displayName, '', item.candidateImageUrls)}
         </div>
-        <p class="item-meta story-image-meta itinerary-detail">
-          ${escapeHtml(item.metaPrimary)}${item.metaSecondary ? ` · ${escapeHtml(item.metaSecondary)}` : ''}
-        </p>
+        <div class="item-copy itinerary-copy">
+          ${hours ? `<div class="itinerary-hours">Khung giờ hoạt động: ${escapeHtml(hours)}</div>` : ''}
+          <div class="itinerary-name story-image-title">${escapeHtml(displayName)}</div>
+          <p class="item-meta story-image-meta itinerary-detail">${escapeHtml(item.metaPrimary)}</p>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 export function renderJourney4N3DItems(items) {
@@ -3263,15 +3297,13 @@ export function renderListPage(page, index, total, listId, hashtags = [], list =
 
   if (page.layoutVariant === 'journey-4n3d') {
     const dayNumber = String(Math.max(index, 1)).padStart(2, '0');
+    const dayMatch = String(page.chipText || '').trim().match(/^day\s*0*(\d+)$/i);
+    const badgeLabel = dayMatch ? `Ngày ${Number(dayMatch[1])}` : String(page.chipText || '').trim();
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'journey4', `journey-page-${dayNumber}`))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="journey-bg">${renderPreviewImage(page.backgroundImage, page.title, '', portablePageImageCandidates(page, page.backgroundImage))}</div>
-        <div class="journey-day-badge">${escapeHtml(page.chipText)}</div>
+        <div class="journey-day-badge">${escapeHtml(badgeLabel)}</div>
         <div class="journey-card">
-          <div class="journey-title-block">
-            <h3 class="page-title">${escapeHtml(journey4N3DTitle(page.chipText, page.title))}</h3>
-            ${pageSubtitle ? `<p class="page-lead">${escapeHtml(pageSubtitle)}</p>` : ''}
-          </div>
           ${renderJourney4N3DItems(page.items)}
         </div>
       </article>

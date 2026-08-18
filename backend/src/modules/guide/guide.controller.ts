@@ -1,12 +1,30 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Header,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import * as path from 'node:path';
 import { getAppConfig } from '../../config';
-import { DriveCacheWarmStatus, GuideService } from './guide.service';
+import { DriveCacheWarmStatus, GuideService, LocalWorkbookUpload } from './guide.service';
+import { MAX_WORKBOOK_FILE_BYTES } from './sync/workbook-source';
 import {
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
   AddDestinationRequest,
   AddDestinationResponse,
+  AddXlsxDestinationRequest,
   DestinationListResponse,
   GenerateBatchListsRequest,
   GenerateBatchListsResponse,
@@ -109,6 +127,29 @@ export class GuideController {
   @Post('api/destinations')
   addDestination(@Body() request: AddDestinationRequest): Promise<AddDestinationResponse> {
     return this.guideService.addDestination(request);
+  }
+
+  @Post('api/destinations/xlsx')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_WORKBOOK_FILE_BYTES } }))
+  addXlsxDestination(
+    @Body() request: AddXlsxDestinationRequest,
+    @UploadedFile() file?: LocalWorkbookUpload,
+  ): Promise<AddDestinationResponse> {
+    return this.guideService.addXlsxDestination(request, file);
+  }
+
+  @Put('api/destinations/:id/xlsx')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_WORKBOOK_FILE_BYTES } }))
+  replaceDestinationWorkbook(
+    @Param('id') id: string,
+    @UploadedFile() file?: LocalWorkbookUpload,
+  ): Promise<SetDestinationResponse> {
+    return this.guideService.replaceDestinationWorkbook(id, file);
+  }
+
+  @Post('api/destinations/:id/refresh-from-sheet')
+  refreshDestinationFromSheet(@Param('id') id: string): Promise<SetDestinationResponse> {
+    return this.guideService.refreshDestinationFromSheet(id);
   }
 
   @Get('api/partners')

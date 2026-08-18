@@ -5,6 +5,10 @@ export interface DestinationSummary {
   label: string;
   shortLabel: string;
   sheetUrl: string;
+  sourceType: 'xlsx' | 'google-sheet';
+  workbookFileName: string;
+  hasLocalWorkbook: boolean;
+  hasSheetFallback: boolean;
   totalItems?: number;
   syncedAt?: string;
 }
@@ -26,6 +30,11 @@ export interface SetDestinationResponse {
 export interface AddDestinationRequest {
   label: string;
   sheetUrl: string;
+}
+
+export interface AddXlsxDestinationRequest {
+  label: string;
+  sheetUrl?: string;
 }
 
 export interface AddDestinationResponse extends SetDestinationResponse {

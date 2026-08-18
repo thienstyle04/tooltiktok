@@ -47,7 +47,7 @@ export const GRID_4_TEMPLATE_VERSION = 18;
 export const GRID_4_MUTANT_TEMPLATE_VERSION = 2;
 export const GRID_5_TEMPLATE_VERSION = 4;
 export const GRID_6_TEMPLATE_VERSION = 18;
-export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 3;
+export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 4;
 export const GRID_8_TEMPLATE_VERSION = 19;
 export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
 export const BUDGET_3N2D_TEMPLATE_VERSION = 7;
@@ -4164,7 +4164,7 @@ function buildGrid6ZigzagPages(
     ),
     buildListPage(
       'Check-in', 'terracotta', 'ĐỊA ĐIỂM CHECK-IN',
-      '6 địa điểm check-in được tách riêng để lưu nhanh.',
+      '6 địa điểm check-in xếp zigzag đồng nhất với các trang còn lại.',
       buildBalancedCheckinGridItems(pools.checkinItems, 6, `${seedPrefix}-checkin`, pick, imageResolver),
       '', 'grid-6-zigzag',
     ),

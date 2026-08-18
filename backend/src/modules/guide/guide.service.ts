@@ -9,6 +9,7 @@ import {
   CaptionBlocks,
   AddDestinationRequest,
   AddDestinationResponse,
+  AddXlsxDestinationRequest,
   CoverPage,
   DatasetBuildContext,
   DeckPage,
@@ -82,14 +83,21 @@ import {
 
 import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
 import { localizeDecks, localizeText, setActiveDestinationLocalize, getMarketingCopy, buildCaptionHashtags, getDeckHashtagExtras, resolveDeckIdFromListId, cityLabel } from './sync/destination-localize';
-import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
+import {
+  fetchWorkbookFromSheet,
+  MAX_WORKBOOK_FILE_BYTES,
+  parseWorkbookBuffer,
+  SheetWorkbookSource,
+} from './sync/workbook-source';
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
 
 const HOOK_DOC_ID = '1E1erto0ZzdOO3NLC5ss1_cj8Dr_E46BY1OVk_UW70Lc';
 const HOOK_SECTION_BY_DECK: Record<string, { key: string; headingIncludes: string[] }> = {
   'itinerary-3n2d': { key: 'hook-1', headingIncludes: ['Hook 1', '3N2Đ'] },
+  'itinerary-timeline': { key: 'hook-1', headingIncludes: ['Hook 1', '3N2Đ'] },
   'itinerary-4n3d': { key: 'hook-2', headingIncludes: ['Hook 2', '4N3Đ'] },
   'itinerary-4n2d-grid8': { key: 'hook-2', headingIncludes: ['Hook 2', '4N3Đ'] },
+  'itinerary-4n3d-stack': { key: 'hook-2', headingIncludes: ['Hook 2', '4N3Đ'] },
   'budget-3n2d': { key: 'hook-3', headingIncludes: ['Hook 3', '3 triệu'] },
   'budget-72h-summary': { key: 'hook-3', headingIncludes: ['Hook 3', '3 triệu'] },
   'budget-3n2d-story': { key: 'hook-3', headingIncludes: ['Hook 3', '3 triệu'] },
@@ -110,6 +118,13 @@ const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
 const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
 type CaptionTone = DeepSeekCaptionResponse['tone'];
+
+export interface LocalWorkbookUpload {
+  buffer: Buffer;
+  originalname: string;
+  size: number;
+  mimetype?: string;
+}
 
 // Phần dữ liệu "nặng" (đọc Google Sheet, dò ảnh, build 22 mẫu deck) — chỉ cần build lại khi
 // Sheet/ảnh thật sự đổi. Tách riêng khỏi list AI để CRUD list không bao giờ phải chờ rebuild.
@@ -178,7 +193,6 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly DATASET_CACHE_TTL_MS = 20 * 60 * 1000; // chỉ dùng khi tắt session-sticky
   private datasetRebuildTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly DATASET_REBUILD_DEBOUNCE_MS = 800; // gộp nhiều lần invalidate liên tiếp thành 1 lần build nền.
-  private readonly FORCE_SYNC_MIN_INTERVAL_MS = 60 * 1000; // không ép đồng bộ lại Google Sheet quá 1 lần/phút dù FE gọi refresh=1 liên tục.
 
   private imageLibraryEntriesCache: ImageLibraryFolderEntry[] | null = null;
   private imageLibraryEntriesCacheTime = 0;
@@ -245,7 +259,7 @@ export class GuideService implements OnApplicationBootstrap {
     this.destinationDataLoading = true;
     this.destinationDataError = '';
     try {
-      console.log('[warmup] Đang tải Google Sheet và build dataset trước khi nhận request...');
+      console.log('[warmup] Đang đọc XLSX cục bộ và build dataset trước khi nhận request...');
       const t0 = Date.now();
       // Hook Doc phải sẵn trước khi build deck spotlight-v3 (cover title).
       await this.warmSpotlightV3Hooks();
@@ -475,7 +489,7 @@ export class GuideService implements OnApplicationBootstrap {
         destinationId: this.activeDestinationId,
         message: this.driveCacheWarmStatus.phase === 'warming'
           ? `Đang tải dữ liệu ${getDestinationConfig(this.activeDestinationId).label} và ${this.driveCacheWarmStatus.message.toLowerCase()}`
-          : `Đang tải dữ liệu Google Sheet (${getDestinationConfig(this.activeDestinationId).label})...`,
+          : `Đang đọc dữ liệu XLSX (${getDestinationConfig(this.activeDestinationId).label})...`,
       };
     }
     if (this.destinationDataError) {
@@ -710,6 +724,8 @@ export class GuideService implements OnApplicationBootstrap {
       sheetUrl: sheet.sheetUrl,
       exportUrl: sheet.exportUrl,
       workbookName: `Google Sheet - ${label}`,
+      workbookFileName: `${label}.xlsx`,
+      sourceType: 'google-sheet',
     };
     const previousDestinationId = this.activeDestinationId;
 
@@ -745,6 +761,128 @@ export class GuideService implements OnApplicationBootstrap {
     }
   }
 
+  async addXlsxDestination(
+    request: AddXlsxDestinationRequest,
+    file: LocalWorkbookUpload | undefined,
+  ): Promise<AddDestinationResponse> {
+    const label = this.normalizeDestinationLabel(request?.label);
+    const sheet = String(request?.sheetUrl || '').trim()
+      ? this.parseGoogleSheetUrl(request.sheetUrl)
+      : null;
+    const upload = this.validateWorkbookUpload(file);
+    const id = `xlsx-${stableHash(`${label}:${Date.now()}:${upload.originalname}`).toString(36)}`;
+    const config: DestinationConfig = {
+      id,
+      label,
+      shortLabel: this.createDestinationShortLabel(label),
+      sheetUrl: sheet?.sheetUrl || '',
+      exportUrl: sheet?.exportUrl || '',
+      workbookName: upload.originalname,
+      workbookFileName: upload.originalname,
+      sourceType: 'xlsx',
+    };
+    const source = this.createUploadedWorkbookSource(config, upload);
+    this.validateWorkbookData(source);
+    const previousDestinationId = this.activeDestinationId;
+
+    registerDestination(config);
+    try {
+      this.saveWorkbookSnapshot(source, true);
+      this.persistCustomDestinations();
+      this.workbookSourceByDestination.set(id, source);
+      const switched = await this.setActiveDestination({ id });
+      return {
+        ...switched,
+        destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
+      };
+    } catch (error) {
+      if (this.activeDestinationId === id && isDestinationId(previousDestinationId)) {
+        await this.setActiveDestination({ id: previousDestinationId }).catch(() => undefined);
+      }
+      unregisterDestination(id);
+      this.workbookSourceByDestination.delete(id);
+      this.workbookDerivedCacheByDestination.delete(id);
+      this.persistCustomDestinations();
+      const createdPath = this.workbookSnapshotPath(id);
+      if (fs.existsSync(createdPath)) fs.rmSync(createdPath, { force: true });
+      throw error;
+    }
+  }
+
+  async replaceDestinationWorkbook(
+    idValue: string,
+    file: LocalWorkbookUpload | undefined,
+  ): Promise<SetDestinationResponse> {
+    const id = String(idValue || '').trim();
+    if (!isDestinationId(id)) {
+      throw new NotFoundException('Nguồn dữ liệu không tồn tại.');
+    }
+    const config = getDestinationConfig(id);
+    const upload = this.validateWorkbookUpload(file);
+    const source = this.createUploadedWorkbookSource(config, upload);
+    this.validateWorkbookData(source);
+
+    // Chỉ thay file sau khi đã đọc và kiểm tra cấu trúc thành công.
+    this.saveWorkbookSnapshot(source, true);
+    config.sourceType = 'xlsx';
+    config.workbookName = upload.originalname;
+    config.workbookFileName = upload.originalname;
+    if (id === 'dalat' || id === 'greenland') {
+      this.writeWorkbookMetadata(id, upload.originalname);
+    } else {
+      this.persistCustomDestinations();
+    }
+    this.workbookSourceByDestination.set(id, source);
+    this.workbookDerivedCacheByDestination.delete(id);
+
+    if (this.activeDestinationId !== id) {
+      return this.setActiveDestination({ id });
+    }
+    await this.activateWorkbookSource(source, { retryKnownFailures: false });
+    return {
+      active: this.getActiveDestinationSummary(),
+      dataset: await this.getDataset(),
+    };
+  }
+
+  async refreshDestinationFromSheet(idValue: string): Promise<SetDestinationResponse> {
+    const id = String(idValue || '').trim();
+    if (!isDestinationId(id)) {
+      throw new NotFoundException('Nguồn dữ liệu không tồn tại.');
+    }
+    const config = getDestinationConfig(id);
+    if (!config.sheetUrl || !config.exportUrl) {
+      throw new BadRequestException('Nguồn này chưa có link Google Sheet dự phòng.');
+    }
+
+    let downloaded: SheetWorkbookSource;
+    try {
+      downloaded = await fetchWorkbookFromSheet(config);
+      this.validateWorkbookData(downloaded);
+    } catch (error) {
+      throw new BadRequestException(
+        `Không thể cập nhật từ Google Sheet; dữ liệu XLSX cũ vẫn được giữ nguyên. ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    const source: SheetWorkbookSource = {
+      ...downloaded,
+      workbookName: config.workbookFileName || config.workbookName,
+      sourceType: 'runtime-xlsx',
+    };
+    this.saveWorkbookSnapshot(source, true);
+    this.workbookSourceByDestination.set(id, source);
+    this.workbookDerivedCacheByDestination.delete(id);
+    if (this.activeDestinationId !== id) {
+      return this.setActiveDestination({ id });
+    }
+    await this.activateWorkbookSource(source, { retryKnownFailures: true });
+    return {
+      active: this.getActiveDestinationSummary(),
+      dataset: await this.getDataset(),
+    };
+  }
+
   async setActiveDestination(request: SetDestinationRequest): Promise<SetDestinationResponse> {
     const nextId = String(request?.id ?? '').trim();
     if (!isDestinationId(nextId)) {
@@ -771,7 +909,7 @@ export class GuideService implements OnApplicationBootstrap {
 
       this.workbookSource = this.workbookSourceByDestination.get(nextId) || null;
       if (!this.workbookSource) {
-        this.workbookSource = this.loadWorkbookSnapshot(nextId);
+        this.workbookSource = this.loadPreferredWorkbookSource(nextId);
         if (this.workbookSource) {
           this.workbookSourceByDestination.set(nextId, this.workbookSource);
         }
@@ -784,11 +922,16 @@ export class GuideService implements OnApplicationBootstrap {
     }
 
     const needsFirstLoad = !this.workbookSource;
+    const needsLocalManifestRefresh = switchingDestination
+      && Boolean(this.workbookSource)
+      && !this.workbookDerivedCache;
     this.destinationDataLoading = needsFirstLoad;
     this.destinationDataError = '';
     try {
       if (needsFirstLoad) {
         await this.syncWorkbookNow(switchingDestination ? 'tai diem den lan dau' : 'tai du lieu lan dau');
+      } else if (needsLocalManifestRefresh && this.workbookSource) {
+        await this.refreshSheetDriveManifest(this.workbookSource, false);
       }
       const dataset = await this.getDataset();
       if (this.workbookSource) {
@@ -809,7 +952,7 @@ export class GuideService implements OnApplicationBootstrap {
         setActiveDestinationLocalize(previousDestinationId);
         this.resetDestinationScopedState();
         this.workbookSource = this.workbookSourceByDestination.get(previousDestinationId)
-          || this.loadWorkbookSnapshot(previousDestinationId);
+          || this.loadPreferredWorkbookSource(previousDestinationId);
         if (this.workbookSource) {
           this.workbookSourceByDestination.set(previousDestinationId, this.workbookSource);
         }
@@ -868,9 +1011,9 @@ export class GuideService implements OnApplicationBootstrap {
           eyebrow: 'NestJS refactored tool',
           title: `${destination.label} TikTok Carousel Tool`,
           description:
-            `Hệ thống tự động chuyển đổi dữ liệu ${destination.label} từ Google Sheet thành các bộ ảnh TikTok Carousel chuyên nghiệp.`,
+            `Hệ thống tự động chuyển đổi dữ liệu ${destination.label} từ workbook XLSX thành các bộ ảnh TikTok Carousel chuyên nghiệp.`,
           note:
-            `Dữ liệu và hình ảnh đang được đồng bộ trực tiếp từ Google Sheet ${destination.label}. Bạn có thể cập nhật nội dung và Drive link trong Sheet để thay đổi kết quả.`,
+            `XLSX cục bộ là nguồn chính của ${destination.label}; Google Sheet chỉ được dùng khi bạn chủ động cập nhật hoặc cần dự phòng.`,
           stats: [
             { label: 'Tổng địa điểm', value: context.totalItems },
             { label: `Ảnh ${destination.shortLabel}`, value: context.imageUrls.length },
@@ -2697,7 +2840,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   private getWorkbookSource(): SheetWorkbookSource {
     if (!this.workbookSource) {
-      throw new NotFoundException('Chua tai duoc du lieu tu Google Sheet.');
+      throw new NotFoundException('Chưa tải được dữ liệu từ workbook XLSX.');
     }
     return this.workbookSource;
   }
@@ -3898,31 +4041,31 @@ export class GuideService implements OnApplicationBootstrap {
 
   private async prepareWorkbookForDataset(forceRefresh: boolean): Promise<void> {
     if (!this.workbookSource) {
-      if (!forceRefresh) {
-        const snapshot = this.loadWorkbookSnapshot(this.activeDestinationId);
-        if (snapshot) {
-          this.workbookSource = snapshot;
-          this.workbookSourceByDestination.set(this.activeDestinationId, snapshot);
-          return;
-        }
+      const localSource = this.loadPreferredWorkbookSource(this.activeDestinationId);
+      if (localSource) {
+        this.workbookSource = localSource;
+        this.workbookSourceByDestination.set(this.activeDestinationId, localSource);
+        await this.refreshSheetDriveManifest(localSource, false);
+        return;
       }
       await this.syncWorkbookNow('tai du lieu lan dau');
       return;
     }
 
     if (forceRefresh) {
-      const now = Date.now();
-      // Nhiều hành động của FE (tạo/xoá list AI, bấm "Làm mới"...) đều gọi refresh=1 liên tiếp.
-      // Chỉ thực sự kéo lại Google Sheet tối đa 1 lần/phút, tránh mỗi hành động lại tốn 10-25s tải mạng.
-      if (this.syncPromise || (now - this.lastSyncTime) >= this.FORCE_SYNC_MIN_INTERVAL_MS) {
-        await this.syncWorkbookNow('lam moi theo yeu cau');
+      const localSource = this.loadPreferredWorkbookSource(this.activeDestinationId);
+      if (localSource) {
+        await this.activateWorkbookSource(localSource, { retryKnownFailures: false });
       } else {
-        console.log('[sync] Bo qua lam moi Google Sheet (da dong bo gan day) — dung ban hien co.');
+        // Nếu file trên đĩa bị mất/hỏng nhưng bộ nhớ còn tốt, không làm mất phiên đang dùng.
+        console.warn('[xlsx] Không tìm thấy file cục bộ hợp lệ; giữ workbook đang có trong bộ nhớ.');
       }
       return;
     }
 
-    if (this.AUTO_SYNC_ENABLED) void this.triggerBackgroundSync();
+    if (this.AUTO_SYNC_ENABLED && getDestinationConfig(this.activeDestinationId).sourceType === 'google-sheet') {
+      void this.triggerBackgroundSync();
+    }
   }
 
   private async triggerBackgroundSync(): Promise<void> {
@@ -3942,23 +4085,24 @@ export class GuideService implements OnApplicationBootstrap {
     if (this.syncPromise) return this.syncPromise;
 
     this.isSyncing = true;
-    console.log(`[sync] Bat dau tai du lieu Google Sheet (${reason})...`);
+    console.log(`[sync] Không có XLSX cục bộ; tải Google Sheet dự phòng (${reason})...`);
 
     this.syncPromise = (async () => {
       try {
         const result = await fetchWorkbookFromSheet(getDestinationConfig(this.activeDestinationId));
+        this.validateWorkbookData(result);
         this.workbookSource = result;
         this.workbookSourceByDestination.set(result.destinationId, result);
-        this.saveWorkbookSnapshot(result);
+        this.saveWorkbookSnapshot(result, true);
         // Chờ manifest Drive xong trong cùng lượt sync để warmup build đúng 1 lần (không fire-and-forget rồi rebuild nền).
         await this.refreshSheetDriveManifest(result, reason === 'lam moi theo yeu cau');
         this.lastSyncTime = Date.now();
-        console.log(`[sync] Da tai du lieu Google Sheet (${getDestinationConfig(this.activeDestinationId).label}): ${result.workbookName} (${result.bytes} bytes).`);
+        console.log(`[sync] Đã lưu Google Sheet dự phòng thành XLSX cục bộ (${getDestinationConfig(this.activeDestinationId).label}): ${result.bytes} bytes.`);
       } catch (error) {
         console.error('[sync] Tai du lieu Google Sheet that bai:', error);
         this.lastSyncTime = Date.now();
         if (this.workbookSource) {
-          console.warn('[sync] Dung ban snapshot Google Sheet cu.');
+          console.warn('[sync] Dùng workbook đang có trong bộ nhớ.');
           return;
         }
         const message = error instanceof Error ? error.message : String(error);
@@ -4086,6 +4230,85 @@ export class GuideService implements OnApplicationBootstrap {
     return value.slice(0, 3);
   }
 
+  private normalizeDestinationLabel(value: unknown): string {
+    const label = String(value || '').replace(/\s+/g, ' ').trim();
+    if (label.length < 2 || label.length > 60) {
+      throw new BadRequestException('Tên nguồn dữ liệu phải có từ 2 đến 60 ký tự.');
+    }
+    return label;
+  }
+
+  private validateWorkbookUpload(file: LocalWorkbookUpload | undefined): LocalWorkbookUpload {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Vui lòng chọn file XLSX.');
+    }
+    const originalname = path.basename(String(file.originalname || 'du-lieu.xlsx')).trim();
+    if (!/\.xlsx$/i.test(originalname)) {
+      throw new BadRequestException('Chỉ chấp nhận file có định dạng .xlsx.');
+    }
+    if (file.buffer.byteLength > MAX_WORKBOOK_FILE_BYTES || Number(file.size || 0) > MAX_WORKBOOK_FILE_BYTES) {
+      throw new BadRequestException('File XLSX vượt quá giới hạn 20 MB.');
+    }
+    return { ...file, originalname, size: file.buffer.byteLength };
+  }
+
+  private createUploadedWorkbookSource(
+    config: DestinationConfig,
+    file: LocalWorkbookUpload,
+  ): SheetWorkbookSource {
+    try {
+      return parseWorkbookBuffer(file.buffer, {
+        workbookName: file.originalname,
+        destinationId: config.id,
+        sourceUrl: this.workbookSnapshotPath(config.id),
+        sourceType: 'runtime-xlsx',
+      });
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private validateWorkbookData(source: SheetWorkbookSource): void {
+    let recognizedSheetCount = 0;
+    let dataRowCount = 0;
+    const nameFields = ['ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten'];
+    for (const sheetName of source.workbook.SheetNames) {
+      if (!resolveSectionKeyFromSheetName(sheetName)) continue;
+      recognizedSheetCount += 1;
+      const rows = XLSX.utils.sheet_to_json<(string | number)[]>(source.workbook.Sheets[sheetName], {
+        header: 1,
+        raw: false,
+        defval: '',
+      });
+      const headers = (rows[0] || []).map((header) => normalizeText(header));
+      const nameIndexes = nameFields
+        .map((field) => headers.indexOf(field))
+        .filter((index) => index >= 0);
+      if (!nameIndexes.length) continue;
+      dataRowCount += rows.slice(1).filter((row) => nameIndexes.some((index) => String(row[index] || '').trim())).length;
+    }
+    if (!recognizedSheetCount || !dataRowCount) {
+      throw new BadRequestException(
+        'Workbook không có dữ liệu địa điểm hợp lệ. Cần có sheet đúng nhóm và cột tên địa điểm.',
+      );
+    }
+  }
+
+  private async activateWorkbookSource(
+    source: SheetWorkbookSource,
+    options: { retryKnownFailures: boolean },
+  ): Promise<void> {
+    this.workbookSource = source;
+    this.workbookSourceByDestination.set(source.destinationId, source);
+    this.workbookDerivedCacheByDestination.delete(source.destinationId);
+    this.workbookDerivedCache = null;
+    this.workbookDerivedCacheFresh = false;
+    this.workbookDerivedCacheTime = 0;
+    this.invalidateDatasetCache({ immediate: true });
+    await this.refreshSheetDriveManifest(source, options.retryKnownFailures);
+    this.scheduleWarmDriveFileDiskCache();
+  }
+
   private loadCustomDestinations(): void {
     if (!fs.existsSync(this.customDestinationsPath)) return;
     try {
@@ -4097,7 +4320,9 @@ export class GuideService implements OnApplicationBootstrap {
         const label = String(entry.label || '').trim();
         const sheetUrl = String(entry.sheetUrl || '').trim();
         const exportUrl = String(entry.exportUrl || '').trim();
-        if (!/^sheet-[a-z0-9]+$/.test(id) || !label || !sheetUrl || !exportUrl) continue;
+        const sourceType = entry.sourceType === 'xlsx' ? 'xlsx' : 'google-sheet';
+        if (!/^(sheet|xlsx)-[a-z0-9]+$/.test(id) || !label) continue;
+        if (sourceType === 'google-sheet' && (!sheetUrl || !exportUrl)) continue;
         registerDestination({
           id,
           label,
@@ -4105,6 +4330,8 @@ export class GuideService implements OnApplicationBootstrap {
           sheetUrl,
           exportUrl,
           workbookName: String(entry.workbookName || `Google Sheet - ${label}`),
+          workbookFileName: String(entry.workbookFileName || entry.workbookName || `${label}.xlsx`),
+          sourceType,
           partnerFirst: Boolean(entry.partnerFirst),
         });
       }
@@ -4134,8 +4361,16 @@ export class GuideService implements OnApplicationBootstrap {
 
   private getDestinationSummary(id: DestinationId): DestinationSummary {
     const stats = this.readDestinationStats(id);
+    const config = getDestinationConfig(id);
+    this.applyStoredWorkbookMetadata(config);
     return {
-      ...toDestinationInfo(getDestinationConfig(id)),
+      ...toDestinationInfo(config),
+      hasLocalWorkbook: Boolean(
+        this.workbookSourceByDestination.get(id)
+        || fs.existsSync(this.workbookSnapshotPath(id))
+        || this.bundledWorkbookPath(id),
+      ),
+      hasSheetFallback: Boolean(config.sheetUrl && config.exportUrl),
       ...stats,
     };
   }
@@ -4172,6 +4407,47 @@ export class GuideService implements OnApplicationBootstrap {
     return path.join(this.dataRoot, `workbook-cache.${id}.xlsx`);
   }
 
+  private workbookMetadataPath(id: DestinationId): string {
+    return path.join(this.dataRoot, `workbook-source-meta.${id}.json`);
+  }
+
+  private applyStoredWorkbookMetadata(config: DestinationConfig): void {
+    const metadataPath = this.workbookMetadataPath(config.id);
+    if (!fs.existsSync(metadataPath)) return;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(metadataPath, 'utf-8')) as { workbookFileName?: string };
+      const fileName = path.basename(String(parsed.workbookFileName || '')).trim();
+      if (/\.xlsx$/i.test(fileName)) {
+        config.workbookName = fileName;
+        config.workbookFileName = fileName;
+      }
+    } catch {
+      // Metadata chỉ dùng để hiển thị tên file; workbook vẫn đọc bình thường nếu file này hỏng.
+    }
+  }
+
+  private writeWorkbookMetadata(id: DestinationId, workbookFileName: string): void {
+    this.ensureDataRoot();
+    fs.writeFileSync(
+      this.workbookMetadataPath(id),
+      JSON.stringify({ workbookFileName, updatedAt: new Date().toISOString() }, null, 2),
+      'utf-8',
+    );
+  }
+
+  private bundledWorkbookPath(id: DestinationId): string | null {
+    const fileName = getDestinationConfig(id).bundledWorkbookFile;
+    if (!fileName) return null;
+    const target = path.join(this.toolRoot, 'resources', 'workbooks', fileName);
+    return safeRelative(path.join(this.toolRoot, 'resources', 'workbooks'), target) && fs.existsSync(target)
+      ? target
+      : null;
+  }
+
+  private loadPreferredWorkbookSource(id: DestinationId): SheetWorkbookSource | null {
+    return this.loadWorkbookSnapshot(id) || this.loadBundledWorkbook(id);
+  }
+
   private loadWorkbookSnapshot(id: DestinationId): SheetWorkbookSource | null {
     const snapshotPath = this.workbookSnapshotPath(id);
     if (!fs.existsSync(snapshotPath)) return null;
@@ -4179,35 +4455,83 @@ export class GuideService implements OnApplicationBootstrap {
       const workbookBuffer = fs.readFileSync(snapshotPath);
       if (!workbookBuffer.length) return null;
       const config = getDestinationConfig(id);
+      this.applyStoredWorkbookMetadata(config);
       const stat = fs.statSync(snapshotPath);
-      console.log(`[sync] Dung snapshot Sheet da tai truoc (${config.label}): ${snapshotPath}`);
-      return {
-        workbook: XLSX.read(workbookBuffer, { cellDates: false, type: 'buffer' }),
+      const source = parseWorkbookBuffer(workbookBuffer, {
         workbookName: config.workbookName,
         destinationId: id,
-        bytes: workbookBuffer.byteLength,
         fetchedAt: stat.mtimeMs,
-        sourceUrl: config.exportUrl,
-      };
+        sourceUrl: snapshotPath,
+        sourceType: 'runtime-xlsx',
+      });
+      this.validateWorkbookData(source);
+      console.log(`[xlsx] Dùng workbook cục bộ (${config.label}): ${snapshotPath}`);
+      return source;
     } catch (error) {
       console.warn(
-        `[sync] Khong doc duoc snapshot Sheet (${getDestinationConfig(id).label}), se tai lai khi can:`,
+        `[xlsx] Không đọc được workbook cục bộ (${getDestinationConfig(id).label}), thử bản đóng kèm:`,
         error instanceof Error ? error.message : error,
       );
       return null;
     }
   }
 
-  private saveWorkbookSnapshot(source: SheetWorkbookSource): void {
+  private loadBundledWorkbook(id: DestinationId): SheetWorkbookSource | null {
+    const bundledPath = this.bundledWorkbookPath(id);
+    if (!bundledPath) return null;
     try {
-      this.ensureDataRoot();
-      const body = XLSX.write(source.workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
-      fs.writeFileSync(this.workbookSnapshotPath(source.destinationId), body);
+      const config = getDestinationConfig(id);
+      const body = fs.readFileSync(bundledPath);
+      const stat = fs.statSync(bundledPath);
+      const source = parseWorkbookBuffer(body, {
+        workbookName: config.workbookName,
+        destinationId: id,
+        fetchedAt: stat.mtimeMs,
+        sourceUrl: bundledPath,
+        sourceType: 'bundled-xlsx',
+      });
+      this.validateWorkbookData(source);
+      console.log(`[xlsx] Dùng workbook đóng kèm (${config.label}): ${bundledPath}`);
+      return source;
     } catch (error) {
       console.warn(
-        `[sync] Khong luu duoc snapshot Sheet (${getDestinationConfig(source.destinationId).label}):`,
+        `[xlsx] Không đọc được workbook đóng kèm (${getDestinationConfig(id).label}):`,
         error instanceof Error ? error.message : error,
       );
+      return null;
+    }
+  }
+
+  private saveWorkbookSnapshot(source: SheetWorkbookSource, throwOnError = false): void {
+    const target = this.workbookSnapshotPath(source.destinationId);
+    const temporary = `${target}.tmp-${process.pid}-${Date.now()}`;
+    const backup = `${target}.bak`;
+    let movedOldFile = false;
+    try {
+      this.ensureDataRoot();
+      const body = source.workbookBuffer?.length
+        ? source.workbookBuffer
+        : XLSX.write(source.workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+      fs.writeFileSync(temporary, body);
+      if (fs.existsSync(backup)) fs.rmSync(backup, { force: true });
+      if (fs.existsSync(target)) {
+        fs.renameSync(target, backup);
+        movedOldFile = true;
+      }
+      fs.renameSync(temporary, target);
+      if (movedOldFile && fs.existsSync(backup)) fs.rmSync(backup, { force: true });
+    } catch (error) {
+      if (fs.existsSync(temporary)) fs.rmSync(temporary, { force: true });
+      if (movedOldFile && !fs.existsSync(target) && fs.existsSync(backup)) {
+        fs.renameSync(backup, target);
+      }
+      console.warn(
+        `[xlsx] Không lưu được workbook cục bộ (${getDestinationConfig(source.destinationId).label}):`,
+        error instanceof Error ? error.message : error,
+      );
+      if (throwOnError) {
+        throw new ServiceUnavailableException('Không thể lưu file XLSX; dữ liệu cũ vẫn được giữ nguyên.');
+      }
     }
   }
 
