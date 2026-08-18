@@ -65,7 +65,7 @@ import {
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
 import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownFailedDriveFileId, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
@@ -112,7 +112,7 @@ const isSectionedGoogleDocHookDeck = (deckId: string): boolean => Boolean(HOOK_S
 const isGoogleDocHookDeck = (deckId: string): boolean =>
   isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
-const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1';
+const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1' || deckId === 'one-way-story';
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -1216,9 +1216,15 @@ export class GuideService implements OnApplicationBootstrap {
     const page = list.pages?.[pageIndex];
     if (!page) throw new NotFoundException(`Khong tim thay trang: ${pageIndex + 1}`);
 
-    const titleLimit = page.type === 'cover' ? 60 : 90;
+    const titleLimit = page.layoutVariant === 'one-way-story-cover'
+      ? 110
+      : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
+        ? 220
+        : page.type === 'cover' ? 60 : 90;
     const title = this.normalizeEditablePageText(request.title ?? page.title).slice(0, titleLimit);
-    const subtitle = this.normalizeEditablePageText(request.subtitle ?? page.subtitle).slice(0, 220);
+    const subtitle = (page.layoutVariant === 'one-way-story-road'
+      ? this.normalizeEditablePageMultilineText(request.subtitle ?? page.subtitle)
+      : this.normalizeEditablePageText(request.subtitle ?? page.subtitle)).slice(0, 220);
 
     const store = this.loadPageTextOverrides();
     store.decks[deckId] ||= {};
@@ -1333,8 +1339,9 @@ export class GuideService implements OnApplicationBootstrap {
     }
     generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
 
-    if (isNonAiDeck(deckId) && generatedPages.length !== 14) {
-      throw new BadRequestException(`Mẫu 1 phải có đúng 14 trang, hiện có ${generatedPages.length}.`);
+    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : 0;
+    if (expectedNonAiPageCount && generatedPages.length !== expectedNonAiPageCount) {
+      throw new BadRequestException(`Mẫu ${currentDeck.navTitle} phải có đúng ${expectedNonAiPageCount} trang, hiện có ${generatedPages.length}.`);
     }
     const generatedList = buildDeckList(
       deckId,
@@ -1429,7 +1436,7 @@ export class GuideService implements OnApplicationBootstrap {
           });
           results.push({ listId: generated.listId, navTitle: generated.navTitle, tone: 'không AI' });
         } catch (error) {
-          console.warn(`[batch] Lỗi tạo Mẫu 1 ${i + 1}/${count}:`, error instanceof Error ? error.message : error);
+          console.warn(`[batch] Lỗi tạo ${deckId} ${i + 1}/${count}:`, error instanceof Error ? error.message : error);
           failCount += 1;
         }
       }
@@ -1840,6 +1847,18 @@ export class GuideService implements OnApplicationBootstrap {
       .trim();
   }
 
+  private normalizeEditablePageMultilineText(value: unknown): string {
+    return String(value ?? '')
+      .normalize('NFC')
+      .replace(/\r\n?/g, '\n')
+      .replace(/[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f]/g, ' ')
+      .split('\n')
+      .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   private loadPageTextOverrides(): PageTextOverrideStore {
     const empty: PageTextOverrideStore = { version: 1, savedAt: '', decks: {} };
     const filePath = this.resolveDestinationDataPath('page-text-overrides');
@@ -2022,6 +2041,7 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n3d-stack') return ITINERARY_4N3D_STACK_TEMPLATE_VERSION;
     if (deckId === 'itinerary-timeline') return ITINERARY_TIMELINE_TEMPLATE_VERSION;
+    if (deckId === 'one-way-story') return ONE_WAY_STORY_TEMPLATE_VERSION;
     if (deckId === 'budget-4n3d-wallet') return BUDGET_4N3D_WALLET_TEMPLATE_VERSION;
     return undefined;
   }
@@ -2067,6 +2087,9 @@ export class GuideService implements OnApplicationBootstrap {
       ...cleanList,
       description: safeDescription,
       pages: enrichedPages.map((page, pageIndex) => {
+        if (String(page.layoutVariant || '').startsWith('one-way-story-')) {
+          return page;
+        }
         const pageBackgroundImage = this.backgroundImageForPage(cleanList, page, pageIndex, coverImageUrls);
         if (page.type === 'cover') {
           const grid = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
@@ -2084,6 +2107,9 @@ export class GuideService implements OnApplicationBootstrap {
     return {
       ...list,
       pages: enrichedPages.map((page, pageIndex) => {
+        if (String(page.layoutVariant || '').startsWith('one-way-story-')) {
+          return page;
+        }
         if (page.type === 'cover') {
           const coverImages = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
           return { ...page, backgroundImage: coverImages[0] || this.backgroundImageForPage(list, page, pageIndex, coverImageUrls) };
@@ -2225,6 +2251,10 @@ export class GuideService implements OnApplicationBootstrap {
         title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
         subtitle: this.sanitizeContentText(coverSubtitle),
       };
+    }
+
+    if (String(page.layoutVariant || '').startsWith('one-way-story-')) {
+      return this.sanitizeDeckPageText(page);
     }
 
     const rawSubtitle = String(page.subtitle ?? '').trim();
@@ -2497,7 +2527,7 @@ export class GuideService implements OnApplicationBootstrap {
             ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
             : isSectionedGoogleDocHookDeck(deckId)
               ? ''
-            : isPremadeHookDeck(deckId)
+            : isPremadeHookDeck(deckId) && deckId !== 'one-way-story'
               ? this.resolvePremadeHookCoverTitle(deckId, refreshSeed)
               : '';
         const safeCaption = {
@@ -3756,11 +3786,14 @@ export class GuideService implements OnApplicationBootstrap {
       };
     }
 
+    const oneWayMultiline = page.layoutVariant === 'one-way-story-road';
     const cleanPage: DeckPage = {
       ...page,
       chipText: this.sanitizeContentText(localizeText(page.chipText || '', this.activeDestinationId)),
       title: this.sanitizeContentText(sanitizeDeckHeadline(localizeText(page.title || '', this.activeDestinationId))),
-      subtitle: this.sanitizeContentText(localizeText(page.subtitle || '', this.activeDestinationId)),
+      subtitle: oneWayMultiline
+        ? this.normalizeEditablePageMultilineText(localizeText(page.subtitle || '', this.activeDestinationId))
+        : this.sanitizeContentText(localizeText(page.subtitle || '', this.activeDestinationId)),
       items: Array.isArray(page.items)
         ? page.items.map((item) => this.sanitizePageItemText(item, page))
         : [],

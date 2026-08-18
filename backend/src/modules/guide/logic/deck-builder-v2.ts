@@ -39,6 +39,8 @@ import {
   type SpotlightV3BuildContext,
 } from '../sync/spotlight-hook-source';
 import type { TitlePlacement } from '../../../common/interfaces/guide.types';
+import { BUNDLED_ONE_WAY_HOOKS } from '../sync/hook-fallbacks';
+import { getActiveDestinationLocalize } from '../sync/destination-localize';
 
 export const GRID_8_FEED_TEMPLATE_VERSION = 17;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
@@ -60,6 +62,7 @@ export const POV_3_V2_TEMPLATE_VERSION = 13;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
 export const ITINERARY_4N3D_STACK_TEMPLATE_VERSION = 8;
 export const ITINERARY_TIMELINE_TEMPLATE_VERSION = 10;
+export const ONE_WAY_STORY_TEMPLATE_VERSION = 2;
 
 export const V2_DECK_IDS = [
   'grid-6-quaytung',
@@ -71,6 +74,7 @@ export const V2_DECK_IDS = [
   'pov-3-v2',
   'itinerary-4n3d-stack',
   'itinerary-timeline',
+  'one-way-story',
 ] as const;
 
 export type V2DeckId = typeof V2_DECK_IDS[number];
@@ -588,6 +592,215 @@ export function buildCarouselMau1Pages(
   return [cover, ...pages];
 }
 
+const ONE_WAY_ROAD_TITLE = 'tui đi ngược chiều mấy bà ơi huhu, tui quẹo vô đường Nguyễn Văn Trỗi xong bị hốt';
+const ONE_WAY_ROAD_SUBTITLE = [
+  'haizzz, tui chia sẻ thêm mấy con đường để mấy bà tránh nha',
+  '',
+  'Trần Nhật Duật',
+  'Yagout',
+  'Thông Thiên Học',
+  'Trương Công Định',
+  'Khu Hòa Bình có đường bạn không được rẽ á',
+].join('\n');
+const ONE_WAY_SLOPE_TITLE = 'Đà Lạt nhiều dốc lắm mấy bà ơi, ai tay lái yếu thì đừng thuê xe mà đặt grab nha, có nhiều quán cà phê đẹp nhưng đường xuống ghê lắm';
+const ONE_WAY_SLOPE_SUBTITLE = 'trừ khúc bị phạt tiền xui chứ chuyến đi của tui mê lắm';
+const ONE_WAY_HOMESTAYS = ['lagom homestay', 'little fish dalat', 'tori wooden house'];
+const ONE_WAY_PREFERRED_SLOPES = [
+  'doc nha bo',
+  'doc suong nguyet anh',
+  'con doc nhat ban',
+  'doc hung vuong',
+  'doc tang bat ho',
+  'doc nha lang',
+];
+
+function normalizeOneWayText(value: string): string {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function oneWayOwnImageUrls(item: GuideItem): string[] {
+  return [...new Set([item.imageUrl, ...(item.candidateImageUrls || [])]
+    .map((url) => String(url || '').trim())
+    .filter(isPortableCoverImageUrl))];
+}
+
+function hasOneWayOwnImage(item: GuideItem): boolean {
+  return item.imageSource === 'manual' && oneWayOwnImageUrls(item).length > 0;
+}
+
+function oneWaySequenceIndex(seedPrefix: string): number {
+  if (seedPrefix === 'one-way-story-main' || seedPrefix.includes('one-way-story-main')) return 0;
+  if (seedPrefix.startsWith('refresh:one-way-story:')) {
+    const parts = seedPrefix.split(':');
+    const listIndex = Number(parts[3]);
+    return Number.isFinite(listIndex) ? Math.max(0, Math.trunc(listIndex)) + 1 : 0;
+  }
+  const parts = seedPrefix.split('|');
+  if (parts[0] === 'one-way-story') {
+    const existingCount = Number(parts[2]);
+    return Number.isFinite(existingCount) ? Math.max(0, Math.trunc(existingCount)) + 1 : 0;
+  }
+  return stableHash(seedPrefix) % ONE_WAY_HOMESTAYS.length;
+}
+
+function pickOneWayCoverImages(
+  coverImageUrls: string[],
+  seedPrefix: string,
+  usedImages: Set<string>,
+): [string, string] {
+  const unique = [...new Set(coverImageUrls.filter(isPortableCoverImageUrl))];
+  const ordered = [...unique].sort(
+    (left, right) => stableHash(`${seedPrefix}|cover|${left}`) - stableHash(`${seedPrefix}|cover|${right}`),
+  );
+  const fresh = ordered.filter((url) => !usedImages.has(url));
+  const selected = [...fresh, ...ordered.filter((url) => usedImages.has(url))].slice(0, 2);
+  if (selected.length < 2 || selected[0] === selected[1]) {
+    throw new Error(`Mẫu Đường một chiều cần ít nhất 2 ảnh khác nhau trong nhóm Hinh_nen (${selected.length}/2).`);
+  }
+  selected.forEach((url) => usedImages.add(url));
+  return [selected[0], selected[1]];
+}
+
+function oneWayPageItem(
+  item: GuideItem,
+  label: string,
+  resolveImage: ReturnType<typeof createListImageResolver>,
+  selectedImageUrls: Set<string>,
+): PageItem {
+  const resolved = pageItemWithResolver(item, label, resolveImage);
+  const imageUrl = String(resolved.imageUrl || '').trim();
+  const ownImages = new Set(oneWayOwnImageUrls(item));
+  if (!imageUrl || !ownImages.has(imageUrl)) {
+    throw new Error(`Mẫu Đường một chiều không lấy được ảnh riêng của "${item.name}" (${label}).`);
+  }
+  if (selectedImageUrls.has(imageUrl)) {
+    throw new Error(`Mẫu Đường một chiều bị trùng ảnh "${item.name}" (${label}).`);
+  }
+  selectedImageUrls.add(imageUrl);
+  return {
+    ...resolved,
+    metaPrimary: String(item.address || '').trim(),
+    metaSecondary: '',
+  };
+}
+
+function pickOneWayItems(
+  pool: GuideItem[],
+  count: number,
+  seed: string,
+  label: string,
+  pick: ReturnType<typeof createListPicker>,
+  predicate?: (item: GuideItem) => boolean,
+): GuideItem[] {
+  const eligible = dedupeItems(pool).filter(hasOneWayOwnImage).filter((item) => predicate ? predicate(item) : true);
+  const selected = pick(eligible, count, seed);
+  if (selected.length < count) {
+    throw new Error(`Mẫu Đường một chiều thiếu dữ liệu có ảnh cho nhóm "${label}" (${selected.length}/${count}).`);
+  }
+  return selected;
+}
+
+/** Mẫu kể chuyện 12 trang, chỉ dùng dữ liệu Đà Lạt và ảnh riêng của từng bản ghi. */
+export function buildOneWayStoryPages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
+  const pools = createDeckBuildPools(common.itemsBySection);
+  const usedImages = common.globalUsedImageUrls || new Set<string>();
+  const selectedImageUrls = new Set<string>();
+  const mappedImageUrls = collectMappedImageUrls(pools);
+  const resolveImage = createListImageResolver(
+    common.imageUrls,
+    common.libraryEntries,
+    `${seedPrefix}:one-way-story`,
+    mappedImageUrls,
+    usedImages,
+    { orientation: 'any', strictMapping: true },
+  );
+  const pick = createListPicker(common.globalUsedItemIds);
+  const [coverImage, roadImage] = pickOneWayCoverImages(common.coverImageUrls, seedPrefix, usedImages);
+
+  const slopeToken = (item: GuideItem) => /\b(doc|deo)\b/.test(normalizeOneWayText(`${item.name} ${item.address} ${item.type}`));
+  const preferredSlope = (item: GuideItem) => ONE_WAY_PREFERRED_SLOPES.some(
+    (name) => normalizeOneWayText(item.name).includes(name),
+  );
+  const preferredSlopePool = pools.checkinItems.filter(preferredSlope);
+  const slope = pickOneWayItems(
+    preferredSlopePool.length > 0 ? preferredSlopePool : pools.checkinItems,
+    1,
+    `${seedPrefix}|slope`,
+    'dốc Đà Lạt',
+    pick,
+    preferredSlopePool.length > 0 ? undefined : slopeToken,
+  )[0];
+  const checkins = pickOneWayItems(pools.checkinItems, 3, `${seedPrefix}|checkin`, 'check-in', pick, (item) => !slopeToken(item));
+  const partnerCafes = pickOneWayItems(pools.cafeItems, 3, `${seedPrefix}|partner-cafe`, 'cafe đối tác', pick, (item) => item.isPartner);
+  const partnerFoods = pickOneWayItems(pools.foodItems, 2, `${seedPrefix}|partner-food`, 'quán ăn đối tác', pick, (item) => item.isPartner);
+
+  const homestayIndex = oneWaySequenceIndex(seedPrefix) % ONE_WAY_HOMESTAYS.length;
+  const wantedHomestay = ONE_WAY_HOMESTAYS[homestayIndex];
+  const homestay = dedupeItems(pools.stayItems)
+    .filter(hasOneWayOwnImage)
+    .find((item) => normalizeOneWayText(item.name) === wantedHomestay);
+  if (!homestay) {
+    throw new Error(`Mẫu Đường một chiều không tìm thấy homestay "${wantedHomestay}" có ảnh riêng.`);
+  }
+  common.globalUsedItemIds?.add(itemUsageKey(homestay));
+
+  const slopeItem = oneWayPageItem(slope, 'Dốc Đà Lạt', resolveImage, selectedImageUrls);
+  const checkinPageItems = checkins.map((item) => oneWayPageItem(item, 'Check-in', resolveImage, selectedImageUrls));
+  const cafePageItems = partnerCafes.map((item) => oneWayPageItem(item, 'Cafe đối tác', resolveImage, selectedImageUrls));
+  const stayPageItem = oneWayPageItem(homestay, 'Homestay', resolveImage, selectedImageUrls);
+  const foodPageItems = partnerFoods.map((item) => oneWayPageItem(item, 'Quán ăn đối tác', resolveImage, selectedImageUrls));
+  selectedImageUrls.forEach((url) => usedImages.add(url));
+
+  const photoPage = (item: PageItem, chipText: string): ListPage => ({
+    type: 'list',
+    chipText,
+    chipTone: 'slate',
+    title: '',
+    subtitle: '',
+    items: [item],
+    backgroundImage: item.imageUrl,
+    layoutVariant: 'one-way-story-photo',
+  });
+
+  return [
+    {
+      type: 'cover',
+      title: BUNDLED_ONE_WAY_HOOKS[0],
+      subtitle: '',
+      backgroundImage: coverImage,
+      coverImages: [coverImage],
+      layoutVariant: 'one-way-story-cover',
+      titlePlacement: 'center',
+    },
+    {
+      type: 'list', chipText: 'Đường một chiều', chipTone: 'slate',
+      title: ONE_WAY_ROAD_TITLE, subtitle: ONE_WAY_ROAD_SUBTITLE,
+      items: [], backgroundImage: roadImage, layoutVariant: 'one-way-story-road',
+    },
+    {
+      type: 'list', chipText: 'Đường dốc', chipTone: 'slate',
+      title: ONE_WAY_SLOPE_TITLE, subtitle: ONE_WAY_SLOPE_SUBTITLE,
+      items: [slopeItem], backgroundImage: slopeItem.imageUrl, layoutVariant: 'one-way-story-slope',
+    },
+    photoPage(checkinPageItems[0], 'Check-in'),
+    photoPage(checkinPageItems[1], 'Check-in'),
+    photoPage(cafePageItems[0], 'Cafe đối tác'),
+    photoPage(cafePageItems[1], 'Cafe đối tác'),
+    photoPage(stayPageItem, 'Homestay'),
+    photoPage(foodPageItems[0], 'Quán ăn đối tác'),
+    photoPage(foodPageItems[1], 'Quán ăn đối tác'),
+    photoPage(checkinPageItems[2], 'Check-in'),
+    photoPage(cafePageItems[2], 'Cafe đối tác'),
+  ];
+}
+
 // Retune images for V3 spot pages (same pipeline as V2).
 function finalizeSpotlightV3Pages(pages: DeckPage[], common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
   return retuneSpotlightV2SpotImages(
@@ -716,6 +929,7 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'pov-3-v2': POV_3_V2_TEMPLATE_VERSION,
   'itinerary-4n3d-stack': ITINERARY_4N3D_STACK_TEMPLATE_VERSION,
   'itinerary-timeline': ITINERARY_TIMELINE_TEMPLATE_VERSION,
+  'one-way-story': ONE_WAY_STORY_TEMPLATE_VERSION,
 };
 
 const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: string; listName: string }> = {
@@ -772,6 +986,12 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     title: 'Bộ lịch trình timeline 3 ngày (V2)',
     description: 'Cover serif + script trên ảnh; mỗi ngày một thẻ timeline dọc: thumb | chấm | giờ + hoạt động + tên địa điểm + địa chỉ. Ref @rongchoidalattala.',
     listName: 'List lịch trình timeline 3N2Đ',
+  },
+  'one-way-story': {
+    nav: 'Đường một chiều',
+    title: 'Đà Lạt: câu chuyện đường một chiều',
+    description: 'Mẫu kể chuyện 12 trang: cảnh báo đường một chiều, dốc Đà Lạt và các địa điểm có ảnh riêng theo đúng nhóm dữ liệu.',
+    listName: 'Đường một chiều Đà Lạt',
   },
 };
 
@@ -842,6 +1062,8 @@ export function buildPagesForDeckV2(
       return buildItinerary4N3DStackDeckPages(common, seedPrefix);
     case 'itinerary-timeline':
       return buildItineraryTimelineDeckPages(common, seedPrefix);
+    case 'one-way-story':
+      return buildOneWayStoryPages(common, seedPrefix);
     default:
       throw new Error(`Không hỗ trợ deck V2: ${deckId}`);
   }
@@ -874,7 +1096,11 @@ function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): GuideDeckLi
 }
 
 export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
-  return V2_DECK_IDS.filter((deckId) => deckId !== 'carousel-mau-1').map((deckId) => {
+  const activeDestinationId = getActiveDestinationLocalize();
+  return V2_DECK_IDS
+    .filter((deckId) => deckId !== 'carousel-mau-1')
+    .filter((deckId) => deckId !== 'one-way-story' || activeDestinationId === 'dalat')
+    .map((deckId) => {
     const meta = V2_DECK_META[deckId];
     const mainList = buildV2MainList(deckId, common);
     return {
@@ -884,5 +1110,5 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       description: meta.description,
       lists: mainList ? [mainList] : [],
     };
-  });
+    });
 }

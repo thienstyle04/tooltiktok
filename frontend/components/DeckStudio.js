@@ -130,6 +130,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v2',
   'spotlight-v3',
   'carousel-mau-1',
+  'one-way-story',
   'itinerary-4n3d-stack',
   'itinerary-timeline',
 ];
@@ -922,7 +923,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
     }
-    const isNonAiTemplate = activeDeck.id === 'carousel-mau-1';
+    const isNonAiTemplate = activeDeck.id === 'carousel-mau-1' || activeDeck.id === 'one-way-story';
     const coverTitle = (caption.coverTitle || '').trim();
     if (!isNonAiTemplate && !coverTitle) {
       setStatus('Cần có tiêu đề cover trước khi tạo list AI.');

@@ -6,15 +6,16 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUNDLED_PREMADE_HOOKS } from './hook-fallbacks';
 
-export type PremadeHookPoolKey = 'itinerary_3n2d' | 'itinerary_4n3d' | 'budget' | 'highlight';
+export type PremadeHookPoolKey = 'itinerary_3n2d' | 'itinerary_4n3d' | 'budget' | 'highlight' | 'one_way';
 
-const POOL_KEYS: PremadeHookPoolKey[] = ['itinerary_3n2d', 'itinerary_4n3d', 'budget', 'highlight'];
+const POOL_KEYS: PremadeHookPoolKey[] = ['itinerary_3n2d', 'itinerary_4n3d', 'budget', 'highlight', 'one_way'];
 
 const DECK_POOL_MAP: Record<string, PremadeHookPoolKey> = {
   'grid-4-mutant': 'highlight',
   'grid-8-quaytung': 'highlight',
   'spotlight-v2': 'highlight',
   'spotlight-partner': 'highlight',
+  'one-way-story': 'one_way',
 };
 
 export function getPremadeHookPoolKey(deckId: string): PremadeHookPoolKey | null {
@@ -72,6 +73,7 @@ export function loadPremadeHookPool(poolKey: PremadeHookPoolKey, dataRoot: strin
         itinerary_4n3d: [...BUNDLED_PREMADE_HOOKS.itinerary_4n3d],
         budget: [...BUNDLED_PREMADE_HOOKS.budget],
         highlight: [...BUNDLED_PREMADE_HOOKS.highlight],
+        one_way: [...BUNDLED_PREMADE_HOOKS.one_way],
       };
       // Không lưu mtimeMs khi đọc lỗi, để lần gọi kế tiếp thử đọc lại thay vì khoá cứng rỗng.
     }

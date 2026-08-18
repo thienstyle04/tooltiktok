@@ -20,6 +20,7 @@ export default function PreviewDashboardPanel({
     'spotlight-v2',
     'spotlight-v3',
     'carousel-mau-1',
+    'one-way-story',
     'pov-3-v2',
     'itinerary-4n3d-stack',
     'itinerary-timeline',

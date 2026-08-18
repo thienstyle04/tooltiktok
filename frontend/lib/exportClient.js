@@ -1518,6 +1518,7 @@ function deckShortName(deckId) {
     'spotlight-v2': 'spotlightv2',
     'spotlight-v3': 'spotlightv3',
     'carousel-mau-1': 'mau1',
+    'one-way-story': 'duong-mot-chieu',
     'spotlight-partner': 'partner',
   };
   return map[String(deckId || '')] || sanitizeFilePart(deckId || 'mau');

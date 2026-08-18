@@ -7,6 +7,7 @@ const V2_DECK_IDS = new Set([
   'spotlight-v2',
   'spotlight-v3',
   'carousel-mau-1',
+  'one-way-story',
   'itinerary-4n3d-stack',
   'itinerary-timeline',
 ]);
