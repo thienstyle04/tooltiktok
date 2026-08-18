@@ -14,7 +14,7 @@ const cssPath = join(rootDir, 'frontend/app/styles/template-variants-v2.css');
 
 const API = process.env.TEST_API_URL || 'http://127.0.0.1:3000/api/guide-data?refresh=1';
 const DECK_ID = 'itinerary-4n3d-stack';
-const EXPECTED_VERSION = 7;
+const EXPECTED_VERSION = 8;
 const DAY_LABELS = ['NGÀY 1', 'NGÀY 2', 'NGÀY 3', 'NGÀY 4'];
 const EXPECTED_LIST_TITLES = [
   'ĂN SÁNG',
@@ -135,7 +135,7 @@ function testStaticAssets() {
     ['itinerary-4n3d-stack-page-bracket', 'page bracket intro'],
     ['text-align: left', 'page head căn trái'],
     ['border-radius: 0', 'list page không bo góc'],
-    ['itinerary-4n3d-stack-day', 'day label'],
+    ['itinerary-4n3d-stack-address', 'địa chỉ dưới tên địa điểm'],
     ['is-people-focus', 'people focus crop'],
     ['--stack-yellow', 'tone vàng'],
   ];
@@ -169,6 +169,8 @@ function testStaticAssets() {
   }
   if (!markup.includes('itinerary-4n3d-stack-page-dim')) ok('markup: không page-dim', 'đúng');
   else bad('markup: không page-dim', 'vẫn render dim');
+  if (!markup.includes('itinerary-4n3d-stack-day')) ok('markup: không còn nhãn ngày trong từng ô', 'đúng');
+  else bad('markup: không còn nhãn ngày trong từng ô', 'vẫn còn');
 }
 
 async function buildMarkupRenderer() {

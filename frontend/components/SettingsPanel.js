@@ -1,4 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+function formatCount(count) {
+  return typeof count === 'number' && Number.isFinite(count)
+    ? `${count} địa điểm`
+    : 'Chưa đồng bộ';
+}
+
+function getSourceTypeLabel(entry) {
+  const sourceType = String(entry?.sourceType || '').trim().toLowerCase();
+  if (sourceType === 'xlsx') return 'XLSX cục bộ';
+  if (sourceType === 'google-sheet' || sourceType === 'sheet') return 'Google Sheet';
+  if (entry?.workbookFileName) return 'XLSX cục bộ';
+  if (entry?.sheetUrl) return 'Google Sheet';
+  return 'Chưa rõ nguồn';
+}
 
 export default function SettingsPanel({
   activeDestinationId,
@@ -8,23 +23,35 @@ export default function SettingsPanel({
   refreshing,
   onDestinationChange,
   onAddDestination,
-  onRefresh,
+  onReplaceDestinationWorkbook,
+  onRefreshFromSheet,
 }) {
   const [newSourceName, setNewSourceName] = useState('');
   const [newSourceUrl, setNewSourceUrl] = useState('');
+  const [newSourceFile, setNewSourceFile] = useState(null);
   const [addError, setAddError] = useState('');
   const [adding, setAdding] = useState(false);
-  const activeDestination = destinations.find((entry) => entry.id === activeDestinationId);
+  const [replaceFile, setReplaceFile] = useState(null);
+  const [replaceError, setReplaceError] = useState('');
+  const [replacing, setReplacing] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
+  const [sheetRefreshing, setSheetRefreshing] = useState(false);
+
+  const activeDestination = useMemo(
+    () => destinations.find((entry) => entry.id === activeDestinationId) || null,
+    [activeDestinationId, destinations],
+  );
   const cacheReady = Boolean(cacheStatus?.ready);
   const cacheTotal = Number(cacheStatus?.total || 0);
   const cacheCompleted = Number(cacheStatus?.completed || 0);
   const cacheFailed = Number(cacheStatus?.failed || 0);
+  const activeHasSheetFallback = Boolean(activeDestination?.hasSheetFallback ?? activeDestination?.sheetUrl);
 
-  const formatCount = (count) => (
-    typeof count === 'number' && Number.isFinite(count)
-      ? `${count} địa điểm`
-      : 'Chưa đồng bộ'
-  );
+  useEffect(() => {
+    setReplaceFile(null);
+    setReplaceError('');
+    setRefreshError('');
+  }, [activeDestinationId]);
 
   const submitNewSource = async (event) => {
     event.preventDefault();
@@ -34,13 +61,43 @@ export default function SettingsPanel({
       await onAddDestination({
         label: newSourceName.trim(),
         sheetUrl: newSourceUrl.trim(),
+        file: newSourceFile,
       });
       setNewSourceName('');
       setNewSourceUrl('');
+      setNewSourceFile(null);
     } catch (error) {
-      setAddError(error?.message || 'Không thể thêm Google Sheet.');
+      setAddError(error?.message || 'Không thể thêm nguồn XLSX.');
     } finally {
       setAdding(false);
+    }
+  };
+
+  const submitReplaceWorkbook = async (event) => {
+    event.preventDefault();
+    if (!activeDestination?.id || !replaceFile) return;
+    setReplaceError('');
+    setReplacing(true);
+    try {
+      await onReplaceDestinationWorkbook(activeDestination.id, replaceFile);
+      setReplaceFile(null);
+    } catch (error) {
+      setReplaceError(error?.message || 'Không thể thay file XLSX.');
+    } finally {
+      setReplacing(false);
+    }
+  };
+
+  const refreshFromSheet = async () => {
+    if (!activeDestination?.id || !activeHasSheetFallback) return;
+    setRefreshError('');
+    setSheetRefreshing(true);
+    try {
+      await onRefreshFromSheet(activeDestination.id);
+    } catch (error) {
+      setRefreshError(error?.message || 'Không thể tải mới từ Google Sheet.');
+    } finally {
+      setSheetRefreshing(false);
     }
   };
 
@@ -51,7 +108,7 @@ export default function SettingsPanel({
           <p className="panel-kicker">Quản trị hệ thống</p>
           <h2 id="settingsTitle" className="section-title">Cài đặt dữ liệu</h2>
           <p className="settings-description">
-            Chọn nguồn Google Sheet, kiểm tra ảnh đã lưu và chủ động đồng bộ khi dữ liệu thay đổi.
+            XLSX cục bộ là nguồn chính. Google Sheet chỉ dùng làm link dự phòng để tải mới khi bạn chủ động yêu cầu.
           </p>
         </div>
         <span className={`settings-health ${cacheReady ? 'is-ready' : 'is-busy'}`}>
@@ -64,9 +121,9 @@ export default function SettingsPanel({
         <article className="settings-card settings-add-source-card">
           <div>
             <p className="panel-kicker">Thêm nguồn mới</p>
-            <h3>Kết nối Google Sheet</h3>
+            <h3>Nhập workbook XLSX</h3>
             <p className="settings-help">
-              Sheet mới sẽ được kiểm tra quyền truy cập, tải dữ liệu và lưu thành nút chuyển nhanh.
+              Mỗi nguồn mới cần tên hiển thị và file workbook. Link Google Sheet là tùy chọn để dùng làm dự phòng khi cần tải mới.
             </p>
           </div>
           <form className="settings-source-form" onSubmit={submitNewSource}>
@@ -84,27 +141,36 @@ export default function SettingsPanel({
               />
             </label>
             <label>
-              <span>Link Google Sheet</span>
+              <span>File XLSX</span>
+              <input
+                type="file"
+                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                disabled={busy || adding}
+                required
+                onChange={(event) => setNewSourceFile(event.target.files?.[0] || null)}
+              />
+            </label>
+            <label>
+              <span>Link Google Sheet dự phòng</span>
               <input
                 type="url"
                 value={newSourceUrl}
                 onChange={(event) => setNewSourceUrl(event.target.value)}
                 placeholder="https://docs.google.com/spreadsheets/d/..."
                 disabled={busy || adding}
-                required
               />
             </label>
             <button
               type="submit"
               className="toolbar-button primary settings-add-button"
-              disabled={busy || adding || !newSourceName.trim() || !newSourceUrl.trim()}
+              disabled={busy || adding || !newSourceName.trim() || !newSourceFile}
             >
-              {adding ? 'Đang kiểm tra và tải...' : 'Thêm và sử dụng'}
+              {adding ? 'Đang kiểm tra workbook...' : 'Thêm và sử dụng'}
             </button>
           </form>
           {addError ? <p className="settings-form-error" role="alert">{addError}</p> : null}
           <p className="settings-form-note">
-            Google Sheet cần bật quyền “Bất kỳ ai có đường liên kết đều có thể xem”.
+            Chỉ nhận workbook hợp lệ tối đa 20 MB. Link dự phòng có thể để trống nếu bạn chỉ muốn dùng file cục bộ.
           </p>
         </article>
 
@@ -112,33 +178,49 @@ export default function SettingsPanel({
           <div className="settings-card-head">
             <div>
               <p className="panel-kicker">Nguồn dữ liệu</p>
-              <h3>Google Sheet đang sử dụng</h3>
+              <h3>Danh sách nguồn đã cấu hình</h3>
             </div>
             <span className="settings-active-source">
               {activeDestination?.shortLabel || 'DL'}
             </span>
           </div>
 
-          <div className="settings-destination-list" role="listbox" aria-label="Chọn nguồn Google Sheet">
+          <div className="settings-destination-list" role="listbox" aria-label="Chọn nguồn dữ liệu">
             {destinations.map((entry) => {
               const active = entry.id === activeDestinationId;
+              const hasFallback = Boolean(entry.hasSheetFallback ?? entry.sheetUrl);
               return (
-                <button
+                <article
                   key={entry.id}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
                   className={`settings-destination${active ? ' is-active' : ''}`}
-                  disabled={busy}
-                  onClick={() => onDestinationChange(entry.id)}
+                  data-active={active ? 'true' : 'false'}
                 >
-                  <span className="settings-destination-badge">{entry.shortLabel || entry.label.slice(0, 2)}</span>
-                  <span className="settings-destination-copy">
-                    <strong>{entry.label}</strong>
-                    <small>{formatCount(entry.totalItems)}</small>
-                  </span>
-                  <span className="settings-destination-state">{active ? 'Đang dùng' : 'Chuyển'}</span>
-                </button>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    className="settings-destination-main"
+                    disabled={busy}
+                    onClick={() => onDestinationChange(entry.id)}
+                  >
+                    <span className="settings-destination-badge">{entry.shortLabel || entry.label.slice(0, 2)}</span>
+                    <span className="settings-destination-copy">
+                      <strong>{entry.label}</strong>
+                      <small>{formatCount(entry.totalItems)}</small>
+                    </span>
+                    <span className="settings-destination-state">{active ? 'Đang dùng' : 'Chuyển'}</span>
+                  </button>
+
+                  <div className="settings-destination-meta">
+                    <span className="settings-destination-pill">{getSourceTypeLabel(entry)}</span>
+                    <span className="settings-destination-meta-copy">
+                      {entry.workbookFileName || 'Chưa có tên workbook'}
+                    </span>
+                    <span className={`settings-destination-pill ${hasFallback ? 'is-positive' : 'is-muted'}`}>
+                      {hasFallback ? 'Có Sheet dự phòng' : 'Không có Sheet dự phòng'}
+                    </span>
+                  </div>
+                </article>
               );
             })}
           </div>
@@ -183,21 +265,51 @@ export default function SettingsPanel({
 
         <article className="settings-card settings-sync-card">
           <div>
-            <p className="panel-kicker">Đồng bộ thủ công</p>
-            <h3>Lấy dữ liệu mới nhất</h3>
+            <p className="panel-kicker">Nguồn đang dùng</p>
+            <h3>{activeDestination?.label || 'Chưa có nguồn'}</h3>
             <p className="settings-help">
-              Chỉ sử dụng khi Google Sheet hoặc danh sách ảnh vừa được cập nhật. Dữ liệu đã tải trước đó
-              sẽ được dùng lại nếu bạn không bấm nút này.
+              Thay file XLSX để cập nhật workbook cục bộ. Tải mới từ Google Sheet chỉ khả dụng khi nguồn này có link dự phòng.
             </p>
           </div>
-          <button
-            type="button"
-            className="toolbar-button primary settings-refresh-button"
-            disabled={busy}
-            onClick={onRefresh}
-          >
-            {refreshing ? 'Đang đồng bộ...' : 'Tải lại dữ liệu'}
-          </button>
+
+          <div className="settings-sync-actions">
+            <form className="settings-replace-form" onSubmit={submitReplaceWorkbook}>
+              <label className="settings-file-picker">
+                <span>File XLSX mới</span>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                  disabled={busy || replacing || !activeDestination}
+                  onChange={(event) => setReplaceFile(event.target.files?.[0] || null)}
+                />
+              </label>
+              <button
+                type="submit"
+                className="toolbar-button secondary settings-replace-button"
+                disabled={busy || replacing || !activeDestination || !replaceFile}
+              >
+                {replacing ? 'Đang thay file...' : 'Thay file XLSX'}
+              </button>
+            </form>
+
+            <button
+              type="button"
+              className="toolbar-button primary settings-refresh-button"
+              disabled={busy || sheetRefreshing || !activeDestination || !activeHasSheetFallback}
+              onClick={refreshFromSheet}
+            >
+              {sheetRefreshing || refreshing ? 'Đang tải từ Sheet...' : 'Tải mới từ Google Sheet'}
+            </button>
+
+            {!activeHasSheetFallback && activeDestination ? (
+              <p className="settings-form-note">
+                Nguồn này chưa có link Google Sheet dự phòng nên chỉ có thể cập nhật bằng file XLSX.
+              </p>
+            ) : null}
+
+            {replaceError ? <p className="settings-form-error" role="alert">{replaceError}</p> : null}
+            {refreshError ? <p className="settings-form-error" role="alert">{refreshError}</p> : null}
+          </div>
         </article>
       </div>
     </section>

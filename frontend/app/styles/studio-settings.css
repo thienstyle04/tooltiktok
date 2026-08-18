@@ -84,7 +84,7 @@
 
 .settings-source-form {
   display: grid;
-  grid-template-columns: minmax(140px, 0.7fr) minmax(240px, 1.3fr) auto;
+  grid-template-columns: minmax(140px, 0.7fr) minmax(220px, 1fr) minmax(240px, 1.2fr) auto;
   gap: 10px;
   align-items: end;
   min-width: 0;
@@ -179,29 +179,42 @@
 }
 
 .settings-destination {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 62px;
+  display: grid;
+  gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--studio-line);
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.12);
+}
+
+.settings-destination:hover,
+.settings-destination.is-active,
+.settings-destination[data-active="true"] {
+  border-color: rgba(240, 127, 90, 0.46);
+  background: rgba(240, 127, 90, 0.08);
+}
+
+.settings-destination-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--studio-muted);
   cursor: pointer;
   font: inherit;
   text-align: left;
 }
 
-.settings-destination:hover:not(:disabled),
-.settings-destination.is-active {
-  border-color: rgba(240, 127, 90, 0.46);
-  background: rgba(240, 127, 90, 0.08);
+.settings-destination-main:hover:not(:disabled),
+.settings-destination-main[aria-selected="true"] {
   color: var(--studio-ink);
 }
 
-.settings-destination:disabled {
+.settings-destination-main:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -237,6 +250,40 @@
 
 .settings-destination-state {
   font-weight: 800;
+}
+
+.settings-destination-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 50px;
+}
+
+.settings-destination-pill,
+.settings-destination-meta-copy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--studio-muted);
+  font-size: 0.68rem;
+}
+
+.settings-destination-meta-copy {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-destination-pill.is-positive {
+  color: #9ad8b0;
+}
+
+.settings-destination-pill.is-muted {
+  opacity: 0.78;
 }
 
 .settings-cache-percent {
@@ -295,12 +342,51 @@
 }
 
 .settings-sync-card {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.95fr);
+  align-items: start;
 }
 
 .settings-refresh-button {
   min-width: 150px;
+}
+
+.settings-sync-actions,
+.settings-replace-form {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-file-picker {
+  display: grid;
+  gap: 7px;
+}
+
+.settings-file-picker > span {
+  color: var(--studio-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.settings-file-picker input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--studio-line);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--studio-ink);
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.settings-file-picker input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.settings-replace-button,
+.settings-refresh-button {
+  width: 100%;
 }
 
 .cache-retry-button {
@@ -321,6 +407,10 @@
 
   .settings-source-card {
     grid-row: auto;
+  }
+
+  .settings-destination-meta {
+    padding-left: 0;
   }
 
   .settings-add-button,

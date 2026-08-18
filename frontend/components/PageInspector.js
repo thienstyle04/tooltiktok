@@ -45,7 +45,11 @@ export default function PageInspector({
   const coverImage = hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
   const canEditPage = typeof onPageTextChange === 'function';
   const canSavePage = canEditPage && typeof onPageTextSave === 'function';
-  const titleLimit = page.type === 'cover' ? 60 : 90;
+  const titleLimit = page.layoutVariant === 'one-way-story-cover'
+    ? 110
+    : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
+      ? 220
+      : page.type === 'cover' ? 60 : 90;
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
 

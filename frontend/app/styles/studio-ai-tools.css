@@ -95,11 +95,39 @@
 }
 
 .ai-shell.non-ai-template .ai-actions {
-  grid-template-columns: minmax(0, 360px);
+  display: block;
 }
 
 .ai-shell.non-ai-template .ai-cache-warning {
   margin: 14px 16px 16px;
+}
+
+.non-ai-create-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(220px, 360px);
+  gap: 12px;
+  align-items: end;
+  width: min(100%, 592px);
+}
+
+.non-ai-quantity-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.non-ai-create-button {
+  width: 100%;
+  min-height: 44px;
+  margin: 0 !important;
+}
+
+@media (max-width: 680px) {
+  .non-ai-create-row {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
 }
 
 .ai-batch-option {

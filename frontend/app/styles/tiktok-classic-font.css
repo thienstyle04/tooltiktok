@@ -1,0 +1,10 @@
+/*
+ * Kiểu chữ chung cho toàn bộ ảnh carousel.
+ * Đặt file này cuối globals.css để preview đơn, preview list và batch export
+ * luôn dùng cùng một font cục bộ, không phụ thuộc font mạng hoặc font hệ điều hành.
+ */
+.story-page,
+.story-page * {
+  font-family: "Be Vietnam Pro", Arial, sans-serif !important;
+  font-style: normal !important;
+}

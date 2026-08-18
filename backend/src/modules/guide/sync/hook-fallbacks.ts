@@ -42,9 +42,17 @@ export const BUNDLED_SPOTLIGHT_HOOKS = [
   'Đây không phải Pinterest. Đây là Đà Lạt',
 ];
 
+export const BUNDLED_ONE_WAY_HOOKS = [
+  'Mới đi Đà Lạt về mà bị phạt 6 triệu trời ơi, đừng ai ngu như tui',
+  'Đi Đà Lạt chữa lành mà bị phạt 6 triệu máaaaaa, rách luôn',
+  'Tui đi ngược chiều ở Đà Lạt bị phạt 6 triệu dmmmm',
+  'Tiết kiệm tiền đi Đà Lạt mấy tháng mà bị phạt mấy 6 triệu, cayyyy',
+];
+
 export const BUNDLED_PREMADE_HOOKS: Record<PremadeHookPoolKey, string[]> = {
   itinerary_3n2d: BUNDLED_SECTION_HOOKS['hook-1'],
   itinerary_4n3d: BUNDLED_SECTION_HOOKS['hook-2'],
   budget: BUNDLED_SECTION_HOOKS['hook-3'],
   highlight: [...BUNDLED_SECTION_HOOKS['hook-4'], ...BUNDLED_SPOTLIGHT_HOOKS],
+  one_way: BUNDLED_ONE_WAY_HOOKS,
 };

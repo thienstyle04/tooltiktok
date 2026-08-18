@@ -33,7 +33,8 @@ export default function CaptionTools({
   const lists = mainLists.length ? mainLists : allLists.slice(0, 1);
   const selectedCaptionList = lists.find((list) => list.id === activeList?.id) || lists[0] || null;
   const isSpotlightPartnerDeck = activeDeck?.id === 'spotlight-partner';
-  const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1';
+  const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1' || activeDeck?.id === 'one-way-story';
+  const nonAiTemplateName = activeDeck?.id === 'one-way-story' ? 'Đường một chiều' : 'Mẫu 1';
   const creationDisabled = busy || !cacheReady;
 
   const handleDeckChange = (event) => {
@@ -47,12 +48,22 @@ export default function CaptionTools({
     if (list) onListSelect(list);
   };
 
+  const handleCreateRequestedLists = () => {
+    setBatchDropdownOpen(false);
+    const hasManualCaption = isNonAiTemplate || caption.coverTitle.trim();
+    if (batchCount === 1 && hasManualCaption) {
+      onCreateList();
+      return;
+    }
+    onCreateBatchLists?.(batchCount);
+  };
+
   return (
     <section className={`ai-shell${isNonAiTemplate ? ' non-ai-template' : ''}`}>
       <div className="panel-head ai-panel-head">
         <div>
           <p className="panel-kicker">{isNonAiTemplate ? 'Tạo list từ dữ liệu' : 'Caption AI'}</p>
-          <h3 className="panel-title">{isNonAiTemplate ? 'Tạo Mẫu 1 từ dữ liệu' : 'Tạo caption & list mới'}</h3>
+          <h3 className="panel-title">{isNonAiTemplate ? `Tạo ${nonAiTemplateName} từ dữ liệu` : 'Tạo caption & list mới'}</h3>
         </div>
         <span className="ai-state-pill">{visible ? 'Đang mở' : 'Sẵn sàng'}</span>
       </div>
@@ -109,26 +120,42 @@ export default function CaptionTools({
           {!isNonAiTemplate ? (
             <button id="generateCaptionBtn" className="toolbar-button secondary" type="button" disabled={busy} onClick={() => onRequestCaption('full')}>Tạo caption</button>
           ) : null}
-          {!isSpotlightPartnerDeck ? (
+          {!isSpotlightPartnerDeck && isNonAiTemplate ? (
+            <div className="non-ai-create-row">
+              <div className="non-ai-quantity-field">
+                <label className="ai-tone-label" htmlFor="nonAiBatchCountSelect">Số lượng list</label>
+                <select
+                  id="nonAiBatchCountSelect"
+                  className="ai-tone-select"
+                  value={batchCount}
+                  disabled={creationDisabled}
+                  onChange={(event) => setBatchCount(Number(event.target.value) || 1)}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                    <option key={n} value={n}>{n === 1 ? '1 list' : `${n} list`}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                id="createDeckFromCaptionBtn"
+                className="toolbar-button secondary non-ai-create-button"
+                type="button"
+                disabled={creationDisabled}
+                onClick={handleCreateRequestedLists}
+              >
+                {batchCount === 1 ? `Tạo ${nonAiTemplateName}` : `Tạo ${batchCount} list`}
+              </button>
+            </div>
+          ) : !isSpotlightPartnerDeck ? (
           <div className="ai-batch-group" ref={batchDropdownRef}>
             <button
               id="createDeckFromCaptionBtn"
               className="toolbar-button secondary ai-batch-main"
               type="button"
               disabled={creationDisabled}
-              onClick={() => {
-                setBatchDropdownOpen(false);
-                const hasManualCaption = isNonAiTemplate || caption.coverTitle.trim();
-                if (batchCount === 1 && hasManualCaption) {
-                  // Đã có caption soạn sẵn (bấm "Tạo caption" hoặc tự sửa) → tạo đúng 1 list bằng caption này.
-                  onCreateList();
-                } else {
-                  // Chưa soạn caption: tạo qua batch (tự gọi DeepSeek sinh caption), tránh im lặng không tạo được gì.
-                  onCreateBatchLists?.(batchCount);
-                }
-              }}
+              onClick={handleCreateRequestedLists}
             >
-              {batchCount === 1 ? (isNonAiTemplate ? 'Tạo Mẫu 1' : 'Tạo list AI') : `Tạo ${batchCount} list`}
+              {batchCount === 1 ? (isNonAiTemplate ? `Tạo ${nonAiTemplateName}` : 'Tạo list AI') : `Tạo ${batchCount} list`}
             </button>
             <button
               className="toolbar-button secondary ai-batch-arrow"
@@ -164,7 +191,9 @@ export default function CaptionTools({
 
       {isNonAiTemplate ? (
         <div className="ai-cache-warning" role="note">
-          Trang bìa lấy hook từ Google Docs; 13 trang còn lại lấy trực tiếp từ Google Sheet đang chọn. Mẫu này không gọi AI.
+          {activeDeck?.id === 'one-way-story'
+            ? 'Trang bìa luân phiên hook có sẵn; 11 trang còn lại lấy đúng ảnh Đà Lạt theo từng nhóm. Mẫu này không gọi AI.'
+            : 'Trang bìa lấy hook từ Google Docs; 13 trang còn lại lấy trực tiếp từ Google Sheet đang chọn. Mẫu này không gọi AI.'}
         </div>
       ) : null}
 

@@ -80,10 +80,7 @@ function testStaticAssets() {
   const markup = readFileSync(markupPath, 'utf8');
 
   const cssChecks = [
-    ['Cormorant Garamond', 'font serif cover'],
-    ['Dancing Script', 'font script cover/ngày (hỗ trợ tiếng Việt)'],
     ['Be Vietnam Pro', 'font body'],
-    ['itl-cover-serif', 'cover serif class'],
     ['itl-cover-script', 'cover script hero'],
     ['itl-cover-spark', 'cover sparkle divider'],
     ['itl-day-card', 'thẻ kem ngày'],
@@ -109,9 +106,6 @@ function testStaticAssets() {
     ['renderItineraryTimelineDay', 'render ngày'],
     ['itinerary-timeline-cover', 'variant cover'],
     ['itinerary-timeline-day', 'variant ngày'],
-    ['Lịch trình', 'copy cover dòng 1'],
-    ['đi đâu?', 'copy cover dòng 3'],
-    ['itl-day-activity', 'activity inline'],
   ];
   for (const [needle, label] of markupChecks) {
     if (markup.includes(needle)) ok(`markup ${label}`, needle);
@@ -152,7 +146,7 @@ function testDeckApi(list) {
 }
 
 function testDayItems(dayPages) {
-  console.log('\n=== [3] Dữ liệu — giờ + activity + địa điểm ===');
+  console.log('\n=== [3] Dữ liệu — giờ + tên + địa chỉ ===');
   for (const page of dayPages) {
     const chip = page.chipText || page.title || '?';
     const items = Array.isArray(page.items) ? page.items : [];
@@ -181,10 +175,6 @@ function testDayItems(dayPages) {
     if (clockLabels.length === items.length) ok(`${chip}: label giờ HH:MM`, `${clockLabels.length}/${items.length}`);
     else bad(`${chip}: label giờ HH:MM`, `${clockLabels.length}/${items.length}`);
 
-    const withActivity = items.filter((item) => String(item.metaSecondary || '').trim().length > 0);
-    if (withActivity.length === items.length) ok(`${chip}: activity prefix`, 'đủ');
-    else bad(`${chip}: activity prefix`, `${withActivity.length}/${items.length}`);
-
     const withName = items.filter((item) => String(item.name || '').trim().length > 0);
     if (withName.length === items.length) ok(`${chip}: tên địa điểm`, 'đủ');
     else bad(`${chip}: tên địa điểm`, `${withName.length}/${items.length}`);
@@ -210,11 +200,8 @@ function testRender(list, markup) {
   const coverMust = [
     'itinerary-timeline-cover',
     'itl-cover-photo',
-    'itl-cover-serif',
     'itl-cover-script',
     'itl-cover-spark',
-    'Lịch trình',
-    'đi đâu?',
     '✦',
   ];
   for (const needle of coverMust) {
@@ -242,7 +229,6 @@ function testRender(list, markup) {
       'itl-day-track',
       'itl-day-dot',
       'itl-day-time',
-      'itl-day-activity',
       'itl-day-place',
       'itl-day-address',
       'itl-day-pin',
@@ -254,11 +240,8 @@ function testRender(list, markup) {
     }
     if (!html.includes('itl-day-note') && !html.includes('Ảnh đã map')) ok(`${chip} không hiện ghi chú ảnh`, 'đúng');
     else bad(`${chip} không hiện ghi chú ảnh`, 'còn note');
-    if (html.includes('itl-day-activity">') && html.includes('</span> <strong class="itl-day-place">')) {
-      ok(`${chip} có khoảng cách activity–tên`, 'đúng');
-    } else if (html.includes('itl-day-place">')) {
-      bad(`${chip} có khoảng cách activity–tên`, 'thiếu space');
-    }
+    if (!html.includes('itl-day-price') && !html.includes('itl-day-activity')) ok(`${chip} chỉ còn giờ/tên/địa chỉ`, 'đúng');
+    else bad(`${chip} chỉ còn giờ/tên/địa chỉ`, 'vẫn còn giá hoặc activity');
     const rowCount = (html.match(/class="itl-day-row/g) || []).length;
     const itemCount = (page.items || []).length;
     if (rowCount === itemCount) ok(`${chip} số hàng timeline`, `${rowCount}`);

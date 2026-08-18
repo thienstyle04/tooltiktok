@@ -1,0 +1,195 @@
+@font-face {
+  font-family: "TikTok Sans";
+  src: url("/fonts/TikTokSans.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+}
+
+.one-way-story-page {
+  --one-way-story-font-size: 13px;
+  background: #111;
+  color: #fff;
+  font-family: "TikTok Sans", "Be Vietnam Pro", Arial, sans-serif;
+}
+
+.one-way-story-bg,
+.one-way-story-bg img,
+.one-way-story-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.one-way-story-bg img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.one-way-story-shade {
+  pointer-events: none;
+}
+
+.one-way-story-cover .one-way-story-shade {
+  background: linear-gradient(180deg, transparent 28%, rgba(0, 0, 0, 0.08) 45%, rgba(0, 0, 0, 0.34) 74%, rgba(0, 0, 0, 0.14));
+}
+
+.one-way-story-cover-copy {
+  position: absolute;
+  z-index: 2;
+  top: 57%;
+  left: 7.5%;
+  right: 7.5%;
+  transform: translateY(-50%);
+  text-align: center;
+}
+
+.one-way-story-cover-copy h1,
+.one-way-story-road-copy p,
+.one-way-story-road-list span,
+.one-way-story-slope-copy p,
+.one-way-story-location {
+  color: #fff;
+  -webkit-text-stroke: 1.15px #050505;
+  paint-order: stroke fill;
+  text-shadow:
+    0 1px 0 #050505,
+    1px 0 0 #050505,
+    0 -1px 0 #050505,
+    -1px 0 0 #050505,
+    0 2px 3px rgba(0, 0, 0, 0.72);
+}
+
+.one-way-story-cover-copy h1 {
+  max-width: 100%;
+  margin: 0;
+  font-size: var(--one-way-story-font-size);
+  font-weight: 750;
+  line-height: 1.18;
+  letter-spacing: -0.35px;
+  text-wrap: balance;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.one-way-story-cover-copy.is-medium h1 {
+  font-size: var(--one-way-story-font-size);
+}
+
+.one-way-story-cover-copy.is-long h1 {
+  font-size: var(--one-way-story-font-size);
+  line-height: 1.2;
+}
+
+.one-way-story-road .one-way-story-shade {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.one-way-story-road-copy {
+  position: absolute;
+  z-index: 2;
+  inset: 6% 6.5%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.one-way-story-road-copy p {
+  margin: 0;
+  max-width: 100%;
+  font-size: var(--one-way-story-font-size);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
+  text-wrap: balance;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.one-way-story-road-intro {
+  margin-top: 17px !important;
+}
+
+.one-way-story-road-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  margin-top: 17px;
+}
+
+.one-way-story-road-list span {
+  display: block;
+  max-width: 100%;
+  font-size: var(--one-way-story-font-size);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.one-way-story-slope .one-way-story-shade {
+  background: linear-gradient(180deg, transparent 22%, rgba(0, 0, 0, 0.06) 42%, rgba(0, 0, 0, 0.52) 73%, rgba(0, 0, 0, 0.6));
+}
+
+.one-way-story-slope-copy {
+  position: absolute;
+  z-index: 2;
+  left: 5.5%;
+  right: 5.5%;
+  bottom: 10%;
+  text-align: center;
+}
+
+.one-way-story-slope-copy p {
+  margin: 0;
+  font-size: var(--one-way-story-font-size);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.25px;
+  text-wrap: balance;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.one-way-story-slope-copy p + p {
+  margin-top: 21px;
+}
+
+.one-way-story-location {
+  position: absolute;
+  z-index: 2;
+  left: 6%;
+  right: 6%;
+  bottom: 5%;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--one-way-story-font-size);
+  font-weight: 700;
+  line-height: 1.22;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.one-way-story-location strong,
+.one-way-story-location span {
+  display: block;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.one-way-story-location strong {
+  font-weight: 750;
+}
+
+.one-way-story-location span {
+  font-weight: 600;
+}
