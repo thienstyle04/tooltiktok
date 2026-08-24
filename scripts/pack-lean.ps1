@@ -10,6 +10,14 @@ $desktop = [Environment]::GetFolderPath('Desktop')
 $outZip = Join-Path $desktop "$projectName-portable-$timestamp.zip"
 $stagingRoot = Join-Path $env:TEMP "dalat-pack-$timestamp"
 $staging = Join-Path $stagingRoot $projectName
+$tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\', '/')
+$stagingRoot = [IO.Path]::GetFullPath($stagingRoot)
+$staging = [IO.Path]::GetFullPath($staging)
+$tempPrefix = $tempBase + [IO.Path]::DirectorySeparatorChar
+if (-not $stagingRoot.StartsWith($tempPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+    (Split-Path -Leaf $stagingRoot) -notlike 'dalat-pack-*') {
+    throw "Thu muc staging khong an toan: $stagingRoot"
+}
 
 Write-Host '=============================================================='
 Write-Host "  PACK PORTABLE - $projectName"
@@ -104,8 +112,13 @@ Get-ChildItem -Path $staging -Directory -Recurse -Force -ErrorAction SilentlyCon
         $_.Name -eq '.git'
     } |
     ForEach-Object {
-        Write-Host "  Go staging: $($_.FullName.Substring($staging.Length))"
-        Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        $stagingChild = [IO.Path]::GetFullPath($_.FullName)
+        $stagingPrefix = $staging.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+        if (-not $stagingChild.StartsWith($stagingPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Tu choi xoa thu muc ngoai staging: $stagingChild"
+        }
+        Write-Host "  Go staging: $($stagingChild.Substring($staging.Length))"
+        Remove-Item -LiteralPath $stagingChild -Recurse -Force -ErrorAction SilentlyContinue
     }
 
 $readmeLines = @(
@@ -158,7 +171,14 @@ if ($sevenZip) {
 }
 
 Write-Host '[4/4] Don temp...'
-Remove-Item $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue
+if (Test-Path -LiteralPath $stagingRoot) {
+    $resolvedStagingRoot = (Resolve-Path -LiteralPath $stagingRoot).Path
+    if (-not $resolvedStagingRoot.Equals($stagingRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        -not $resolvedStagingRoot.StartsWith($tempPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Tu choi xoa thu muc temp khong hop le: $resolvedStagingRoot"
+    }
+    Remove-Item -LiteralPath $resolvedStagingRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 $sizeMB = [math]::Round((Get-Item $outZip).Length / 1MB, 1)
 Write-Host ''

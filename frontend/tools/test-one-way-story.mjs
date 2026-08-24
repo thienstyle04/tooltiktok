@@ -31,10 +31,10 @@ const road = {
 };
 const partnerPhoto = {
   type: 'list', chipText: 'Cafe đối tác', title: '', subtitle: '', backgroundImage: image,
-  layoutVariant: 'one-way-story-photo', items: [{ name: 'Tên quán', metaPrimary: '12 Đường Đà Lạt', imageUrl: image, candidateImageUrls: [image], isPartner: true }],
+  layoutVariant: 'one-way-story-photo', items: [{ name: 'Tên quán', sourceSectionKey: 'cafe', metaPrimary: '12 Đường Đà Lạt', imageUrl: image, candidateImageUrls: [image], isPartner: true }],
 };
 const checkinPhoto = {
-  ...partnerPhoto, chipText: 'Check-in', items: [{ ...partnerPhoto.items[0], name: 'Điểm check-in', metaPrimary: '' }],
+  ...partnerPhoto, chipText: 'Check-in', items: [{ ...partnerPhoto.items[0], name: 'Điểm check-in', sourceSectionKey: 'check_in', metaPrimary: 'Địa chỉ vẫn được lưu trong dữ liệu' }],
 };
 list.pages = [cover, road, partnerPhoto, checkinPhoto];
 
@@ -57,6 +57,7 @@ const checkinHtml = renderListPage(checkinPhoto, 3, 4, list.id, [], list);
 assert.match(checkinHtml, /one-way-story-location/);
 assert.match(checkinHtml, /<strong>Điểm check-in<\/strong>/);
 assert.doesNotMatch(checkinHtml, /<span>/);
+assert.doesNotMatch(checkinHtml, /Địa chỉ vẫn được lưu trong dữ liệu/);
 
 const css = await readFile(join(here, '../app/styles/one-way-story.css'), 'utf8');
 assert.match(css, /font-family:\s*"TikTok Sans"/);
@@ -66,4 +67,4 @@ assert.doesNotMatch(css, /font-size:\s*(?:19|21|23|25)px/);
 const locationRule = css.match(/\.one-way-story-location\s*\{([\s\S]*?)\}/)?.[1] || '';
 assert.doesNotMatch(locationRule, /background\s*:/);
 
-console.log('PASS one-way-story markup: toàn mẫu dùng chữ 13px; trang địa điểm có tên/địa chỉ và không còn màn gradient đen.');
+console.log('PASS one-way-story markup: check-in free chỉ hiện tên; các nhóm còn lại giữ địa chỉ; toàn mẫu dùng chữ 13px và không còn màn gradient đen.');

@@ -102,10 +102,7 @@
   font-weight: 900;
   font-size: 0.68rem;
   line-height: 1.04;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 1px 3px rgba(0,0,0,0.8);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
   margin-bottom: 1px;
   display: -webkit-box;
@@ -142,10 +139,7 @@
   font-size: 0.5rem;
   font-weight: 600;
   line-height: 1.06;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 1px 2px rgba(0,0,0,0.5);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
   display: flex;
   align-items: center;
@@ -668,10 +662,7 @@
   font-size: 0.47rem;
   font-weight: 900;
   line-height: 1.18;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 1px 3px rgba(0,0,0,0.65);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -756,10 +747,7 @@
   color: #fff;
   font-size: 0.46rem;
   line-height: 1.14;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 1px 2px rgba(0,0,0,0.55);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
   max-width: 100%;
 }
@@ -846,10 +834,7 @@
   font-weight: 900;
   line-height: 1.26;
   text-transform: uppercase;
-  text-shadow:
-    -1.2px -1.2px 0 #000, 1.2px -1.2px 0 #000,
-    -1.2px 1.2px 0 #000, 1.2px 1.2px 0 #000,
-    0 1px 4px rgba(0,0,0,0.72);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.7);
   -webkit-line-clamp: 3;
   line-clamp: 3;
@@ -868,10 +853,7 @@
   font-size: 0.42rem;
   font-weight: 750;
   line-height: 1.16;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 1px 3px rgba(0,0,0,0.65);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.65);
   -webkit-line-clamp: 5;
   line-clamp: 5;
@@ -1009,10 +991,7 @@
   font-weight: 950;
   line-height: 1.08;
   text-transform: uppercase;
-  text-shadow:
-    -1.8px -1.8px 0 #000, 1.8px -1.8px 0 #000,
-    -1.8px 1.8px 0 #000, 1.8px 1.8px 0 #000,
-    0 5px 12px rgba(0,0,0,0.58);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.55px rgba(0, 0, 0, 0.75);
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -1028,10 +1007,7 @@
   font-size: 0.9rem;
   font-weight: 850;
   line-height: 1.26;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 3px 10px rgba(0,0,0,0.62);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.7);
   display: -webkit-box;
   -webkit-line-clamp: 4;
@@ -1084,10 +1060,7 @@
   font-size: 1rem;
   line-height: 1.18;
   margin-bottom: 12px;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 3px 8px rgba(0, 0, 0, 0.62);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.7);
 }
 
@@ -1102,10 +1075,7 @@
   line-height: 1.12;
   letter-spacing: 0;
   text-transform: uppercase;
-  text-shadow:
-    -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000,
-    -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000,
-    0 4px 12px rgba(0, 0, 0, 0.68);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.75);
 }
 
@@ -1127,10 +1097,7 @@
   font-weight: 850;
   line-height: 1.34;
   text-transform: uppercase;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 3px 8px rgba(0, 0, 0, 0.66);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.7);
 }
 
@@ -1367,9 +1334,7 @@
   font-weight: 900;
   line-height: 1;
   text-transform: uppercase;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
 }
 
@@ -1381,10 +1346,7 @@
   font-weight: 950;
   line-height: 1.16;
   text-transform: uppercase;
-  text-shadow:
-    -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000,
-    -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000,
-    0 3px 10px rgba(0, 0, 0, 0.68);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.75);
 }
 
@@ -1478,10 +1440,7 @@
   font-size: 1.16rem;
   font-weight: 1000;
   line-height: 1.02;
-  text-shadow:
-    -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000,
-    -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000,
-    0 2px 8px rgba(0, 0, 0, 0.78);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.45px rgba(0, 0, 0, 0.75);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1496,9 +1455,7 @@
   font-size: 0.54rem;
   font-weight: 800;
   line-height: 1.08;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
 }
 
@@ -1513,9 +1470,7 @@
   font-size: 0.55rem;
   font-weight: 900;
   line-height: 1.08;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
 }
 
@@ -1591,9 +1546,7 @@
   font-size: 0.72rem;
   font-weight: 1000;
   line-height: 1.02;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.7);
   display: -webkit-box;
   -webkit-line-clamp: 1;
@@ -1707,10 +1660,7 @@
   font-size: 0.64rem;
   font-weight: 1000;
   line-height: 1.14;
-  text-shadow:
-    -1.2px -1.2px 0 #000, 1.2px -1.2px 0 #000,
-    -1.2px 1.2px 0 #000, 1.2px 1.2px 0 #000,
-    0 2px 8px rgba(0, 0, 0, 0.82);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.75);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1737,9 +1687,7 @@
   font-size: 0.44rem;
   font-weight: 800;
   line-height: 1;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
 }
 
@@ -1761,9 +1709,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
 }
 
@@ -1793,9 +1739,7 @@
   font-weight: 850;
   line-height: 1.18;
   text-transform: lowercase;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
 }
 
@@ -1807,10 +1751,7 @@
   font-weight: 1000;
   line-height: 1.16;
   text-transform: uppercase;
-  text-shadow:
-    -1.3px -1.3px 0 #000, 1.3px -1.3px 0 #000,
-    -1.3px 1.3px 0 #000, 1.3px 1.3px 0 #000,
-    0 3px 9px rgba(0, 0, 0, 0.78);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.45px rgba(0, 0, 0, 0.75);
 }
 
@@ -1821,9 +1762,7 @@
   font-size: 0.45rem;
   font-weight: 800;
   line-height: 1.22;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -2173,10 +2112,7 @@
   font-weight: 850;
   line-height: 1.22;
   text-transform: none;
-  text-shadow:
-    -1.2px -1.2px 0 #000, 1.2px -1.2px 0 #000,
-    -1.2px 1.2px 0 #000, 1.2px 1.2px 0 #000,
-    0 2px 10px rgba(0, 0, 0, 0.78);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-line-clamp: 3;
   line-clamp: 3;
   display: -webkit-box;
@@ -2191,10 +2127,7 @@
   font-size: 0.62rem;
   font-weight: 750;
   line-height: 1.34;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 2px 8px rgba(0, 0, 0, 0.72);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-line-clamp: 3;
   line-clamp: 3;
 }
@@ -2316,10 +2249,7 @@
   line-clamp: unset;
   -webkit-box-orient: horizontal;
   padding-top: 0;
-  text-shadow:
-    -1.2px -1.2px 0 #000, 1.2px -1.2px 0 #000,
-    -1.2px 1.2px 0 #000, 1.2px 1.2px 0 #000,
-    0 2px 0 rgba(0, 0, 0, 0.2), 0 12px 28px rgba(0, 0, 0, 0.5);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.75);
 }
 
@@ -2342,9 +2272,7 @@
   font-weight: 900;
   line-height: 1.2;
   text-transform: uppercase;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
 }
 
@@ -2356,9 +2284,7 @@
   font-size: 0.78rem;
   font-weight: 750;
   line-height: 1.35;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -2390,9 +2316,7 @@
   font-size: 0.66rem;
   font-weight: 800;
   line-height: 1.08;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
 }
 
@@ -2515,10 +2439,7 @@
   font-family: "Be Vietnam Pro", Arial, sans-serif;
   font-weight: 700;
   line-height: 1;
-  text-shadow:
-    -1.2px -1.2px 0 #000, 1.2px -1.2px 0 #000,
-    -1.2px 1.2px 0 #000, 1.2px 1.2px 0 #000,
-    0 3px 14px rgba(0, 0, 0, 0.72);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.75);
 }
 
@@ -2532,10 +2453,7 @@
   line-height: 1.12;
   text-align: center;
   text-transform: none;
-  text-shadow:
-    -1.4px -1.4px 0 #000, 1.4px -1.4px 0 #000,
-    -1.4px 1.4px 0 #000, 1.4px 1.4px 0 #000,
-    0 4px 18px rgba(0, 0, 0, 0.74);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.45px rgba(0, 0, 0, 0.75);
   overflow: visible;
   -webkit-line-clamp: unset;
@@ -2551,10 +2469,7 @@
   font-weight: 760;
   line-height: 1.45;
   text-align: center;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 3px 12px rgba(0, 0, 0, 0.7);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
 }
 
@@ -2584,10 +2499,7 @@
   overflow: visible;
   text-wrap: balance;
   text-transform: none;
-  text-shadow:
-    -1.2px -1.2px 0 #000, 1.2px -1.2px 0 #000,
-    -1.2px 1.2px 0 #000, 1.2px 1.2px 0 #000,
-    0 4px 16px rgba(0, 0, 0, 0.72);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.75);
 }
 
@@ -2616,10 +2528,7 @@
   color: #fff;
   font-size: 0.47rem;
   line-height: 1.16;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 2px 10px rgba(0, 0, 0, 0.76);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
 }
 
@@ -2699,9 +2608,7 @@
   font-size: 1.02rem;
   font-weight: 900;
   line-height: 1.12;
-  text-shadow:
-    -1.1px -1.1px 0 #000, 1.1px -1.1px 0 #000,
-    -1.1px 1.1px 0 #000, 1.1px 1.1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.7);
 }
 
@@ -2711,9 +2618,7 @@
   font-size: 0.58rem;
   font-weight: 760;
   line-height: 1.25;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
 }
 
@@ -2739,9 +2644,7 @@
   font-size: 0.43rem;
   font-weight: 900;
   line-height: 1;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.2px rgba(0, 0, 0, 0.6);
 }
 
@@ -2750,9 +2653,7 @@
   font-size: 0.66rem;
   font-weight: 850;
   line-height: 1.22;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
 }
 
@@ -2763,9 +2664,7 @@
   font-size: 0.62rem;
   font-weight: 850;
   line-height: 1.22;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
 }
 
@@ -2800,9 +2699,7 @@
   font-size: 0.64rem;
   font-weight: 900;
   line-height: 1.1;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
   -webkit-line-clamp: 1;
   line-clamp: 1;
@@ -3060,10 +2957,7 @@
   font-weight: 900;
   font-size: 0.64rem;
   line-height: 1.14;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 1px 3px rgba(0,0,0,0.8);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
   margin-bottom: 3px;
   display: -webkit-box;
@@ -3102,10 +2996,7 @@
   font-size: 0.5rem;
   font-weight: 600;
   line-height: 1.14;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 1px 2px rgba(0,0,0,0.5);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.65);
   display: flex;
   align-items: flex-start;
@@ -3190,10 +3081,7 @@
   font-weight: 950;
   line-height: 1;
   text-transform: uppercase;
-  text-shadow:
-    -2px -2px 0 #000, 2px -2px 0 #000,
-    -2px 2px 0 #000, 2px 2px 0 #000,
-    0 4px 10px rgba(0,0,0,0.48);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.6px rgba(0, 0, 0, 0.75);
 }
 
@@ -3206,10 +3094,7 @@
   line-height: 1.22;
   padding-top: 0.18em;
   text-transform: uppercase;
-  text-shadow:
-    -1.8px -1.8px 0 #000, 1.8px -1.8px 0 #000,
-    -1.8px 1.8px 0 #000, 1.8px 1.8px 0 #000,
-    0 3px 8px rgba(0,0,0,0.5);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.55px rgba(0, 0, 0, 0.75);
   word-wrap: break-word;
 }
@@ -3220,10 +3105,7 @@
   font-size: 0.9rem;
   font-weight: 850;
   line-height: 1.26;
-  text-shadow:
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0 3px 10px rgba(0,0,0,0.62);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.7);
   display: -webkit-box;
   -webkit-line-clamp: 4;
@@ -3544,10 +3426,7 @@
   line-height: 1.16;
   letter-spacing: 0;
   text-wrap: balance;
-  text-shadow:
-    -1px -1px 0 #111, 1px -1px 0 #111,
-    -1px 1px 0 #111, 1px 1px 0 #111,
-    0 3px 12px rgba(0, 0, 0, .72);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: .45px rgba(10, 10, 10, .82);
 }
 
@@ -3573,10 +3452,7 @@
   line-height: 1.24;
   text-align: center;
   text-wrap: balance;
-  text-shadow:
-    -1px -1px 0 #111, 1px -1px 0 #111,
-    -1px 1px 0 #111, 1px 1px 0 #111,
-    0 2px 10px rgba(0, 0, 0, .8);
+  text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: .4px rgba(10, 10, 10, .9);
 }
 
