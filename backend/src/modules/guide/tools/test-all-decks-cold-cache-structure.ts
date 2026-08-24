@@ -23,7 +23,11 @@ function item(sectionKey: SectionKey, index: number): GuideItem {
     id,
     sectionKey,
     sectionTitle: sectionKey,
-    name: `Dia diem ${id}`,
+    name: sectionKey === 'check_in' && index === 1
+      ? 'Dốc Nhà Bò'
+      : sectionKey === 'homestay' && index <= 3
+        ? ['Lagom Homestay', 'Little Fish Dalat', 'Tori Wooden House'][index - 1]
+        : `Dia diem ${id}`,
     address: `${index} Da Lat`,
     type,
     openHours: '07:00-22:00',
@@ -71,14 +75,17 @@ function deckSignatures() {
     itemsBySection,
     [],
     [],
-    ['/assets/drive-file?id=all-decks-cover'],
+    [
+      '/assets/drive-file?id=all-decks-cover-1',
+      '/assets/drive-file?id=all-decks-cover-2',
+    ],
   );
   return Object.fromEntries(decks.map((deck) => {
     const main = deck.lists.find((list) => list.id === `${deck.id}-main`) || deck.lists[0];
     assert.ok(main, `${deck.id}: thieu list mau`);
     assert.ok(main.pages.length > 0, `${deck.id}: list mau khong co trang`);
     main.pages.forEach((page, index) => {
-      if (page.type !== 'list') return;
+      if (page.type !== 'list' || page.layoutVariant === 'one-way-story-road') return;
       assert.ok(page.items.length > 0, `${deck.id} trang ${index + 1}: khong duoc mat toan bo item`);
     });
     return [deck.id, main.pages.map(pageSignature)];

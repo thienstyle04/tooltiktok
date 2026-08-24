@@ -30,6 +30,21 @@ const css = [
 const globalStyles = fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8');
 const timelineCss = fs.readFileSync(path.join(root, 'app/styles/itinerary-timeline-templates.css'), 'utf8');
 
+const styleDirectory = path.join(root, 'app/styles');
+const directionalShadowViolations = [];
+for (const fileName of fs.readdirSync(styleDirectory).filter((name) => name.endsWith('.css'))) {
+  const source = fs.readFileSync(path.join(styleDirectory, fileName), 'utf8');
+  for (const match of source.matchAll(/([^{}]+)\{([^{}]*)\}/gs)) {
+    const selector = String(match[1] || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+    const body = String(match[2] || '');
+    const usesDirectionalOutline = /text-shadow\s*:[^;}]*-\d+(?:\.\d+)?px\s+-\d+(?:\.\d+)?px\s+0\s+(?:#000|#111)/s.test(body)
+      && /(?:^|,)\s*\d+(?:\.\d+)?px\s+\d+(?:\.\d+)?px\s+0\s+(?:#000|#111)/s.test(body);
+    if (selector && usesDirectionalOutline) {
+      directionalShadowViolations.push(fileName + ': ' + selector);
+    }
+  }
+}
+
 const items = Array.from({ length: 8 }, (_, index) => ({
   id: `item-${index}`,
   name: index === 0 ? 'Hoạt động trải nghiệm rất dài cần tự co chữ để không tràn khung' : `Địa điểm ${index + 1}`,
@@ -166,8 +181,16 @@ assert.doesNotMatch(css, /itinerary-4n3d-stack-cover-grid\s*\{[^}]*filter:[^;}]*
 assert.match(css, /itinerary-4n3d-stack-cover,[\s\S]*?--stack-script:\s*"Be Vietnam Pro",\s*Arial,\s*sans-serif;/);
 assert.match(css, /itinerary-4n3d-stack-name[\s\S]*?-webkit-text-stroke:\s*1px\s+#000;/);
 assert.match(css, /itinerary-4n3d-stack-address[\s\S]*?-webkit-text-stroke:\s*0\.62px\s+#000;/);
-assert.match(css, /Viền 8 hướng[\s\S]*?-1px\s+-1px\s+0\s+#000[\s\S]*?1px\s+1px\s+0\s+#000/);
+assert.match(css, /--carousel-text-shadow:\s*0 1px 2px rgba\(0, 0, 0, 0\.96\)/);
+assert.match(css, /itinerary-4n3d-stack-name[\s\S]*?text-shadow:\s*var\(--carousel-text-shadow\)/);
 assert.doesNotMatch(css, /itinerary-4n3d-stack-name\s*\{[^}]*-1\.1px\s+-1\.1px/s);
+const spotlightNameCss = css.match(/\.story-page\.spotlight-v2-page \.spotlight-v2-name\s*\{([^}]*)\}/s)?.[1] || '';
+const spotlightMetaCss = css.match(/\.story-page\.spotlight-v2-page \.spotlight-v2-address,\s*\.story-page\.spotlight-v2-page \.spotlight-v2-hours\s*\{([^}]*)\}/s)?.[1] || '';
+assert.match(spotlightNameCss, /paint-order:\s*stroke fill/);
+assert.match(spotlightNameCss, /-webkit-text-stroke:\s*0\.7px\s+#000/);
+assert.doesNotMatch(spotlightNameCss, /-1\.3px|1\.3px/);
+assert.match(spotlightMetaCss, /-webkit-text-stroke:\s*0\.42px\s+#000/);
+assert.doesNotMatch(spotlightMetaCss, /-1px\s+-1px|1px\s+1px/);
 assert.match(css, /mutant-center-card[^}]*mutant-item-top[^}]*grid4-mutant-overlay\s*\{[^}]*justify-content:\s*flex-end/s);
 assert.match(css, /\.budget72-title\s*\{[^}]*font-size:\s*1\.5rem[^}]*line-height:\s*1\.12/s);
 assert.match(css, /\.budget72-title\.budget72-title-fit-xs\s*\{[^}]*font-size:\s*1\.08rem/s);
@@ -183,5 +206,6 @@ assert.doesNotMatch(css, /grid6-checkin-page[\s\S]{0,180}object-fit:\s*contain/)
 assert.match(css, /\.story-page,\s*\n\.story-page \*\s*\{[^}]*font-family:\s*"Be Vietnam Pro",\s*Arial,\s*sans-serif\s*!important;/s);
 assert.match(globalStyles, /studio-device-responsive\.css"\);\s*@import url\("\.\/styles\/tiktok-classic-font\.css"\);/s);
 assert.doesNotMatch(timelineCss, /fonts\.googleapis\.com/i);
+assert.deepEqual(directionalShadowViolations, [], 'Không được dùng bóng lệch nhiều hướng làm viền chữ:\n' + directionalShadowViolations.join('\n'));
 
 console.log('PASS template feedback regressions');

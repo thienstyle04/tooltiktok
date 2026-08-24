@@ -5,9 +5,10 @@ const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 /** Fallback SVG chỉ cache ngắn — máy mới hay fail tạm thời; cache 30 phút sẽ “đóng băng” ảnh xám. */
 const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 20 * 1000;
-const DRIVE_FILE_DISK_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 /** Network/rate-limit failures are transient; never blacklist a valid Drive file indefinitely. */
 const DRIVE_FILE_FAILED_ID_TTL_MS = 10 * 60 * 1000;
+const DRIVE_FILE_ACCESSIBLE_TTL_MS = 24 * 60 * 60 * 1000;
+const DRIVE_FILE_INACCESSIBLE_TTL_MS = 60 * 1000;
 const DRIVE_FETCH_TIMEOUT_MS = 15_000;
 /** Backoff dài hơn cho 401/429 — Google hay rate-limit khi sync hàng trăm folder. */
 const DRIVE_FETCH_RETRY_DELAYS_MS = [0, 1_500, 4_000, 8_000];
@@ -21,7 +22,7 @@ const DRIVE_BROWSER_USER_AGENT =
 
 const folderEntriesCache = new Map<string, { expiresAt: number; entries: DriveFolderEntry[] }>();
 const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFileAsset }>();
-const driveFileAccessibilityCache = new Map<string, boolean>();
+const driveFileAccessibilityCache = new Map<string, { accessible: boolean; expiresAt: number }>();
 const driveFileInFlight = new Map<string, Promise<DriveFileAsset>>();
 let activeDriveNetworkFetches = 0;
 const driveNetworkWaiters: Array<() => void> = [];
@@ -30,6 +31,7 @@ const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.jf
 
 let driveFileDiskCacheDir = '';
 let knownFailedDriveFileIds: Set<string> | null = null;
+let knownFailedDriveFileIdsExpiresAt = 0;
 
 export interface DriveFolderEntry {
   fileId: string;
@@ -47,6 +49,7 @@ export interface DriveFileAsset {
 export function configureDriveFileDiskCache(dir: string): void {
   driveFileDiskCacheDir = String(dir || '').trim();
   knownFailedDriveFileIds = null;
+  knownFailedDriveFileIdsExpiresAt = 0;
 }
 
 function resolveDriveFileDiskCacheDir(): string {
@@ -73,24 +76,29 @@ function failedDriveFileIdsPath(): string {
 }
 
 function loadKnownFailedDriveFileIds(): Set<string> {
-  if (knownFailedDriveFileIds) return knownFailedDriveFileIds;
+  const now = Date.now();
+  if (knownFailedDriveFileIds && knownFailedDriveFileIdsExpiresAt > now) {
+    return knownFailedDriveFileIds;
+  }
   try {
     const parsed = JSON.parse(fs.readFileSync(failedDriveFileIdsPath(), 'utf8')) as {
       savedAt?: unknown;
       fileIds?: unknown;
     };
     const savedAt = Date.parse(String(parsed.savedAt || ''));
-    const expired = !Number.isFinite(savedAt) || Date.now() - savedAt > DRIVE_FILE_FAILED_ID_TTL_MS;
+    const expired = !Number.isFinite(savedAt) || now - savedAt > DRIVE_FILE_FAILED_ID_TTL_MS;
     knownFailedDriveFileIds = new Set(
       (expired || !Array.isArray(parsed.fileIds) ? [] : parsed.fileIds)
         .map((id) => String(id || '').trim())
         .filter(Boolean),
     );
+    knownFailedDriveFileIdsExpiresAt = expired ? now + DRIVE_FILE_FAILED_ID_TTL_MS : savedAt + DRIVE_FILE_FAILED_ID_TTL_MS;
     if (expired && Array.isArray(parsed.fileIds) && parsed.fileIds.length > 0) {
       persistKnownFailedDriveFileIds();
     }
   } catch {
     knownFailedDriveFileIds = new Set();
+    knownFailedDriveFileIdsExpiresAt = now + DRIVE_FILE_FAILED_ID_TTL_MS;
   }
   return knownFailedDriveFileIds;
 }
@@ -103,12 +111,14 @@ export function isKnownFailedDriveFileId(fileId: string): boolean {
 function persistKnownFailedDriveFileIds(): void {
   const ids = loadKnownFailedDriveFileIds();
   try {
+    const savedAt = Date.now();
     const dir = resolveDriveFileDiskCacheDir();
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(failedDriveFileIdsPath(), JSON.stringify({
-      savedAt: new Date().toISOString(),
+      savedAt: new Date(savedAt).toISOString(),
       fileIds: [...ids].sort(),
     }, null, 2), 'utf8');
+    knownFailedDriveFileIdsExpiresAt = savedAt + DRIVE_FILE_FAILED_ID_TTL_MS;
   } catch (error) {
     console.warn('[drive-cache] Khong luu duoc danh sach anh loi:', error instanceof Error ? error.message : error);
   }
@@ -133,10 +143,7 @@ function readDriveFileDiskCache(fileId: string): DriveFileAsset | null {
     if (!fs.existsSync(binPath) || !fs.existsSync(metaPath)) return null;
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as {
       contentType?: string;
-      savedAt?: number;
     };
-    const savedAt = Number(meta.savedAt || 0);
-    if (!savedAt || Date.now() - savedAt > DRIVE_FILE_DISK_CACHE_TTL_MS) return null;
     const body = fs.readFileSync(binPath);
     if (!body.length) return null;
     const contentType = String(meta.contentType || '').trim() || sniffImageContentType(body) || '';
@@ -173,14 +180,20 @@ function writeDriveFileDiskCache(fileId: string, asset: DriveFileAsset): void {
   }
 }
 
-/** True nếu đã có file cache disk còn hạn (không đọc body). */
+/**
+ * True nếu disk cache có file ảnh thật và metadata hợp lệ (không đọc body).
+ *
+ * Cache ảnh là dữ liệu bền vững: tuổi của metadata không được khiến tool tải lại
+ * hàng trăm ảnh khi người dùng mở lại sau một thời gian. Chỉ file thiếu, rỗng hoặc
+ * metadata không còn mô tả một ảnh hợp lệ mới cần tải lại từ Drive.
+ */
 export function hasDriveFileDiskCache(fileId: string): boolean {
   try {
     const { binPath, metaPath } = diskCachePaths(fileId);
     if (!fs.existsSync(binPath) || !fs.existsSync(metaPath)) return false;
-    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as { savedAt?: number };
-    const savedAt = Number(meta.savedAt || 0);
-    if (!savedAt || Date.now() - savedAt > DRIVE_FILE_DISK_CACHE_TTL_MS) return false;
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as { contentType?: string };
+    const contentType = String(meta.contentType || '').trim().toLowerCase();
+    if (!contentType.startsWith('image/') || contentType.includes('svg')) return false;
     return fs.statSync(binPath).size > 0;
   } catch {
     return false;
@@ -478,13 +491,22 @@ export function clearDriveAccessibilityCache(): void {
 export function getCachedDriveFileAccessibility(fileId: string): boolean | undefined {
   const normalized = String(fileId ?? '').trim();
   if (!normalized) return undefined;
-  return driveFileAccessibilityCache.get(normalized);
+  const cached = driveFileAccessibilityCache.get(normalized);
+  if (!cached) return undefined;
+  if (cached.expiresAt <= Date.now()) {
+    driveFileAccessibilityCache.delete(normalized);
+    return undefined;
+  }
+  return cached.accessible;
 }
 
 export function setCachedDriveFileAccessibility(fileId: string, accessible: boolean): void {
   const normalized = String(fileId ?? '').trim();
   if (!normalized) return;
-  driveFileAccessibilityCache.set(normalized, accessible);
+  driveFileAccessibilityCache.set(normalized, {
+    accessible,
+    expiresAt: Date.now() + (accessible ? DRIVE_FILE_ACCESSIBLE_TTL_MS : DRIVE_FILE_INACCESSIBLE_TTL_MS),
+  });
 }
 
 export function isKnownInaccessibleDriveProxyUrl(url: string): boolean {

@@ -1,4 +1,4 @@
-// lib/utils.js
+// frontend/lib/utils.js
 var DATASET_CACHE_KEY = "dalat-carousel-dataset-cache-v82";
 var STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
 function escapeHtml(value) {
@@ -8,7 +8,7 @@ function sanitizeFilePart(value) {
   return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
 }
 
-// lib/pageMarkup.js
+// frontend/lib/pageMarkup.js
 function imageSourceClass(item) {
   return item?.imageSource || (item?.imageMapped ? "manual" : "fallback");
 }
@@ -116,7 +116,7 @@ function isBudget3N2DCover(page) {
 function isBudget3N2DStoryCover(page) {
   return page.layoutVariant === "budget-3n2d-story" && page.type === "cover";
 }
-var MOJIBAKE_TEXT_RE = /(?:Ã|Â|Ä|Å|Æ|áÂ|â€|ï¿½)/;
+var MOJIBAKE_TEXT_RE = /(?:áÂ|â€|ï¿½)/;
 var BUDGET72_STORY_TEXT = {
   coverTitle: '"72H" \u1EDE \u0110\xC0 L\u1EA0T V\u1EDAI 3TR',
   coverSubtitle: "L\u1ECBch tr\xECnh 3 ng\xE0y 2 \u0111\xEAm g\u1ECDn h\u01A1n: xem theo t\u1EEBng ng\xE0y, c\xF3 chi ph\xED v\xE0 c\xE1c \u0111i\u1EC3m n\xEAn l\u01B0u.",
@@ -163,15 +163,15 @@ function cleanBudgetStoryDayCopy(page, index) {
   const defaults = BUDGET72_STORY_TEXT[`day${budgetStoryDayNumber(page, index)}`] || BUDGET72_STORY_TEXT.day1;
   return {
     chip: cleanStoryText(page?.chipText, defaults.chip),
-    title: cleanStoryText(page?.title, defaults.title),
-    subtitle: cleanStoryText(page?.subtitle, defaults.subtitle)
+    title: cleanStoryText(page?.title, ""),
+    subtitle: cleanStoryText(page?.subtitle, "")
   };
 }
 function cleanBudgetStoryTotalCopy(page) {
   return {
     chip: cleanStoryText(page?.chipText, BUDGET72_STORY_TEXT.total.chip),
-    title: cleanStoryText(page?.title, BUDGET72_STORY_TEXT.total.title),
-    subtitle: cleanStoryText(page?.subtitle, BUDGET72_STORY_TEXT.total.subtitle)
+    title: cleanStoryText(page?.title, ""),
+    subtitle: cleanStoryText(page?.subtitle, "")
   };
 }
 function spotlightPositionClass(page, index, item) {
@@ -216,14 +216,8 @@ function spotlightV2ListHeading(page) {
   if (isServiceListPage(page)) return "D\u1ECBch v\u1EE5 c\u1EA7n l\u01B0u";
   return String(page?.title || page?.chipText || "").trim();
 }
-function isGeneratedCaptionList(list) {
-  return /caption-/i.test(String(list?.id || ""));
-}
 function gridContextKey(value) {
   return normalizeGridText(value).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-}
-function sameGridText(left, right) {
-  return gridContextKey(left) === gridContextKey(right);
 }
 function polishShortVietnameseCopy(value) {
   let text = String(value || "").replace(/\s+/g, " ").trim();
@@ -243,123 +237,11 @@ function gridPageKind(page) {
   if (key.includes("khu_du_lich")) return "tourism";
   return "generic";
 }
-function listVariantIndex(list, variantCount, salt = "") {
-  if (variantCount <= 1) return 0;
-  const rawId = String(list?.id || "");
-  const captionMatch = rawId.match(/caption-(\d+)/i);
-  if (captionMatch) return Math.max(0, Number(captionMatch[1]) - 1) % variantCount;
-  const raw = `${rawId}|${list?.title || ""}|${salt}`;
-  let hash = 0;
-  for (let index = 0; index < raw.length; index += 1) {
-    hash = hash * 31 + raw.charCodeAt(index) >>> 0;
-  }
-  return hash % variantCount;
-}
-function pickListVariant(list, variants, salt) {
-  return variants[listVariantIndex(list, variants.length, salt)] || variants[0] || "";
-}
-var GRID8_INTRO_VARIANTS = {
-  food: [
-    "Nh\xF3m qu\xE1n \u0103n \u0111\u01B0\u1EE3c gom ri\xEAng \u0111\u1EC3 ng\u01B0\u1EDDi xem ch\u1ECDn b\u1EEFa nhanh, d\u1EC5 scan tr\u01B0\u1EDBc khi \u0111i.",
-    "M\u1ED9t trang ch\u1EC9 d\xE0nh cho \u0111\u1ED3 \u0103n, \u01B0u ti\xEAn ch\u1ED7 d\u1EC5 g\u1ECDi m\xF3n v\xE0 ti\u1EC7n gh\xE9 theo l\u1ECBch.",
-    "Ghim s\u1EB5n c\xE1c qu\xE1n \u0103n \u0111\u1EC3 l\xFAc \u0111\xF3i ch\u1EC9 c\u1EA7n m\u1EDF list, ch\u1ECDn nhanh, kh\u1ECFi l\u01B0\u1EDBt l\u1EA1i.",
-    "C\xE1c qu\xE1n \u0111\u01B0\u1EE3c l\u1ECDc ri\xEAng \u0111\u1EC3 d\u1EC5 \u0111\u1ED5i b\u1EEFa m\xE0 kh\xF4ng l\xE0m r\u1ED1i l\u1ECBch di chuy\u1EC3n.",
-    "Trang n\xE0y gom c\xE1c qu\xE1n \u0111\xE1ng th\u1EED, h\u1EE3p \u0111\u1EC3 ch\u1ED1t b\u1EEFa ch\xEDnh ho\u1EB7c b\u1EEFa ph\u1EE5 trong ng\xE0y.",
-    "M\u1ED9t c\u1EE5m \u0111\u1ECBa ch\u1EC9 \u0103n ngon, g\u1ECDn m\u1EAFt, d\xE0nh cho l\xFAc c\u1EA7n quy\u1EBFt nhanh trong chuy\u1EBFn \u0111i."
-  ],
-  cafe: [
-    "C\xE1c qu\xE1n cafe n\xEAn l\u01B0u ri\xEAng \u0111\u1EC3 ch\u1ECDn \u0111i\u1EC3m ng\u1ED3i chill, ngh\u1EC9 ch\xE2n ho\u1EB7c ch\u1EE5p \u1EA3nh.",
-    "Trang cafe n\xE0y \u01B0u ti\xEAn ch\u1ED7 c\xF3 kh\xF4ng kh\xED d\u1EC5 ch\u1ECBu, h\u1EE3p \u0111\u1EC3 d\u1EEBng l\u1EA1i gi\u1EEFa l\u1ECBch \u0111i.",
-    "Ghim tr\u01B0\u1EDBc v\xE0i qu\xE1n cafe \u0111\u1EC3 c\xF3 \u0111i\u1EC3m ngh\u1EC9, l\xEAn \u1EA3nh \u0111\u1EB9p v\xE0 kh\xF4ng ph\u1EA3i t\xECm ph\xFAt cu\u1ED1i.",
-    "M\u1ED9t c\u1EE5m cafe \u0111\u1EC3 \u0111\u1ED5i nh\u1ECBp chuy\u1EBFn \u0111i: ng\u1ED3i l\xE2u \u0111\u01B0\u1EE3c, ch\u1EE5p \u1ED5n, di chuy\u1EC3n v\u1EEBa ph\u1EA3i.",
-    "C\xE1c \u0111i\u1EC3m cafe \u0111\u01B0\u1EE3c gom ri\xEAng cho l\xFAc mu\u1ED1n ch\u1EADm l\u1EA1i m\xE0 v\u1EABn c\xF3 \u1EA3nh \u0111\u1EB9p mang v\u1EC1.",
-    "Trang n\xE0y d\xE0nh cho mood cafe: ch\u1ECDn nhanh m\u1ED9t ch\u1ED7 ng\u1ED3i, r\u1ED3i \u0111\u1EC3 \u0110\xE0 L\u1EA1t t\u1EF1 d\u1ECBu l\u1EA1i."
-  ],
-  checkin: [
-    "M\u1ED9t trang scan nhanh c\xE1c \u0111i\u1EC3m check-in, \u01B0u ti\xEAn t\xEAn ng\u1EAFn v\xE0 h\xECnh \u1EA3nh r\xF5.",
-    "C\xE1c g\xF3c l\xEAn h\xECnh \u0111\u01B0\u1EE3c t\xE1ch ri\xEAng \u0111\u1EC3 d\u1EC5 ch\u1ECDn \u0111i\u1EC3m ch\u1EE5p theo cung \u0111\u01B0\u1EDDng trong ng\xE0y.",
-    "Ghim s\u1EB5n c\xE1c \u0111i\u1EC3m check-in \u0111\u1EC3 l\xFAc tr\u1EDDi \u0111\u1EB9p ch\u1EC9 c\u1EA7n m\u1EDF list v\xE0 \u0111i th\u1EB3ng.",
-    "Trang n\xE0y gom c\xE1c \u0111i\u1EC3m nh\xECn ph\xE1t hi\u1EC3u ngay, h\u1EE3p cho l\u1ECBch c\u1EA7n \u1EA3nh \u0111\u1EB9p m\xE0 kh\xF4ng v\xF2ng v\xE8o.",
-    "M\u1ED9t c\u1EE5m \u0111i\u1EC3m ch\u1EE5p d\u1EC5 scan, gi\xFAp b\u1EA1n ch\u1ECDn nhanh n\u01A1i \u0111\xE1ng gh\xE9 nh\u1EA5t trong bu\u1ED5i \u0111\xF3.",
-    "C\xE1c \u0111\u1ECBa \u0111i\u1EC3m l\xEAn \u1EA3nh \u1ED5n \u0111\u01B0\u1EE3c x\u1EBFp ri\xEAng \u0111\u1EC3 chuy\u1EBFn \u0111i c\xF3 v\xE0i khung h\xECnh ch\u1EAFc tay."
-  ],
-  nightlife: [
-    "C\xE1c \u0111i\u1EC3m \u0111i bu\u1ED5i t\u1ED1i, \u0103n \u0111\xEAm v\xE0 nghe nh\u1EA1c \u0111\u01B0\u1EE3c t\xE1ch ri\xEAng \u0111\u1EC3 d\u1EC5 l\u01B0u sau 20h.",
-    "Trang n\xE0y d\xE0nh cho bu\u1ED5i t\u1ED1i: ch\u1ECDn ch\u1ED7 \u0103n, nghe nh\u1EA1c ho\u1EB7c \u0111\u1ED5i kh\xF4ng kh\xED sau l\u1ECBch ng\xE0y.",
-    "Ghim ri\xEAng c\xE1c \u0111i\u1EC3m ch\u01A1i \u0111\xEAm \u0111\u1EC3 t\u1ED1i \u0111\u1EBFn kh\xF4ng ph\u1EA3i l\u1EE5c l\u1EA1i c\u1EA3 list d\xE0i.",
-    "M\u1ED9t c\u1EE5m l\u1EF1a ch\u1ECDn sau ho\xE0ng h\xF4n, h\u1EE3p \u0111\u1EC3 k\xE9o d\xE0i l\u1ECBch m\xE0 v\u1EABn d\u1EC5 quy\u1EBFt.",
-    "C\xE1c \u0111i\u1EC3m bu\u1ED5i t\u1ED1i \u0111\u01B0\u1EE3c gom ri\xEAng \u0111\u1EC3 l\u1ECBch \u0111\xEAm c\xF3 nh\u1ECBp, c\xF3 m\xF3n, c\xF3 ch\u1ED7 ng\u1ED3i.",
-    "Trang n\xE0y gi\xFAp ch\u1ED1t nhanh ph\u1EA7n sau 20h: \u0103n nh\u1EB9, \u0111i nghe nh\u1EA1c ho\u1EB7c gh\xE9 m\u1ED9t n\u01A1i c\xF3 vibe."
-  ],
-  service: [
-    "C\xE1c d\u1ECBch v\u1EE5 h\u1ED7 tr\u1EE3 chuy\u1EBFn \u0111i \u0111\u01B0\u1EE3c gom ri\xEAng \u0111\u1EC3 ng\u01B0\u1EDDi xem d\u1EC5 li\xEAn h\u1EC7 nhanh.",
-    "Trang d\u1ECBch v\u1EE5 n\xE0y \u0111\u1EC3 l\u01B0u nh\u1EEFng th\u1EE9 c\u1EA7n ch\u1ED1t tr\u01B0\u1EDBc: xe, \u0111\u1ED3, qu\xE0 ho\u1EB7c h\u1ED7 tr\u1EE3 t\u1EA1i ch\u1ED7.",
-    "Ghim ri\xEAng nh\xF3m d\u1ECBch v\u1EE5 \u0111\u1EC3 l\xFAc c\u1EA7n li\xEAn h\u1EC7 kh\xF4ng ph\u1EA3i tr\u1ED9n v\u1EDBi qu\xE1n \u0103n v\xE0 \u0111i\u1EC3m ch\u01A1i.",
-    "M\u1ED9t trang th\u1EF1c d\u1EE5ng cho chuy\u1EBFn \u0111i: c\xE1c m\u1EE5c c\u1EA7n chu\u1EA9n b\u1ECB, \u0111\u1EB7t tr\u01B0\u1EDBc ho\u1EB7c l\u01B0u s\u1ED1.",
-    "C\xE1c d\u1ECBch v\u1EE5 quan tr\u1ECDng \u0111\u01B0\u1EE3c t\xE1ch ri\xEAng \u0111\u1EC3 l\u1ECBch \u0111i tr\u01A1n h\u01A1n v\xE0 \xEDt ph\u1EA3i x\u1EED l\xFD g\u1EA5p.",
-    "Trang n\xE0y gom nh\u1EEFng th\u1EE9 h\u1EADu c\u1EA7n n\xEAn c\xF3 s\u1EB5n tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u ch\u1EA1y l\u1ECBch."
-  ],
-  stay: [
-    "C\xE1c ch\u1ED7 ngh\u1EC9 n\xEAn xem ri\xEAng \u0111\u1EC3 d\u1EC5 ch\u1ED1t ph\xF2ng, kh\xF4ng tr\u1ED9n v\u1EDBi d\u1ECBch v\u1EE5 kh\xE1c.",
-    "Trang l\u01B0u tr\xFA n\xE0y gi\xFAp so nhanh v\xE0i l\u1EF1a ch\u1ECDn tr\u01B0\u1EDBc khi quy\u1EBFt ch\u1ED7 \u1EDF cho chuy\u1EBFn \u0111i.",
-    "Ghim ri\xEAng homestay \u0111\u1EC3 l\xFAc ch\u1ED1t ph\xF2ng c\xF3 ngay nh\xF3m l\u1EF1a ch\u1ECDn s\u1EA1ch v\xE0 d\u1EC5 xem.",
-    "M\u1ED9t c\u1EE5m ch\u1ED7 ngh\u1EC9 \u0111\u1EC3 c\xE2n v\u1ECB tr\xED, vibe v\xE0 l\u1ECBch di chuy\u1EC3n tr\u01B0\u1EDBc khi \u0111\u1EB7t.",
-    "C\xE1c l\u1EF1a ch\u1ECDn l\u01B0u tr\xFA \u0111\u01B0\u1EE3c t\xE1ch ri\xEAng \u0111\u1EC3 kh\xF4ng l\u1EABn v\u1EDBi \u0111i\u1EC3m ch\u01A1i trong ng\xE0y.",
-    "Trang n\xE0y d\xE0nh cho b\u01B0\u1EDBc ch\u1ED1t n\u01A1i \u1EDF: xem nhanh, so nhanh, r\u1ED3i quay l\u1EA1i l\u1ECBch \u0111i."
-  ],
-  activity: [
-    "C\xE1c ho\u1EA1t \u0111\u1ED9ng v\xE0 \u0111i\u1EC3m gh\xE9 \u0111\u01B0\u1EE3c gom ri\xEAng \u0111\u1EC3 \u0111\u1ED5i nh\u1ECBp cho l\u1ECBch \u0111i.",
-    "Trang ho\u1EA1t \u0111\u1ED9ng n\xE0y th\xEAm l\u1EF1a ch\u1ECDn tr\u1EA3i nghi\u1EC7m, h\u1EE3p khi mu\u1ED1n chuy\u1EBFn \u0111i b\u1EDBt ch\u1EC9 check-in.",
-    "Ghim c\xE1c ho\u1EA1t \u0111\u1ED9ng ri\xEAng \u0111\u1EC3 d\u1EC5 chen v\xE0o l\u1ECBch khi c\xF2n d\u01B0 th\u1EDDi gian ho\u1EB7c mu\u1ED1n \u0111\u1ED5i mood.",
-    "M\u1ED9t c\u1EE5m tr\u1EA3i nghi\u1EC7m \u0111\u1EC3 ng\xE0y \u0111i c\xF3 th\xEAm vi\u1EC7c \u0111\xE1ng l\xE0m, kh\xF4ng ch\u1EC9 ch\u1EE5p \u1EA3nh r\u1ED3i \u0111i ti\u1EBFp.",
-    "C\xE1c ho\u1EA1t \u0111\u1ED9ng \u0111\u01B0\u1EE3c t\xE1ch ri\xEAng \u0111\u1EC3 b\u1EA1n ch\u1ECDn nh\u1ECBp vui h\u01A1n cho t\u1EEBng bu\u1ED5i.",
-    "Trang n\xE0y d\xE0nh cho nh\u1EEFng l\xFAc mu\u1ED1n l\xE0m g\xEC \u0111\xF3 kh\xE1c h\u01A1n: gh\xE9, th\u1EED, ch\u01A1i, r\u1ED3i \u0111i ti\u1EBFp."
-  ],
-  tourism: [
-    "C\xE1c khu du l\u1ECBch \u0111\u01B0\u1EE3c t\xE1ch ri\xEAng kh\u1ECFi trang check-in \u0111\u1EC3 ng\u01B0\u1EDDi xem c\xE2n l\u1ECBch d\u1EC5 h\u01A1n.",
-    "Trang khu du l\u1ECBch n\xE0y h\u1EE3p \u0111\u1EC3 ch\u1ECDn \u0111i\u1EC3m \u0111i d\xE0i h\u01A1i, c\u1EA7n c\xE2n th\u1EDDi gian h\u01A1n \u0111i\u1EC3m gh\xE9 nhanh.",
-    "Ghim ri\xEAng c\xE1c khu du l\u1ECBch \u0111\u1EC3 d\u1EC5 quy\u1EBFt n\u01A1i n\xE0o \u0111\xE1ng d\xE0nh h\u1EB3n m\u1ED9t bu\u1ED5i.",
-    "M\u1ED9t c\u1EE5m \u0111i\u1EC3m l\u1EDBn h\u01A1n, ph\xF9 h\u1EE3p khi mu\u1ED1n c\xF3 l\u1ECBch r\xF5 thay v\xEC ch\u1EC9 gh\xE9 ch\u1EE5p nhanh.",
-    "C\xE1c khu du l\u1ECBch \u0111\u01B0\u1EE3c gom ri\xEAng \u0111\u1EC3 b\u1EA1n xem tr\u01B0\u1EDBc \u0111\u1ED9 xa, \u0111\u1ED9 r\u1ED9ng v\xE0 th\u1EDDi gian c\u1EA7n d\xE0nh.",
-    "Trang n\xE0y gi\xFAp ch\u1ECDn c\xE1c \u0111i\u1EC3m \u0111i ch\xEDnh trong ng\xE0y, tr\u01B0\u1EDBc khi th\xEAm cafe hay \u0111i\u1EC3m \u0103n."
-  ],
-  generic: [
-    "Trang n\xE0y gom ri\xEAng c\xE1c m\u1EE5c c\xF9ng nh\xF3m \u0111\u1EC3 scan nhanh v\xE0 l\u01B0u tr\u01B0\u1EDBc khi \u0111i.",
-    "M\u1ED9t trang ph\u1EE5 \u0111\u01B0\u1EE3c t\xE1ch ri\xEAng \u0111\u1EC3 list d\u1EC5 \u0111\u1ECDc h\u01A1n v\xE0 kh\xF4ng ph\u1EA3i quy\u1EBFt t\u1EEB m\u1ED9t \u0111\u1ED1ng h\u1ED7n h\u1EE3p.",
-    "C\xE1c m\u1EE5c c\xF9ng nh\xF3m \u0111\u01B0\u1EE3c \u0111\u1EB7t chung \u0111\u1EC3 ng\u01B0\u1EDDi xem ch\u1ECDn nhanh theo \u0111\xFAng nhu c\u1EA7u l\xFAc \u0111\xF3.",
-    "Trang n\xE0y gi\xFAp list g\u1ECDn h\u01A1n: m\u1EDF ra l\xE0 hi\u1EC3u nh\xF3m n\xE0o, d\xF9ng l\xFAc n\xE0o, l\u01B0u v\xEC sao.",
-    "M\u1ED9t c\u1EE5m l\u1EF1a ch\u1ECDn ri\xEAng \u0111\u1EC3 chuy\u1EBFn \u0111i d\u1EC5 xoay nh\u1ECBp m\xE0 kh\xF4ng b\u1ECB lo\xE3ng th\xF4ng tin.",
-    "C\xE1c g\u1EE3i \xFD \u0111\u01B0\u1EE3c gom th\xE0nh m\u1ED9t trang r\xF5 \xFD, h\u1EE3p \u0111\u1EC3 scan nhanh tr\u01B0\u1EDBc khi ch\u1ED1t l\u1ECBch."
-  ]
-};
-function contextualGrid8Title(page) {
-  const kind = gridPageKind(page);
-  if (kind === "food") return "8 QU\xC1N \u0102N \u0110\xC0 L\u1EA0T";
-  if (kind === "cafe") return "8 QU\xC1N CAFE";
-  if (kind === "checkin") return "8 \u0110I\u1EC2M CHECK-IN";
-  if (kind === "nightlife") return "8 \u0110I\u1EC2M CH\u01A0I \u0110\xCAM";
-  if (kind === "service") return "8 L\u01AFU \xDD C\u1EA6N NH\u1EDA";
-  if (kind === "stay") return "8 HOMESTAY \u0110\xC0 L\u1EA0T";
-  if (kind === "activity") return "8 HO\u1EA0T \u0110\u1ED8NG \u0110\xC0 L\u1EA0T";
-  if (kind === "tourism") return "8 KHU DU L\u1ECACH \u0110\xC0 L\u1EA0T";
-  return page?.title || page?.chipText || "";
-}
-function contextualGrid8Intro(page, list) {
-  const kind = gridPageKind(page);
-  const variants = GRID8_INTRO_VARIANTS[kind] || GRID8_INTRO_VARIANTS.generic;
-  return polishShortVietnameseCopy(pickListVariant(list, variants, kind));
-}
 function grid8IntroForPage(page, pageSubtitle, list) {
-  if (!isGeneratedCaptionList(list)) return pageSubtitle;
-  if (!pageSubtitle || sameGridText(pageSubtitle, list?.description)) return contextualGrid8Intro(page, list);
-  if (page.layoutVariant === "grid-8") return contextualGrid8Intro(page, list);
-  return pageSubtitle;
+  return polishShortVietnameseCopy(pageSubtitle || "");
 }
 function gridFeatureSubtitle(page, pageSubtitle, list) {
-  if (pageSubtitle && !sameGridText(pageSubtitle, list?.description)) return polishShortVietnameseCopy(pageSubtitle);
-  const kind = gridPageKind(page);
-  const variants = GRID8_INTRO_VARIANTS[kind] || GRID8_INTRO_VARIANTS.generic;
-  return polishShortVietnameseCopy(pickListVariant(list, variants, kind));
+  return polishShortVietnameseCopy(pageSubtitle || "");
 }
 function renderGrid4FeaturePage(page, index, listId, list, pageSubtitle) {
   const backgroundImage = grid4FeatureBackgroundImage(page, list);
@@ -372,7 +254,7 @@ function renderGrid4FeaturePage(page, index, listId, list, pageSubtitle) {
       <div class="grid4-feature-shade"></div>
       <div class="grid4-feature-copy">
         <div class="grid4-feature-kicker">\u0110\xC0 L\u1EA0T</div>
-        <h1 class="grid4-feature-title">${escapeHtml(page.title || page.chipText || "")}</h1>
+        ${page.title ? `<h1 class="grid4-feature-title">${escapeHtml(page.title)}</h1>` : ""}
         ${featureSubtitle ? `<p class="grid4-feature-subtitle">${escapeHtml(featureSubtitle)}</p>` : ""}
       </div>
     </article>
@@ -485,7 +367,7 @@ function renderZigzagItems(items, { showAddress = true } = {}) {
     const thirdHtml = zigzagThirdLineHtml(item);
     return `
       <div class="zigzag-item">
-        <div class="zigzag-thumb ${escapeHtml(item.imageSource || (item.imageMapped ? "manual" : "fallback"))}">
+        <div class="zigzag-thumb ${escapeHtml(item.imageSource || (item.imageMapped ? "manual" : "fallback"))}${portraitFocusClass(item)}">
           ${renderPreviewImage(item.imageUrl, item.name, "", item.candidateImageUrls)}
         </div>
         <div class="zigzag-copy">
@@ -588,6 +470,7 @@ var V2_COVER_VARIANTS = /* @__PURE__ */ new Set([
   "grid-8-quaytung-cover",
   "spotlight-v2",
   "spotlight-v3",
+  "carousel-mau-1-cover",
   "spotlight-partner-v2",
   "pov-maikem",
   "pov-3-v2-cover",
@@ -602,6 +485,7 @@ var V2_LIST_VARIANTS = /* @__PURE__ */ new Set([
   "grid-8-quaytung-menu",
   "spotlight-v2",
   "spotlight-v3",
+  "carousel-mau-1-page",
   "spotlight-v2-list",
   "spotlight-partner-v2",
   "spotlight-partner-v2-info",
@@ -619,22 +503,8 @@ function cafeLightPrice(item) {
   const match = raw.match(/(\d+\s*k|\d+[.,]?\d*\s*tr)/i);
   return match ? match[1] : raw.includes("Gi\xE1") ? raw : "";
 }
-var GRID8_FEED_CENTER_HOOKS = {
-  food: "\u0102n u\u1ED1ng g\xEC",
-  cafe: "Coffee lowkey",
-  checkin: "Checkin free",
-  service: "Ti\u1EC7n \xEDch uy t\xEDn",
-  nightlife: "Ch\u01A1i \u0111\xEAm chill",
-  stay: "Homestay vibe",
-  activity: "Ho\u1EA1t \u0111\u1ED9ng hot",
-  tourism: "\u0110i\u1EC3m must-go"
-};
 function grid8FeedCenterHook(page, list) {
-  const kind = gridPageKind(page);
-  if (GRID8_FEED_CENTER_HOOKS[kind]) return GRID8_FEED_CENTER_HOOKS[kind];
-  const stripped = stripChipPrefixFromTitle(page.chipText, page.title);
-  if (stripped) return stripped;
-  return String(page.chipText || "\u0110\xE0 L\u1EA1t").trim();
+  return String(page.title || "").trim();
 }
 function gridPriceMetaFromSecondary(value) {
   const secondary = String(value || "").replace(/\s+/g, " ").trim();
@@ -659,38 +529,8 @@ function grid8FeedItemMeta(item, showAddress = true) {
   if (phone) return phone[0].replace(/\s+/g, " ").trim();
   return "";
 }
-function stripChipPrefixFromTitle(chipText, title) {
-  const chip = String(chipText || "").trim();
-  const raw = String(title || "").trim();
-  if (!raw) return "";
-  if (!chip) return raw;
-  const lowerTitle = raw.toLowerCase();
-  const lowerChip = chip.toLowerCase();
-  if (lowerTitle === lowerChip) return "";
-  if (lowerTitle.startsWith(`${lowerChip} - `)) return raw.slice(chip.length + 3).trim();
-  if (lowerTitle.startsWith(`${lowerChip}-`)) return raw.slice(chip.length + 1).trim();
-  if (lowerTitle.startsWith(lowerChip)) return raw.slice(chip.length).replace(/^[\s\-–—:]+/, "").trim();
-  return raw;
-}
-var GRID5_TITLE_CARDS = {
-  checkin: "M\u1ED9t v\xE0i \u0111i\u1EC3m check in hot",
-  food: "M\u1ED9t v\xE0i qu\xE1n \u0103n ngon",
-  cafe: "M\u1ED9t v\xE0i qu\xE1n cafe \u0111\u1EB9p",
-  nightlife: "M\u1ED9t v\xE0i spot ch\u01A1i \u0111\xEAm",
-  service: "Homestay & Spa",
-  stay: "Homestay & Spa",
-  activity: "M\u1ED9t v\xE0i ho\u1EA1t \u0111\u1ED9ng hot",
-  tourism: "M\u1ED9t v\xE0i \u0111i\u1EC3m du l\u1ECBch"
-};
 function grid5TitleCard(page, list) {
-  const kind = gridPageKind(page);
-  if (kind === "cafe") {
-    const idx = listVariantIndex(list, 2, page.chipText);
-    return idx === 0 ? "M\u1ED9t v\xE0i qu\xE1n cafe \u0111\u1EB9p" : "M\u1ED9t v\xE0i qu\xE1n cafe chill";
-  }
-  if (GRID5_TITLE_CARDS[kind]) return GRID5_TITLE_CARDS[kind];
-  const stripped = stripChipPrefixFromTitle(page.chipText, page.title);
-  return stripped || String(page.chipText || "G\u1EE3i \xFD \u0110\xE0 L\u1EA1t").trim();
+  return String(page.title || "").trim();
 }
 function grid5ItemMeta(item, showAddress = true) {
   if (!shouldShowItemAddress(item, showAddress)) return gridPriceMetaFromSecondary(item?.metaSecondary);
@@ -744,21 +584,15 @@ function renderGrid8FeedItems(items, centerHook, showAddress = true) {
   return ordered.join("");
 }
 function grid8FeedPageBgImages(page, backgroundImage, listId = "", coverImageUrls = []) {
-  const fromItems = (Array.isArray(page?.items) ? page.items : []).map((item) => String(item?.imageUrl || "").trim()).filter(Boolean);
-  const uniqueFromItems = [...new Set(fromItems)];
-  if (uniqueFromItems.length >= 4) return uniqueFromItems.slice(0, 4);
-  const fromPageBg = String(page?.backgroundImage || backgroundImage || "").trim();
   const pool = (coverImageUrls.length > 0 ? coverImageUrls : spotlightV2CoverImagePool).filter(Boolean);
   const seed = `${listId || page?.chipText || "grid8-feed-page"}|${page?.title || page?.chipText || "bg"}`;
-  const fromPool = pickUniqueCoverGridImages(pool, seed, 4);
-  const merged = [...new Set([...uniqueFromItems, fromPageBg, ...fromPool].filter(Boolean))];
-  if (merged.length >= 4) return merged.slice(0, 4);
-  if (merged.length > 0) {
-    const padded = [...merged];
-    while (padded.length < 4) padded.push(padded[padded.length % merged.length]);
+  const backgroundPool = pickUniqueCoverGridImages(pool, seed, 4);
+  if (backgroundPool.length > 0) {
+    const padded = [...backgroundPool];
+    while (padded.length < 4) padded.push(padded[padded.length % backgroundPool.length]);
     return padded.slice(0, 4);
   }
-  return fromPageBg ? [fromPageBg] : [];
+  return [];
 }
 function renderGrid8FeedPageBackground(page, backgroundImage, listId = "", coverImageUrls = []) {
   let tiles = grid8FeedPageBgImages(page, backgroundImage, listId, coverImageUrls);
@@ -788,7 +622,8 @@ function grid8FeedCoverGridImages(page, backgroundImage, listId = "", coverImage
   return backgroundImage ? [backgroundImage] : [];
 }
 function formatGrid8FeedCoverHero(title) {
-  const raw = String(title || "C\xC1C \u0110\u1ECAA \u0110I\u1EC2M \u0110\xC0 L\u1EA0T").replace(/\s+/g, " ").trim();
+  const raw = String(title || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
   const upper = raw.toUpperCase();
   const words = upper.split(" ");
   if (words.length <= 5) return escapeHtml(upper);
@@ -796,7 +631,8 @@ function formatGrid8FeedCoverHero(title) {
   return `${escapeHtml(words.slice(0, splitAt).join(" "))}<br>${escapeHtml(words.slice(splitAt).join(" "))}`;
 }
 function formatGrid8FeedCoverTagline(value) {
-  let text = String(value || "B\u1ECE L\u1EE0 CH\u1EAEC CH\u1EAEN L\xC0 H\u1ED0I H\u1EACN").replace(/\s+/g, " ").trim();
+  let text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return "";
   text = text.replace(/\.{3,}$/, "").replace(/…+$/, "").trim();
   return escapeHtml(text.toUpperCase());
 }
@@ -817,8 +653,8 @@ function renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, ba
       </div>
       <div class="grid8-feed-cover-dim" aria-hidden="true"></div>
       <div class="grid8-feed-cover-center">
-        <h1 class="grid8-feed-cover-hero">${hero}</h1>
-        <p class="grid8-feed-cover-tagline">${tagline}</p>
+        ${hero ? `<h1 class="grid8-feed-cover-hero">${hero}</h1>` : ""}
+        ${tagline ? `<p class="grid8-feed-cover-tagline">${tagline}</p>` : ""}
       </div>
     </article>
   `;
@@ -840,7 +676,8 @@ function itinerary4N3DStackCoverGridImages(page, backgroundImage, listId = "", c
   return backgroundImage ? [backgroundImage] : [];
 }
 function formatItinerary4N3DStackCoverHero(title) {
-  const raw = String(title || "4N3\u0110 \u0110\xC0 L\u1EA0T").replace(/\s+/g, " ").trim();
+  const raw = String(title || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
   const upper = raw.toUpperCase();
   const words = upper.split(" ");
   if (words.length <= 4) return escapeHtml(upper);
@@ -849,7 +686,7 @@ function formatItinerary4N3DStackCoverHero(title) {
 }
 function renderItinerary4N3DStackCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
   const hero = formatItinerary4N3DStackCoverHero(coverTitle);
-  const tagline = escapeHtml(String(coverSubtitle || "Gom g\u1ECDn g\u1EE3i \xFD theo t\u1EEBng nh\xF3m \u2014 \u0111i ch\u1EADm, chill t\u1EEBng ng\xE0y").replace(/\s+/g, " ").trim());
+  const tagline = escapeHtml(String(coverSubtitle || "").replace(/\s+/g, " ").trim());
   let tiles = itinerary4N3DStackCoverGridImages(page, backgroundImage, listId, coverImageUrls);
   while (tiles.length < 4) tiles.push("");
   tiles = tiles.slice(0, 4);
@@ -864,8 +701,7 @@ function renderItinerary4N3DStackCover(page, index, listId, coverTitle, coverSub
       </div>
       <div class="itinerary-4n3d-stack-cover-dim" aria-hidden="true"></div>
       <div class="itinerary-4n3d-stack-cover-center">
-        <div class="itinerary-4n3d-stack-cover-kicker">L\u1ECACH TR\xCCNH 4N3\u0110</div>
-        <h1 class="itinerary-4n3d-stack-cover-hero">${hero}</h1>
+        ${hero ? `<h1 class="itinerary-4n3d-stack-cover-hero">${hero}</h1>` : ""}
         <p class="itinerary-4n3d-stack-cover-tagline">${tagline}</p>
       </div>
     </article>
@@ -895,17 +731,15 @@ function itinerary4N3DStackBracketLead(lead) {
   }
   return escapeHtml(bracketText);
 }
-function renderItinerary4N3DStackCell(item, showAddress = true) {
-  const dayLabel = String(item.label || "").trim();
+function renderItinerary4N3DStackCell(item) {
   const name = gridDisplayName(item);
-  const address = shouldShowItemAddress(item, showAddress) ? cleanGridAddress(item.metaPrimary) : "";
+  const address = cleanGridAddress(item?.metaPrimary);
   const focusClass = itinerary4N3DStackRowFocusClass(item);
   return `
     <div class="itinerary-4n3d-stack-page-cell${focusClass} ${escapeHtml(imageSourceClass(item))}">
       ${renderPreviewImage(item.imageUrl, item.name, "", item.candidateImageUrls)}
       <div class="itinerary-4n3d-stack-page-cell-shade"></div>
       <div class="itinerary-4n3d-stack-row-copy">
-        ${dayLabel ? `<div class="itinerary-4n3d-stack-day">${escapeHtml(dayLabel)}</div>` : ""}
         <h3 class="itinerary-4n3d-stack-name">${escapeHtml(name)}</h3>
         ${address ? `<p class="itinerary-4n3d-stack-address">${escapeHtml(address)}</p>` : ""}
       </div>
@@ -914,28 +748,27 @@ function renderItinerary4N3DStackCell(item, showAddress = true) {
 }
 function renderItinerary4N3DStackPage(page, index, listId, pageSubtitle = "") {
   const items = (page.items || []).slice(0, 4);
-  const showAddress = !isActivityListPage(page);
-  const heading = String(page.title || page.chipText || "").trim();
+  const heading = String(page.title || "").trim();
   const lead = String(pageSubtitle || page.subtitle || "").trim();
   const [lineOne, lineTwo] = itinerary4N3DStackHeadlineLines(heading);
   const leadHtml = lead ? itinerary4N3DStackBracketLead(lead) : "";
   return `
     <article class="${escapeHtml(storyPageClass(listId, "itinerary-4n3d-stack-page"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText)}.png">
       <div class="itinerary-4n3d-stack-page-grid">
-        ${items.map((item) => renderItinerary4N3DStackCell(item, showAddress)).join("")}
+        ${items.map((item) => renderItinerary4N3DStackCell(item)).join("")}
       </div>
       <div class="itinerary-4n3d-stack-page-head">
-        <h2 class="itinerary-4n3d-stack-page-headline">
+        ${heading ? `<h2 class="itinerary-4n3d-stack-page-headline">
           <span>${escapeHtml(lineOne)}</span>
           ${lineTwo ? `<span>${escapeHtml(lineTwo)}</span>` : ""}
-        </h2>
+        </h2>` : ""}
         ${leadHtml ? `<p class="itinerary-4n3d-stack-page-bracket">${leadHtml}</p>` : ""}
       </div>
     </article>
   `;
 }
 function formatItineraryTimelineCoverHero(coverTitle) {
-  const raw = String(coverTitle || "\u0110\xE0 L\u1EA1t 3N2\u0110").replace(/\s+/g, " ").trim();
+  const raw = String(coverTitle || "").replace(/\s+/g, " ").trim();
   const match = raw.match(/^(.+?\s+-\s+)(.+)$/);
   if (match && raw.length > 22) {
     return `${escapeHtml(match[1].trim())}<br>${escapeHtml(match[2].trim())}`;
@@ -951,20 +784,17 @@ function renderItineraryTimelineCover(page, index, listId, coverTitle, coverSubt
       </div>
       <div class="itl-cover-shade" aria-hidden="true"></div>
       <div class="itl-cover-copy">
-        <p class="itl-cover-serif">L\u1ECBch tr\xECnh</p>
-        <p class="itl-cover-script" lang="vi">${hero}</p>
-        <p class="itl-cover-serif">\u0111i \u0111\xE2u?</p>
-        <div class="itl-cover-spark">\u2014 \u2726 \u2014</div>
+        ${hero ? `<p class="itl-cover-script" lang="vi">${hero}</p>` : ""}
+        ${hero ? '<div class="itl-cover-spark">\u2014 \u2726 \u2014</div>' : ""}
       </div>
     </article>
   `;
 }
 function renderItineraryTimelineRow(item) {
   const time = String(item?.label || "").trim();
-  const activity = String(item?.metaSecondary || "").trimEnd();
-  const place = String(item?.name || "").trim();
+  const place = gridDisplayName(item);
   const address = cleanGridAddress(item?.metaPrimary) || String(item?.metaPrimary || "").trim();
-  const placeHtml = place ? `${activity ? " " : ""}<strong class="itl-day-place">${escapeHtml(place)}</strong>` : "";
+  const placeHtml = place ? `<strong class="itl-day-place">${escapeHtml(place)}</strong>` : "";
   return `
     <div class="itl-day-row ${escapeHtml(imageSourceClass(item))}">
       <div class="itl-day-thumb">
@@ -972,9 +802,8 @@ function renderItineraryTimelineRow(item) {
       </div>
       <div class="itl-day-track"><span class="itl-day-dot" aria-hidden="true"></span></div>
       <div class="itl-day-copy">
-        <p class="itl-day-line">
-          ${time ? `<span class="itl-day-time">${escapeHtml(time)}</span>` : ""}${time && (activity || place) ? " - " : ""}${activity ? `<span class="itl-day-activity">${escapeHtml(activity)}</span>` : ""}${placeHtml}
-        </p>
+        ${time ? `<p class="itl-day-time">${escapeHtml(time)}</p>` : ""}
+        ${placeHtml}
         ${address ? `<p class="itl-day-address"><span class="itl-day-pin">\u{1F4CD}</span>${escapeHtml(address)}</p>` : ""}
       </div>
     </div>
@@ -1023,13 +852,11 @@ function renderGrid8QuaytungDalatBadge() {
 }
 function formatGrid8QuaytungCoverTitle(title) {
   const raw = String(title || 'List n\xE0y to\xE0n \u0111\u1ECBa \u0111i\u1EC3m "vu\xFDp"').replace(/\bĐà\s*Lạt\s+VN\b/giu, "\u0110\xE0 L\u1EA1t").replace(/\s+\/\s*VN\b/giu, "").replace(/\s+\bVN\b(?=\s|$|[./])/giu, "").replace(/\s+/g, " ").trim();
-  const words = raw.split(" ");
-  if (words.length <= 4) return escapeHtml(raw);
-  const splitAt = Math.ceil(words.length / 2);
-  return `${escapeHtml(words.slice(0, splitAt).join(" "))}<br>${escapeHtml(words.slice(splitAt).join(" "))}`;
+  return formatBalancedTitleLines(raw, raw.length >= 44 ? 3 : 2);
 }
 function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
-  const subtitle = String(coverSubtitle || "L\u01B0u list n\xE0y cho chuy\u1EBFn \u0111i th\xE0nh c\xF4ng").replace(/^\[+|\]+$/g, "").trim();
+  const subtitle = String(coverSubtitle || "").replace(/^\[+|\]+$/g, "").trim();
+  const titleFitClass = responsiveTitleFitClass(coverTitle, "grid8-quaytung-cover-title", 28, 44);
   return `
     <article class="${escapeHtml(storyPageClass(listId, "grid8-quaytung-cover"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
       <div class="grid8-quaytung-cover-photo">
@@ -1038,8 +865,8 @@ function renderGrid8QuaytungCover(page, index, listId, coverTitle, coverSubtitle
       <div class="grid8-quaytung-cover-dim"></div>
       <div class="grid8-quaytung-cover-center">
         ${renderGrid8QuaytungDalatBadge()}
-        <h1 class="grid8-quaytung-cover-title">${formatGrid8QuaytungCoverTitle(coverTitle)}</h1>
-        <p class="grid8-quaytung-cover-sub">[ ${escapeHtml(subtitle)} ]</p>
+        <h1 class="grid8-quaytung-cover-title ${escapeHtml(titleFitClass)}">${formatGrid8QuaytungCoverTitle(coverTitle)}</h1>
+        <p class="grid8-quaytung-cover-sub">${escapeHtml(subtitle)}</p>
       </div>
     </article>
   `;
@@ -1052,7 +879,7 @@ function formatGrid6QuaytungCoverTitle(title) {
   return `${escapeHtml(words.slice(0, splitAt).join(" "))}<br>${escapeHtml(words.slice(splitAt).join(" "))}`;
 }
 function renderGrid6QuaytungCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
-  const subtitle = String(coverSubtitle || "L\u01B0u list n\xE0y cho chuy\u1EBFn \u0111i th\xE0nh c\xF4ng").replace(/^\[+|\]+$/g, "").trim();
+  const subtitle = String(coverSubtitle || "").replace(/^\[+|\]+$/g, "").trim();
   const tag = String(page?.chipText || "loanh quanh ph\u1ED1 ph\u01B0\u1EDDng").trim().toLowerCase();
   return `
     <article class="${escapeHtml(storyPageClass(listId, "grid6-quaytung-cover"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
@@ -1226,7 +1053,7 @@ function renderGrid8QuaytungMenuPage(page, index, listId, list) {
       <div class="grid8-quaytung-menu-dim"></div>
       <div class="grid8-quaytung-menu-head">
         ${renderGrid8QuaytungDalatBadge()}
-        <h2 class="grid8-quaytung-menu-title">${escapeHtml(truncateMenuLine(page.title || "\u0110\u1ECAA \u0110I\u1EC2M \u0102N U\u1ED0NG NGON", 32))}</h2>
+        ${page.title ? `<h2 class="grid8-quaytung-menu-title">${escapeHtml(truncateMenuLine(page.title, 32))}</h2>` : ""}
       </div>
       <div class="grid8-quaytung-menu-sections">
         ${sections.map((section, idx) => renderGrid8QuaytungMenuSection(section, idx % 2 === 1)).join("")}
@@ -1270,9 +1097,8 @@ function renderGrid5Matrix(items, titleText, showAddress = true) {
   return ordered.join("");
 }
 function renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
-  const hero = String(coverTitle || "Dalat").trim();
-  const hook = String(coverSubtitle || "Th\xE1ng 5+6 n\xEAn \u0111i \u0111\xE2u? L\xE0m g\xEC?").trim();
-  const bracket = "[ G\u1EE3i \xFD nh\u1EEFng t\u1ECDa \u0111\u1ED9 hay ho cho chuy\u1EBFn \u0111i m\xF9a h\xE8 ]";
+  const hero = String(coverTitle || "").trim();
+  const hook = String(coverSubtitle || "").trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, "grid5-cover"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
       <div class="grid5-cover-bg">
@@ -1280,12 +1106,10 @@ function renderGrid5Cover(page, index, listId, coverTitle, coverSubtitle, backgr
       </div>
       <div class="grid5-cover-shade"></div>
       <div class="grid5-cover-copy">
-        <div class="grid5-cover-script">Thong dong</div>
         <div class="grid5-cover-hero-row">
-          <h1 class="grid5-cover-dalat">${escapeHtml(hero)}</h1>
-          <p class="grid5-cover-hook">${escapeHtml(hook)}</p>
+          ${hero ? `<h1 class="grid5-cover-dalat">${escapeHtml(hero)}</h1>` : ""}
+          ${hook ? `<p class="grid5-cover-hook">${escapeHtml(hook)}</p>` : ""}
         </div>
-        <p class="grid5-cover-bracket">${escapeHtml(bracket)}</p>
       </div>
     </article>
   `;
@@ -1408,6 +1232,36 @@ function renderSpotlightV3Cover(page, index, listId, coverTitle, backgroundImage
     </article>
   `;
 }
+function renderCarouselMau1Cover(page, index, listId, coverTitle, backgroundImage) {
+  const imageUrl = spotlightV3CoverImage(page, backgroundImage);
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, "carousel-mau-1-cover"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
+      <div class="carousel-mau-1-bg">
+        ${imageUrl ? renderPreviewImage(imageUrl, coverTitle || "cover") : ""}
+      </div>
+      <div class="carousel-mau-1-cover-gradient" aria-hidden="true"></div>
+      <div class="carousel-mau-1-cover-copy">
+        <h1>${escapeHtml(coverTitle || "")}</h1>
+      </div>
+    </article>
+  `;
+}
+function renderCarouselMau1Page(page, index, listId, list) {
+  const item = page.items?.[0] || {};
+  const imageUrl = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
+  const name = item.rawName || item.name || page.title || "";
+  const address = String(item.metaPrimary || "").trim();
+  const line = address ? `${name} \u2013 ${address}` : name;
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, "carousel-mau-1-page"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(name || page.chipText || "dia-diem")}.png">
+      <div class="carousel-mau-1-bg">
+        ${renderPreviewImage(imageUrl, name || page.title)}
+      </div>
+      <div class="carousel-mau-1-page-gradient" aria-hidden="true"></div>
+      <div class="carousel-mau-1-place-line"><span aria-hidden="true">\u{1F4CD}</span>${escapeHtml(line)}</div>
+    </article>
+  `;
+}
 function renderSpotlightV2Page(page, index, listId, list, options = {}) {
   const item = page.items?.[0] || {};
   const backgroundImage = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
@@ -1454,19 +1308,19 @@ function renderPovMaikemCover(page, index, listId, coverTitle, coverSubtitle, ba
   `;
 }
 function pov3V2HeadlineLines(title) {
-  const raw = String(title || "\u0111\u1EE9ng \u0111\xE2u\nc\u0169ng \u0111\u1EB9p").replace(/\\n/g, "\n");
+  const raw = String(title || "").replace(/\\n/g, "\n");
   const lines = raw.split(/\n+/).map((line) => line.trim()).filter(Boolean);
-  if (lines.length === 0) return ["\u0111\u1EE9ng \u0111\xE2u", "c\u0169ng \u0111\u1EB9p"];
+  if (lines.length === 0) return ["", ""];
   if (lines.length === 1) {
     const parts = lines[0].split(/\s+/);
     if (parts.length >= 4) return [parts.slice(0, 2).join(" "), parts.slice(2).join(" ")];
-    return [lines[0], "c\u0169ng \u0111\u1EB9p"];
+    return [lines[0], ""];
   }
   return lines.slice(0, 2);
 }
 function pov3V2BracketSubtitle(subtitle) {
-  const clean = String(subtitle || "[ Nh\u1EEFng \u0111\u1ECBa \u0111i\u1EC3m checkin mang \u0111\u1EADm vibe \u0110\xE0 L\u1EA1t ]").replace(/\s+/g, " ").trim();
-  if (!clean) return "[ Nh\u1EEFng \u0111\u1ECBa \u0111i\u1EC3m checkin mang \u0111\u1EADm vibe \u0110\xE0 L\u1EA1t ]";
+  const clean = String(subtitle || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "";
   const inner = clean.replace(/^[\[\(\s]+|[\]\)\s]+$/g, "");
   return `[ ${inner} ]`;
 }
@@ -1486,7 +1340,7 @@ function renderPov3V2Cover(page, index, listId, coverTitle, coverSubtitle, backg
           <span>${escapeHtml(lineOne)}</span>
           <span>${escapeHtml(lineTwo || "")}</span>
         </h1>
-        <p class="pov-3-v2-bracket">${subtitleHtml}</p>
+        ${bracketText ? `<p class="pov-3-v2-bracket">${subtitleHtml}</p>` : ""}
       </div>
     </article>
   `;
@@ -1543,6 +1397,42 @@ function truncateMenuLine(value, maxLen = 42) {
   const cut = clean.slice(0, maxLen);
   const sp = cut.lastIndexOf(" ");
   return `${(sp > maxLen * 0.45 ? cut.slice(0, sp) : cut).trim()}\u2026`;
+}
+function responsiveTitleFitClass(value, prefix, mediumAt = 32, smallAt = 48) {
+  const length = String(value || "").replace(/\s+/g, " ").trim().length;
+  if (length >= smallAt) return `${prefix}-fit-xs`;
+  if (length >= mediumAt) return `${prefix}-fit-sm`;
+  return "";
+}
+function formatBalancedTitleLines(value, maxLines = 2) {
+  const raw = String(value || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+  const words = raw.split(" ");
+  if (words.length <= 3 || maxLines <= 1) return escapeHtml(raw);
+  const lines = [];
+  let remaining = [...words];
+  for (let lineIndex = 0; lineIndex < maxLines - 1 && remaining.length > 1; lineIndex += 1) {
+    const remainingLineCount = maxLines - lineIndex;
+    const remainingChars = remaining.join(" ").length;
+    const target = remainingChars / remainingLineCount;
+    let bestSplit = 1;
+    let bestDiff = Number.POSITIVE_INFINITY;
+    for (let split = 1; split <= remaining.length - (remainingLineCount - 1); split += 1) {
+      const length = remaining.slice(0, split).join(" ").length;
+      const diff = Math.abs(length - target);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestSplit = split;
+      }
+    }
+    lines.push(remaining.slice(0, bestSplit).join(" "));
+    remaining = remaining.slice(bestSplit);
+  }
+  if (remaining.length > 0) lines.push(remaining.join(" "));
+  return lines.map((line) => escapeHtml(line)).join("<br>");
+}
+function normalizeVietnameseDisplayText(value) {
+  return String(value || "").normalize("NFC").replace(/\s+/g, " ").trim();
 }
 function isCompletePov3V2Tagline(text) {
   const t = String(text || "").trim();
@@ -1617,7 +1507,7 @@ function renderPov3V2GridLabel(item) {
 }
 function renderPov3V2GridPage(page, index, listId, pageSubtitle) {
   const items = (page.items || []).slice(0, 9);
-  const panelTitle = page.title || pageSubtitle || page.chipText || "";
+  const panelTitle = String(page.title || "").trim();
   const backgroundImage = page.backgroundImage || items[0]?.imageUrl || "";
   return `
     <article class="${escapeHtml(storyPageClass(listId, "pov-3-v2-grid-page"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText || "grid")}.png">
@@ -1625,7 +1515,7 @@ function renderPov3V2GridPage(page, index, listId, pageSubtitle) {
         ${renderPreviewImage(backgroundImage, panelTitle)}
       </div>
       <div class="pov-3-v2-grid-panel">
-        <h2 class="pov-3-v2-grid-title">"${escapeHtml(panelTitle)}"</h2>
+        ${panelTitle ? `<h2 class="pov-3-v2-grid-title">"${escapeHtml(panelTitle)}"</h2>` : ""}
         <div class="pov-3-v2-grid-matrix">
           ${items.map((item) => `
             <div class="pov-3-v2-grid-cell ${escapeHtml(imageSourceClass(item))}">
@@ -1668,8 +1558,8 @@ function renderPovMaikemPage(page, index, listId) {
 function renderBudgetWalletCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage) {
   const titleParts = String(coverTitle || "").split("\xB7").map((part) => part.trim()).filter(Boolean);
   const subtitleParts = String(coverSubtitle || "").split("\xB7").map((part) => part.trim()).filter(Boolean);
-  const mainTitle = titleParts[0] || coverTitle || "4N3\u0110 \u0110\xC0 L\u1EA0T";
-  const hookLine = titleParts[1] || subtitleParts[0] || "M\u1EDE V\xCD ~4.2TR";
+  const mainTitle = titleParts[0] || coverTitle || "";
+  const hookLine = titleParts[1] || subtitleParts[0] || "";
   const subLine = subtitleParts.length > 1 ? subtitleParts.slice(1).join(" \xB7 ") : titleParts.length > 1 ? "" : subtitleParts.slice(1).join(" \xB7 ");
   return `
     <article class="${escapeHtml(storyPageClass(listId, "budget-wallet-cover"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
@@ -1679,8 +1569,8 @@ function renderBudgetWalletCover(page, index, listId, coverTitle, coverSubtitle,
       <div class="budget-wallet-cover-shade"></div>
       <div class="budget-wallet-cover-copy">
         <div class="budget-wallet-script">dalat.</div>
-        <h1 class="budget-wallet-title">${escapeHtml(mainTitle)}</h1>
-        <h2 class="budget-wallet-hook">${escapeHtml(hookLine)}</h2>
+        ${mainTitle ? `<h1 class="budget-wallet-title">${escapeHtml(mainTitle)}</h1>` : ""}
+        ${hookLine ? `<h2 class="budget-wallet-hook">${escapeHtml(hookLine)}</h2>` : ""}
         ${subLine ? `<p class="budget-wallet-sub">${escapeHtml(subLine)}</p>` : ""}
       </div>
     </article>
@@ -1749,7 +1639,7 @@ function renderBudgetWalletBillPage(page, index, listId) {
     <article class="${escapeHtml(storyPageClass(listId, "budget-wallet-bill"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-bill.png">
       <section class="budget-wallet-bill-panel">
         <span>${escapeHtml(String(page.chipText || "BILL").toUpperCase())}</span>
-        <h2>${escapeHtml(page.title || "BILL 4N3\u0110")}</h2>
+        ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ""}
         <div class="budget-wallet-lines">
           ${items.filter((item) => !/tong|total/i.test(String(item.id || ""))).map((item) => `
             <article class="budget-wallet-line">
@@ -1768,6 +1658,9 @@ function renderBudgetWalletBillPage(page, index, listId) {
   `;
 }
 function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
+  if (page.layoutVariant === "carousel-mau-1-cover") {
+    return renderCarouselMau1Cover(page, index, listId, coverTitle, backgroundImage);
+  }
   if (page.layoutVariant === "grid-8-feed") {
     return renderGrid8FeedCover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls);
   }
@@ -1804,6 +1697,9 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
   return "";
 }
 function renderListPageV2(page, index, listId, list, pageSubtitle) {
+  if (page.layoutVariant === "carousel-mau-1-page") {
+    return renderCarouselMau1Page(page, index, listId, list);
+  }
   if (page.layoutVariant === "grid-8-feed") {
     const centerHook = grid8FeedCenterHook(page, list);
     const showAddress = !isActivityListPage(page);
@@ -1898,7 +1794,8 @@ function renderCoverPage(page, index, total, listId, hashtags = [], list = null,
     return renderGrid4MutantCover(page, index, listId);
   }
   if (isBudget3N2DCover(page)) {
-    const title = coverTitle || '"72H" \u1EDE \u0110\xC0 L\u1EA0T V\u1EDAI 3TR';
+    const title = String(coverTitle || "").trim();
+    const titleFitClass = responsiveTitleFitClass(title, "budget72-title", 32, 50);
     return `
       <article class="${escapeHtml(storyPageClass(listId, "budget72-cover"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
         <div class="budget72-cover-bg">
@@ -1907,15 +1804,15 @@ function renderCoverPage(page, index, total, listId, hashtags = [], list = null,
         <div class="budget72-cover-shade"></div>
         <div class="budget72-cover-copy">
           <div class="budget72-script">dalat.</div>
-          <h1 class="budget72-title">${escapeHtml(title)}</h1>
-          <p class="budget72-subtitle">${escapeHtml(coverSubtitle || "/G\u1EE3i \xFD l\u1ECBch tr\xECnh du h\xED 3N2\u0110/")}</p>
+          ${title ? `<h1 class="budget72-title ${escapeHtml(titleFitClass)}">${formatBalancedTitleLines(title, 3)}</h1>` : ""}
+          ${coverSubtitle ? `<p class="budget72-subtitle">${escapeHtml(coverSubtitle)}</p>` : ""}
         </div>
       </article>
     `;
   }
   if (isBudget3N2DStoryCover(page)) {
-    const title = cleanStoryText(coverTitle, BUDGET72_STORY_TEXT.coverTitle);
-    const subtitle = cleanStoryText(coverSubtitle, BUDGET72_STORY_TEXT.coverSubtitle);
+    const title = coverTitle ? cleanStoryText(coverTitle, "") : "";
+    const subtitle = coverSubtitle ? cleanStoryText(coverSubtitle, "") : "";
     return `
       <article class="${escapeHtml(storyPageClass(listId, "budget72-story-cover"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-cover.png">
         <div class="budget72-story-bg">
@@ -1924,8 +1821,8 @@ function renderCoverPage(page, index, total, listId, hashtags = [], list = null,
         <div class="budget72-story-cover-shade"></div>
         <div class="budget72-story-cover-copy">
           <div class="budget72-story-script">dalat.</div>
-          <h1>${escapeHtml(title)}</h1>
-          <p>${escapeHtml(subtitle)}</p>
+          ${title ? `<h1>${escapeHtml(title)}</h1>` : ""}
+          ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
         </div>
       </article>
     `;
@@ -1940,7 +1837,7 @@ function renderCoverPage(page, index, total, listId, hashtags = [], list = null,
         <div class="grid4-feature-shade"></div>
         <div class="grid4-feature-copy">
           ${isSpotlightPartnerCover(page) ? `<div class="spotlight-partner-cover-script">dalat.</div>` : ""}
-          ${isSpotlightPartnerCover(page) ? `<h1 class="grid4-feature-title">${escapeHtml(coverTitle || "")}</h1>` : ""}
+          ${coverTitle ? `<h1 class="grid4-feature-title spotlight-cover-hook">${escapeHtml(coverTitle)}</h1>` : ""}
           ${coverSubtitle ? `<p class="grid4-feature-subtitle spotlight-cover-caption">${escapeHtml(coverSubtitle)}</p>` : ""}
         </div>
       </article>
@@ -1983,7 +1880,7 @@ function renderCoverPage(page, index, total, listId, hashtags = [], list = null,
         </div>
         <div class="grid6-cover-overlay">
            <div class="grid6-cover-header">\u0110\xC0 L\u1EA0T</div>
-           <h1 class="grid6-cover-title">${escapeHtml(coverTitle)}</h1>
+           <h1 class="grid6-cover-title ${escapeHtml(responsiveTitleFitClass(coverTitle, "grid6-cover-title", 34, 52))}">${escapeHtml(coverTitle)}</h1>
             <div class="grid6-cover-subtitle">${escapeHtml(coverSubtitle)}</div>
         </div>
       </article>
@@ -2337,7 +2234,7 @@ function renderBudget3N2DTablePage(page, index, listId) {
   return `
     <article class="${escapeHtml(storyPageClass(listId, "budget72-table-page"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-bang-chi-phi.png">
       <div class="budget72-table-shell">
-        <h2>${escapeHtml(page.title || "\u0110\xC0 L\u1EA0T 3 NG\xC0Y 2 \u0110\xCAM")}</h2>
+        ${page.title ? `<h2>${escapeHtml(page.title)}</h2>` : ""}
         <table class="budget72-schedule-table">
           <colgroup>
             <col class="budget72-col-day" />
@@ -2414,6 +2311,7 @@ function renderBudget3N2DGalleryCorner(item, cornerIndex) {
 function renderBudget3N2DGalleryCornerPage(page, index, listId, list) {
   const items = Array.isArray(page.items) ? page.items.slice(0, 4) : [];
   const backgroundImage = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
+  const subtitle = String(page.subtitle ?? "").trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, "budget72-gallery-page budget72-corner-page"))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText || page.title || "gallery")}.png">
       <div class="budget72-gallery-backdrop">
@@ -2426,7 +2324,7 @@ function renderBudget3N2DGalleryCornerPage(page, index, listId, list) {
         <section class="budget72-gallery-center">
           <span>dalat.</span>
           <h2>${escapeHtml(page.title || "")}</h2>
-          <p>${escapeHtml(page.subtitle || "G\u1EE3i \xFD nhanh \u0111\u1EC3 l\u01B0u l\u1EA1i v\xE0 ch\u1ECDn \u0111i\u1EC3m gh\xE9 h\u1EE3p l\u1ECBch.")}</p>
+          ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
         </section>
       </div>
     </article>
@@ -2448,14 +2346,14 @@ function budgetStoryActivityType(value) {
   return match?.[1]?.trim() || "\u0110i\u1EC3m gh\xE9";
 }
 function budgetStoryDisplayTitle(value) {
-  const clean = String(value || "").replace(/\s+/g, " ").trim();
+  const clean = normalizeVietnameseDisplayText(value);
   if (/di chuy[eể]n b[aằ]ng xe/i.test(clean) || /ph[uươ]ng trang/i.test(clean)) {
     return "Xe SG - \u0110\xE0 L\u1EA1t";
   }
   if (/check\s*out|l[eê]n xe|v[eề]\s+l[aạ]i\s+sg/i.test(clean)) {
     return "V\u1EC1 l\u1EA1i SG";
   }
-  return budgetStoryActivityTitle(clean).replace(/^\s*(\u0102n s\u00e1ng|\u0102n tr\u01b0a|\u0102n t\u1ed1i|C\u00e0 ph\u00ea chi\u1ec1u|C\u00e0 ph\u00ea|Check-in|Ch\u01a1i \u0111\u00eam|Mua qu\u00e0|Ho\u1ea1t \u0111\u1ed9ng|D\u1ecbch v\u1ee5|L\u01b0u tr\u00fa|Cafe|\u0102n nh\u1eb9)\s*:\s*/i, "").replace(/\s+/g, " ").trim();
+  return normalizeVietnameseDisplayText(budgetStoryActivityTitle(clean).replace(/^\s*(\u0102n s\u00e1ng|\u0102n tr\u01b0a|\u0102n t\u1ed1i|C\u00e0 ph\u00ea chi\u1ec1u|C\u00e0 ph\u00ea|Check-in|Ch\u01a1i \u0111\u00eam|Mua qu\u00e0|Ho\u1ea1t \u0111\u1ed9ng|D\u1ecbch v\u1ee5|L\u01b0u tr\u00fa|Cafe|\u0102n nh\u1eb9)\s*:\s*/i, "").replace(/\s+/g, " ").trim());
 }
 function budgetStoryDisplayType(value) {
   const clean = String(value || "").trim();
@@ -2575,7 +2473,7 @@ function renderGrid6Items(items, { numbered = false, twoDigitNumber = false, sho
     const itemNumber = twoDigitNumber ? String(index + 1).padStart(2, "0") : String(index + 1);
     const itemName = numbered ? `${itemNumber}. ${displayName}` : displayName;
     return `
-    <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? "manual" : "fallback"))}">
+    <div class="grid6-item ${escapeHtml(item.imageSource || (item.imageMapped ? "manual" : "fallback"))}${portraitFocusClass(item)}">
       ${renderPreviewImage(item.imageUrl, item.name, "", item.candidateImageUrls)}
       <div class="grid6-overlay">
         ${showLabel && item.label ? `<div class="grid6-service-label">${escapeHtml(item.label)}</div>` : ""}
@@ -2606,29 +2504,7 @@ function renderGrid8Secondary(value, options = {}) {
   return `<div class="grid8-meta grid8-meta-extra story-image-meta"><span>${escapeHtml(cleanValue)}</span></div>`;
 }
 function journeyGrid8Intro(page) {
-  const chip = String(page?.chipText || "").trim().toLowerCase();
-  const title = String(page?.title || "").trim().toLowerCase();
-  const textKey = `${chip} ${title}`;
-  const pageSubtitle = polishShortVietnameseCopy(page?.subtitle || "");
-  if (textKey.includes("day 01") || textKey.includes("ng\xE0y 1") || textKey.includes("vao pho") || textKey.includes("v\xE0o ph\u1ED1")) {
-    return pageSubtitle || "M\u1ED9t nh\u1ECBp m\u1EDF \u0111\u1EA7u d\u1EC5 \u0111i, \u0111\u1EE7 b\u1EEFa \u0103n, cafe v\xE0 check-in trong ng\xE0y \u0111\u1EA7u.";
-  }
-  if (textKey.includes("day 02") || textKey.includes("ng\xE0y 2") || textKey.includes("san anh") || textKey.includes("s\u0103n \u1EA3nh")) {
-    return pageSubtitle || "\u01AFu ti\xEAn c\xE1c \u0111i\u1EC3m c\xF3 \u1EA3nh \u0111\u1EB9p, di chuy\u1EC3n theo nh\u1ECBp s\xE1ng \u0111\u1EBFn t\u1ED1i.";
-  }
-  if (textKey.includes("day 03") || textKey.includes("ng\xE0y 3") || textKey.includes("di sau") || textKey.includes("\u0111i s\xE2u")) {
-    return pageSubtitle || "Ng\xE0y gi\u1EEFa chuy\u1EBFn \u0111i d\xE0nh cho \u0111i\u1EC3m xa h\u01A1n, tr\u1EA3i nghi\u1EC7m r\xF5 ch\u1EA5t \u0110\xE0 L\u1EA1t.";
-  }
-  if (textKey.includes("day 04") || textKey.includes("ng\xE0y 4") || textKey.includes("sang cham") || textKey.includes("s\xE1ng ch\u1EADm")) {
-    return pageSubtitle || "M\u1ED9t ng\xE0y cu\u1ED1i g\u1ECDn nh\u1ECBp, v\u1EABn \u0111\u1EE7 \u0111i\u1EC3m gh\xE9 v\xE0 ch\u1ED1t b\u1EEFa t\u1ED1i. L\u01B0u l\u1EA1i ngay nh\xE9.";
-  }
-  if (textKey.includes("l\u01B0u tr\xFA") || textKey.includes("luu tru")) {
-    return pageSubtitle || "C\xE1c l\u1EF1a ch\u1ECDn n\xEAn xem tr\u01B0\u1EDBc \u0111\u1EC3 ch\u1ED1t n\u01A1i ngh\u1EC9 ph\xF9 h\u1EE3p l\u1ECBch tr\xECnh.";
-  }
-  if (textKey.includes("d\u1ECBch v\u1EE5") || textKey.includes("dich vu")) {
-    return pageSubtitle || "C\xE1c d\u1ECBch v\u1EE5 h\u1ED7 tr\u1EE3 chuy\u1EBFn \u0111i, \u01B0u ti\xEAn m\u1EE5c c\xF3 th\xF4ng tin r\xF5 \u0111\u1EC3 li\xEAn h\u1EC7 nhanh.";
-  }
-  return polishShortVietnameseCopy(sanitizeSubtitleForDisplay(page?.subtitle, [page]));
+  return polishShortVietnameseCopy(page?.subtitle || "");
 }
 function renderGrid8Items(items, title, chipText, backgroundImage, introText = "", options = {}) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -2649,7 +2525,7 @@ function renderGrid8Items(items, title, chipText, backgroundImage, introText = "
           <div class="grid8-cell-copy">
             ${showTime && item.label ? `<span class="grid8-cell-time">${escapeHtml(item.label)}</span>` : ""}
             ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ""}
-            <strong class="story-image-title">${escapeHtml(displayName)}</strong>
+            <strong class="story-image-title ${escapeHtml(responsiveTitleFitClass(displayName, "grid8-title", 34, 52))}">${escapeHtml(displayName)}</strong>
             ${showMeta && shouldShowItemAddress(item, showAddress) ? renderGrid8Meta(item.metaPrimary) : ""}
             ${showMeta ? renderGrid8Secondary(item.metaSecondary, { includeOpenHours: options.includeOpenHours === true }) : ""}
           </div>
@@ -2670,7 +2546,7 @@ function renderGrid8Items(items, title, chipText, backgroundImage, introText = "
             <div class="grid8-cell-copy">
               ${showTime && item.label ? `<span class="grid8-cell-time">${escapeHtml(item.label)}</span>` : ""}
               ${showLabel && item.label ? `<span class="grid8-cell-service">${escapeHtml(item.label)}</span>` : ""}
-              <strong class="story-image-title">${escapeHtml(displayName)}</strong>
+              <strong class="story-image-title ${escapeHtml(responsiveTitleFitClass(displayName, "grid8-title", 34, 52))}">${escapeHtml(displayName)}</strong>
               ${showMeta && shouldShowItemAddress(item, showAddress) ? renderGrid8Meta(item.metaPrimary) : ""}
               ${showMeta ? renderGrid8Secondary(item.metaSecondary, { includeOpenHours: options.includeOpenHours === true }) : ""}
             </div>
@@ -2680,22 +2556,24 @@ function renderGrid8Items(items, title, chipText, backgroundImage, introText = "
   `;
 }
 function renderItineraryItems(items) {
-  return items.map((item) => `
-    <div class="item-row itinerary-row">
-      <div class="thumb-block itinerary-thumb ${item.imageSource || (item.imageMapped ? "manual" : "fallback")}">
-        ${renderPreviewImage(item.imageUrl, item.name, "", item.candidateImageUrls)}
-      </div>
-      <div class="item-copy itinerary-copy">
-        <div class="itinerary-topline">
-          <div class="item-label itinerary-time">${escapeHtml(item.label)}</div>
-          <div class="itinerary-name story-image-title">${escapeHtml(item.name)}</div>
+  return items.map((item) => {
+    const displayName = gridDisplayName(item);
+    const secondary = String(item?.metaSecondary || "").replace(/\s+/g, " ").trim();
+    const hoursMatch = secondary.match(/(?:Khung giờ|Open|Hoạt động):\s*([^·]+)/i);
+    const hours = hoursMatch?.[1]?.trim() || "";
+    return `
+      <div class="item-row itinerary-row">
+        <div class="thumb-block itinerary-thumb ${item.imageSource || (item.imageMapped ? "manual" : "fallback")}">
+          ${renderPreviewImage(item.imageUrl, displayName, "", item.candidateImageUrls)}
         </div>
-        <p class="item-meta story-image-meta itinerary-detail">
-          ${escapeHtml(item.metaPrimary)}${item.metaSecondary ? ` \xB7 ${escapeHtml(item.metaSecondary)}` : ""}
-        </p>
+        <div class="item-copy itinerary-copy">
+          ${hours ? `<div class="itinerary-hours">Khung gi\u1EDD ho\u1EA1t \u0111\u1ED9ng: ${escapeHtml(hours)}</div>` : ""}
+          <div class="itinerary-name story-image-title">${escapeHtml(displayName)}</div>
+          <p class="item-meta story-image-meta itinerary-detail">${escapeHtml(item.metaPrimary)}</p>
+        </div>
       </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 function renderJourney4N3DItems(items) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -2716,17 +2594,6 @@ function renderJourney4N3DItems(items) {
       `).join("")}
     </div>
   `;
-}
-function journey4N3DTitle(chipText, title) {
-  const chip = String(chipText || "").trim();
-  const cleanTitle = String(title || "").trim();
-  if (!chip || !cleanTitle) {
-    return cleanTitle || chip;
-  }
-  if (cleanTitle.toLowerCase().startsWith(`${chip.toLowerCase()} - `)) {
-    return cleanTitle;
-  }
-  return `${chip} - ${cleanTitle}`;
 }
 function renderListPage(page, index, total, listId, hashtags = [], list = null) {
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
@@ -2778,7 +2645,7 @@ function renderListPage(page, index, total, listId, hashtags = [], list = null) 
     `;
   }
   if (page.layoutVariant === "grid-8") {
-    const grid8Title = isGeneratedCaptionList(list) ? contextualGrid8Title(page) : page.title;
+    const grid8Title = page.title;
     const grid8Intro = grid8IntroForPage(page, pageSubtitle, list);
     const showAddress = !isActivityListPage(page);
     const grid8Background = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
@@ -2836,15 +2703,13 @@ function renderListPage(page, index, total, listId, hashtags = [], list = null) 
   }
   if (page.layoutVariant === "journey-4n3d") {
     const dayNumber = String(Math.max(index, 1)).padStart(2, "0");
+    const dayMatch = String(page.chipText || "").trim().match(/^day\s*0*(\d+)$/i);
+    const badgeLabel = dayMatch ? `Ng\xE0y ${Number(dayMatch[1])}` : String(page.chipText || "").trim();
     return `
       <article class="${escapeHtml(storyPageClass(listId, "journey4", `journey-page-${dayNumber}`))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, "0")}-${sanitizeFilePart(page.chipText)}.png">
         <div class="journey-bg">${renderPreviewImage(page.backgroundImage, page.title, "", portablePageImageCandidates(page, page.backgroundImage))}</div>
-        <div class="journey-day-badge">${escapeHtml(page.chipText)}</div>
+        <div class="journey-day-badge">${escapeHtml(badgeLabel)}</div>
         <div class="journey-card">
-          <div class="journey-title-block">
-            <h3 class="page-title">${escapeHtml(journey4N3DTitle(page.chipText, page.title))}</h3>
-            ${pageSubtitle ? `<p class="page-lead">${escapeHtml(pageSubtitle)}</p>` : ""}
-          </div>
           ${renderJourney4N3DItems(page.items)}
         </div>
       </article>

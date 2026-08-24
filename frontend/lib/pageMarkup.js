@@ -2108,7 +2108,8 @@ function renderOneWayStorySlope(page, index, listId) {
 function renderOneWayStoryPhoto(page, index, listId) {
   const item = page.items?.[0] || {};
   const locationName = String(item.name || '').trim();
-  const locationAddress = String(item.metaPrimary || '').trim();
+  const isFreeCheckin = String(item.sourceSectionKey || '').trim() === 'check_in';
+  const locationAddress = isFreeCheckin ? '' : String(item.metaPrimary || '').trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'one-way-story-page one-way-story-photo'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
       ${renderOneWayStoryImage(page.backgroundImage || item.imageUrl, item.name || page.chipText, item.candidateImageUrls)}

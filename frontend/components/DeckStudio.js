@@ -932,7 +932,7 @@ export default function DeckStudio({ initialDataset = null }) {
 
     setBusy(true);
     setStatus(isNonAiTemplate
-      ? `Đang tạo Mẫu 1 từ Google Sheet "${activeDeck.navTitle}"...`
+      ? `Đang tạo ${activeDeck.navTitle} từ dữ liệu...`
       : `Đang tạo list AI mới trong deck "${activeDeck.navTitle}"...`);
     try {
       const response = await apiFetch('/api/decks/generate-from-caption', {
