@@ -42,6 +42,8 @@ import {
   DestinationId,
   DestinationListResponse,
   DestinationSummary,
+  HookSourcesResponse,
+  SetHookModeRequest,
   SetDestinationRequest,
   SetDestinationResponse,
 } from '../../common/interfaces/guide.types';
@@ -82,6 +84,7 @@ import {
 } from './sync/destination-config';
 
 import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
+import { FestivalHookSourceStore, HookReservation, HookSourceUpload } from './sync/festival-hook-source';
 import { localizeDecks, localizeText, setActiveDestinationLocalize, getMarketingCopy, buildCaptionHashtags, getDeckHashtagExtras, resolveDeckIdFromListId, cityLabel } from './sync/destination-localize';
 import {
   fetchWorkbookFromSheet,
@@ -181,6 +184,7 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly customDestinationsPath = path.join(this.dataRoot, 'custom-destinations.json');
   private activeDestinationId: DestinationId = DEFAULT_DESTINATION_ID;
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
+  private readonly festivalHookSources: FestivalHookSourceStore;
   private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
   private usedAllocator = new DataAllocator();
@@ -205,7 +209,10 @@ export class GuideService implements OnApplicationBootstrap {
   private lastSyncTime = 0;
   private isSyncing = false;
   private syncPromise: Promise<void> | null = null;
-  private manifestSyncPromise: Promise<void> | null = null;
+  private readonly manifestSyncByDestination = new Map<DestinationId, {
+    sourceKey: string;
+    promise: Promise<void>;
+  }>();
   private workbookSource: SheetWorkbookSource | null = null;
   private readonly workbookSourceByDestination = new Map<DestinationId, SheetWorkbookSource>();
   private readonly workbookDerivedCacheByDestination = new Map<DestinationId, WorkbookDerivedContext>();
@@ -235,6 +242,7 @@ export class GuideService implements OnApplicationBootstrap {
   };
 
   constructor() {
+    this.festivalHookSources = new FestivalHookSourceStore(this.dataRoot);
     this.loadCustomDestinations();
     this.activeDestinationId = this.loadActiveDestinationId();
     this.driveCacheWarmStatus.destinationId = this.activeDestinationId;
@@ -265,8 +273,9 @@ export class GuideService implements OnApplicationBootstrap {
       await this.warmSpotlightV3Hooks();
       await this.prepareWorkbookForDataset(false);
       // Chờ manifest Drive xong rồi mới build 1 lần — tránh sync xong lại invalidate/rebuild lần 2.
-      if (this.manifestSyncPromise) {
-        await this.manifestSyncPromise.catch(() => undefined);
+      const manifestSync = this.manifestSyncByDestination.get(this.activeDestinationId)?.promise;
+      if (manifestSync) {
+        await manifestSync.catch(() => undefined);
       }
       this.buildDatasetContext();
       if (this.workbookSource) {
@@ -424,21 +433,18 @@ export class GuideService implements OnApplicationBootstrap {
     if (token !== this.driveCacheWarmToken || warmed.cancelled) return;
     let completed = warmed.skipped + warmed.ok + warmed.fail;
 
-    // Bản cũ luôn xác thực lại link của địa điểm khi ảnh chính hỏng. Giữ hành vi
-    // đó nhưng chỉ quét lại các entry chưa có bất kỳ candidate nào trên disk;
-    // entry đã tải thành công được tái sử dụng nên không làm chậm toàn bộ Sheet.
+    // Không giữ người dùng ở 99% để resolve lại các folder Drive lỗi. ID tải lỗi đã
+    // được lưu vào failed-file-ids và sẽ bị loại khi rebuild dataset ngay bên dưới.
+    // Người dùng vẫn có thể chủ động "Tải lại dữ liệu" để xác minh toàn bộ link sau.
     if (warmed.fail > 0 && this.workbookSource) {
       this.driveCacheWarmStatus = {
         ...this.driveCacheWarmStatus,
         phase: 'warming',
         ready: false,
         percent: 99,
-        message: `Đang tìm ảnh thay thế cho ${warmed.fail} mục không tải được...`,
+        message: `Đang loại ${warmed.fail} ảnh lỗi và hoàn tất dữ liệu...`,
       };
-      await this.refreshSheetDriveManifest(this.workbookSource, false, false);
-      if (token !== this.driveCacheWarmToken) return;
-      const remaining = listUncachedDriveFileIds(this.collectDriveFileIdsForCacheWarm());
-      completed = Math.max(0, warmed.total - remaining.length);
+      completed = warmed.total;
     }
 
     // Dataset có thể đã được dựng song song từ manifest portable trước khi warm
@@ -478,9 +484,7 @@ export class GuideService implements OnApplicationBootstrap {
     // build context; vì vậy không được tiếp tục khóa overlay chỉ vì cờ loading này.
     const sourceIsReady = Boolean(this.workbookSource);
     const cacheIsReady = this.driveCacheWarmStatus.ready
-      || (this.driveCacheWarmStatus.total > 0
-        && this.driveCacheWarmStatus.completed >= this.driveCacheWarmStatus.total
-        && this.driveCacheWarmStatus.phase !== 'error');
+      && this.driveCacheWarmStatus.phase === 'ready';
     if (this.destinationDataLoading && !(sourceIsReady && cacheIsReady)) {
       return {
         ...this.driveCacheWarmStatus,
@@ -516,7 +520,7 @@ export class GuideService implements OnApplicationBootstrap {
           : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
       };
     }
-    return { ...this.driveCacheWarmStatus, destinationId: this.activeDestinationId };
+    return { ...this.driveCacheWarmStatus, ready: false, destinationId: this.activeDestinationId };
   }
 
   private assertDriveCacheReady(): void {
@@ -701,6 +705,55 @@ export class GuideService implements OnApplicationBootstrap {
       active: this.getActiveDestinationSummary(),
       destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
     };
+  }
+
+  getHookSources(): HookSourcesResponse {
+    return this.festivalHookSources.getStatus(this.activeDestinationId);
+  }
+
+  async addHookSource(input: { name?: unknown; docUrl?: unknown }, file?: HookSourceUpload): Promise<HookSourcesResponse> {
+    try {
+      await this.festivalHookSources.create(input, file);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async updateHookSource(id: string, input: { name?: unknown; docUrl?: unknown }, file?: HookSourceUpload): Promise<HookSourcesResponse> {
+    try {
+      await this.festivalHookSources.update(id, input, file);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async refreshHookSource(id: string): Promise<HookSourcesResponse> {
+    try {
+      await this.festivalHookSources.refresh(id);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  deleteHookSource(id: string): HookSourcesResponse {
+    try {
+      this.festivalHookSources.delete(id);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  setHookMode(request: SetHookModeRequest): HookSourcesResponse {
+    try {
+      this.festivalHookSources.setMode(request?.mode, String(request?.sourceId || ''), this.activeDestinationId);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
   }
 
   async addDestination(request: AddDestinationRequest): Promise<AddDestinationResponse> {
@@ -918,7 +971,6 @@ export class GuideService implements OnApplicationBootstrap {
       this.workbookDerivedCacheFresh = Boolean(this.workbookDerivedCache);
       this.workbookDerivedCacheTime = this.workbookDerivedCache ? Date.now() : 0;
       this.invalidateDatasetCache({ immediate: !this.workbookDerivedCache });
-      this.scheduleWarmDriveFileDiskCache();
     }
 
     const needsFirstLoad = !this.workbookSource;
@@ -932,6 +984,9 @@ export class GuideService implements OnApplicationBootstrap {
         await this.syncWorkbookNow(switchingDestination ? 'tai diem den lan dau' : 'tai du lieu lan dau');
       } else if (needsLocalManifestRefresh && this.workbookSource) {
         await this.refreshSheetDriveManifest(this.workbookSource, false);
+      } else if (switchingDestination) {
+        // Context/manifest đã có sẵn: chỉ khởi động một lượt warm cho nguồn mới.
+        this.scheduleWarmDriveFileDiskCache();
       }
       const dataset = await this.getDataset();
       if (this.workbookSource) {
@@ -939,6 +994,9 @@ export class GuideService implements OnApplicationBootstrap {
       }
       if (this.workbookDerivedCache) {
         this.workbookDerivedCacheByDestination.set(this.activeDestinationId, this.workbookDerivedCache);
+      }
+      if (switchingDestination && nextId !== 'dalat') {
+        this.festivalHookSources.deactivate();
       }
       return {
         active: this.getActiveDestinationSummary(),
@@ -1279,6 +1337,14 @@ export class GuideService implements OnApplicationBootstrap {
     const requestedTone = this.normalizeCaptionTone(request.tone);
     const seed = [deckId, generatedSuffix, String(existing.length), requestedTone, caption.coverTitle, caption.headline, caption.body, caption.hashtags.join(' '), timestamp].join('|');
 
+    let festivalReservation: HookReservation | null = null;
+    try {
+      festivalReservation = this.festivalHookSources.reserve(deckId, this.activeDestinationId);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+
+    try {
     this.ensureInventoryLoaded();
     const deckUsage = this.createUsageScope();
     currentDeck.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
@@ -1293,7 +1359,9 @@ export class GuideService implements OnApplicationBootstrap {
       }
     }
     if (isGoogleDocHookDeck(deckId)) {
-      const hooks = isSectionedGoogleDocHookDeck(deckId)
+      const hooks = festivalReservation
+        ? [festivalReservation.hook]
+        : isSectionedGoogleDocHookDeck(deckId)
         ? await this.loadDeckHookSection(deckId)
         : (await this.warmSpotlightV3Hooks(), undefined);
       setSpotlightV3BuildContext({
@@ -1317,7 +1385,9 @@ export class GuideService implements OnApplicationBootstrap {
     } finally {
       clearSpotlightV3BuildContext();
     }
-    const hookCoverTitle = isSectionedGoogleDocHookDeck(deckId)
+    const hookCoverTitle = festivalReservation
+      ? festivalReservation.hook
+      : isSectionedGoogleDocHookDeck(deckId)
       ? await this.resolveDeckHookCoverTitle(deckId, seed)
       : isLegacyGoogleDocHookDeck(deckId)
         ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
@@ -1358,6 +1428,13 @@ export class GuideService implements OnApplicationBootstrap {
     generatedList.captionBody = this.sanitizeContentText(caption.body) || this.captionBodyFallback();
     generatedList.captionHashtags = finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
+    if (festivalReservation) {
+      generatedList.hookSnapshot = {
+        mode: 'festival',
+        sourceId: festivalReservation.sourceId,
+        sourceRevision: festivalReservation.sourceRevision,
+      };
+    }
     const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList, deckId);
 
     this.markUsedInDeck(sanitizedGeneratedList.pages);
@@ -1365,8 +1442,13 @@ export class GuideService implements OnApplicationBootstrap {
 
     this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
     this.persistGeneratedLists();
+    this.festivalHookSources.commit(festivalReservation);
 
     return { deckId, listId: sanitizedGeneratedList.id, navTitle: sanitizedGeneratedList.navTitle, title: sanitizedGeneratedList.title };
+    } catch (error) {
+      this.festivalHookSources.rollback(festivalReservation);
+      throw error;
+    }
   }
 
   // ─── Batch list generation ────────────────────────────────────────────────
@@ -2122,13 +2204,7 @@ export class GuideService implements OnApplicationBootstrap {
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
     const cleanPage = this.sanitizeDeckPageText(page);
     if (cleanPage.type === 'cover' && (cleanPage.layoutVariant === 'spotlight-v2' || cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'carousel-mau-1-cover')) {
-      if (cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'carousel-mau-1-cover') {
-        return { ...cleanPage, subtitle: '' };
-      }
-      return {
-        ...cleanPage,
-        subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(cleanPage.subtitle || list.description)),
-      };
+      return { ...cleanPage, subtitle: '' };
     }
     if (cleanPage.type !== 'list' || cleanPage.layoutVariant !== 'journey-4n3d') {
       if (cleanPage.type === 'list' && cleanPage.layoutVariant === 'grid-8-quaytung-menu') {
@@ -2203,11 +2279,10 @@ export class GuideService implements OnApplicationBootstrap {
         return { ...page, subtitle: '' };
       }
       if (layout === 'spotlight-v2') {
-        const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
         return {
           ...page,
           title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
-          subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(rawSubtitle)),
+          subtitle: '',
         };
       }
       if (layout === 'grid-8-feed') {
@@ -2500,7 +2575,8 @@ export class GuideService implements OnApplicationBootstrap {
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
         const refreshSeed = `refresh:${deckId}:${list.id}:${listIndex}:${caption.coverTitle}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`;
-        if (isLegacyGoogleDocHookDeck(deckId)) {
+        const hasFestivalHookSnapshot = list.hookSnapshot?.mode === 'festival';
+        if (isLegacyGoogleDocHookDeck(deckId) && !hasFestivalHookSnapshot) {
           setSpotlightV3BuildContext({
             destinationId: this.activeDestinationId,
             usedHookTitles: this.getUsedCaptionTitles(deckId),
@@ -2523,6 +2599,8 @@ export class GuideService implements OnApplicationBootstrap {
         }
         const hookCoverTitle = hasCoverOverride
           ? ''
+          : hasFestivalHookSnapshot
+            ? ''
           : isLegacyGoogleDocHookDeck(deckId)
             ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
             : isSectionedGoogleDocHookDeck(deckId)
@@ -3779,7 +3857,7 @@ export class GuideService implements OnApplicationBootstrap {
       if (page.layoutVariant === 'grid-8-feed') {
         subtitle = this.sanitizeContentText(truncateGrid8FeedCoverSubtitle(subtitle));
       } else if (page.layoutVariant === 'spotlight-v2') {
-        subtitle = this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(subtitle));
+        subtitle = '';
       }
       return {
         ...page,
@@ -4159,8 +4237,15 @@ export class GuideService implements OnApplicationBootstrap {
     source: SheetWorkbookSource,
     retryKnownFailures = false,
     scheduleWarmAfterSync = true,
+    revalidateUncached = false,
   ): Promise<void> {
-    if (this.manifestSyncPromise) return this.manifestSyncPromise;
+    const sourceKey = `${source.fetchedAt}:${source.bytes}:${source.workbookName}:${retryKnownFailures ? 1 : 0}:${revalidateUncached ? 1 : 0}`;
+    const existing = this.manifestSyncByDestination.get(source.destinationId);
+    if (existing) {
+      if (existing.sourceKey === sourceKey) return existing.promise;
+      await existing.promise.catch(() => undefined);
+      return this.refreshSheetDriveManifest(source, retryKnownFailures, scheduleWarmAfterSync, revalidateUncached);
+    }
 
     const token = this.driveCacheWarmToken;
     // Bước xác thực ảnh Drive (retryKnownFailures) cố ý concurrency thấp (xem sheet-drive-manifest.ts)
@@ -4178,10 +4263,13 @@ export class GuideService implements OnApplicationBootstrap {
         message: 'Đang xác thực ảnh Drive...',
       };
     }
-    this.manifestSyncPromise = (async () => {
+    let promise!: Promise<void>;
+    promise = (async () => {
       try {
-        const manifest = await buildSheetDriveManifest(source, this.loadSheetDriveManifest(), {
+        const previousManifest = readSheetDriveManifest(this.dataRoot, source.destinationId);
+        const manifest = await buildSheetDriveManifest(source, previousManifest, {
           forceRevalidate: retryKnownFailures,
+          revalidateUncached,
           onProgress: (completed, total) => {
             if (!retryKnownFailures || token !== this.driveCacheWarmToken || source.destinationId !== this.activeDestinationId) return;
             this.driveCacheWarmStatus = {
@@ -4217,13 +4305,20 @@ export class GuideService implements OnApplicationBootstrap {
             destinationId: this.activeDestinationId,
             message: `Xác thực ảnh Drive thất bại: ${error instanceof Error ? error.message : String(error)}`,
           };
+        } else if (scheduleWarmAfterSync && source.destinationId === this.activeDestinationId) {
+          // Manifest cũ vẫn có thể warm được; không để lỗi refresh metadata làm treo máy mới.
+          this.scheduleWarmDriveFileDiskCache({ retryKnownFailures: false });
         }
       } finally {
-        this.manifestSyncPromise = null;
+        const current = this.manifestSyncByDestination.get(source.destinationId);
+        if (current?.promise === promise) {
+          this.manifestSyncByDestination.delete(source.destinationId);
+        }
       }
     })();
 
-    return this.manifestSyncPromise;
+    this.manifestSyncByDestination.set(source.destinationId, { sourceKey, promise });
+    return promise;
   }
 
   // ─── Utility ──────────────────────────────────────────────────────────────
@@ -4341,7 +4436,6 @@ export class GuideService implements OnApplicationBootstrap {
     this.workbookDerivedCacheTime = 0;
     this.invalidateDatasetCache({ immediate: true });
     await this.refreshSheetDriveManifest(source, options.retryKnownFailures);
-    this.scheduleWarmDriveFileDiskCache();
   }
 
   private loadCustomDestinations(): void {

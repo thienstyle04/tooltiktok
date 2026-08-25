@@ -20,12 +20,18 @@ service.driveCacheWarmStatus = {
 };
 
 const completed = service.getDriveCacheWarmStatus();
-assert.equal(completed.ready, true, 'Đủ ảnh và đã có nguồn Sheet phải thoát trạng thái chờ');
-assert.equal(completed.phase, 'ready');
+assert.equal(completed.ready, false, 'Đủ bộ đếm nhưng chưa rebuild dataset thì vẫn phải khóa tạo list');
+assert.equal(completed.phase, 'warming');
 assert.equal(completed.percent, 100);
+
+service.destinationDataLoading = false;
+service.driveCacheWarmStatus = { ...service.driveCacheWarmStatus, phase: 'ready', ready: true };
+const rebuilt = service.getDriveCacheWarmStatus();
+assert.equal(rebuilt.ready, true, 'Chỉ mở tạo list sau khi warm và rebuild dataset đã hoàn tất');
+assert.equal(rebuilt.phase, 'ready');
 
 service.workbookSource = null;
 const missingSheet = service.getDriveCacheWarmStatus();
 assert.equal(missingSheet.ready, false, 'Chưa có nguồn Sheet thì vẫn phải khóa tạo list');
 
-console.log('PASS cache-ready-at-100: không treo overlay khi ảnh đã hoàn tất');
+console.log('PASS cache-ready-at-100: 100% chỉ mở tạo list sau khi rebuild dataset');

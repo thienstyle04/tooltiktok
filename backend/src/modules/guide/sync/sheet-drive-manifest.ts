@@ -36,6 +36,7 @@ export interface SheetDriveImageManifest {
   workbookMtimeMs: number;
   items: Record<string, SheetDriveImageManifestEntry>;
   coverImages: DriveFolderEntry[];
+  coverSourceLinks?: string[];
 }
 
 function isLikelyLinkHeader(header: string): boolean {
@@ -135,6 +136,7 @@ export function emptySheetDriveManifest(): SheetDriveImageManifest {
     workbookMtimeMs: 0,
     items: {},
     coverImages: [],
+    coverSourceLinks: [],
   };
 }
 
@@ -157,6 +159,9 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
       workbookMtimeMs: Number(parsed.workbookMtimeMs ?? 0),
       items: parsed.items && typeof parsed.items === 'object' ? parsed.items as Record<string, SheetDriveImageManifestEntry> : {},
       coverImages: Array.isArray(parsed.coverImages) ? parsed.coverImages as DriveFolderEntry[] : [],
+      coverSourceLinks: Array.isArray(parsed.coverSourceLinks)
+        ? parsed.coverSourceLinks.map((entry) => String(entry || '').trim()).filter(Boolean)
+        : [],
     };
 
     return manifest;
@@ -168,12 +173,18 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
 export async function buildSheetDriveManifest(
   source: SheetWorkbookSource,
   previousManifest = emptySheetDriveManifest(),
-  options: { forceRevalidate?: boolean; onProgress?: (completed: number, total: number) => void } = {},
+  options: {
+    forceRevalidate?: boolean;
+    revalidateUncached?: boolean;
+    onProgress?: (completed: number, total: number) => void;
+  } = {},
 ): Promise<SheetDriveImageManifest> {
   const forceRevalidate = Boolean(options.forceRevalidate);
+  const revalidateUncached = Boolean(options.revalidateUncached);
   const workbook = source.workbook;
   const items: Record<string, SheetDriveImageManifestEntry> = {};
   const coverImages = new Map<string, DriveFolderEntry>();
+  const coverSourceLinks: string[] = [];
   const itemTasks: Array<() => Promise<void>> = [];
   const coverTasks: Array<() => Promise<void>> = [];
   let coverResolveErrors = 0;
@@ -197,21 +208,7 @@ export async function buildSheetDriveManifest(
         const imageLink = firstLinkValue(row);
         if (!imageLink) continue;
 
-        coverTasks.push(async () => {
-          const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', 50).catch((error) => {
-            console.warn(`[sync] Bo qua anh nen Drive loi: ${error instanceof Error ? error.message : String(error)}`);
-            return null as DriveFolderEntry[] | null;
-          });
-
-          if (candidateImages === null) {
-            coverResolveErrors += 1;
-            return;
-          }
-
-          for (const entry of candidateImages) {
-            if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
-          }
-        });
+        coverSourceLinks.push(imageLink);
       }
       continue;
     }
@@ -234,23 +231,28 @@ export async function buildSheetDriveManifest(
         // thể bị Google rate-limit dồn dập, khiến màn hình chờ trông như bị treo. Nếu
         // link ảnh không đổi so với lần trước, dùng lại kết quả đã xác minh thay vì
         // quét lại folder Drive + probe quyền truy cập từ đầu.
-        const previousCandidates = previousEntry
+        const allPreviousCandidates = previousEntry
           ? (previousEntry.candidateImages?.length
               ? previousEntry.candidateImages
               : [{ fileId: previousEntry.fileId, fileName: previousEntry.fileName, viewUrl: '' }])
-            .filter((entry) => entry.fileId && hasDriveFileDiskCache(entry.fileId))
+            .filter((entry) => entry.fileId)
           : [];
-        // Chỉ tái sử dụng manifest khi máy HIỆN TẠI đã có file ảnh thật trên disk.
-        // Manifest mang từ máy khác chỉ là metadata; tin ngay sẽ làm list nhận URL
-        // Drive chưa tải được và render placeholder xám.
-        if (!forceRevalidate && previousEntry?.fileId && previousEntry.sourceLink === imageLink && previousCandidates.length > 0) {
-          const primary = previousCandidates.find((entry) => entry.fileId === previousEntry.fileId)
-            || previousCandidates[0];
+        const cachedPreviousCandidates = allPreviousCandidates
+          .filter((entry) => hasDriveFileDiskCache(entry.fileId));
+        // Manifest portable là chỉ mục tải ảnh, không phải bằng chứng ảnh đã sẵn sàng.
+        // Tái sử dụng metadata khi link XLSX không đổi giúp máy mới không phải resolve
+        // lại hàng trăm folder Drive trước khi bắt đầu warm cache. Guard tạo list vẫn
+        // khóa đến khi warm + rebuild dataset hoàn tất. Khi warm phát hiện ID hỏng,
+        // revalidateUncached=true chỉ resolve lại đúng các entry chưa có file thật.
+        const reusableCandidates = revalidateUncached ? cachedPreviousCandidates : allPreviousCandidates;
+        if (!forceRevalidate && previousEntry?.fileId && previousEntry.sourceLink === imageLink && reusableCandidates.length > 0) {
+          const primary = reusableCandidates.find((entry) => entry.fileId === previousEntry.fileId)
+            || reusableCandidates[0];
           items[key] = {
             ...previousEntry,
             fileId: primary.fileId,
             fileName: primary.fileName,
-            candidateImages: previousCandidates,
+            candidateImages: reusableCandidates,
           };
           syncStats.reusedUnchanged += 1;
           return;
@@ -319,6 +321,41 @@ export async function buildSheetDriveManifest(
     }
   }
 
+  const previousCoverSourceLinks = (previousManifest.coverSourceLinks || [])
+    .map((entry) => String(entry || '').trim())
+    .filter(Boolean);
+  const normalizedCoverLinks = [...new Set(coverSourceLinks)].sort();
+  const normalizedPreviousCoverLinks = [...new Set(previousCoverSourceLinks)].sort();
+  const coverLinksUnchanged = normalizedPreviousCoverLinks.length === normalizedCoverLinks.length
+    && normalizedPreviousCoverLinks.every((entry, index) => entry === normalizedCoverLinks[index]);
+  const reusePreviousCovers = !forceRevalidate
+    && previousManifest.coverImages.length > 0
+    && (normalizedPreviousCoverLinks.length === 0 || coverLinksUnchanged);
+
+  if (reusePreviousCovers) {
+    for (const entry of previousManifest.coverImages) {
+      if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
+    }
+  } else {
+    for (const imageLink of normalizedCoverLinks) {
+      coverTasks.push(async () => {
+        const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', 50).catch((error) => {
+          console.warn(`[sync] Bo qua anh nen Drive loi: ${error instanceof Error ? error.message : String(error)}`);
+          return null as DriveFolderEntry[] | null;
+        });
+
+        if (candidateImages === null) {
+          coverResolveErrors += 1;
+          return;
+        }
+
+        for (const entry of candidateImages) {
+          if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
+        }
+      });
+    }
+  }
+
   await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY, options.onProgress);
 
   console.log(
@@ -355,6 +392,7 @@ export async function buildSheetDriveManifest(
     workbookMtimeMs: source.fetchedAt,
     items,
     coverImages: nextCoverImages,
+    coverSourceLinks: normalizedCoverLinks,
   };
 }
 

@@ -79,18 +79,25 @@ async function run() {
     // Simulate access=true metadata copied from the packaging machine while the
     // portable bundle intentionally contains no real image cache bytes.
     setCachedDriveFileAccessibility('abc123', true);
-    // Máy mới không có disk cache: manifest cũ chỉ là metadata, bắt buộc xác minh
-    // và tải ảnh thật; nếu tái sử dụng ngay thì list sẽ render placeholder xám.
+    // Máy mới tái sử dụng metadata ngay để đổi nguồn/thay XLSX không phải chờ
+    // resolve hàng trăm folder Drive. Guard tạo list vẫn khóa cho đến khi warm xong.
     const manifest = await buildSheetDriveManifest(source, previousManifest);
-    assert.ok(networkCallCount > 0, 'May moi thieu disk cache phai goi Drive de xac minh anh that');
+    assert.equal(networkCallCount, 0, 'Manifest portable khong duoc resolve Drive lai khi link XLSX khong doi');
     assert.equal(manifest.items[key]?.fileId, 'abc123');
-    console.log('PASS manifest-reuse-unchanged: may moi xac minh manifest cu qua mang');
+    console.log('PASS manifest-reuse-unchanged: may moi tai su dung metadata de chuyen nguon nhanh');
 
-    // Ảnh đã tải thành công trên chính máy này: lần sync tiếp theo mới được tái sử dụng.
+    // Nếu warm phát hiện ảnh chưa có/hỏng, chỉ revalidate các entry uncached.
     networkCallCount = 0;
-    await buildSheetDriveManifest(source, manifest);
+    const repaired = await buildSheetDriveManifest(source, manifest, { revalidateUncached: true });
+    assert.ok(networkCallCount > 0, 'Entry chua co disk cache phai duoc revalidate sau warm fail');
+    assert.equal(repaired.items[key]?.fileId, 'abc123');
+    console.log('PASS manifest-reuse-unchanged: revalidate dung entry uncached sau warm fail');
+
+    // Ảnh đã tải thành công trên chính máy này: lần sync tiếp theo tái sử dụng.
+    networkCallCount = 0;
+    await buildSheetDriveManifest(source, repaired);
     assert.equal(networkCallCount, 0, 'Co disk cache that thi link khong doi duoc phep tai su dung');
-    console.log('PASS manifest-reuse-unchanged: chi tai su dung khi co disk cache that');
+    console.log('PASS manifest-reuse-unchanged: tai su dung khi co disk cache that');
 
     // forceRevalidate=true vẫn phải trả lại entry đã xác minh. Cache bộ nhớ của
     // cùng phiên có thể hợp lệ nên không dùng số lần gọi mạng làm tiêu chí.
