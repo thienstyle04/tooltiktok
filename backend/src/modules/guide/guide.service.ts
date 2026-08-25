@@ -205,7 +205,10 @@ export class GuideService implements OnApplicationBootstrap {
   private lastSyncTime = 0;
   private isSyncing = false;
   private syncPromise: Promise<void> | null = null;
-  private manifestSyncPromise: Promise<void> | null = null;
+  private readonly manifestSyncByDestination = new Map<DestinationId, {
+    sourceKey: string;
+    promise: Promise<void>;
+  }>();
   private workbookSource: SheetWorkbookSource | null = null;
   private readonly workbookSourceByDestination = new Map<DestinationId, SheetWorkbookSource>();
   private readonly workbookDerivedCacheByDestination = new Map<DestinationId, WorkbookDerivedContext>();
@@ -265,8 +268,9 @@ export class GuideService implements OnApplicationBootstrap {
       await this.warmSpotlightV3Hooks();
       await this.prepareWorkbookForDataset(false);
       // Chờ manifest Drive xong rồi mới build 1 lần — tránh sync xong lại invalidate/rebuild lần 2.
-      if (this.manifestSyncPromise) {
-        await this.manifestSyncPromise.catch(() => undefined);
+      const manifestSync = this.manifestSyncByDestination.get(this.activeDestinationId)?.promise;
+      if (manifestSync) {
+        await manifestSync.catch(() => undefined);
       }
       this.buildDatasetContext();
       if (this.workbookSource) {
@@ -424,21 +428,18 @@ export class GuideService implements OnApplicationBootstrap {
     if (token !== this.driveCacheWarmToken || warmed.cancelled) return;
     let completed = warmed.skipped + warmed.ok + warmed.fail;
 
-    // Bản cũ luôn xác thực lại link của địa điểm khi ảnh chính hỏng. Giữ hành vi
-    // đó nhưng chỉ quét lại các entry chưa có bất kỳ candidate nào trên disk;
-    // entry đã tải thành công được tái sử dụng nên không làm chậm toàn bộ Sheet.
+    // Không giữ người dùng ở 99% để resolve lại các folder Drive lỗi. ID tải lỗi đã
+    // được lưu vào failed-file-ids và sẽ bị loại khi rebuild dataset ngay bên dưới.
+    // Người dùng vẫn có thể chủ động "Tải lại dữ liệu" để xác minh toàn bộ link sau.
     if (warmed.fail > 0 && this.workbookSource) {
       this.driveCacheWarmStatus = {
         ...this.driveCacheWarmStatus,
         phase: 'warming',
         ready: false,
         percent: 99,
-        message: `Đang tìm ảnh thay thế cho ${warmed.fail} mục không tải được...`,
+        message: `Đang loại ${warmed.fail} ảnh lỗi và hoàn tất dữ liệu...`,
       };
-      await this.refreshSheetDriveManifest(this.workbookSource, false, false);
-      if (token !== this.driveCacheWarmToken) return;
-      const remaining = listUncachedDriveFileIds(this.collectDriveFileIdsForCacheWarm());
-      completed = Math.max(0, warmed.total - remaining.length);
+      completed = warmed.total;
     }
 
     // Dataset có thể đã được dựng song song từ manifest portable trước khi warm
@@ -478,9 +479,7 @@ export class GuideService implements OnApplicationBootstrap {
     // build context; vì vậy không được tiếp tục khóa overlay chỉ vì cờ loading này.
     const sourceIsReady = Boolean(this.workbookSource);
     const cacheIsReady = this.driveCacheWarmStatus.ready
-      || (this.driveCacheWarmStatus.total > 0
-        && this.driveCacheWarmStatus.completed >= this.driveCacheWarmStatus.total
-        && this.driveCacheWarmStatus.phase !== 'error');
+      && this.driveCacheWarmStatus.phase === 'ready';
     if (this.destinationDataLoading && !(sourceIsReady && cacheIsReady)) {
       return {
         ...this.driveCacheWarmStatus,
@@ -516,7 +515,7 @@ export class GuideService implements OnApplicationBootstrap {
           : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
       };
     }
-    return { ...this.driveCacheWarmStatus, destinationId: this.activeDestinationId };
+    return { ...this.driveCacheWarmStatus, ready: false, destinationId: this.activeDestinationId };
   }
 
   private assertDriveCacheReady(): void {
@@ -918,7 +917,6 @@ export class GuideService implements OnApplicationBootstrap {
       this.workbookDerivedCacheFresh = Boolean(this.workbookDerivedCache);
       this.workbookDerivedCacheTime = this.workbookDerivedCache ? Date.now() : 0;
       this.invalidateDatasetCache({ immediate: !this.workbookDerivedCache });
-      this.scheduleWarmDriveFileDiskCache();
     }
 
     const needsFirstLoad = !this.workbookSource;
@@ -932,6 +930,9 @@ export class GuideService implements OnApplicationBootstrap {
         await this.syncWorkbookNow(switchingDestination ? 'tai diem den lan dau' : 'tai du lieu lan dau');
       } else if (needsLocalManifestRefresh && this.workbookSource) {
         await this.refreshSheetDriveManifest(this.workbookSource, false);
+      } else if (switchingDestination) {
+        // Context/manifest đã có sẵn: chỉ khởi động một lượt warm cho nguồn mới.
+        this.scheduleWarmDriveFileDiskCache();
       }
       const dataset = await this.getDataset();
       if (this.workbookSource) {
@@ -4159,8 +4160,15 @@ export class GuideService implements OnApplicationBootstrap {
     source: SheetWorkbookSource,
     retryKnownFailures = false,
     scheduleWarmAfterSync = true,
+    revalidateUncached = false,
   ): Promise<void> {
-    if (this.manifestSyncPromise) return this.manifestSyncPromise;
+    const sourceKey = `${source.fetchedAt}:${source.bytes}:${source.workbookName}:${retryKnownFailures ? 1 : 0}:${revalidateUncached ? 1 : 0}`;
+    const existing = this.manifestSyncByDestination.get(source.destinationId);
+    if (existing) {
+      if (existing.sourceKey === sourceKey) return existing.promise;
+      await existing.promise.catch(() => undefined);
+      return this.refreshSheetDriveManifest(source, retryKnownFailures, scheduleWarmAfterSync, revalidateUncached);
+    }
 
     const token = this.driveCacheWarmToken;
     // Bước xác thực ảnh Drive (retryKnownFailures) cố ý concurrency thấp (xem sheet-drive-manifest.ts)
@@ -4178,10 +4186,13 @@ export class GuideService implements OnApplicationBootstrap {
         message: 'Đang xác thực ảnh Drive...',
       };
     }
-    this.manifestSyncPromise = (async () => {
+    let promise!: Promise<void>;
+    promise = (async () => {
       try {
-        const manifest = await buildSheetDriveManifest(source, this.loadSheetDriveManifest(), {
+        const previousManifest = readSheetDriveManifest(this.dataRoot, source.destinationId);
+        const manifest = await buildSheetDriveManifest(source, previousManifest, {
           forceRevalidate: retryKnownFailures,
+          revalidateUncached,
           onProgress: (completed, total) => {
             if (!retryKnownFailures || token !== this.driveCacheWarmToken || source.destinationId !== this.activeDestinationId) return;
             this.driveCacheWarmStatus = {
@@ -4217,13 +4228,20 @@ export class GuideService implements OnApplicationBootstrap {
             destinationId: this.activeDestinationId,
             message: `Xác thực ảnh Drive thất bại: ${error instanceof Error ? error.message : String(error)}`,
           };
+        } else if (scheduleWarmAfterSync && source.destinationId === this.activeDestinationId) {
+          // Manifest cũ vẫn có thể warm được; không để lỗi refresh metadata làm treo máy mới.
+          this.scheduleWarmDriveFileDiskCache({ retryKnownFailures: false });
         }
       } finally {
-        this.manifestSyncPromise = null;
+        const current = this.manifestSyncByDestination.get(source.destinationId);
+        if (current?.promise === promise) {
+          this.manifestSyncByDestination.delete(source.destinationId);
+        }
       }
     })();
 
-    return this.manifestSyncPromise;
+    this.manifestSyncByDestination.set(source.destinationId, { sourceKey, promise });
+    return promise;
   }
 
   // ─── Utility ──────────────────────────────────────────────────────────────
@@ -4341,7 +4359,6 @@ export class GuideService implements OnApplicationBootstrap {
     this.workbookDerivedCacheTime = 0;
     this.invalidateDatasetCache({ immediate: true });
     await this.refreshSheetDriveManifest(source, options.retryKnownFailures);
-    this.scheduleWarmDriveFileDiskCache();
   }
 
   private loadCustomDestinations(): void {
