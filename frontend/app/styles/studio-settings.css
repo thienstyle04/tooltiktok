@@ -286,6 +286,63 @@
   opacity: 0.78;
 }
 
+.settings-hook-card { grid-column: 1 / -1; }
+.settings-hook-card.is-disabled { border-style: dashed; }
+.settings-hook-lock,
+.settings-hook-empty {
+  margin: 0; padding: 12px 14px; border-radius: 10px;
+  background: rgba(243, 176, 110, 0.1); color: #f3c493;
+  font-size: 0.76rem; line-height: 1.5;
+}
+.settings-hook-mode { display: flex; align-items: center; gap: 14px; }
+.settings-hook-mode span,
+.settings-hook-meta { color: var(--studio-muted); font-size: 0.72rem; }
+.settings-hook-form {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.65fr) minmax(260px, 1.2fr) minmax(210px, 0.9fr) auto;
+  gap: 10px; align-items: end;
+}
+.settings-hook-form label,
+.settings-hook-replace { display: grid; gap: 7px; min-width: 0; }
+.settings-hook-form label > span,
+.settings-hook-replace > span { color: var(--studio-muted); font-size: 0.68rem; font-weight: 800; }
+.settings-hook-form input,
+.settings-hook-replace input {
+  min-width: 0; width: 100%; min-height: 42px; padding: 8px 12px;
+  border: 1px solid var(--studio-line); border-radius: 9px; outline: 0;
+  background: rgba(0, 0, 0, 0.18); color: var(--studio-ink);
+  font: inherit; font-size: 0.75rem;
+}
+.settings-hook-form input:focus,
+.settings-hook-replace input:focus {
+  border-color: rgba(240, 127, 90, 0.7);
+  box-shadow: 0 0 0 3px rgba(240, 127, 90, 0.1);
+}
+.settings-hook-form input:disabled,
+.settings-hook-replace input:disabled { cursor: not-allowed; opacity: 0.55; }
+.settings-hook-list { display: grid; gap: 10px; }
+.settings-hook-source {
+  display: grid; gap: 11px; padding: 15px;
+  border: 1px solid var(--studio-line); border-radius: 12px;
+  background: rgba(0, 0, 0, 0.1);
+}
+.settings-hook-source.is-active {
+  border-color: rgba(111, 189, 137, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(111, 189, 137, 0.08);
+}
+.settings-hook-source-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.settings-hook-source-head > div { display: grid; gap: 4px; }
+.settings-hook-source-head strong { color: var(--studio-ink); font-size: 0.88rem; }
+.settings-hook-source-head span { color: var(--studio-muted); font-size: 0.7rem; }
+.settings-hook-meta { margin: 0; }
+.settings-hook-actions {
+  display: flex; flex-wrap: wrap; align-items: end; gap: 8px;
+}
+.settings-hook-replace { min-width: 210px; }
+.settings-hook-delete { color: #ffad99; }
+
 .settings-cache-percent {
   color: var(--studio-clay-strong);
   font-size: 1.25rem;
@@ -401,7 +458,8 @@
 
   .settings-grid,
   .settings-sync-card,
-  .settings-source-form {
+  .settings-source-form,
+  .settings-hook-form {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -414,7 +472,8 @@
   }
 
   .settings-add-button,
-  .settings-refresh-button {
+  .settings-refresh-button,
+  .settings-hook-mode .toolbar-button {
     width: 100%;
   }
 }
@@ -427,7 +486,8 @@
   .settings-grid,
   .settings-sync-card,
   .settings-add-source-card,
-  .settings-source-form {
+  .settings-source-form,
+  .settings-hook-form {
     grid-template-columns: 1fr;
   }
 
@@ -449,6 +509,18 @@
   }
 
   .settings-add-button {
+    width: 100%;
+  }
+
+  .settings-hook-mode,
+  .settings-hook-source-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-hook-actions,
+  .settings-hook-actions .toolbar-button,
+  .settings-hook-replace {
     width: 100%;
   }
 }

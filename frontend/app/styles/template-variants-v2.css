@@ -880,7 +880,7 @@
 .story-page.spotlight-v2-cover .spotlight-v2-cover-title {
   margin: 0;
   font-family: "Quicksand", "Be Vietnam Pro", Arial, sans-serif !important;
-  font-size: clamp(1.05rem, 3.2vw, 1.38rem);
+  font-size: clamp(0.9rem, 2.7vw, 1.16rem);
   font-weight: 800 !important;
   line-height: 1.1;
   color: #fff;
@@ -894,7 +894,7 @@
 /* V3 cover: font Timeline (Cormorant Garamond), chữ nhỏ. */
 .story-page.spotlight-v2-cover.spotlight-v3-cover .spotlight-v2-cover-title {
   font-family: var(--spotlight-v3-serif) !important;
-  font-size: clamp(0.68rem, 2.1vw, 0.86rem);
+  font-size: clamp(0.6rem, 1.8vw, 0.74rem);
   font-weight: 600 !important;
   font-style: italic;
   line-height: 1.15;

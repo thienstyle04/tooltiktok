@@ -25,3 +25,4 @@ backend/data/sheet-drive-images.*.json
 backend/data/active-destination.json
 backend/data/*-hooks.json
 backend/data/premade-hooks.json
+backend/data/hook-sources.*.json

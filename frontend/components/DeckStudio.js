@@ -289,6 +289,8 @@ export default function DeckStudio({ initialDataset = null }) {
   const [refreshing, setRefreshing] = useState(false);
   const [destinationInfo, setDestinationInfo] = useState(null);
   const [switchingDestination, setSwitchingDestination] = useState(false);
+  const [hookSourcesInfo, setHookSourcesInfo] = useState(null);
+  const [hookSourcesBusy, setHookSourcesBusy] = useState(false);
   const [driveCacheStatus, setDriveCacheStatus] = useState({
     phase: 'checking',
     ready: false,
@@ -410,6 +412,101 @@ export default function DeckStudio({ initialDataset = null }) {
     return payload;
   }, []);
 
+  const loadHookSources = useCallback(async () => {
+    const response = await apiFetch('/api/hook-sources', { cache: 'no-store' });
+    const payload = await readApiPayload(response);
+    if (!response.ok) throw new Error(apiErrorMessage(payload, `Không tải được nguồn Hook: HTTP ${response.status}`));
+    setHookSourcesInfo(payload);
+    return payload;
+  }, []);
+
+  const createHookSource = useCallback(async ({ name, docUrl, file }) => {
+    setHookSourcesBusy(true);
+    setStatus('Đang kiểm tra nguồn Hook lễ...');
+    try {
+      const body = new FormData();
+      body.set('name', name);
+      if (docUrl) body.set('docUrl', docUrl);
+      if (file) body.set('file', file);
+      const response = await apiFetch('/api/hook-sources', { method: 'POST', body, cache: 'no-store' });
+      const payload = await readApiPayload(response);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Không thêm được nguồn Hook: HTTP ${response.status}`));
+      setHookSourcesInfo(payload);
+      setStatus(`Đã lưu bộ Hook “${name}” với ${payload.sources?.find((entry) => entry.name === name)?.hookCount || 0} câu.`);
+      return payload;
+    } finally {
+      setHookSourcesBusy(false);
+    }
+  }, []);
+
+  const updateHookSource = useCallback(async (sourceId, { name, docUrl, file }) => {
+    setHookSourcesBusy(true);
+    setStatus(file ? 'Đang kiểm tra file Hook mới...' : 'Đang cập nhật nguồn Hook...');
+    try {
+      const body = new FormData();
+      if (name) body.set('name', name);
+      if (docUrl) body.set('docUrl', docUrl);
+      if (file) body.set('file', file);
+      const response = await apiFetch(`/api/hook-sources/${encodeURIComponent(sourceId)}`, { method: 'PUT', body, cache: 'no-store' });
+      const payload = await readApiPayload(response);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Không cập nhật được nguồn Hook: HTTP ${response.status}`));
+      setHookSourcesInfo(payload);
+      setStatus('Đã cập nhật nguồn Hook. List cũ được giữ nguyên.');
+      return payload;
+    } finally {
+      setHookSourcesBusy(false);
+    }
+  }, []);
+
+  const refreshHookSource = useCallback(async (sourceId) => {
+    setHookSourcesBusy(true);
+    setStatus('Đang tải lại Hook từ Google Docs...');
+    try {
+      const response = await apiFetch(`/api/hook-sources/${encodeURIComponent(sourceId)}/refresh`, { method: 'POST', cache: 'no-store' });
+      const payload = await readApiPayload(response);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Không tải lại được Hook: HTTP ${response.status}`));
+      setHookSourcesInfo(payload);
+      setStatus('Đã tải lại Hook. List cũ được giữ nguyên.');
+      return payload;
+    } finally {
+      setHookSourcesBusy(false);
+    }
+  }, []);
+
+  const deleteHookSource = useCallback(async (sourceId) => {
+    setHookSourcesBusy(true);
+    try {
+      const response = await apiFetch(`/api/hook-sources/${encodeURIComponent(sourceId)}`, { method: 'DELETE', cache: 'no-store' });
+      const payload = await readApiPayload(response);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Không xóa được nguồn Hook: HTTP ${response.status}`));
+      setHookSourcesInfo(payload);
+      setStatus('Đã xóa nguồn Hook. List cũ không bị thay đổi.');
+      return payload;
+    } finally {
+      setHookSourcesBusy(false);
+    }
+  }, []);
+
+  const changeHookMode = useCallback(async (mode, sourceId = '') => {
+    setHookSourcesBusy(true);
+    setStatus('Đang tải Hook...');
+    try {
+      const response = await apiFetch('/api/hook-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode, ...(sourceId ? { sourceId } : {}) }),
+        cache: 'no-store',
+      });
+      const payload = await readApiPayload(response);
+      if (!response.ok) throw new Error(apiErrorMessage(payload, `Không chuyển được chế độ Hook: HTTP ${response.status}`));
+      setHookSourcesInfo(payload);
+      setStatus(mode === 'festival' ? 'Đã bật Hook lễ cho các list mới.' : 'Đã chuyển về Hook thường cho các list mới.');
+      return payload;
+    } finally {
+      setHookSourcesBusy(false);
+    }
+  }, []);
+
   const applyDestinationMutation = useCallback(async (payload) => {
     let latestDestinationInfo = null;
     try {
@@ -445,8 +542,9 @@ export default function DeckStudio({ initialDataset = null }) {
       applyDataset(payload.dataset, currentSelectionRef.current);
     }
 
+    await loadHookSources().catch(() => undefined);
     return updatedActive;
-  }, [applyDataset]);
+  }, [applyDataset, loadHookSources]);
 
   const switchDestination = useCallback(async (destinationId) => {
     if (!destinationId || destinationId === destinationInfo?.active?.id || switchingDestination) return;
@@ -562,6 +660,7 @@ export default function DeckStudio({ initialDataset = null }) {
     let cancelled = false;
 
     const bootstrap = async () => {
+      loadHookSources().catch((error) => console.error(error));
       let destinations = null;
       try {
         destinations = await loadDestinations();
@@ -623,7 +722,7 @@ export default function DeckStudio({ initialDataset = null }) {
     return () => {
       cancelled = true;
     };
-  }, [applyDataset, initialDataset, loadDataset, loadDestinations]);
+  }, [applyDataset, initialDataset, loadDataset, loadDestinations, loadHookSources]);
 
   useEffect(() => {
     let cancelled = false;
@@ -924,8 +1023,10 @@ export default function DeckStudio({ initialDataset = null }) {
       return;
     }
     const isNonAiTemplate = activeDeck.id === 'carousel-mau-1' || activeDeck.id === 'one-way-story';
+    const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
+      && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
     const coverTitle = (caption.coverTitle || '').trim();
-    if (!isNonAiTemplate && !coverTitle) {
+    if (!isNonAiTemplate && !festivalProvidesCover && !coverTitle) {
       setStatus('Cần có tiêu đề cover trước khi tạo list AI.');
       return;
     }
@@ -962,13 +1063,14 @@ export default function DeckStudio({ initialDataset = null }) {
         activeListId: payload.listId,
         selectedPageIndex: 0,
       }, false);
+      await loadHookSources().catch(() => undefined);
       setStatus(`Đã tạo list mới "${payload.navTitle}" ngay trong deck "${activeDeck.navTitle}".`);
     } catch (error) {
       setStatus(error?.message || 'Không tạo được list AI mới.');
     } finally {
       setBusy(false);
     }
-  }, [activeDeck, activeListId, caption, captionSourceList, driveCacheStatus.ready, loadDataset]);
+  }, [activeDeck, activeListId, caption, captionSourceList, driveCacheStatus.ready, hookSourcesInfo, loadDataset, loadHookSources]);
 
   const createBatchLists = useCallback(async (count) => {
     if (!driveCacheStatus.ready) {
@@ -1002,6 +1104,7 @@ export default function DeckStudio({ initialDataset = null }) {
         activeListId: payload.lists?.[0]?.listId || activeListId,
         selectedPageIndex: 0,
       }, false);
+      await loadHookSources().catch(() => undefined);
       const msg = payload.failCount > 0
         ? `Đã tạo ${payload.successCount}/${safeCount} list (${payload.failCount} lỗi)${payload.errors?.[0]?.message ? `: ${payload.errors[0].message}` : '.'}`
         : `Đã tạo xong ${payload.successCount} list AI.`;
@@ -1012,7 +1115,7 @@ export default function DeckStudio({ initialDataset = null }) {
       creatingListsRef.current = false;
       setBusy(false);
     }
-  }, [activeDeck, activeListId, driveCacheStatus.ready, loadDataset]);
+  }, [activeDeck, activeListId, driveCacheStatus.ready, loadDataset, loadHookSources]);
 
   const createPartnerSpotlight = useCallback(async (partner) => {
     if (!driveCacheStatus.ready) {
@@ -1569,12 +1672,19 @@ export default function DeckStudio({ initialDataset = null }) {
               cacheStatus={driveCacheStatus}
               busy={destinationScrollBusy}
               refreshing={refreshing}
+              hookSourcesInfo={hookSourcesInfo}
+              hookSourcesBusy={hookSourcesBusy}
               onDestinationChange={(destinationId) => {
                 switchDestination(destinationId).catch((error) => setStatus(error.message));
               }}
               onAddDestination={addDestination}
               onReplaceDestinationWorkbook={(destinationId, file) => replaceDestinationWorkbook(destinationId, file)}
               onRefreshFromSheet={(destinationId) => refreshDestinationFromSheet(destinationId)}
+              onCreateHookSource={createHookSource}
+              onUpdateHookSource={updateHookSource}
+              onRefreshHookSource={refreshHookSource}
+              onDeleteHookSource={deleteHookSource}
+              onChangeHookMode={changeHookMode}
               onRefresh={() => {
                 loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message));
               }}

@@ -19,6 +19,7 @@ import * as path from 'node:path';
 import { getAppConfig } from '../../config';
 import { DriveCacheWarmStatus, GuideService, LocalWorkbookUpload } from './guide.service';
 import { MAX_WORKBOOK_FILE_BYTES } from './sync/workbook-source';
+import { HookSourceUpload, MAX_HOOK_SOURCE_FILE_BYTES } from './sync/festival-hook-source';
 import {
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
@@ -35,6 +36,8 @@ import {
   GeneratePartnerSpotlightRequest,
   GeneratePartnerSpotlightResponse,
   GuideDataset,
+  HookSourcesResponse,
+  SetHookModeRequest,
   SetDestinationRequest,
   SetDestinationResponse,
   UpdateGeneratedListCoverRequest,
@@ -150,6 +153,45 @@ export class GuideController {
   @Post('api/destinations/:id/refresh-from-sheet')
   refreshDestinationFromSheet(@Param('id') id: string): Promise<SetDestinationResponse> {
     return this.guideService.refreshDestinationFromSheet(id);
+  }
+
+  @Get('api/hook-sources')
+  getHookSources(): HookSourcesResponse {
+    return this.guideService.getHookSources();
+  }
+
+  @Post('api/hook-sources')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_HOOK_SOURCE_FILE_BYTES } }))
+  addHookSource(
+    @Body() request: { name?: string; docUrl?: string },
+    @UploadedFile() file?: HookSourceUpload,
+  ): Promise<HookSourcesResponse> {
+    return this.guideService.addHookSource(request, file);
+  }
+
+  @Put('api/hook-sources/:id')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_HOOK_SOURCE_FILE_BYTES } }))
+  updateHookSource(
+    @Param('id') id: string,
+    @Body() request: { name?: string; docUrl?: string },
+    @UploadedFile() file?: HookSourceUpload,
+  ): Promise<HookSourcesResponse> {
+    return this.guideService.updateHookSource(id, request, file);
+  }
+
+  @Delete('api/hook-sources/:id')
+  deleteHookSource(@Param('id') id: string): HookSourcesResponse {
+    return this.guideService.deleteHookSource(id);
+  }
+
+  @Post('api/hook-sources/:id/refresh')
+  refreshHookSource(@Param('id') id: string): Promise<HookSourcesResponse> {
+    return this.guideService.refreshHookSource(id);
+  }
+
+  @Post('api/hook-mode')
+  setHookMode(@Body() request: SetHookModeRequest): HookSourcesResponse {
+    return this.guideService.setHookMode(request);
   }
 
   @Get('api/partners')

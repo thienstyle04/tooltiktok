@@ -1528,7 +1528,7 @@ function renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, 
   let tiles = spotlightV2CoverGridImages(page, backgroundImage, listId, coverImageUrls);
   while (tiles.length < 4) tiles.push('');
   tiles = tiles.slice(0, 4);
-  const subtitle = formatSpotlightV2CoverSubtitle(coverSubtitle);
+  const subtitle = options.partner ? formatSpotlightV2CoverSubtitle(coverSubtitle) : '';
   const placement = String(page?.titlePlacement || 'center').trim() || 'center';
   const placementClass = `spotlight-v2-place-${placement}`;
   return `

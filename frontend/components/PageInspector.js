@@ -52,6 +52,7 @@ export default function PageInspector({
       : page.type === 'cover' ? 60 : 90;
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
+  const hideSubtitleEditor = deck.id === 'spotlight-v2' && page.type === 'cover';
 
   return (
     <>
@@ -70,10 +71,12 @@ export default function PageInspector({
             <span className="inspector-field-head"><span>Tiêu đề trang</span><span>{pageTitle.length}/{titleLimit}</span></span>
             <textarea value={pageTitle} placeholder="Nhập tiêu đề trang..." rows={2} maxLength={titleLimit} onChange={(event) => onPageTextChange({ title: event.target.value })} />
           </label>
-          <label className="inspector-field">
-            <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/220</span></span>
-            <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
-          </label>
+          {!hideSubtitleEditor ? (
+            <label className="inspector-field">
+              <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/220</span></span>
+              <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
+            </label>
+          ) : null}
           <div className="inspector-editor-actions">
             <span>Xem trước cập nhật ngay · chỉ lưu khi bấm nút.</span>
             {canSavePage ? (
@@ -112,7 +115,9 @@ export default function PageInspector({
       ) : (
         <div className="inspector-cover-note">
           <strong>Trang này là cover</strong>
-          <span>Cover dùng ảnh nền và chữ riêng. Có thể sửa tiêu đề và mô tả ở trên mà không cần sinh lại bằng AI.</span>
+          <span>{hideSubtitleEditor
+            ? 'Cover Spotlight V2 chỉ dùng ảnh nền và tiêu đề.'
+            : 'Cover dùng ảnh nền và chữ riêng. Có thể sửa tiêu đề và mô tả ở trên mà không cần sinh lại bằng AI.'}</span>
         </div>
       )}
 

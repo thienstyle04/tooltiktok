@@ -1126,14 +1126,6 @@ export function truncateSpotlightV2CoverSubtitle(value: string): string {
   return `${truncated.trim()}…`;
 }
 
-function spotlightV2CoverSubtitleFromCaption(caption: { headline: string; body: string }): string {
-  const headline = String(caption.headline || '').replace(/\s+/g, ' ').trim();
-  const body = String(caption.body || '').replace(/\s+/g, ' ').trim();
-  const firstSentence = body.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() || body;
-  const source = headline || firstSentence || body;
-  return truncateSpotlightV2CoverSubtitle(source);
-}
-
 export function buildListPage(
   chipText: string,
   chipTone: AccentTone,
@@ -1711,7 +1703,7 @@ export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: s
         return { ...page, subtitle: '' };
       }
       const subtitle = page.layoutVariant === 'spotlight-v2'
-        ? spotlightV2CoverSubtitleFromCaption({ headline: caption.headline, body: safeBody })
+        ? ''
         : page.layoutVariant === 'grid-8-feed'
           ? grid8FeedCoverSubtitleFromCaption({ headline: caption.headline, body: safeBody })
           : page.layoutVariant === 'grid-8' || page.layoutVariant === 'journey-4n2d-grid8'

@@ -42,6 +42,8 @@ import {
   DestinationId,
   DestinationListResponse,
   DestinationSummary,
+  HookSourcesResponse,
+  SetHookModeRequest,
   SetDestinationRequest,
   SetDestinationResponse,
 } from '../../common/interfaces/guide.types';
@@ -82,6 +84,7 @@ import {
 } from './sync/destination-config';
 
 import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
+import { FestivalHookSourceStore, HookReservation, HookSourceUpload } from './sync/festival-hook-source';
 import { localizeDecks, localizeText, setActiveDestinationLocalize, getMarketingCopy, buildCaptionHashtags, getDeckHashtagExtras, resolveDeckIdFromListId, cityLabel } from './sync/destination-localize';
 import {
   fetchWorkbookFromSheet,
@@ -181,6 +184,7 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly customDestinationsPath = path.join(this.dataRoot, 'custom-destinations.json');
   private activeDestinationId: DestinationId = DEFAULT_DESTINATION_ID;
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
+  private readonly festivalHookSources: FestivalHookSourceStore;
   private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
   private usedAllocator = new DataAllocator();
@@ -238,6 +242,7 @@ export class GuideService implements OnApplicationBootstrap {
   };
 
   constructor() {
+    this.festivalHookSources = new FestivalHookSourceStore(this.dataRoot);
     this.loadCustomDestinations();
     this.activeDestinationId = this.loadActiveDestinationId();
     this.driveCacheWarmStatus.destinationId = this.activeDestinationId;
@@ -702,6 +707,55 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
+  getHookSources(): HookSourcesResponse {
+    return this.festivalHookSources.getStatus(this.activeDestinationId);
+  }
+
+  async addHookSource(input: { name?: unknown; docUrl?: unknown }, file?: HookSourceUpload): Promise<HookSourcesResponse> {
+    try {
+      await this.festivalHookSources.create(input, file);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async updateHookSource(id: string, input: { name?: unknown; docUrl?: unknown }, file?: HookSourceUpload): Promise<HookSourcesResponse> {
+    try {
+      await this.festivalHookSources.update(id, input, file);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async refreshHookSource(id: string): Promise<HookSourcesResponse> {
+    try {
+      await this.festivalHookSources.refresh(id);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  deleteHookSource(id: string): HookSourcesResponse {
+    try {
+      this.festivalHookSources.delete(id);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  setHookMode(request: SetHookModeRequest): HookSourcesResponse {
+    try {
+      this.festivalHookSources.setMode(request?.mode, String(request?.sourceId || ''), this.activeDestinationId);
+      return this.getHookSources();
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async addDestination(request: AddDestinationRequest): Promise<AddDestinationResponse> {
     const label = String(request?.label || '').replace(/\s+/g, ' ').trim();
     if (label.length < 2 || label.length > 60) {
@@ -940,6 +994,9 @@ export class GuideService implements OnApplicationBootstrap {
       }
       if (this.workbookDerivedCache) {
         this.workbookDerivedCacheByDestination.set(this.activeDestinationId, this.workbookDerivedCache);
+      }
+      if (switchingDestination && nextId !== 'dalat') {
+        this.festivalHookSources.deactivate();
       }
       return {
         active: this.getActiveDestinationSummary(),
@@ -1280,6 +1337,14 @@ export class GuideService implements OnApplicationBootstrap {
     const requestedTone = this.normalizeCaptionTone(request.tone);
     const seed = [deckId, generatedSuffix, String(existing.length), requestedTone, caption.coverTitle, caption.headline, caption.body, caption.hashtags.join(' '), timestamp].join('|');
 
+    let festivalReservation: HookReservation | null = null;
+    try {
+      festivalReservation = this.festivalHookSources.reserve(deckId, this.activeDestinationId);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
+
+    try {
     this.ensureInventoryLoaded();
     const deckUsage = this.createUsageScope();
     currentDeck.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
@@ -1294,7 +1359,9 @@ export class GuideService implements OnApplicationBootstrap {
       }
     }
     if (isGoogleDocHookDeck(deckId)) {
-      const hooks = isSectionedGoogleDocHookDeck(deckId)
+      const hooks = festivalReservation
+        ? [festivalReservation.hook]
+        : isSectionedGoogleDocHookDeck(deckId)
         ? await this.loadDeckHookSection(deckId)
         : (await this.warmSpotlightV3Hooks(), undefined);
       setSpotlightV3BuildContext({
@@ -1318,7 +1385,9 @@ export class GuideService implements OnApplicationBootstrap {
     } finally {
       clearSpotlightV3BuildContext();
     }
-    const hookCoverTitle = isSectionedGoogleDocHookDeck(deckId)
+    const hookCoverTitle = festivalReservation
+      ? festivalReservation.hook
+      : isSectionedGoogleDocHookDeck(deckId)
       ? await this.resolveDeckHookCoverTitle(deckId, seed)
       : isLegacyGoogleDocHookDeck(deckId)
         ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
@@ -1359,6 +1428,13 @@ export class GuideService implements OnApplicationBootstrap {
     generatedList.captionBody = this.sanitizeContentText(caption.body) || this.captionBodyFallback();
     generatedList.captionHashtags = finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
+    if (festivalReservation) {
+      generatedList.hookSnapshot = {
+        mode: 'festival',
+        sourceId: festivalReservation.sourceId,
+        sourceRevision: festivalReservation.sourceRevision,
+      };
+    }
     const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList, deckId);
 
     this.markUsedInDeck(sanitizedGeneratedList.pages);
@@ -1366,8 +1442,13 @@ export class GuideService implements OnApplicationBootstrap {
 
     this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
     this.persistGeneratedLists();
+    this.festivalHookSources.commit(festivalReservation);
 
     return { deckId, listId: sanitizedGeneratedList.id, navTitle: sanitizedGeneratedList.navTitle, title: sanitizedGeneratedList.title };
+    } catch (error) {
+      this.festivalHookSources.rollback(festivalReservation);
+      throw error;
+    }
   }
 
   // ─── Batch list generation ────────────────────────────────────────────────
@@ -2123,13 +2204,7 @@ export class GuideService implements OnApplicationBootstrap {
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
     const cleanPage = this.sanitizeDeckPageText(page);
     if (cleanPage.type === 'cover' && (cleanPage.layoutVariant === 'spotlight-v2' || cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'carousel-mau-1-cover')) {
-      if (cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'carousel-mau-1-cover') {
-        return { ...cleanPage, subtitle: '' };
-      }
-      return {
-        ...cleanPage,
-        subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(cleanPage.subtitle || list.description)),
-      };
+      return { ...cleanPage, subtitle: '' };
     }
     if (cleanPage.type !== 'list' || cleanPage.layoutVariant !== 'journey-4n3d') {
       if (cleanPage.type === 'list' && cleanPage.layoutVariant === 'grid-8-quaytung-menu') {
@@ -2204,11 +2279,10 @@ export class GuideService implements OnApplicationBootstrap {
         return { ...page, subtitle: '' };
       }
       if (layout === 'spotlight-v2') {
-        const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
         return {
           ...page,
           title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
-          subtitle: this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(rawSubtitle)),
+          subtitle: '',
         };
       }
       if (layout === 'grid-8-feed') {
@@ -2501,7 +2575,8 @@ export class GuideService implements OnApplicationBootstrap {
           hashtags: Array.isArray(list.captionHashtags) ? list.captionHashtags : [],
         };
         const refreshSeed = `refresh:${deckId}:${list.id}:${listIndex}:${caption.coverTitle}:${caption.headline}:${caption.body}:${caption.hashtags.join(' ')}`;
-        if (isLegacyGoogleDocHookDeck(deckId)) {
+        const hasFestivalHookSnapshot = list.hookSnapshot?.mode === 'festival';
+        if (isLegacyGoogleDocHookDeck(deckId) && !hasFestivalHookSnapshot) {
           setSpotlightV3BuildContext({
             destinationId: this.activeDestinationId,
             usedHookTitles: this.getUsedCaptionTitles(deckId),
@@ -2524,6 +2599,8 @@ export class GuideService implements OnApplicationBootstrap {
         }
         const hookCoverTitle = hasCoverOverride
           ? ''
+          : hasFestivalHookSnapshot
+            ? ''
           : isLegacyGoogleDocHookDeck(deckId)
             ? String((basePages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
             : isSectionedGoogleDocHookDeck(deckId)
@@ -3780,7 +3857,7 @@ export class GuideService implements OnApplicationBootstrap {
       if (page.layoutVariant === 'grid-8-feed') {
         subtitle = this.sanitizeContentText(truncateGrid8FeedCoverSubtitle(subtitle));
       } else if (page.layoutVariant === 'spotlight-v2') {
-        subtitle = this.sanitizeContentText(truncateSpotlightV2CoverSubtitle(subtitle));
+        subtitle = '';
       }
       return {
         ...page,

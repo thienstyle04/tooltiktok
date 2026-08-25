@@ -15,6 +15,19 @@ function getSourceTypeLabel(entry) {
   return 'Chưa rõ nguồn';
 }
 
+function getHookSourceTypeLabel(type) {
+  if (type === 'google-doc') return 'Google Docs';
+  if (type === 'docx') return 'File DOCX';
+  if (type === 'txt') return 'File TXT';
+  return 'Nguồn Hook';
+}
+
+function formatHookDate(value) {
+  if (!value) return 'Chưa tải';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Chưa tải' : date.toLocaleString('vi-VN');
+}
+
 export default function SettingsPanel({
   activeDestinationId,
   destinations,
@@ -25,6 +38,13 @@ export default function SettingsPanel({
   onAddDestination,
   onReplaceDestinationWorkbook,
   onRefreshFromSheet,
+  hookSourcesInfo,
+  hookSourcesBusy,
+  onCreateHookSource,
+  onUpdateHookSource,
+  onRefreshHookSource,
+  onDeleteHookSource,
+  onChangeHookMode,
 }) {
   const [newSourceName, setNewSourceName] = useState('');
   const [newSourceUrl, setNewSourceUrl] = useState('');
@@ -36,6 +56,11 @@ export default function SettingsPanel({
   const [replacing, setReplacing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [sheetRefreshing, setSheetRefreshing] = useState(false);
+  const [newHookName, setNewHookName] = useState('');
+  const [newHookUrl, setNewHookUrl] = useState('');
+  const [newHookFile, setNewHookFile] = useState(null);
+  const [hookError, setHookError] = useState('');
+  const [replacementFiles, setReplacementFiles] = useState({});
 
   const activeDestination = useMemo(
     () => destinations.find((entry) => entry.id === activeDestinationId) || null,
@@ -46,6 +71,10 @@ export default function SettingsPanel({
   const cacheCompleted = Number(cacheStatus?.completed || 0);
   const cacheFailed = Number(cacheStatus?.failed || 0);
   const activeHasSheetFallback = Boolean(activeDestination?.hasSheetFallback ?? activeDestination?.sheetUrl);
+  const hookAvailable = activeDestinationId === 'dalat';
+  const hookSources = Array.isArray(hookSourcesInfo?.sources) ? hookSourcesInfo.sources : [];
+  const hookMode = hookAvailable ? (hookSourcesInfo?.mode || 'normal') : 'normal';
+  const hasExactlyOneNewHookInput = Boolean(newHookUrl.trim()) !== Boolean(newHookFile);
 
   useEffect(() => {
     setReplaceFile(null);
@@ -99,6 +128,41 @@ export default function SettingsPanel({
     } finally {
       setSheetRefreshing(false);
     }
+  };
+
+  const submitNewHookSource = async (event) => {
+    event.preventDefault();
+    setHookError('');
+    try {
+      await onCreateHookSource({
+        name: newHookName.trim(),
+        docUrl: newHookUrl.trim(),
+        file: newHookFile,
+      });
+      setNewHookName('');
+      setNewHookUrl('');
+      setNewHookFile(null);
+    } catch (error) {
+      setHookError(error?.message || 'Không thể thêm nguồn Hook lễ.');
+    }
+  };
+
+  const runHookAction = async (action) => {
+    setHookError('');
+    try {
+      await action();
+    } catch (error) {
+      setHookError(error?.message || 'Không thể cập nhật nguồn Hook.');
+    }
+  };
+
+  const replaceHookFile = async (source) => {
+    const file = replacementFiles[source.id];
+    if (!file) return;
+    await runHookAction(async () => {
+      await onUpdateHookSource(source.id, { file });
+      setReplacementFiles((previous) => ({ ...previous, [source.id]: null }));
+    });
   };
 
   return (
@@ -224,6 +288,161 @@ export default function SettingsPanel({
               );
             })}
           </div>
+        </article>
+
+        <article className={`settings-card settings-hook-card${hookAvailable ? '' : ' is-disabled'}`}>
+          <div className="settings-card-head">
+            <div>
+              <p className="panel-kicker">Nguồn Hook</p>
+              <h3>Hook thường và Hook lễ</h3>
+              <p className="settings-help">
+                Hook lễ chỉ thay tiêu đề cover của list mới trên bốn mẫu ảnh đơn tại Đà Lạt. List đã tạo luôn giữ nguyên.
+              </p>
+            </div>
+            <span className={`settings-destination-pill ${hookMode === 'festival' ? 'is-positive' : ''}`}>
+              {hookMode === 'festival' ? 'Đang dùng Hook lễ' : 'Đang dùng Hook thường'}
+            </span>
+          </div>
+
+          {!hookAvailable ? (
+            <p className="settings-hook-lock">
+              Green Land luôn dùng Hook thường. Chuyển sang nguồn Đà Lạt để quản lý và bật Hook lễ.
+            </p>
+          ) : null}
+
+          <div className="settings-hook-mode" aria-label="Chế độ Hook">
+            <button
+              type="button"
+              className={`toolbar-button ${hookMode === 'normal' ? 'primary' : 'secondary'}`}
+              disabled={!hookAvailable || hookSourcesBusy}
+              onClick={() => runHookAction(() => onChangeHookMode('normal'))}
+            >
+              Dùng Hook thường
+            </button>
+            <span>{hookSourcesBusy ? 'Đang tải Hook…' : 'Chọn “Dùng bộ này” ở danh sách bên dưới để bật Hook lễ.'}</span>
+          </div>
+
+          <form className="settings-hook-form" onSubmit={submitNewHookSource}>
+            <label>
+              <span>Tên bộ Hook lễ</span>
+              <input
+                type="text"
+                value={newHookName}
+                minLength={2}
+                maxLength={60}
+                required
+                placeholder="Ví dụ: 30/4, Quốc khánh, Noel"
+                disabled={!hookAvailable || hookSourcesBusy}
+                onChange={(event) => setNewHookName(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Link Google Docs công khai</span>
+              <input
+                type="url"
+                value={newHookUrl}
+                placeholder="https://docs.google.com/document/d/..."
+                disabled={!hookAvailable || hookSourcesBusy || Boolean(newHookFile)}
+                onChange={(event) => setNewHookUrl(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Hoặc file DOCX/TXT</span>
+              <input
+                type="file"
+                accept=".docx,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                disabled={!hookAvailable || hookSourcesBusy || Boolean(newHookUrl.trim())}
+                onChange={(event) => setNewHookFile(event.target.files?.[0] || null)}
+              />
+            </label>
+            <button
+              type="submit"
+              className="toolbar-button primary"
+              disabled={!hookAvailable || hookSourcesBusy || !newHookName.trim() || !hasExactlyOneNewHookInput}
+            >
+              {hookSourcesBusy ? 'Đang kiểm tra…' : 'Thêm bộ Hook lễ'}
+            </button>
+          </form>
+          <p className="settings-form-note">Mỗi dòng không trống là một hook. File tối đa 5 MB; chỉ đọc văn bản trong DOCX/TXT.</p>
+
+          <div className="settings-hook-list">
+            {hookSources.length ? hookSources.map((source) => (
+              <article key={source.id} className={`settings-hook-source${source.active ? ' is-active' : ''}`}>
+                <div className="settings-hook-source-head">
+                  <div>
+                    <strong>{source.name}</strong>
+                    <span>{getHookSourceTypeLabel(source.type)} · {source.hookCount} hook</span>
+                  </div>
+                  <span className={`settings-destination-pill ${source.active ? 'is-positive' : ''}`}>
+                    {source.active ? 'Đang dùng' : `${source.usedCount || 0} đã dùng · ${source.remainingCount ?? source.hookCount} còn lại`}
+                  </span>
+                </div>
+                <p className="settings-hook-meta">
+                  Tải thành công: {formatHookDate(source.lastLoadedAt)}
+                  {source.originalFileName ? ` · ${source.originalFileName}` : ''}
+                </p>
+                {source.lastError ? <p className="settings-form-error" role="alert">{source.lastError}. Cache cũ vẫn được giữ.</p> : null}
+                <div className="settings-hook-actions">
+                  <button
+                    type="button"
+                    className="toolbar-button primary"
+                    disabled={!hookAvailable || hookSourcesBusy || source.active}
+                    onClick={() => runHookAction(() => onChangeHookMode('festival', source.id))}
+                  >
+                    {source.active ? 'Đang sử dụng' : 'Dùng bộ này'}
+                  </button>
+                  {source.type === 'google-doc' ? (
+                    <button
+                      type="button"
+                      className="toolbar-button secondary"
+                      disabled={!hookAvailable || hookSourcesBusy}
+                      onClick={() => runHookAction(() => onRefreshHookSource(source.id))}
+                    >
+                      Tải lại từ Google Docs
+                    </button>
+                  ) : (
+                    <>
+                      <label className="settings-hook-replace">
+                        <span>File mới</span>
+                        <input
+                          type="file"
+                          accept=".docx,.txt"
+                          disabled={!hookAvailable || hookSourcesBusy}
+                          onChange={(event) => setReplacementFiles((previous) => ({
+                            ...previous,
+                            [source.id]: event.target.files?.[0] || null,
+                          }))}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="toolbar-button secondary"
+                        disabled={!hookAvailable || hookSourcesBusy || !replacementFiles[source.id]}
+                        onClick={() => replaceHookFile(source)}
+                      >
+                        Thay file DOCX/TXT
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="toolbar-button secondary settings-hook-delete"
+                    disabled={!hookAvailable || hookSourcesBusy || source.active}
+                    onClick={() => {
+                      if (window.confirm(`Xóa bộ Hook “${source.name}”? List cũ sẽ vẫn được giữ nguyên.`)) {
+                        runHookAction(() => onDeleteHookSource(source.id));
+                      }
+                    }}
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </article>
+            )) : (
+              <p className="settings-hook-empty">Chưa có bộ Hook lễ. Hãy thêm bằng Link Google Docs hoặc file DOCX/TXT.</p>
+            )}
+          </div>
+          {hookError ? <p className="settings-form-error" role="alert">{hookError}</p> : null}
         </article>
 
         <article className="settings-card">

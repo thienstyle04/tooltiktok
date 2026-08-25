@@ -41,6 +41,39 @@ export interface AddDestinationResponse extends SetDestinationResponse {
   destinations: DestinationSummary[];
 }
 
+export type HookMode = 'normal' | 'festival';
+export type HookSourceType = 'google-doc' | 'docx' | 'txt';
+
+export interface HookSourceSummary {
+  id: string;
+  name: string;
+  type: HookSourceType;
+  docUrl?: string;
+  originalFileName?: string;
+  hookCount: number;
+  usedCount: number;
+  remainingCount: number;
+  updatedAt: string;
+  lastLoadedAt: string;
+  cacheStatus: 'ready' | 'error';
+  lastError?: string;
+  active: boolean;
+}
+
+export interface HookSourcesResponse {
+  destinationId: 'dalat';
+  available: boolean;
+  mode: HookMode;
+  activeSourceId: string;
+  eligibleDeckIds: string[];
+  sources: HookSourceSummary[];
+}
+
+export interface SetHookModeRequest {
+  mode: HookMode;
+  sourceId?: string;
+}
+
 export type SectionKey =
   | 'quan_an'
   | 'cafe'
@@ -146,6 +179,11 @@ export interface GuideDeckList {
   captionBody?: string;
   captionHashtags?: string[];
   templateVersion?: number;
+  hookSnapshot?: {
+    mode: 'festival';
+    sourceId: string;
+    sourceRevision: string;
+  };
   pages: DeckPage[];
 }
 
