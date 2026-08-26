@@ -257,9 +257,9 @@ export class GuideService implements OnApplicationBootstrap {
   // tải Google Sheet + build dataset lần đầu ở đây, thay vì để request đầu tiên của người dùng
   // phải gánh 12-25s đó (và dễ gặp lỗi 500/503 nếu trùng lúc backend chưa sẵn sàng).
   onApplicationBootstrap(): void {
-    // Warm ảnh từ manifest cục bộ ngay lập tức. Không chờ Google Sheet vì lần sync đầu
-    // có thể chậm hoặc mất kết nối, khiến giao diện khóa ở trạng thái "đang kiểm tra" 0%.
-    this.scheduleWarmDriveFileDiskCache();
+    // prepareWorkbookForDataset sẽ đồng bộ manifest trước, rồi refreshSheetDriveManifest
+    // mới khởi động lượt warm ảnh. Không đánh dấu cache sẵn sàng từ manifest rỗng ở đây:
+    // nếu không, màn hình chặn tải sẽ biến mất trước khi Hinh_nen được đọc xong.
     void this.warmUpDatasetCache();
   }
 
@@ -4165,6 +4165,16 @@ export class GuideService implements OnApplicationBootstrap {
       return;
     }
 
+    // Một request /api/guide-data có thể đến trong lúc warmup vừa gán workbookSource
+    // nhưng vẫn đang đồng bộ các link ảnh Hinh_nen vào manifest Drive. Nếu dựng dataset
+    // ngay ở khoảng trống này, mẫu Đường một chiều sẽ thấy pool cover rỗng (0/2) và làm
+    // hỏng toàn bộ lần tải dữ liệu. Mọi request dùng cùng lượt đồng bộ đang chạy và chỉ
+    // tiếp tục sau khi manifest đã được ghi hoàn chỉnh.
+    const pendingManifestSync = this.manifestSyncByDestination.get(this.activeDestinationId)?.promise;
+    if (pendingManifestSync) {
+      await pendingManifestSync;
+    }
+
     if (forceRefresh) {
       const localSource = this.loadPreferredWorkbookSource(this.activeDestinationId);
       if (localSource) {
@@ -4248,10 +4258,9 @@ export class GuideService implements OnApplicationBootstrap {
     }
 
     const token = this.driveCacheWarmToken;
-    // Bước xác thực ảnh Drive (retryKnownFailures) cố ý concurrency thấp (xem sheet-drive-manifest.ts)
-    // nên có thể mất nhiều phút với Sheet lớn — cập nhật driveCacheWarmStatus theo tiến độ thật để
-    // nút "Tải lại dữ liệu" không trông như bị treo trong lúc đó.
-    if (retryKnownFailures && source.destinationId === this.activeDestinationId) {
+    // Luôn công bố trạng thái đồng bộ manifest, kể cả lượt khởi động đầu tiên. Frontend
+    // dùng trạng thái này để giữ màn hình chặn cho tới khi workbook và Hinh_nen sẵn sàng.
+    if (source.destinationId === this.activeDestinationId) {
       this.driveCacheWarmStatus = {
         ...this.driveCacheWarmStatus,
         phase: 'warming',
@@ -4260,7 +4269,9 @@ export class GuideService implements OnApplicationBootstrap {
         total: 0,
         completed: 0,
         percent: 0,
-        message: 'Đang xác thực ảnh Drive...',
+        message: retryKnownFailures
+          ? 'Đang xác thực ảnh Drive...'
+          : 'Đang đọc workbook và tải danh sách ảnh Hinh_nen...',
       };
     }
     let promise!: Promise<void>;
@@ -4271,7 +4282,7 @@ export class GuideService implements OnApplicationBootstrap {
           forceRevalidate: retryKnownFailures,
           revalidateUncached,
           onProgress: (completed, total) => {
-            if (!retryKnownFailures || token !== this.driveCacheWarmToken || source.destinationId !== this.activeDestinationId) return;
+            if (token !== this.driveCacheWarmToken || source.destinationId !== this.activeDestinationId) return;
             this.driveCacheWarmStatus = {
               ...this.driveCacheWarmStatus,
               phase: 'warming',
@@ -4280,7 +4291,9 @@ export class GuideService implements OnApplicationBootstrap {
               total,
               completed,
               percent: total ? Math.min(99, Math.round((completed / total) * 100)) : 0,
-              message: `Đang xác thực ảnh Drive (${completed}/${total})...`,
+              message: retryKnownFailures
+                ? `Đang xác thực ảnh Drive (${completed}/${total})...`
+                : `Đang tải dữ liệu ảnh từ workbook (${completed}/${total})...`,
             };
           },
         });
@@ -4297,17 +4310,14 @@ export class GuideService implements OnApplicationBootstrap {
         this.invalidateDatasetCache();
         // Nếu đã báo "Đang xác thực ảnh Drive..." ở trên mà bước này lỗi giữa đường, phải gỡ trạng thái
         // "chưa sẵn sàng" đó ra, không thì nút cập nhật dữ liệu sẽ trông như treo mãi ở % cũ.
-        if (retryKnownFailures && token === this.driveCacheWarmToken && source.destinationId === this.activeDestinationId) {
+        if (token === this.driveCacheWarmToken && source.destinationId === this.activeDestinationId) {
           this.driveCacheWarmStatus = {
             ...this.driveCacheWarmStatus,
             phase: 'error',
             ready: false,
             destinationId: this.activeDestinationId,
-            message: `Xác thực ảnh Drive thất bại: ${error instanceof Error ? error.message : String(error)}`,
+            message: `Tải dữ liệu ảnh Drive thất bại: ${error instanceof Error ? error.message : String(error)}`,
           };
-        } else if (scheduleWarmAfterSync && source.destinationId === this.activeDestinationId) {
-          // Manifest cũ vẫn có thể warm được; không để lỗi refresh metadata làm treo máy mới.
-          this.scheduleWarmDriveFileDiskCache({ retryKnownFailures: false });
         }
       } finally {
         const current = this.manifestSyncByDestination.get(source.destinationId);

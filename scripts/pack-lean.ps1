@@ -45,6 +45,7 @@ $excludeDirs = @(
     '.test-runtime',
     '.test-runtime-e2e',
     '.omx',
+    'outputs',
     'agent-transcripts',
     'mcps'
 )
@@ -83,6 +84,16 @@ $robocopyArgs += @(
     # backend/resources/workbooks nên không mang cache XLSX cũ sang máy khác.
     'workbook-cache.*.xlsx',
     'workbook-source-meta.*.json',
+    # Du lieu phat sinh va cau hinh rieng cua nguoi dung khong duoc dua sang may khac.
+    'active-destination.json',
+    'custom-destinations.json',
+    'generated-caption-lists*.json',
+    'page-text-overrides*.json',
+    'used-inventory*.json',
+    'hook-sources.*.json',
+    'destination-stats.*.json',
+    'blocked-drive-links.*.json',
+    'sheet-drive-images*.json',
     # Metadata nay chi dung cho may da probe Drive. Portable khong mang file
     # cache anh that, nen may moi phai tu xac minh lai thay vi ke thua ket qua cu.
     'drive-access-cache*.json'
@@ -100,6 +111,31 @@ foreach ($workbook in $requiredWorkbooks) {
     if (-not (Test-Path -LiteralPath $workbook -PathType Leaf)) {
         throw "Thieu workbook XLSX mac dinh trong goi portable: $workbook"
     }
+}
+
+# Chỉ mục Drive của hai nguồn mặc định là metadata cần thiết cho máy mới. Không có
+# các file này, tool phải mở lại hàng trăm folder Drive trước khi vào giao diện và
+# có thể trông như bị treo. Chỉ mang chỉ mục; ảnh thật/cache vẫn bị loại khỏi ZIP.
+$portableManifestNames = @(
+    'sheet-drive-images.dalat.json',
+    'sheet-drive-images.greenland.json'
+)
+$stagingDataDir = Join-Path $staging 'backend\data'
+New-Item -ItemType Directory -Path $stagingDataDir -Force | Out-Null
+foreach ($manifestName in $portableManifestNames) {
+    $manifestSource = Join-Path $root "backend\data\$manifestName"
+    if (-not (Test-Path -LiteralPath $manifestSource -PathType Leaf)) {
+        throw "Thieu chi muc Drive portable: $manifestSource"
+    }
+    $manifest = Get-Content -LiteralPath $manifestSource -Raw | ConvertFrom-Json
+    $itemCount = @($manifest.items.PSObject.Properties).Count
+    if ($itemCount -lt 1) {
+        throw "Chi muc Drive portable khong co du lieu: $manifestSource"
+    }
+    if ($manifestName -eq 'sheet-drive-images.dalat.json' -and @($manifest.coverImages).Count -lt 2) {
+        throw "Chi muc Drive Da Lat can it nhat 2 anh Hinh_nen: $manifestSource"
+    }
+    Copy-Item -LiteralPath $manifestSource -Destination (Join-Path $stagingDataDir $manifestName) -Force
 }
 
 # An toan: xoa cache anh / Next build / test output neu van lot vao staging
@@ -135,6 +171,7 @@ $readmeLines = @(
     'LUU Y VE ANH:',
     '- Du lieu dia diem mac dinh doc tu XLSX dong kem cho Da Lat va Green Land.',
     '- Anh dia diem lay tu Google Drive luc chay (khong dong san trong zip).',
+    '- Goi co chi muc Drive mac dinh de may moi khong phai quet lai hang tram folder truoc khi vao tool.',
     '- Khi start.bat, backend TU TAO cache anh vao backend/data/drive-file-cache (chay nen).',
     '- May moi can mang lan dau de tai anh; lan sau dung lai cache local.',
     '- Tat tu-warm: DALAT_AUTO_WARM_DRIVE_CACHE=0 trong backend/.env',
