@@ -71,8 +71,8 @@ async function main() {
   if (shouldOpenBrowser()) {
     waitForServer(frontendOrigin)
       .then(() => {
-        console.log(`[dev] opening browser: ${frontendOrigin}/`);
-        openChrome(frontendOrigin);
+        const browserName = openPreferredBrowser(frontendOrigin);
+        console.log(`[dev] opening ${browserName}: ${frontendOrigin}/`);
       })
       .catch((error) => {
         console.warn(`[dev] could not open browser automatically: ${error.message || error}`);
@@ -151,32 +151,49 @@ function waitForServer(origin, timeoutMs = 120000, intervalMs = 1000) {
   });
 }
 
-function openChrome(url) {
+function openPreferredBrowser(url) {
   if (process.platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA || '';
     const candidates = [
-      path.join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    ].filter(Boolean);
+      {
+        name: 'Google Chrome',
+        paths: [
+          path.join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+          'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+          'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        ],
+      },
+      {
+        name: 'Microsoft Edge',
+        paths: [
+          path.join(localAppData, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+          'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+          'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        ],
+      },
+    ];
 
-    for (const chromePath of candidates) {
-      if (!fs.existsSync(chromePath)) continue;
-      const child = spawn(chromePath, [url], { detached: true, stdio: 'ignore', shell: false });
+    for (const browser of candidates) {
+      const executable = browser.paths.find((candidate) => candidate && fs.existsSync(candidate));
+      if (!executable) continue;
+      const child = spawn(executable, [url], { detached: true, stdio: 'ignore', shell: false });
       child.unref();
-      return;
+      return browser.name;
     }
 
-    spawn('cmd', ['/c', 'start', '', 'chrome', url], { detached: true, stdio: 'ignore', shell: false }).unref();
-    return;
+    // Không có Chrome/Edge ở các đường dẫn chuẩn: giao cho Windows mở bằng
+    // trình duyệt mặc định thay vì cố gọi lệnh chrome và báo không tìm thấy.
+    spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore', shell: false }).unref();
+    return 'default browser';
   }
 
   if (process.platform === 'darwin') {
-    spawn('open', ['-a', 'Google Chrome', url], { detached: true, stdio: 'ignore', shell: false }).unref();
-    return;
+    spawn('open', [url], { detached: true, stdio: 'ignore', shell: false }).unref();
+    return 'default browser';
   }
 
   spawn('xdg-open', [url], { detached: true, stdio: 'ignore', shell: false }).unref();
+  return 'default browser';
 }
 
 function backendOriginHost(host) {

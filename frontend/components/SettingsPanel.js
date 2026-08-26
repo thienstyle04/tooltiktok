@@ -71,6 +71,7 @@ export default function SettingsPanel({
   const cacheCompleted = Number(cacheStatus?.completed || 0);
   const cacheFailed = Number(cacheStatus?.failed || 0);
   const activeHasSheetFallback = Boolean(activeDestination?.hasSheetFallback ?? activeDestination?.sheetUrl);
+  const activeSheetUrl = String(activeDestination?.sheetUrl || '').trim();
   const hookAvailable = activeDestinationId === 'dalat';
   const hookSources = Array.isArray(hookSourcesInfo?.sources) ? hookSourcesInfo.sources : [];
   const hookMode = hookAvailable ? (hookSourcesInfo?.mode || 'normal') : 'normal';
@@ -492,6 +493,25 @@ export default function SettingsPanel({
           </div>
 
           <div className="settings-sync-actions">
+            <div className="settings-active-sheet" key={activeDestinationId}>
+              <span>Google Sheet của {activeDestination?.label || 'nguồn đang chọn'}</span>
+              {activeSheetUrl ? (
+                <>
+                  <input
+                    type="url"
+                    value={activeSheetUrl}
+                    readOnly
+                    aria-label={`Google Sheet của ${activeDestination?.label || 'nguồn đang chọn'}`}
+                  />
+                  <a href={activeSheetUrl} target="_blank" rel="noreferrer">
+                    Mở đúng Google Sheet {activeDestination?.label}
+                  </a>
+                </>
+              ) : (
+                <p>Chưa cấu hình Google Sheet dự phòng.</p>
+              )}
+            </div>
+
             <form className="settings-replace-form" onSubmit={submitReplaceWorkbook}>
               <label className="settings-file-picker">
                 <span>File XLSX mới</span>
@@ -517,7 +537,9 @@ export default function SettingsPanel({
               disabled={busy || sheetRefreshing || !activeDestination || !activeHasSheetFallback}
               onClick={refreshFromSheet}
             >
-              {sheetRefreshing || refreshing ? 'Đang tải từ Sheet...' : 'Tải mới từ Google Sheet'}
+              {sheetRefreshing || refreshing
+                ? `Đang tải ${activeDestination?.label || ''} từ Sheet...`
+                : `Tải mới ${activeDestination?.label || ''} từ Google Sheet`}
             </button>
 
             {!activeHasSheetFallback && activeDestination ? (

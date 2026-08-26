@@ -35,7 +35,7 @@ if exist "backend\data\generated-caption-lists.json" (
 )
 
 echo Dang khoi dong Backend va Frontend cung luc...
-echo Sau khi san sang, Chrome se tu mo tool (mac dinh http://localhost:3001)
+echo Sau khi san sang, tool se mo Chrome; neu khong co Chrome se mo Edge hoac trinh duyet mac dinh.
 echo Neu port bi doi, xem dong [dev] frontend trong cua so nay.
 echo (Ban co the nhan Ctrl+C de tat tool khi khong su dung)
 echo.

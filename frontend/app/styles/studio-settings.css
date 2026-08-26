@@ -413,6 +413,51 @@
   gap: 12px;
 }
 
+.settings-active-sheet {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--studio-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.settings-active-sheet > span {
+  color: var(--studio-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.settings-active-sheet input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-panel-strong);
+  color: var(--studio-ink);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.settings-active-sheet a {
+  width: fit-content;
+  color: var(--studio-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.settings-active-sheet a:hover {
+  text-decoration: underline;
+}
+
+.settings-active-sheet p {
+  margin: 0;
+  color: var(--studio-muted);
+  font-size: 0.75rem;
+}
+
 .settings-file-picker {
   display: grid;
   gap: 7px;

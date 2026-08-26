@@ -560,6 +560,9 @@ export default function DeckStudio({ initialDataset = null }) {
       });
       const payload = await readApiPayload(response);
       if (!response.ok) throw new Error(apiErrorMessage(payload, `Không chuyển được nguồn dữ liệu: HTTP ${response.status}`));
+      if (payload?.active?.id !== destinationId) {
+        throw new Error(`Backend trả về nguồn “${payload?.active?.label || payload?.active?.id || 'không xác định'}” thay vì nguồn vừa chọn.`);
+      }
       await applyDestinationMutation(payload);
       const label = payload?.active?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
       setStatus(`Đã chuyển sang ${label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
@@ -639,6 +642,9 @@ export default function DeckStudio({ initialDataset = null }) {
       const payload = await readApiPayload(response);
       if (!response.ok) {
         throw new Error(apiErrorMessage(payload, `Không tải mới được từ Google Sheet: HTTP ${response.status}`));
+      }
+      if (payload?.active?.id !== destinationId) {
+        throw new Error(`Đã chặn kết quả sai nguồn: yêu cầu “${destinationId}” nhưng backend trả về “${payload?.active?.id || 'không xác định'}”.`);
       }
       const updatedActive = await applyDestinationMutation(payload);
       const label = updatedActive?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
