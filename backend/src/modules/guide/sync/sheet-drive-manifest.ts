@@ -8,7 +8,7 @@ import {
   hasDriveFileDiskCache,
   resolveDriveLinkToEntries,
 } from './drive-images';
-import { firstValue, itemMappingKey, normalizeText } from '../logic/image-resolver';
+import { composeAddress, firstValue, itemMappingKey, normalizeText, normalizeWorkbookHeaders } from '../logic/image-resolver';
 import { DestinationId } from './destination-config';
 import { PREFERRED_WORKBOOK_NAME, SheetWorkbookSource } from './workbook-source';
 import { resolveSectionKeyFromSheetName } from './sheet-section';
@@ -47,7 +47,7 @@ function workbookRowsWithLinks(sheet: XLSX.WorkSheet): Array<Record<string, stri
   const rows = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, { header: 1, raw: false, defval: '' });
   if (rows.length === 0) return [];
 
-  const headers = (rows[0] ?? []).map((header) => normalizeText(header));
+  const headers = normalizeWorkbookHeaders(rows[0] ?? []);
   const results: Array<Record<string, string>> = [];
 
   for (const [rowOffset, rawRow] of rows.slice(1).entries()) {
@@ -219,13 +219,15 @@ export async function buildSheetDriveManifest(
       const name = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
       if (!name) continue;
 
-      const address = firstValue(row, 'dia_chi');
+      const rawAddress = firstValue(row, 'dia_chi');
+      const address = composeAddress(rawAddress, firstValue(row, 'ten_phuong'));
       const imageLink = preferredImageLink(row);
       if (!imageLink) continue;
       const key = itemMappingKey(sectionKey, name, address);
+      const legacyKey = rawAddress === address ? '' : itemMappingKey(sectionKey, name, rawAddress);
 
       itemTasks.push(async () => {
-        const previousEntry = previousManifest.items[key];
+        const previousEntry = previousManifest.items[key] ?? (legacyKey ? previousManifest.items[legacyKey] : undefined);
         // Sheet lớn (VD: Đà Lạt ~680 mục) mà re-resolve toàn bộ qua mạng mỗi lần đổi
         // điểm đến/đồng bộ sẽ rất chậm (concurrency thấp để tránh 401 hàng loạt) và có
         // thể bị Google rate-limit dồn dập, khiến màn hình chờ trông như bị treo. Nếu
@@ -250,6 +252,10 @@ export async function buildSheetDriveManifest(
             || reusableCandidates[0];
           items[key] = {
             ...previousEntry,
+            key,
+            name,
+            address,
+            sectionKey,
             fileId: primary.fileId,
             fileName: primary.fileName,
             candidateImages: reusableCandidates,
@@ -267,9 +273,14 @@ export async function buildSheetDriveManifest(
         if (candidateImages === null) {
           const message = resolveError instanceof Error ? resolveError.message : String(resolveError);
           if (previousEntry?.fileId) {
-            items[key] = previousEntry.sourceLink === imageLink
-              ? previousEntry
-              : { ...previousEntry, sourceLink: imageLink, name, address, sectionKey, key };
+            items[key] = {
+              ...previousEntry,
+              key,
+              sourceLink: imageLink,
+              name,
+              address,
+              sectionKey,
+            };
             syncStats.keptPrevious += 1;
           } else {
             syncStats.skippedNoPrevious += 1;
@@ -292,13 +303,13 @@ export async function buildSheetDriveManifest(
           if (candidateImages.length > 0) {
             // Probe ảnh fail — ưu tiên giữ previous thay vì mất ảnh vì rate-limit.
             if (previousEntry?.fileId) {
-              items[key] = previousEntry;
+              items[key] = { ...previousEntry, key, name, address, sectionKey };
               syncStats.keptPrevious += 1;
             } else {
               syncStats.blockedPublic += 1;
             }
           } else if (previousEntry?.fileId) {
-            items[key] = previousEntry;
+            items[key] = { ...previousEntry, key, name, address, sectionKey };
             syncStats.keptPrevious += 1;
           }
           return;
