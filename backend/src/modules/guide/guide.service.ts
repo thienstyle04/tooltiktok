@@ -52,6 +52,7 @@ import { SECTION_CONFIG } from '../../common/constants/guide.constants';
 
 import {
   buildImageLibraryEntries,
+  composeAddress,
   createListImageResolver,
   getConfiguredLibraryRoots,
   getImageLibraryRoot,
@@ -63,6 +64,7 @@ import {
   stableHash,
   firstValue,
   itemMappingKey,
+  normalizeWorkbookHeaders,
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
@@ -3026,7 +3028,7 @@ export class GuideService implements OnApplicationBootstrap {
       const rows = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, { header: 1, raw: false, defval: '' });
       if (rows.length === 0) continue;
 
-      const headers = (rows[0] ?? []).map((h) => normalizeText(h));
+      const headers = normalizeWorkbookHeaders(rows[0] ?? []);
       for (const rawRow of rows.slice(1)) {
         const rowMap: Record<string, string> = {};
         headers.forEach((header, index) => { rowMap[header] = String(rawRow[index] ?? '').trim(); });
@@ -3056,7 +3058,8 @@ export class GuideService implements OnApplicationBootstrap {
     const name = this.normalizeDisplayName(rawName);
 
     const placeType = firstValue(row, 'mo_hinh', 'loai_dich_vu', 'phong_cach');
-    const address = firstValue(row, 'dia_chi');
+    const rawAddress = firstValue(row, 'dia_chi');
+    const address = composeAddress(rawAddress, firstValue(row, 'ten_phuong'));
     const openHours = firstValue(row, 'gio_mo_cua', 'gio_mo_cua_', 'gio_mo_cua_1');
     const style = firstValue(row, 'phong_cach');
     const highlight = firstValue(row, 'mo_ta', 'mota', 'mo_ta_dia_diem', 'mon_an_noi_bat', 'mon_noi_bat', 'noi_bat');
@@ -3069,8 +3072,13 @@ export class GuideService implements OnApplicationBootstrap {
     const price = firstValue(row, 'gia');
     const imageHint = firstValue(row, 'anh', 'hinh_anh', 'hinh', 'ten_anh', 'thu_muc_anh', 'folder_anh', 'link_anh', 'url', 'link');
     const mappingKey = itemMappingKey(sectionKey, rawName, address);
+    const legacyMappingKey = rawAddress === address ? '' : itemMappingKey(sectionKey, rawName, rawAddress);
     const displayMappingKey = itemMappingKey(sectionKey, name, address);
-    const sheetDriveEntry = sheetDriveManifest.items[mappingKey] ?? sheetDriveManifest.items[displayMappingKey];
+    const legacyDisplayMappingKey = legacyMappingKey ? itemMappingKey(sectionKey, name, rawAddress) : '';
+    const sheetDriveEntry = sheetDriveManifest.items[mappingKey]
+      ?? sheetDriveManifest.items[displayMappingKey]
+      ?? (legacyMappingKey ? sheetDriveManifest.items[legacyMappingKey] : undefined)
+      ?? (legacyDisplayMappingKey ? sheetDriveManifest.items[legacyDisplayMappingKey] : undefined);
     const rawSheetDriveCandidateUrls = sheetDriveEntry
       ? (sheetDriveEntry.candidateImages && sheetDriveEntry.candidateImages.length > 0
           ? sheetDriveEntry.candidateImages

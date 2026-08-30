@@ -25,6 +25,27 @@ export function normalizeText(value: unknown): string {
     .toLowerCase();
 }
 
+/** Chuan hoa tieu de cot va khoi phuc cot phuong bi bo trong tieu de. */
+export function normalizeWorkbookHeaders(rawHeaders: unknown[]): string[] {
+  const headers = rawHeaders.map((header) => normalizeText(header));
+  if (!headers.includes('ten_phuong')) {
+    const addressIndex = headers.indexOf('dia_chi');
+    const inferredWardIndex = addressIndex >= 0 && !headers[addressIndex + 1]
+      ? addressIndex + 1
+      : -1;
+    if (inferredWardIndex >= 0) headers[inferredWardIndex] = 'ten_phuong';
+  }
+  return headers;
+}
+
+/** Ghep cac manh dia chi da co trong Sheet, khong tu them chu hay dia danh. */
+export function composeAddress(...parts: unknown[]): string {
+  return parts
+    .map((part) => String(part ?? '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join(', ');
+}
+
 export function stableHash(seed: string): number {
   let result = 0;
   Array.from(seed).forEach((char, index) => {
