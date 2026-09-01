@@ -129,6 +129,8 @@ const V2_TEMPLATE_DECK_IDS = [
   'grid-8-quaytung',
   'spotlight-v2',
   'spotlight-v3',
+  'spotlight-v4',
+  'spotlight-v5',
   'carousel-mau-1',
   'one-way-story',
   'itinerary-4n3d-stack',

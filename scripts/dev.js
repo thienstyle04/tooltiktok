@@ -69,7 +69,14 @@ async function main() {
   ];
 
   if (shouldOpenBrowser()) {
-    waitForServer(frontendOrigin)
+    // Chờ cả frontend và dữ liệu backend sẵn sàng trước khi mở trình duyệt.
+    // Nếu chỉ chờ frontend, Next có thể trả về trang trong lúc backend vẫn
+    // đang warmup workbook/ảnh; các request đầu tiên sẽ nhận 502 và UI báo
+    // nhầm là backend bị mất kết nối.
+    Promise.all([
+      waitForServer(frontendOrigin),
+      waitForBackendReady(backendOrigin),
+    ])
       .then(() => {
         const browserName = openPreferredBrowser(frontendOrigin);
         console.log(`[dev] opening ${browserName}: ${frontendOrigin}/`);
@@ -81,6 +88,49 @@ async function main() {
   }
 }
 
+function waitForBackendReady(origin, timeoutMs = 120000, intervalMs = 1000) {
+  const url = new URL(origin);
+  const deadline = Date.now() + timeoutMs;
+
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      const request = http.get(
+        {
+          hostname: url.hostname,
+          port: url.port,
+          path: '/api/guide-data',
+          timeout: 5000,
+        },
+        (response) => {
+          response.resume();
+          if (response.statusCode && response.statusCode >= 200 && response.statusCode < 300) {
+            resolve();
+            return;
+          }
+          retry(new Error(`Backend chưa sẵn sàng (HTTP ${response.statusCode ?? 'unknown'})`));
+        },
+      );
+
+      request.on('timeout', () => {
+        request.destroy(new Error('Backend readiness request timed out'));
+      });
+
+      request.on('error', (error) => {
+        retry(error);
+      });
+    };
+
+    const retry = (error) => {
+      if (Date.now() >= deadline) {
+        reject(error);
+        return;
+      }
+      setTimeout(attempt, intervalMs);
+    };
+
+    attempt();
+  });
+}
 function startNpmProcess(label, args, cwd, env) {
   const command = npmCliPath ? process.execPath : (process.platform === 'win32' ? 'npm.cmd' : 'npm');
   const commandArgs = npmCliPath ? [npmCliPath, ...args] : args;

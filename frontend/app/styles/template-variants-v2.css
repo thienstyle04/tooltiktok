@@ -915,6 +915,135 @@
   font-family: var(--spotlight-v3-body) !important;
 }
 
+/* Spotlight V4: cover + ảnh nghỉ full-bleed, tách class để không đổi V2/V3. */
+.story-page.spotlight-v4-cover,
+.story-page.spotlight-v4-image,
+.story-page.spotlight-v4-page {
+  position: relative;
+  overflow: hidden;
+  background: #0f1410;
+}
+
+.story-page.spotlight-v4-cover .spotlight-v4-cover-bg,
+.story-page.spotlight-v4-image .spotlight-v4-image-bg,
+.story-page.spotlight-v4-page .spotlight-v4-page-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.story-page.spotlight-v4-cover .spotlight-v4-cover-bg img,
+.story-page.spotlight-v4-image .spotlight-v4-image-bg img,
+.story-page.spotlight-v4-page .spotlight-v4-page-bg img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.story-page.spotlight-v4-cover .spotlight-v4-cover-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.16) 48%, rgba(0, 0, 0, 0.7) 100%);
+}
+
+.story-page.spotlight-v4-cover .spotlight-v4-cover-copy {
+  position: absolute;
+  z-index: 2;
+  left: 7%;
+  right: 7%;
+  bottom: 9%;
+  text-align: left;
+}
+
+.story-page.spotlight-v4-cover .spotlight-v4-cover-title {
+  margin: 0;
+  max-width: 88%;
+  color: #fff;
+  font-family: "Cormorant Garamond", "Be Vietnam Pro", Georgia, serif;
+  font-size: clamp(0.72rem, 2.2vw, 0.96rem);
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.16;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.78);
+  overflow-wrap: anywhere;
+}
+
+.story-page.spotlight-v4-cover.spotlight-v2-place-top-left .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-top-center .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-top-right .spotlight-v4-cover-copy {
+  top: 10%;
+  bottom: auto;
+}
+
+.story-page.spotlight-v4-cover.spotlight-v2-place-top-center .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-mid-left .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-mid-right .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-bottom-center .spotlight-v4-cover-copy {
+  text-align: center;
+}
+
+.story-page.spotlight-v4-cover.spotlight-v2-place-top-right .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-mid-right .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-bottom-right .spotlight-v4-cover-copy {
+  left: auto;
+  right: 7%;
+  text-align: right;
+}
+
+.story-page.spotlight-v4-cover.spotlight-v2-place-mid-left .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-mid-right .spotlight-v4-cover-copy {
+  top: 43%;
+  bottom: auto;
+}
+
+.story-page.spotlight-v4-cover.spotlight-v2-place-mid-left .spotlight-v4-cover-copy,
+.story-page.spotlight-v4-cover.spotlight-v2-place-bottom-left .spotlight-v4-cover-copy {
+  text-align: left;
+}
+
+.story-page.spotlight-v4-image .spotlight-v4-image-bg {
+  background: #111;
+}
+
+.story-page.spotlight-v4-page .spotlight-v4-page-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.04) 35%, rgba(0, 0, 0, 0.78) 100%);
+}
+
+.story-page.spotlight-v4-page .spotlight-v4-page-copy {
+  position: absolute;
+  z-index: 2;
+  left: 7%;
+  right: 7%;
+  bottom: 8%;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.78);
+}
+
+.story-page.spotlight-v4-page .spotlight-v4-page-name {
+  margin: 0;
+  font-family: "Cormorant Garamond", "Be Vietnam Pro", Georgia, serif;
+  font-size: clamp(0.82rem, 2.6vw, 1.12rem);
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.story-page.spotlight-v4-page .spotlight-v4-page-address {
+  margin: 5px 0 0;
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  font-size: clamp(0.55rem, 1.7vw, 0.72rem);
+  font-weight: 500;
+  line-height: 1.28;
+}
+
 .story-page.spotlight-v2-cover .spotlight-v2-cover-caption {
   margin: 10px 0 0;
   font-family: "Be Vietnam Pro", sans-serif !important;
@@ -2453,4 +2582,53 @@
   .template-compare-stage {
     grid-template-columns: 1fr;
   }
+}
+
+/* Spotlight V5: TikTok 4:5 photo carousel */
+.story-page.spotlight-v5-cover,
+.story-page.spotlight-v5-playlist,
+.story-page.spotlight-v5-place {
+  position: relative;
+  width: 397px;
+  height: 496px;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #0c0d0d;
+  isolation: isolate;
+}
+.story-page.spotlight-v5-cover .spotlight-v5-bg,
+.story-page.spotlight-v5-playlist .spotlight-v5-bg,
+.story-page.spotlight-v5-place .spotlight-v5-bg { position:absolute; inset:0; z-index:0; }
+.story-page.spotlight-v5-cover .spotlight-v5-bg img,
+.story-page.spotlight-v5-playlist .spotlight-v5-bg img,
+.story-page.spotlight-v5-place .spotlight-v5-bg img { width:100%; height:100%; object-fit:cover; display:block; }
+.spotlight-v5-shade { position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.58)); }
+.spotlight-v5-cover-hook,
+.spotlight-v5-place-copy,
+.spotlight-v5-playlist-copy { position:absolute; z-index:1; color:#fff; font-weight:900; text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000; }
+.spotlight-v5-cover-hook { max-width:82%; margin:0; font-size:1.3rem; line-height:1.08; }
+.spotlight-v5-place-copy { max-width:84%; display:flex; flex-direction:column; gap:3px; }
+.spotlight-v5-place-name { font-size:1rem; line-height:1.08; }
+.spotlight-v5-place-address { font-size:.72rem; line-height:1.12; font-weight:800; }
+.spotlight-v5-playlist-copy { inset:13% 9%; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; font-size:.58rem; line-height:1.18; }
+.spotlight-v5-playlist-line { margin:1px 0; }
+.spotlight-v5-position-bottom-right .spotlight-v5-cover-hook,
+.spotlight-v5-position-bottom-right .spotlight-v5-place-copy { right:22px; bottom:24px; text-align:right; align-items:flex-end; }
+.spotlight-v5-position-bottom-left .spotlight-v5-cover-hook,
+.spotlight-v5-position-bottom-left .spotlight-v5-place-copy { left:22px; bottom:24px; text-align:left; align-items:flex-start; }
+.spotlight-v5-position-top-right .spotlight-v5-cover-hook,
+.spotlight-v5-position-top-right .spotlight-v5-place-copy { right:22px; top:24px; text-align:right; align-items:flex-end; }
+.spotlight-v5-position-top-left .spotlight-v5-cover-hook,
+.spotlight-v5-position-top-left .spotlight-v5-place-copy { left:22px; top:24px; text-align:left; align-items:flex-start; }
+.spotlight-v5-position-center .spotlight-v5-cover-hook,
+.spotlight-v5-position-center .spotlight-v5-place-copy { left:50%; top:50%; transform:translate(-50%,-50%); text-align:center; align-items:center; }
+.spotlight-v5-position-mid-left .spotlight-v5-cover-hook,
+.spotlight-v5-position-mid-left .spotlight-v5-place-copy { left:22px; top:50%; transform:translateY(-50%); text-align:left; align-items:flex-start; }
+.spotlight-v5-position-mid-right .spotlight-v5-cover-hook,
+.spotlight-v5-position-mid-right .spotlight-v5-place-copy { right:22px; top:50%; transform:translateY(-50%); text-align:right; align-items:flex-end; }
+@media (max-width: 700px) {
+  .story-page.spotlight-v5-cover,
+  .story-page.spotlight-v5-playlist,
+  .story-page.spotlight-v5-place { width: min(100%, 397px); height:auto; min-height:calc(min(100vw, 397px) * 1.25); }
 }
