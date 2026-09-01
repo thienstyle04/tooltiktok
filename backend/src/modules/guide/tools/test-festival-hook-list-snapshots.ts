@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { GuideDeckList, PageTextOverrideStore } from '../../../common/interfaces/guide.types';
 import { GuideService } from '../guide.service';
 
-const DECK_IDS = ['spotlight-guide', 'spotlight-v2', 'spotlight-v3', 'carousel-mau-1'];
+const DECK_IDS = ['spotlight-guide', 'spotlight-v2', 'spotlight-v3', 'spotlight-v4', 'carousel-mau-1'];
 
 function festivalList(deckId: string, index: number): GuideDeckList {
   const hook = `H${index + 1}`;
@@ -14,6 +14,8 @@ function festivalList(deckId: string, index: number): GuideDeckList {
     ? 'spotlight'
     : deckId === 'carousel-mau-1'
       ? 'carousel-mau-1-cover'
+      : deckId === 'spotlight-v4'
+        ? 'spotlight-v4-cover'
       : deckId;
   return {
     id: `${deckId}-caption-festival-${index + 1}`,
@@ -105,7 +107,7 @@ try {
   assert.equal(spotlightV2.coverTitle, '', 'Override rỗng phải tiếp tục rỗng sau restart');
   assert.equal(spotlightV2.pages[0].title, '', 'Trang cover không được tự hiện lại hook sau override rỗng');
 
-  console.log('PASS festival-hook-list-snapshots: 4 mẫu giữ hook, manual/blank override thắng sau restart và version bump');
+  console.log('PASS festival-hook-list-snapshots: 5 mẫu giữ hook, manual/blank override thắng sau restart và version bump');
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }

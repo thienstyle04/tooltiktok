@@ -43,7 +43,8 @@ export default function PageInspector({
     ? page.backgroundImage
     : firstPortableListImage(list) || page.backgroundImage || '';
   const coverImage = hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
-  const canEditPage = typeof onPageTextChange === 'function';
+  const isSpotlightV4ImagePage = page.layoutVariant === 'spotlight-v4-image';
+  const canEditPage = typeof onPageTextChange === 'function' && !isSpotlightV4ImagePage;
   const canSavePage = canEditPage && typeof onPageTextSave === 'function';
   const titleLimit = page.layoutVariant === 'one-way-story-cover'
     ? 110
@@ -52,7 +53,7 @@ export default function PageInspector({
       : page.type === 'cover' ? 60 : 90;
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
-  const hideSubtitleEditor = deck.id === 'spotlight-v2' && page.type === 'cover';
+  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -115,8 +116,10 @@ export default function PageInspector({
       ) : (
         <div className="inspector-cover-note">
           <strong>Trang này là cover</strong>
-          <span>{hideSubtitleEditor
-            ? 'Cover Spotlight V2 chỉ dùng ảnh nền và tiêu đề.'
+          <span>{isSpotlightV4ImagePage
+            ? 'Trang ảnh Hinh_nen chỉ hiển thị ảnh, không có chữ.'
+            : hideSubtitleEditor
+            ? `Cover ${deck.navTitle || 'Spotlight'} chỉ dùng ảnh nền và tiêu đề.`
             : 'Cover dùng ảnh nền và chữ riêng. Có thể sửa tiêu đề và mô tả ở trên mà không cần sinh lại bằng AI.'}</span>
         </div>
       )}

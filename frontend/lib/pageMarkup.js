@@ -713,6 +713,8 @@ const V2_COVER_VARIANTS = new Set([
   'grid-8-quaytung-cover',
   'spotlight-v2',
   'spotlight-v3',
+  'spotlight-v4-cover',
+  'spotlight-v5-cover',
   'carousel-mau-1-cover',
   'one-way-story-cover',
   'spotlight-partner-v2',
@@ -730,6 +732,10 @@ const V2_LIST_VARIANTS = new Set([
   'grid-8-quaytung-menu',
   'spotlight-v2',
   'spotlight-v3',
+  'spotlight-v4-image',
+  'spotlight-v4-page',
+  'spotlight-v5-playlist',
+  'spotlight-v5-place',
   'carousel-mau-1-page',
   'one-way-story-road',
   'one-way-story-slope',
@@ -1773,6 +1779,100 @@ function truncateMenuLine(value, maxLen = 42) {
   return `${(sp > maxLen * 0.45 ? cut.slice(0, sp) : cut).trim()}…`;
 }
 
+function renderSpotlightV4Cover(page, index, listId, coverTitle, backgroundImage) {
+  const imageUrl = spotlightV3CoverImage(page, backgroundImage);
+  const placement = spotlightV3CoverPlacement(page, listId);
+  const placementClass = `spotlight-v2-place-${placement}`;
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v4-cover', placementClass))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="spotlight-v4-cover-bg">
+        ${imageUrl ? renderPreviewImage(imageUrl, coverTitle || 'cover') : ''}
+      </div>
+      <div class="spotlight-v4-cover-shade" aria-hidden="true"></div>
+      <div class="spotlight-v4-cover-copy">
+        ${coverTitle ? `<h1 class="spotlight-v4-cover-title">${escapeHtml(coverTitle)}</h1>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightV4ImagePage(page, index, listId) {
+  const imageUrl = page.backgroundImage || '';
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v4-image'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-image.png">
+      <div class="spotlight-v4-image-bg">
+        ${imageUrl ? renderPreviewImage(imageUrl, 'Hình nền') : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightV4VenuePage(page, index, listId, list) {
+  const item = page.items?.[0] || {};
+  const imageUrl = item.imageUrl || page.backgroundImage || coverBackgroundImage(page, list);
+  // page.title is the persisted manual override for V4 venue pages. Keep an
+  // explicit empty title empty instead of falling back to the sheet name.
+  const name = page.title !== undefined ? String(page.title || '').trim() : (item.rawName || item.name || '');
+  const address = String(item.metaPrimary || '').trim();
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v4-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || 'dia-diem')}.png">
+      <div class="spotlight-v4-page-bg">
+        ${imageUrl ? renderPreviewImage(imageUrl, name || 'Địa điểm') : ''}
+      </div>
+      <div class="spotlight-v4-page-shade" aria-hidden="true"></div>
+      <div class="spotlight-v4-page-copy">
+        ${name ? `<h2 class="spotlight-v4-page-name">${escapeHtml(name)}</h2>` : ''}
+        ${address ? `<p class="spotlight-v4-page-address">${escapeHtml(address)}</p>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightV5Cover(page, index, listId, coverTitle, backgroundImage) {
+  const imageUrl = page.backgroundImage || backgroundImage || '';
+  const placement = page.titlePlacement || 'bottom-right';
+  const hookTitle = page.title !== undefined ? String(page.title) : String(coverTitle || '');
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-cover spotlight-v5-position-' + placement))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="spotlight-v5-bg">${imageUrl ? renderPreviewImage(imageUrl, hookTitle || 'cover') : ''}</div>
+      <div class="spotlight-v5-shade" aria-hidden="true"></div>
+      <h1 class="spotlight-v5-cover-hook">${escapeHtml(hookTitle)}</h1>
+    </article>
+  `;
+}
+
+function renderSpotlightV5PlaylistPage(page, index, listId) {
+  const lines = Array.isArray(page.playlistLines) ? page.playlistLines.filter(Boolean) : [];
+  const placement = page.titlePlacement || 'center';
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-playlist spotlight-v5-position-' + placement))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-playlist.png">
+      <div class="spotlight-v5-bg">${page.backgroundImage ? renderPreviewImage(page.backgroundImage, 'Playlist Đà Lạt') : ''}</div>
+      <div class="spotlight-v5-shade" aria-hidden="true"></div>
+      <div class="spotlight-v5-playlist-copy">
+        ${lines.map((line) => `<div class="spotlight-v5-playlist-line">• ${escapeHtml(line)}</div>`).join('')}
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightV5PlacePage(page, index, listId) {
+  const item = page.items?.[0] || {};
+  const imageUrl = page.backgroundImage || item.imageUrl || '';
+  const name = page.title !== undefined ? String(page.title || '').trim() : String(item.rawName || item.name || '').trim();
+  const address = String(item.metaPrimary || '').trim();
+  const placement = page.titlePlacement || 'bottom-right';
+
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-place spotlight-v5-position-' + placement))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || 'dia-diem')}.png">
+      <div class="spotlight-v5-bg">${imageUrl ? renderPreviewImage(imageUrl, name || 'Địa điểm') : ''}</div>
+      <div class="spotlight-v5-shade" aria-hidden="true"></div>
+      <div class="spotlight-v5-place-copy">
+        ${name ? `<div class="spotlight-v5-place-name">${escapeHtml(name)}</div>` : ''}
+        ${address ? `<div class="spotlight-v5-place-address">${escapeHtml(address)}</div>` : ''}
+      </div>
+    </article>
+  `;
+}
 function responsiveTitleFitClass(value, prefix, mediumAt = 32, smallAt = 48) {
   const length = String(value || '').replace(/\s+/g, ' ').trim().length;
   if (length >= smallAt) return `${prefix}-fit-xs`;
@@ -2065,7 +2165,7 @@ function renderOneWayStoryCover(page, index, listId, coverTitle, backgroundImage
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'one-way-story-page one-way-story-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       ${renderOneWayStoryImage(backgroundImage, coverTitle, page.coverImages || [])}
-      ${coverTitle ? `<div class="one-way-story-cover-copy ${fitClass}"><h1>${escapeHtml(coverTitle)}</h1></div>` : ''}
+      ${coverTitle ? `<div class="one-way-story-cover-copy ${fitClass}"><h1>${escapeHtml(coverTitle || '')}</h1></div>` : ''}
     </article>
   `;
 }
@@ -2151,6 +2251,12 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
   if (page.layoutVariant === 'spotlight-v2' || page.layoutVariant === 'spotlight-v3') {
     return renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, { coverImageUrls });
   }
+  if (page.layoutVariant === 'spotlight-v4-cover') {
+    return renderSpotlightV4Cover(page, index, listId, coverTitle, backgroundImage);
+  }
+  if (page.layoutVariant === 'spotlight-v5-cover') {
+    return renderSpotlightV5Cover(page, index, listId, coverTitle, backgroundImage);
+  }
   if (page.layoutVariant === 'spotlight-partner-v2') {
     return renderSpotlightV2Cover(page, index, listId, coverTitle, coverSubtitle, backgroundImage, { partner: true, coverImageUrls });
   }
@@ -2219,6 +2325,18 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   }
   if (page.layoutVariant === 'spotlight-v2' || page.layoutVariant === 'spotlight-v3') {
     return renderSpotlightV2Page(page, index, listId, list);
+  }
+  if (page.layoutVariant === 'spotlight-v4-image') {
+    return renderSpotlightV4ImagePage(page, index, listId);
+  }
+  if (page.layoutVariant === 'spotlight-v5-playlist') {
+    return renderSpotlightV5PlaylistPage(page, index, listId);
+  }
+  if (page.layoutVariant === 'spotlight-v5-place') {
+    return renderSpotlightV5PlacePage(page, index, listId);
+  }
+  if (page.layoutVariant === 'spotlight-v4-page') {
+    return renderSpotlightV4VenuePage(page, index, listId, list);
   }
   if (page.layoutVariant === 'spotlight-partner-v2') {
     return renderSpotlightPartnerV2Page(page, index, listId, list);

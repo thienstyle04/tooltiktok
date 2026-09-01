@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import path from 'node:path'; import { createRequire } from 'node:module'; import { fileURLToPath } from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url)); const require=createRequire(import.meta.url); const esbuild=require('esbuild');
+const bundle=await esbuild.build({entryPoints:[path.join(here,'../lib/pageMarkup.js')],bundle:true,platform:'node',format:'esm',write:false});
+const url=`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`; const {renderCoverPage,renderListPage}=await import(url);
+const list={id:'spotlight-v5-test',pages:[]}; const bg='https://example.invalid/bg.jpg';
+const cover={type:'cover',title:'có nhạc rồi đi Đà Lạt thoiiii',subtitle:'',backgroundImage:bg,layoutVariant:'spotlight-v5-cover',titlePlacement:'bottom-right'};
+const playlist={type:'list',chipText:'',title:'Playlist Đà Lạt',subtitle:'',items:[],backgroundImage:bg,layoutVariant:'spotlight-v5-playlist',playlistLines:['Giấc mơ - Tùng','An - Lil Wuyn'],titlePlacement:'center'};
+const place={type:'list',chipText:'',title:'Quán thử',subtitle:'',items:[{name:'Quán thử',rawName:'Quán thử',imageUrl:'https://example.invalid/place.jpg',metaPrimary:'33 Ngô Quyền, Cam Ly - Đà Lạt',metaSecondary:''}],backgroundImage:'https://example.invalid/place.jpg',layoutVariant:'spotlight-v5-place',titlePlacement:'bottom-left'}; list.pages=[cover,playlist,place];
+const ch=renderCoverPage(cover,0,15,list.id,[],list,[]); assert.match(ch,/spotlight-v5-cover/); assert.match(ch,/có nhạc rồi đi Đà Lạt thoiiii/); const blankCoverHtml=renderCoverPage({...cover,title:''},0,15,list.id,[],{...list,coverTitle:'fallback'},[]); assert.doesNotMatch(blankCoverHtml,/có nhạc rồi đi Đà Lạt/); const ph=renderListPage(playlist,1,15,list.id,[],list); assert.match(ph,/spotlight-v5-playlist-line/); assert.match(ph,/Giấc mơ - Tùng/); const vh=renderListPage(place,2,15,list.id,[],list); assert.match(vh,/Quán thử/); assert.match(vh,/33 Ngô Quyền/); assert.doesNotMatch(vh,/Giá:|Khung giờ|pin|chip/); console.log('PASS spotlight-v5 renderer: cover, playlist, place chỉ tên+địa chỉ.');

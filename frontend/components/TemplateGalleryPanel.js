@@ -6,6 +6,8 @@ const V2_DECK_IDS = new Set([
   'grid-8-quaytung',
   'spotlight-v2',
   'spotlight-v3',
+  'spotlight-v4',
+  'spotlight-v5',
   'carousel-mau-1',
   'one-way-story',
   'itinerary-4n3d-stack',

@@ -19,6 +19,8 @@ export default function PreviewDashboardPanel({
     'grid-8-quaytung',
     'spotlight-v2',
     'spotlight-v3',
+    'spotlight-v4',
+  'spotlight-v5',
     'carousel-mau-1',
     'one-way-story',
     'pov-3-v2',

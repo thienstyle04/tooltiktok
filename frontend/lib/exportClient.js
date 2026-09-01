@@ -1460,6 +1460,20 @@ function collectPartnerNames(list) {
   return Array.from(partnerNames).sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
+function isSpotlightV5PageNode(pageNode) {
+  return Boolean(pageNode?.classList?.contains('spotlight-v5-cover') || pageNode?.classList?.contains('spotlight-v5-playlist') || pageNode?.classList?.contains('spotlight-v5-place'));
+}
+
+function normalizeSpotlightV5Canvas(canvas, pageNode) {
+  if (!isSpotlightV5PageNode(pageNode) || !canvas) return canvas;
+  const target = document.createElement('canvas');
+  target.width = 1080;
+  target.height = 1350;
+  const ctx = target.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.drawImage(canvas, 0, 0, target.width, target.height);
+  return target;
+}
 function canvasToBlob(canvas, imageFormat = 'image/png', imageQuality = 1) {
   return new Promise((resolve) => {
     canvas.toBlob(resolve, imageFormat, imageQuality);
@@ -1517,6 +1531,8 @@ function deckShortName(deckId) {
     'spotlight-guide': 'spotlight',
     'spotlight-v2': 'spotlightv2',
     'spotlight-v3': 'spotlightv3',
+    'spotlight-v4': 'spotlightv4',
+    'spotlight-v5': 'spotlightv5',
     'carousel-mau-1': 'mau1',
     'one-way-story': 'duong-mot-chieu',
     'spotlight-partner': 'partner',
@@ -1630,7 +1646,7 @@ export async function renderPageBlob(pageNode, options = {}) {
   const allowEngineFallbacks = options.allowEngineFallbacks !== false;
   let cornersAlreadyClipped = false;
   const finalizeCanvasBlob = (canvas) => canvasToBlob(
-    clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor),
+    normalizeSpotlightV5Canvas(clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor), pageNode),
     imageFormat,
     imageQuality,
   );
