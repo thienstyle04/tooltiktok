@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import path from 'node:path'; import { createRequire } from 'node:module'; import { fileURLToPath } from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url)); const require=createRequire(import.meta.url); const esbuild=require('esbuild');
+const bundle=await esbuild.build({entryPoints:[path.join(here,'../lib/pageMarkup.js')],bundle:true,platform:'node',format:'esm',write:false});
+const url=`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`; const {renderCoverPage,renderListPage}=await import(url);
+const list={id:'spotlight-v6-test',pages:[]}; const bg='https://example.invalid/bg.jpg';
+const cover={type:'cover',title:'Hook hiện hành',subtitle:'',backgroundImage:bg,layoutVariant:'spotlight-v6-cover',titlePlacement:'center'};
+const image={type:'list',chipText:'',title:'',subtitle:'',items:[],backgroundImage:'https://example.invalid/bg2.jpg',layoutVariant:'spotlight-v6-image',titlePlacement:'center'};
+const place={type:'list',chipText:'',title:'Quán thử',subtitle:'',items:[{name:'Quán thử',rawName:'Quán thử',imageUrl:'https://example.invalid/place.jpg',metaPrimary:'33 Ngô Quyền, Cam Ly - Đà Lạt',metaSecondary:''}],backgroundImage:'https://example.invalid/place.jpg',layoutVariant:'spotlight-v6-page',titlePlacement:'center'}; list.pages=[cover,image,place];
+const ch=renderCoverPage(cover,0,14,list.id,[],list,[]); assert.match(ch,/spotlight-v6-cover/); assert.match(ch,/spotlight-v6-cover-title/); assert.match(ch,/Hook hiện hành/);
+const ih=renderListPage(image,1,14,list.id,[],list); assert.match(ih,/spotlight-v6-image/);
+const ph=renderListPage(place,2,14,list.id,[],list); assert.match(ph,/spotlight-v6-page/); assert.match(ph,/spotlight-v6-page-copy/); assert.match(ph,/Quán thử/); assert.match(ph,/33 Ngô Quyền/); assert.doesNotMatch(ph,/Giá:|Khung giờ|pin|chip/);
+console.log('PASS spotlight-v6 renderer: khung dọc, title căn giữa, trang ảnh và địa điểm.');

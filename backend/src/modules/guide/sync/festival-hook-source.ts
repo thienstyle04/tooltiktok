@@ -7,7 +7,7 @@ import { HookMode, HookSourceSummary, HookSourceType, HookSourcesResponse } from
 
 export const MAX_HOOK_SOURCE_FILE_BYTES = 5 * 1024 * 1024;
 export const FESTIVAL_HOOK_DESTINATION_ID = 'dalat';
-export const FESTIVAL_HOOK_DECK_IDS = ['spotlight-guide', 'spotlight-v2', 'spotlight-v3', 'spotlight-v4', 'carousel-mau-1'] as const;
+export const FESTIVAL_HOOK_DECK_IDS = ['spotlight-guide', 'spotlight-v2', 'spotlight-v3', 'spotlight-v4', 'spotlight-v6', 'carousel-mau-1'] as const;
 
 export interface HookSourceUpload { buffer: Buffer; originalname: string; size: number; mimetype?: string }
 type StoredSource = {

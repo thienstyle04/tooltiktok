@@ -2783,6 +2783,12 @@
   box-shadow: none !important;
 }
 
+.batch-export-root .story-page.spotlight-v6-cover,
+.batch-export-root .story-page.spotlight-v6-image,
+.batch-export-root .story-page.spotlight-v6-page { width:397px; height:706px; }
+
+.batch-export-root .story-page.summary-note-page { width:397px; height:706px; }
+
 .batch-export-root .story-page:hover {
   transform: none;
 }

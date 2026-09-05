@@ -69,7 +69,7 @@ import {
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
 import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
@@ -112,12 +112,12 @@ const HOOK_SECTION_BY_DECK: Record<string, { key: string; headingIncludes: strin
   ].map((deckId) => [deckId, { key: 'hook-4', headingIncludes: ['Hook 4', 'Feed 8'] }])),
 };
 const isLegacyGoogleDocHookDeck = (deckId: string): boolean =>
-  deckId === 'spotlight-v3' || deckId === 'spotlight-v4' || deckId === 'carousel-mau-1' || deckId === 'spotlight-guide';
+  deckId === 'spotlight-v3' || deckId === 'spotlight-v4' || deckId === 'spotlight-v6' || deckId === 'carousel-mau-1' || deckId === 'spotlight-guide';
 const isSectionedGoogleDocHookDeck = (deckId: string): boolean => Boolean(HOOK_SECTION_BY_DECK[deckId]);
 const isGoogleDocHookDeck = (deckId: string): boolean =>
   isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
-const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5';
+const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'summary-note';
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -1321,7 +1321,7 @@ export class GuideService implements OnApplicationBootstrap {
       deckId,
     );
 
-    if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && !caption.coverTitle) {
+    if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'summary-note' && !caption.coverTitle) {
       throw new BadRequestException('Cần có tiêu đề cover trước khi tạo list mới.');
     }
 
@@ -1410,11 +1410,13 @@ export class GuideService implements OnApplicationBootstrap {
       generatedPages = await this.enrichPov3V2StackTaglines(generatedPages);
     }
     generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
-    const effectiveCoverTitle = deckId === 'spotlight-v5'
+    const effectiveCoverTitle = deckId === 'summary-note'
+      ? String((generatedPages.find((page) => page.type === 'list') as ListPage | undefined)?.title || '').trim()
+      : deckId === 'spotlight-v5' || deckId === 'spotlight-v6'
       ? String((generatedPages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
       : finalCaption.coverTitle;
 
-    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : 0;
+    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' ? 14 : deckId === 'summary-note' ? 1 : 0;
     if (expectedNonAiPageCount && generatedPages.length !== expectedNonAiPageCount) {
       throw new BadRequestException(`Mẫu ${currentDeck.navTitle} phải có đúng ${expectedNonAiPageCount} trang, hiện có ${generatedPages.length}.`);
     }
@@ -1428,11 +1430,15 @@ export class GuideService implements OnApplicationBootstrap {
     );
     generatedList.coverTitle = effectiveCoverTitle;
     if (deckId === 'spotlight-v5') generatedList.canvasPreset = 'tiktok-4x5';
-    generatedList.postCaption = finalCaption.headline;
+    if (deckId === 'spotlight-v6') generatedList.canvasPreset = 'tiktok-9x16';
+    if (deckId === 'summary-note') generatedList.canvasPreset = 'tiktok-9x16';
+    generatedList.postCaption = deckId === 'summary-note' ? summaryNoteDefaultCaption() : finalCaption.headline;
     // Không dùng chung `description`: trường đó có thể bị làm rỗng để list con
     // bám đúng cấu trúc chữ của mẫu mẹ, còn caption xuất file vẫn phải giữ mô tả.
-    generatedList.captionBody = this.sanitizeContentText(caption.body) || this.captionBodyFallback();
-    generatedList.captionHashtags = finalCaption.hashtags;
+    generatedList.captionBody = deckId === 'summary-note'
+      ? ''
+      : (this.sanitizeContentText(caption.body) || this.captionBodyFallback());
+    generatedList.captionHashtags = deckId === 'summary-note' ? [] : finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
     if (festivalReservation) {
       generatedList.hookSnapshot = {
@@ -1614,7 +1620,7 @@ export class GuideService implements OnApplicationBootstrap {
           this.collectCaptionForbiddenNames(deckList),
         );
 
-        if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && !caption.coverTitle) {
+        if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'summary-note' && !caption.coverTitle) {
           errors.push({ index: i + 1, tone, message: 'Phản hồi AI thiếu tiêu đề cover.' });
           failCount++;
           continue;
@@ -1987,7 +1993,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   private applyMainTemplateFieldStructure(deck: GuideDeck, pages: DeckPage[]): DeckPage[] {
-    if (deck.id === 'spotlight-v5') return pages;
+    if (deck.id === 'spotlight-v5' || deck.id === 'summary-note') return pages;
     const mainList = deck.lists.find((list) => (
       /-main$/i.test(String(list.id || ''))
       || String(list.id || '').toLowerCase() === 'main'
@@ -2128,6 +2134,8 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'spotlight-v3') return SPOTLIGHT_V3_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v4') return SPOTLIGHT_V4_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v5') return SPOTLIGHT_V5_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-v6') return SPOTLIGHT_V6_TEMPLATE_VERSION;
+    if (deckId === 'summary-note') return SUMMARY_NOTE_TEMPLATE_VERSION;
     if (deckId === 'carousel-mau-1') return CAROUSEL_MAU_1_TEMPLATE_VERSION;
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n3d-stack') return ITINERARY_4N3D_STACK_TEMPLATE_VERSION;
@@ -2178,7 +2186,7 @@ export class GuideService implements OnApplicationBootstrap {
       ...cleanList,
       description: safeDescription,
       pages: enrichedPages.map((page, pageIndex) => {
-        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-'))) {
+        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || String(page.layoutVariant || '').startsWith('summary-note-'))) {
           return page;
         }
         const pageBackgroundImage = this.backgroundImageForPage(cleanList, page, pageIndex, coverImageUrls);
@@ -2198,7 +2206,7 @@ export class GuideService implements OnApplicationBootstrap {
     return {
       ...list,
       pages: enrichedPages.map((page, pageIndex) => {
-        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-'))) {
+        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || String(page.layoutVariant || '').startsWith('summary-note-'))) {
           return page;
         }
         if (page.type === 'cover') {
@@ -2212,7 +2220,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
     const cleanPage = this.sanitizeDeckPageText(page);
-    if (cleanPage.type === 'cover' && (cleanPage.layoutVariant === 'spotlight-v2' || cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'spotlight-v4-cover' || cleanPage.layoutVariant === 'spotlight-v5-cover' || cleanPage.layoutVariant === 'carousel-mau-1-cover')) {
+    if (cleanPage.type === 'cover' && (cleanPage.layoutVariant === 'spotlight-v2' || cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'spotlight-v4-cover' || cleanPage.layoutVariant === 'spotlight-v5-cover' || cleanPage.layoutVariant === 'spotlight-v6-cover' || cleanPage.layoutVariant === 'carousel-mau-1-cover')) {
       return { ...cleanPage, subtitle: '' };
     }
     if (cleanPage.type !== 'list' || cleanPage.layoutVariant !== 'journey-4n3d') {
@@ -2284,7 +2292,7 @@ export class GuideService implements OnApplicationBootstrap {
   private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
     if (page.type === 'cover') {
       const layout = String(page.layoutVariant || '');
-      if (layout === 'spotlight-v3' || layout === 'spotlight-v4-cover' || layout === 'spotlight-v5-cover' || layout === 'carousel-mau-1-cover') {
+      if (layout === 'spotlight-v3' || layout === 'spotlight-v4-cover' || layout === 'spotlight-v5-cover' || layout === 'spotlight-v6-cover' || layout === 'carousel-mau-1-cover') {
         return { ...page, subtitle: '' };
       }
       if (layout === 'spotlight-v2') {
@@ -2341,7 +2349,7 @@ export class GuideService implements OnApplicationBootstrap {
       return this.sanitizeDeckPageText(page);
     }
 
-    if ((String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-'))) {
+    if ((String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || String(page.layoutVariant || '').startsWith('summary-note-'))) {
       return {
         ...page,
         title: this.sanitizeContentText(sanitizeDeckHeadline(page.title)),
@@ -2536,7 +2544,7 @@ export class GuideService implements OnApplicationBootstrap {
       const refreshedLists = lists.map((list, listIndex) => {
         // Spotlight V4/V5 lưu snapshot hook, ảnh và địa điểm; thay đổi mẫu chỉ
         // áp dụng cho list mới, không rebuild các list người dùng đã tạo.
-        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5') return list;
+        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'summary-note') return list;
         if (deckId === 'spotlight-partner') {
           const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
           if (!partnerItem) return list;
@@ -2812,7 +2820,7 @@ export class GuideService implements OnApplicationBootstrap {
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (deckId === 'spotlight-partner') continue;
+      if (deckId === 'spotlight-partner' || deckId === 'summary-note') continue;
       const refreshedLists = lists.map((list) => ({
         ...list,
         pages: list.pages.map((page) => {
@@ -2839,7 +2847,7 @@ export class GuideService implements OnApplicationBootstrap {
                 ? this.budgetGalleryItemMetaFromSource(sourceItem)
                 : page.layoutVariant === 'spotlight-v3'
                   ? this.spotlightV3ItemMetaFromSource(sourceItem, page.chipText)
-                  : (page.layoutVariant === 'spotlight-v4-page' || page.layoutVariant === 'spotlight-v5-place')
+                  : (page.layoutVariant === 'spotlight-v4-page' || page.layoutVariant === 'spotlight-v5-place' || page.layoutVariant === 'spotlight-v6-page' || page.layoutVariant === 'summary-note-page')
                     ? [String(sourceItem.address || '').trim(), ''] as [string, string]
                   : page.layoutVariant === 'carousel-mau-1-page'
                     ? [String(sourceItem.address || '').trim(), ''] as [string, string]
@@ -2956,7 +2964,7 @@ export class GuideService implements OnApplicationBootstrap {
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (deckId === 'spotlight-v5') continue;
+      if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'summary-note') continue;
       const sanitizedLists = lists.map((list) => {
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
@@ -3845,11 +3853,12 @@ export class GuideService implements OnApplicationBootstrap {
     if (this.isBannedSampleCaptionText(title)) title = safeCoverFallback;
     let description = this.sanitizeContentText(localizeText(list.description || '', this.activeDestinationId));
     if (this.isBannedSampleCaptionText(description)) description = safeBodyFallback;
-    const storedCaptionBody = list.captionBody || (
+    const isSummaryNote = resolvedDeckId === 'summary-note';
+    const storedCaptionBody = isSummaryNote ? '' : (list.captionBody || (
       list.postCaption || (Array.isArray(list.captionHashtags) && list.captionHashtags.length > 0)
         ? list.description || safeBodyFallback
         : ''
-    );
+    ));
     const captionBody = storedCaptionBody
       ? this.sanitizeContentText(localizeText(storedCaptionBody, this.activeDestinationId))
       : storedCaptionBody;
@@ -3861,14 +3870,16 @@ export class GuideService implements OnApplicationBootstrap {
       coverTitle,
       postCaption,
       captionBody,
-      captionHashtags: Array.isArray(list.captionHashtags)
-        ? buildCaptionHashtags(
-          list.captionHashtags.map((tag) => String(tag || '').trim()).filter(Boolean),
-          'lich_trinh_huu_ich',
-          this.activeDestinationId,
-          resolvedDeckId,
-        )
-        : list.captionHashtags,
+      captionHashtags: isSummaryNote
+        ? []
+        : Array.isArray(list.captionHashtags)
+          ? buildCaptionHashtags(
+            list.captionHashtags.map((tag) => String(tag || '').trim()).filter(Boolean),
+            'lich_trinh_huu_ich',
+            this.activeDestinationId,
+            resolvedDeckId,
+          )
+          : list.captionHashtags,
       pages: pages.map((page) => {
         if (page.type !== 'cover') return page;
         let pageTitle = page.title;
@@ -3886,7 +3897,7 @@ export class GuideService implements OnApplicationBootstrap {
       let subtitle = this.sanitizeContentText(localizeText(page.subtitle || '', this.activeDestinationId));
       if (page.layoutVariant === 'grid-8-feed') {
         subtitle = this.sanitizeContentText(truncateGrid8FeedCoverSubtitle(subtitle));
-      } else if (page.layoutVariant === 'spotlight-v2' || page.layoutVariant === 'spotlight-v4-cover' || page.layoutVariant === 'spotlight-v5-cover') {
+      } else if (page.layoutVariant === 'spotlight-v2' || page.layoutVariant === 'spotlight-v4-cover' || page.layoutVariant === 'spotlight-v5-cover' || page.layoutVariant === 'spotlight-v6-cover') {
         subtitle = '';
       }
       return {

@@ -1464,6 +1464,20 @@ function isSpotlightV5PageNode(pageNode) {
   return Boolean(pageNode?.classList?.contains('spotlight-v5-cover') || pageNode?.classList?.contains('spotlight-v5-playlist') || pageNode?.classList?.contains('spotlight-v5-place'));
 }
 
+function isSpotlightV6PageNode(pageNode) {
+  return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page'));
+}
+
+function normalizeSpotlightV6Canvas(canvas, pageNode) {
+  if (!isSpotlightV6PageNode(pageNode) || !canvas) return canvas;
+  const target = document.createElement('canvas');
+  target.width = 1080;
+  target.height = 1920;
+  const ctx = target.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.drawImage(canvas, 0, 0, target.width, target.height);
+  return target;
+}
 function normalizeSpotlightV5Canvas(canvas, pageNode) {
   if (!isSpotlightV5PageNode(pageNode) || !canvas) return canvas;
   const target = document.createElement('canvas');
@@ -1533,6 +1547,8 @@ function deckShortName(deckId) {
     'spotlight-v3': 'spotlightv3',
     'spotlight-v4': 'spotlightv4',
     'spotlight-v5': 'spotlightv5',
+    'spotlight-v6': 'spotlightv6',
+    'summary-note': 'summary-note',
     'carousel-mau-1': 'mau1',
     'one-way-story': 'duong-mot-chieu',
     'spotlight-partner': 'partner',
@@ -1646,7 +1662,7 @@ export async function renderPageBlob(pageNode, options = {}) {
   const allowEngineFallbacks = options.allowEngineFallbacks !== false;
   let cornersAlreadyClipped = false;
   const finalizeCanvasBlob = (canvas) => canvasToBlob(
-    normalizeSpotlightV5Canvas(clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor), pageNode),
+    normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor), pageNode), pageNode),
     imageFormat,
     imageQuality,
   );

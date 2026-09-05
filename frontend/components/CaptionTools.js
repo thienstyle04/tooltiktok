@@ -33,8 +33,14 @@ export default function CaptionTools({
   const lists = mainLists.length ? mainLists : allLists.slice(0, 1);
   const selectedCaptionList = lists.find((list) => list.id === activeList?.id) || lists[0] || null;
   const isSpotlightPartnerDeck = activeDeck?.id === 'spotlight-partner';
-  const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1' || activeDeck?.id === 'one-way-story';
-  const nonAiTemplateName = activeDeck?.id === 'one-way-story' ? 'Đường một chiều' : 'Mẫu 1';
+  const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1'
+    || activeDeck?.id === 'one-way-story'
+    || activeDeck?.id === 'summary-note';
+  const nonAiTemplateName = activeDeck?.id === 'one-way-story'
+    ? 'Đường một chiều'
+    : activeDeck?.id === 'summary-note'
+      ? 'Tổng hợp địa điểm'
+      : 'Mẫu 1';
   const creationDisabled = busy || !cacheReady;
 
   const handleDeckChange = (event) => {
