@@ -2631,4 +2631,47 @@
   .story-page.spotlight-v5-cover,
   .story-page.spotlight-v5-playlist,
   .story-page.spotlight-v5-place { width: min(100%, 397px); height:auto; min-height:calc(min(100vw, 397px) * 1.25); }
+}/* Spotlight V6: vertical 9:16 V4 variant with centered copy. */
+.story-page.spotlight-v6-cover,
+.story-page.spotlight-v6-image,
+.story-page.spotlight-v6-page { position:relative; width:397px; height:706px; aspect-ratio:9 / 16; overflow:hidden; border-radius:18px; background:#0c0d0d; isolation:isolate; }
+.story-page.spotlight-v6-cover .spotlight-v6-bg,
+.story-page.spotlight-v6-image .spotlight-v6-bg,
+.story-page.spotlight-v6-page .spotlight-v6-bg { position:absolute; inset:0; z-index:0; }
+.story-page.spotlight-v6-cover .spotlight-v6-bg img,
+.story-page.spotlight-v6-image .spotlight-v6-bg img,
+.story-page.spotlight-v6-page .spotlight-v6-bg img { width:100%; height:100%; object-fit:cover; display:block; }
+.spotlight-v6-shade { position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.58)); }
+.spotlight-v6-cover-title,
+.spotlight-v6-page-copy { position:absolute; z-index:1; left:8%; right:8%; top:50%; transform:translateY(-50%); text-align:center; color:#fff; font-weight:900; text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000; }
+.spotlight-v6-cover-title { margin:0; font-size:13px; line-height:1.15; }
+.spotlight-v6-page-copy { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.spotlight-v6-page-name { font-size:13px; line-height:1.15; margin:0; }
+.spotlight-v6-page-address { font-size:13px; line-height:1.15; font-weight:800; margin:0; }
+@media (max-width:700px) {
+ .story-page.spotlight-v6-cover,
+ .story-page.spotlight-v6-image,
+ .story-page.spotlight-v6-page { width:min(100%,397px); height:auto; min-height:calc(min(100vw,397px) * 1.7778); }
+}
+/* Text-only summary note: one 9:16 page, styled like an iCloud note. */
+.story-page.summary-note-page { position:relative; display:flex; flex-direction:column; width:397px; height:706px; aspect-ratio:9 / 16; overflow:hidden; border-radius:0; box-shadow:none; background:#fff; color:#333; padding:24px 30px 30px; box-sizing:border-box; isolation:isolate; }
+.summary-note-toolbar { display:flex; align-items:center; justify-content:space-between; min-height:27px; color:#d0a700; font-size:14px; line-height:1; }
+.summary-note-back, .summary-note-actions { display:flex; align-items:center; }
+.summary-note-back { gap:5px; white-space:nowrap; }
+.summary-note-back-icon { position:relative; display:block; width:13px; height:20px; font-size:0; transform:none; }
+.summary-note-back-icon::before { content:""; position:absolute; left:3px; top:5px; width:9px; height:9px; border-left:1.7px solid currentColor; border-bottom:1.7px solid currentColor; transform:rotate(45deg); }
+.summary-note-actions { gap:22px; }
+.summary-note-share { position:relative; display:block; width:18px; height:14px; margin-top:7px; border:1.5px solid currentColor; border-top:0; border-radius:1px; font-size:0; }
+.summary-note-share::before { content:"↑"; position:absolute; left:50%; top:-14px; transform:translateX(-50%); font-size:20px; font-weight:500; line-height:18px; }
+.summary-note-more { display:flex; align-items:center; justify-content:center; width:20px; height:20px; border:1.5px solid currentColor; border-radius:50%; font-size:0; line-height:1; }
+.summary-note-more::before { content:"•••"; display:block; font-size:7px; letter-spacing:1px; line-height:1; transform:translate(0,-.5px); }
+.summary-note-date { margin:13px 0 18px; color:#8a8a8a; text-align:center; font-size:13px; line-height:1.2; font-weight:500; }
+.summary-note-content { display:flex; flex:1; min-height:0; flex-direction:column; }
+.summary-note-title { margin:0 0 22px; color:#303030; font-size:27px; line-height:1.15; font-weight:800; letter-spacing:-.02em; }
+.summary-note-list { display:flex; flex:1; min-height:0; flex-direction:column; justify-content:space-between; gap:13px; }
+.summary-note-row { display:flex; align-items:flex-start; gap:8px; color:#3e3e3e; font-size:15px; line-height:1.3; font-weight:400; }
+.summary-note-pin { flex:0 0 19px; font-size:16px; line-height:1.25; }
+.summary-note-row-text { min-width:0; overflow-wrap:anywhere; }
+@media (max-width:700px) {
+ .story-page.summary-note-page { width:min(100%,397px); height:auto; min-height:calc(min(100vw,397px) * 1.7778); }
 }

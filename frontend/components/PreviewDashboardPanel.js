@@ -21,6 +21,8 @@ export default function PreviewDashboardPanel({
     'spotlight-v3',
     'spotlight-v4',
   'spotlight-v5',
+  'spotlight-v6',
+  'summary-note',
     'carousel-mau-1',
     'one-way-story',
     'pov-3-v2',

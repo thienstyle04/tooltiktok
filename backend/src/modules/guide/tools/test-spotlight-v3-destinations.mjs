@@ -91,11 +91,11 @@ function analyzeList(list, destinationId) {
   }
 
   const expectedChips = [
-    'Check-in', 'Check-in',
+    'Check-in', 'Check-in', 'Check-in',
     'Cafe', 'Cafe',
     'Quán ăn', 'Quán ăn',
     'Chơi đêm', 'Chơi đêm',
-    'Homestay', 'Homestay',
+    'Homestay',
     'Dịch vụ', 'Dịch vụ',
   ];
   for (let i = 0; i < Math.min(listPages.length, expectedChips.length); i += 1) {

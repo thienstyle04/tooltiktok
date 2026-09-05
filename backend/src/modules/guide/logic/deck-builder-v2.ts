@@ -45,6 +45,13 @@ import { getActiveDestinationLocalize } from '../sync/destination-localize';
 export const GRID_8_FEED_TEMPLATE_VERSION = 17;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
 
+export function summaryNoteDefaultCaption(): string {
+  const destination = getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt';
+  return `Em sắp có chuyến đi ${destination} vào tuần tới ạ` +
+    `\nVà em có tổng hợp được các địa điểm em phải ghé trên Tóp tóp như hình bên dưới` +
+    `\nMọi người ở ${destination} xem giúp em các quán này ukiii ko ạ 🥰🥰🥰`;
+}
+
 export function normalizeGrid8FeedPostCaption(value: string): string {
   const clean = String(value || '').replace(/\s+/g, ' ').trim();
   if (!clean) return GRID_8_FEED_DEFAULT_POST_CAPTION;
@@ -59,6 +66,8 @@ export const SPOTLIGHT_V2_TEMPLATE_VERSION = 17;
 export const SPOTLIGHT_V3_TEMPLATE_VERSION = 2;
 export const SPOTLIGHT_V4_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V5_TEMPLATE_VERSION = 1;
+export const SPOTLIGHT_V6_TEMPLATE_VERSION = 1;
+export const SUMMARY_NOTE_TEMPLATE_VERSION = 1;
 export const CAROUSEL_MAU_1_TEMPLATE_VERSION = 1;
 export const POV_3_V2_TEMPLATE_VERSION = 13;
 export const BUDGET_4N3D_WALLET_TEMPLATE_VERSION = 5;
@@ -74,6 +83,8 @@ export const V2_DECK_IDS = [
   'spotlight-v3',
   'spotlight-v4',
   'spotlight-v5',
+  'spotlight-v6',
+  'summary-note',
   'carousel-mau-1',
   'pov-3-v2',
   'itinerary-4n3d-stack',
@@ -424,7 +435,7 @@ export function buildSpotlightV3Pages(
   const pick = createListPicker(common.globalUsedItemIds);
   const usedImages = common.globalUsedImageUrls || new Set<string>();
 
-  const checkinPool = pools.dayCheckinItems.length > 0 ? pools.dayCheckinItems : pools.checkinItems;
+  const checkinPool = pools.dayCheckinItems.length >= 3 ? pools.dayCheckinItems : pools.checkinItems;
   const cafePool = pools.dayCafeItems.length > 0 ? pools.dayCafeItems : pools.cafeItems;
   const foodPool = pools.daytimeFoodItems.length > 0 ? pools.daytimeFoodItems : pools.foodItems;
   const nightlifePool = pools.nightlifeItems.length > 0 ? pools.nightlifeItems : pools.nightlifeImageItems;
@@ -434,13 +445,13 @@ export function buildSpotlightV3Pages(
   const slots: SpotlightV3Slot[] = [
     { chip: 'Check-in', tone: 'terracotta', sectionItems: checkinPool, withPrice: false },
     { chip: 'Check-in', tone: 'terracotta', sectionItems: checkinPool, withPrice: false },
+    { chip: 'Check-in', tone: 'terracotta', sectionItems: checkinPool, withPrice: false },
     { chip: 'Cafe', tone: 'gold', sectionItems: cafePool, withPrice: false },
     { chip: 'Cafe', tone: 'gold', sectionItems: cafePool, withPrice: false },
     { chip: 'Quán ăn', tone: 'berry', sectionItems: foodPool, withPrice: false },
     { chip: 'Quán ăn', tone: 'berry', sectionItems: foodPool, withPrice: false },
     { chip: 'Chơi đêm', tone: 'slate', sectionItems: nightlifePool, withPrice: false },
     { chip: 'Chơi đêm', tone: 'slate', sectionItems: nightlifePool, withPrice: false },
-    { chip: 'Homestay', tone: 'pine', sectionItems: stayPool, withPrice: true },
     { chip: 'Homestay', tone: 'pine', sectionItems: stayPool, withPrice: true },
     { chip: 'Dịch vụ', tone: 'slate', sectionItems: servicePool, withPrice: true },
     { chip: 'Dịch vụ', tone: 'slate', sectionItems: servicePool, withPrice: true },
@@ -684,6 +695,55 @@ export function buildSpotlightV4Pages(
   ];
 }
 
+/** Text-only one-page summary note: four Cafe + four Quan_an locations, with up to two partners per group. */
+export function buildSummaryNotePages(common: DeckBuildCommon, seedPrefix: string): DeckPage[] {
+  const pick = createListPicker(common.globalUsedItemIds);
+  const validItems = (items: GuideItem[]) => dedupeItems(items).filter((item) => String(item.name || '').trim() && String(item.address || '').trim());
+  const pickGroup = (items: GuideItem[], groupKey: string, label: string): GuideItem[] => {
+    const pool = validItems(items);
+    if (pool.length < 4) throw new Error(`Mẫu Tổng hợp cần ít nhất 4 địa điểm ${label} có địa chỉ (${pool.length}/4).`);
+    const partnerPool = pool.filter((item) => item.isPartner);
+    const regularPool = pool.filter((item) => !item.isPartner);
+    const selectedPartners = pick(partnerPool, Math.min(2, partnerPool.length), `${seedPrefix}:summary-note:${groupKey}:partners`);
+    const selectedRegulars = pick(regularPool, 4 - selectedPartners.length, `${seedPrefix}:summary-note:${groupKey}:regulars`);
+    const selected = [...selectedPartners, ...selectedRegulars];
+    if (selected.length < 4) {
+      selected.push(...pick(pool.filter((item) => !selected.some((chosen) => itemUsageKey(chosen) === itemUsageKey(item))), 4 - selected.length, `${seedPrefix}:summary-note:${groupKey}:fill`));
+    }
+    if (selected.length < 4) throw new Error(`Mẫu Tổng hợp không đủ 4 địa điểm ${label} không trùng (${selected.length}/4).`);
+    return selected.slice(0, 4);
+  };
+  const selected = [
+    ...pickGroup(common.itemsBySection.cafe || [], 'cafe', 'Cafe'),
+    ...pickGroup(common.itemsBySection.quan_an || [], 'quan-an', 'Quán ăn'),
+  ];
+  const destination = getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt';
+  const pageItems: PageItem[] = selected.map((item) => ({
+    label: 'Địa điểm', id: item.id, sourceKey: itemUsageKey(item), sourceSectionKey: item.sectionKey,
+    name: item.name, metaPrimary: String(item.address || '').trim(), metaSecondary: '', imageUrl: '',
+    imageMapped: false, imageSource: 'fallback', imageNote: 'text-only', candidateImageUrls: [],
+    isPartner: item.isPartner, rawName: item.name,
+  }));
+  return [{
+    ...buildListPage('Địa điểm', 'slate', `Những địa điểm phải ghé khi đi ${destination}`, '', pageItems, '', 'summary-note-page'),
+    titlePlacement: 'top-left', canvasPreset: 'tiktok-9x16',
+  }];
+}/** Spotlight V6: 9:16 centered-text variant of Spotlight V4. */
+export function buildSpotlightV6Pages(
+  common: DeckBuildCommon,
+  seedPrefix: string,
+  options: SpotlightV3BuildContext = {},
+): DeckPage[] {
+  const pages = buildSpotlightV4Pages(common, `${seedPrefix}:spotlight-v6`, options);
+  return pages.map((page): DeckPage => {
+    const layout = page.type === 'cover'
+      ? 'spotlight-v6-cover'
+      : page.layoutVariant === 'spotlight-v4-image'
+        ? 'spotlight-v6-image'
+        : 'spotlight-v6-page';
+    return { ...page, layoutVariant: layout, titlePlacement: 'center', canvasPreset: 'tiktok-9x16' } as DeckPage;
+  });
+}
 const SPOTLIGHT_V5_HOOK = 'có nhạc rồi đi Đà Lạt thoiiii';
 const SPOTLIGHT_V5_PLAYLIST = [
   'Giấc mơ - Tùng',
@@ -1296,6 +1356,8 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'spotlight-v3': SPOTLIGHT_V3_TEMPLATE_VERSION,
   'spotlight-v4': SPOTLIGHT_V4_TEMPLATE_VERSION,
   'spotlight-v5': SPOTLIGHT_V5_TEMPLATE_VERSION,
+  'spotlight-v6': SPOTLIGHT_V6_TEMPLATE_VERSION,
+  'summary-note': SUMMARY_NOTE_TEMPLATE_VERSION,
   'carousel-mau-1': CAROUSEL_MAU_1_TEMPLATE_VERSION,
   'pov-3-v2': POV_3_V2_TEMPLATE_VERSION,
   'itinerary-4n3d-stack': ITINERARY_4N3D_STACK_TEMPLATE_VERSION,
@@ -1331,7 +1393,7 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
   'spotlight-v3': {
     nav: 'Spotlight V3',
     title: 'Bộ spotlight 13 trang (V3)',
-    description: 'Cover hook từ Google Doc + 12 trang 1 địa điểm (check-in/cafe/quán ăn/chơi đêm/homestay/dịch vụ). Không còn trang list cuối.',
+    description: 'Cover hook từ Google Doc + 12 trang địa điểm: 3 check-in, 2 cafe, 2 quán ăn, 2 chơi đêm, 1 homestay và 2 dịch vụ. Không còn trang list cuối.',
     listName: 'List spotlight V3',
   },
   'spotlight-v4': {
@@ -1345,6 +1407,18 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     title: 'Bộ photo carousel TikTok (V5)',
     description: 'Carousel 15 ảnh dọc 4:5: hook, playlist cố định và 13 địa điểm Đà Lạt.',
     listName: 'List spotlight V5',
+  },
+  'spotlight-v6': {
+    nav: 'Spotlight V6',
+    title: 'Bộ spotlight dọc 9:16 (V6)',
+    description: 'Biến thể Spotlight V4 khung 9:16: hook hiện hành, ảnh nền xen kẽ và 8 địa điểm; title căn giữa.',
+    listName: 'List spotlight V6',
+  },
+  'summary-note': {
+    nav: 'Tổng hợp địa điểm',
+    title: 'Trang note tổng hợp địa điểm',
+    description: 'Một trang note nền trắng gồm 8 địa điểm Cafe và Quán ăn, ưu tiên khoảng 2 địa điểm đối tác.',
+    listName: 'List tổng hợp địa điểm',
   },
   'carousel-mau-1': {
     nav: 'Mẫu 1 – Địa điểm',
@@ -1441,6 +1515,10 @@ export function buildPagesForDeckV2(
       return buildSpotlightV4Pages(common, seedPrefix, getSpotlightV3BuildContext());
     case 'spotlight-v5':
       return buildSpotlightV5Pages(common, seedPrefix);
+    case 'spotlight-v6':
+      return buildSpotlightV6Pages(common, seedPrefix, getSpotlightV3BuildContext());
+    case 'summary-note':
+      return buildSummaryNotePages(common, seedPrefix);
     case 'carousel-mau-1':
       return buildCarouselMau1Pages(common, seedPrefix, getSpotlightV3BuildContext());
     case 'pov-3-v2':
@@ -1480,6 +1558,13 @@ function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): GuideDeckLi
   );
   list.templateVersion = V2_TEMPLATE_VERSIONS[deckId];
   if (deckId === 'spotlight-v5') list.canvasPreset = 'tiktok-4x5';
+  if (deckId === 'spotlight-v6') list.canvasPreset = 'tiktok-9x16';
+  if (deckId === 'summary-note') {
+    list.canvasPreset = 'tiktok-9x16';
+    list.postCaption = summaryNoteDefaultCaption();
+    list.captionBody = '';
+    list.captionHashtags = [];
+  }
   return list;
 }
 
@@ -1487,6 +1572,8 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   const activeDestinationId = getActiveDestinationLocalize();
   const v4VenueCount = spotlightV4VenuePool(createDeckBuildPools(common.itemsBySection)).length;
   const v5VenueCount = spotlightV5VenuePool(createDeckBuildPools(common.itemsBySection)).length;
+  const summaryNoteCafeCount = dedupeItems(common.itemsBySection.cafe || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
+  const summaryNoteQuanAnCount = dedupeItems(common.itemsBySection.quan_an || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   return V2_DECK_IDS
     .filter((deckId) => deckId !== 'carousel-mau-1')
     // Không làm hỏng lần nạp dataset chung khi máy đang có pool Hinh_nen/ảnh
@@ -1499,6 +1586,8 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       && v4VenueCount >= SPOTLIGHT_V4_VENUE_COUNT
     ))
     .filter((deckId) => deckId !== 'spotlight-v5' || (activeDestinationId === 'dalat' && uniquePortableImages(common.coverImageUrls).length >= 2 && v5VenueCount >= 13))
+    .filter((deckId) => deckId !== 'spotlight-v6' || ((activeDestinationId === 'dalat' || activeDestinationId === 'greenland') && uniquePortableImages(common.coverImageUrls).filter(spotlightV4BackgroundAllowed).length >= SPOTLIGHT_V4_BACKGROUND_COUNT && v4VenueCount >= SPOTLIGHT_V4_VENUE_COUNT))
+    .filter((deckId) => deckId !== 'summary-note' || ((activeDestinationId === 'dalat' || activeDestinationId === 'greenland') && summaryNoteCafeCount >= 4 && summaryNoteQuanAnCount >= 4))
     .filter((deckId) => deckId !== 'one-way-story' || activeDestinationId === 'dalat')
     .map((deckId) => {
     const meta = V2_DECK_META[deckId];

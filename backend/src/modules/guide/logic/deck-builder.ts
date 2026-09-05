@@ -1699,7 +1699,7 @@ export function applyCaptionToPages(pages: DeckPage[], caption: { coverTitle?: s
   return pages.map((page) => {
     if (page.type === 'cover') {
       // Spotlight V3: title lấy từ Google Doc hook — không ghi đè bằng caption AI.
-      if (page.layoutVariant === 'spotlight-v3' || page.layoutVariant === 'spotlight-v4-cover' || page.layoutVariant === 'spotlight-v5-cover' || page.layoutVariant === 'carousel-mau-1-cover') {
+      if (page.layoutVariant === 'spotlight-v3' || page.layoutVariant === 'spotlight-v4-cover' || page.layoutVariant === 'spotlight-v5-cover' || page.layoutVariant === 'spotlight-v6-cover' || page.layoutVariant === 'carousel-mau-1-cover') {
         return { ...page, subtitle: '' };
       }
       const subtitle = page.layoutVariant === 'spotlight-v2'
