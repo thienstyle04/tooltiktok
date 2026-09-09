@@ -70,10 +70,10 @@ import {
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
-import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
+import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
   DEFAULT_DESTINATION_ID,
@@ -88,6 +88,7 @@ import {
 
 import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
 import { FestivalHookSourceStore, HookReservation, HookSourceUpload } from './sync/festival-hook-source';
+import { GreenHookReservation, GreenHookSourceStore } from './sync/green-hook-source';
 import { localizeDecks, localizeText, setActiveDestinationLocalize, getMarketingCopy, buildCaptionHashtags, getDeckHashtagExtras, resolveDeckIdFromListId, cityLabel } from './sync/destination-localize';
 import {
   fetchWorkbookFromSheet,
@@ -120,7 +121,7 @@ const isGoogleDocHookDeck = (deckId: string): boolean =>
   isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
 import { ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './logic/itinerary-note';
-const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || (deckId === 'summary-note' || deckId === 'itinerary-note-2days');
+const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || (deckId === 'summary-note' || deckId === 'itinerary-note-2days');
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -191,6 +192,7 @@ export class GuideService implements OnApplicationBootstrap {
   private activeDestinationId: DestinationId = DEFAULT_DESTINATION_ID;
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
   private readonly festivalHookSources: FestivalHookSourceStore;
+  private readonly greenHookSource: GreenHookSourceStore;
   private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
   private usedAllocator = new DataAllocator();
@@ -250,6 +252,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   constructor(private readonly runtimePerformance: RuntimePerformanceService = new RuntimePerformanceService()) {
     this.festivalHookSources = new FestivalHookSourceStore(this.dataRoot);
+    this.greenHookSource = new GreenHookSourceStore(this.dataRoot);
     this.loadCustomDestinations();
     this.activeDestinationId = this.loadActiveDestinationId();
     this.driveCacheWarmStatus.destinationId = this.activeDestinationId;
@@ -1368,12 +1371,24 @@ export class GuideService implements OnApplicationBootstrap {
       deckId,
     );
 
-    if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'summary-note' && deckId !== 'itinerary-note-2days' && !caption.coverTitle) {
+    if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'spotlight-v6-green' && deckId !== 'summary-note' && deckId !== 'itinerary-note-2days' && !caption.coverTitle) {
       throw new BadRequestException('Cần có tiêu đề cover trước khi tạo list mới.');
     }
 
     await this.prepareWorkbookForDataset(false);
+    const greenReadyImageIds = deckId === 'spotlight-v6-green'
+      ? await this.prepareSpotlightV6GreenResources()
+      : null;
     const context = this.buildDatasetContext();
+    if (greenReadyImageIds) {
+      context.hinhNenImagePools = {
+        ...context.hinhNenImagePools,
+        green: context.hinhNenImagePools.green.filter((url) => {
+          const fileId = extractDriveFileIdFromProxyUrl(url);
+          return Boolean(fileId && greenReadyImageIds.has(fileId));
+        }),
+      };
+    }
     const currentDeck = context.decks.find((d) => d.id === deckId);
     if (!currentDeck) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
 
@@ -1387,8 +1402,10 @@ export class GuideService implements OnApplicationBootstrap {
     const seed = [deckId, generatedSuffix, String(existing.length), requestedTone, caption.coverTitle, caption.headline, caption.body, caption.hashtags.join(' '), timestamp].join('|');
 
     let festivalReservation: HookReservation | null = null;
+    let greenHookReservation: GreenHookReservation | null = null;
     try {
       festivalReservation = this.festivalHookSources.reserve(deckId, this.activeDestinationId);
+      if (deckId === 'spotlight-v6-green') greenHookReservation = this.greenHookSource.reserve();
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : String(error));
     }
@@ -1407,7 +1424,13 @@ export class GuideService implements OnApplicationBootstrap {
         }
       }
     }
-    if (isGoogleDocHookDeck(deckId)) {
+    if (deckId === 'spotlight-v6-green') {
+      setSpotlightV3BuildContext({
+        hooks: greenHookReservation ? [greenHookReservation.hook] : [],
+        destinationId: this.activeDestinationId,
+        usedHookTitles: this.getUsedCaptionTitles(deckId),
+      });
+    } else if (isGoogleDocHookDeck(deckId)) {
       const hooks = festivalReservation
         ? [festivalReservation.hook]
         : isSectionedGoogleDocHookDeck(deckId)
@@ -1437,6 +1460,8 @@ export class GuideService implements OnApplicationBootstrap {
     }
     const hookCoverTitle = festivalReservation
       ? festivalReservation.hook
+      : greenHookReservation
+      ? greenHookReservation.hook
       : isSectionedGoogleDocHookDeck(deckId)
       ? await this.resolveDeckHookCoverTitle(deckId, seed)
       : isLegacyGoogleDocHookDeck(deckId)
@@ -1460,11 +1485,11 @@ export class GuideService implements OnApplicationBootstrap {
     generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
     const effectiveCoverTitle = (deckId === 'summary-note' || deckId === 'itinerary-note-2days')
       ? String((generatedPages.find((page) => page.type === 'list') as ListPage | undefined)?.title || '').trim()
-      : deckId === 'spotlight-v5' || deckId === 'spotlight-v6'
+      : deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green'
       ? String((generatedPages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
       : finalCaption.coverTitle;
 
-    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' ? 14 : (deckId === 'summary-note' || deckId === 'itinerary-note-2days') ? (deckId === 'itinerary-note-2days' ? 2 : 1) : 0;
+    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' ? 14 : deckId === 'spotlight-v6-green' ? 11 : (deckId === 'summary-note' || deckId === 'itinerary-note-2days') ? (deckId === 'itinerary-note-2days' ? 2 : 1) : 0;
     if (expectedNonAiPageCount && generatedPages.length !== expectedNonAiPageCount) {
       throw new BadRequestException(`Mẫu ${currentDeck.navTitle} phải có đúng ${expectedNonAiPageCount} trang, hiện có ${generatedPages.length}.`);
     }
@@ -1478,7 +1503,7 @@ export class GuideService implements OnApplicationBootstrap {
     );
     generatedList.coverTitle = effectiveCoverTitle;
     if (deckId === 'spotlight-v5') generatedList.canvasPreset = 'tiktok-4x5';
-    if (deckId === 'spotlight-v6') generatedList.canvasPreset = 'tiktok-9x16';
+    if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green') generatedList.canvasPreset = 'tiktok-9x16';
     if ((deckId === 'summary-note' || deckId === 'itinerary-note-2days')) generatedList.canvasPreset = 'tiktok-9x16';
     generatedList.postCaption = (deckId === 'summary-note' || deckId === 'itinerary-note-2days') ? (deckId === 'itinerary-note-2days' ? ITINERARY_NOTE_CAPTION : summaryNoteDefaultCaption()) : finalCaption.headline;
     // Không dùng chung `description`: trường đó có thể bị làm rỗng để list con
@@ -1495,6 +1520,13 @@ export class GuideService implements OnApplicationBootstrap {
         sourceRevision: festivalReservation.sourceRevision,
       };
     }
+    if (greenHookReservation) {
+      generatedList.hookSnapshot = {
+        mode: 'green',
+        sourceId: greenHookReservation.sourceId,
+        sourceRevision: greenHookReservation.sourceRevision,
+      };
+    }
     const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList, deckId);
 
     this.markUsedInDeck(sanitizedGeneratedList.pages);
@@ -1503,10 +1535,12 @@ export class GuideService implements OnApplicationBootstrap {
     this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
     this.persistGeneratedLists();
     this.festivalHookSources.commit(festivalReservation);
+    this.greenHookSource.commit(greenHookReservation);
 
     return { deckId, listId: sanitizedGeneratedList.id, navTitle: sanitizedGeneratedList.navTitle, title: sanitizedGeneratedList.title };
     } catch (error) {
       this.festivalHookSources.rollback(festivalReservation);
+      this.greenHookSource.rollback(greenHookReservation);
       throw error;
     }
   }
@@ -2209,6 +2243,7 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'spotlight-v4') return SPOTLIGHT_V4_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v5') return SPOTLIGHT_V5_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v6') return SPOTLIGHT_V6_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-v6-green') return SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION;
     if ((deckId === 'summary-note' || deckId === 'itinerary-note-2days')) return deckId === 'itinerary-note-2days' ? ITINERARY_NOTE_TEMPLATE_VERSION : SUMMARY_NOTE_TEMPLATE_VERSION;
     if (deckId === 'carousel-mau-1') return CAROUSEL_MAU_1_TEMPLATE_VERSION;
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
@@ -2618,7 +2653,7 @@ export class GuideService implements OnApplicationBootstrap {
       const refreshedLists = lists.map((list, listIndex) => {
         // Spotlight V4/V5 lưu snapshot hook, ảnh và địa điểm; thay đổi mẫu chỉ
         // áp dụng cho list mới, không rebuild các list người dùng đã tạo.
-        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || (deckId === 'summary-note' || deckId === 'itinerary-note-2days')) return list;
+        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || (deckId === 'summary-note' || deckId === 'itinerary-note-2days')) return list;
         if (deckId === 'spotlight-partner') {
           const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
           if (!partnerItem) return list;
@@ -3038,7 +3073,7 @@ export class GuideService implements OnApplicationBootstrap {
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || (deckId === 'summary-note' || deckId === 'itinerary-note-2days')) continue;
+      if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || (deckId === 'summary-note' || deckId === 'itinerary-note-2days')) continue;
       const sanitizedLists = lists.map((list) => {
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
@@ -3123,6 +3158,44 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
+  private async prepareSpotlightV6GreenResources(): Promise<Set<string>> {
+    if (this.activeDestinationId !== 'dalat') {
+      throw new BadRequestException('Mẫu Spotlight V6 Mảng xanh hiện chỉ áp dụng cho Đà Lạt.');
+    }
+    const manifest = this.loadSheetDriveManifest();
+    const docUrl = String(manifest.hookSourceGroups?.green || '').trim();
+    if (!docUrl) {
+      if (!this.greenHookSource.getCachedHooks().length) {
+        throw new BadRequestException('Không tìm thấy hyperlink “Hook mảng xanh” cùng dòng “Ảnh mảng xanh” trong Sheet Hinh_nen và chưa có cache Hook cũ.');
+      }
+      console.warn('[spotlight-v6-green] Sheet tạm thiếu hyperlink Hook mảng xanh; giữ cache Hook đã tải thành công trước đó.');
+    } else {
+      await this.greenHookSource.ensureReady(docUrl);
+    }
+
+    const entries = (manifest.coverImageGroups?.green || [])
+      .filter((entry, index, all) => Boolean(entry?.fileId) && all.findIndex((candidate) => candidate.fileId === entry.fileId) === index);
+    if (entries.length < 6) {
+      throw new BadRequestException(`Mẫu Spotlight V6 Mảng xanh cần ít nhất 6 ảnh trong folder Ảnh mảng xanh (${entries.length}/6).`);
+    }
+    const fileIds = entries.map((entry) => String(entry.fileId || '').trim()).filter(Boolean);
+    const missing = listUncachedDriveFileIds(fileIds);
+    if (missing.length) {
+      const warmed = await warmDriveFileDiskCache(missing, {
+        runTask: (task) => this.runtimePerformance.runDriveTask(4, task),
+        concurrency: this.driveCacheConcurrency(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 4), 4),
+      });
+      if (warmed.fail > 0) {
+        console.warn(`[spotlight-v6-green] Có ${warmed.fail} ảnh Mảng xanh chưa tải được; builder chỉ dùng ảnh cache thật.`);
+      }
+    }
+    const readyIds = new Set(fileIds.filter((fileId) => hasDriveFileDiskCache(fileId)));
+    if (readyIds.size < 6) {
+      throw new BadRequestException(`Mẫu Spotlight V6 Mảng xanh chỉ tải được ${readyIds.size}/6 ảnh Mảng xanh; còn thiếu ${6 - readyIds.size}.`);
+    }
+    return readyIds;
+  }
+
   private loadWorkbookItems(
     workbook: XLSX.WorkBook,
     imageUrls: string[],
@@ -3179,6 +3252,7 @@ export class GuideService implements OnApplicationBootstrap {
     const openHours = firstValue(row, 'gio_mo_cua', 'gio_mo_cua_', 'gio_mo_cua_1');
     const style = firstValue(row, 'phong_cach');
     const highlight = firstValue(row, 'mo_ta', 'mota', 'mo_ta_dia_diem', 'mon_an_noi_bat', 'mon_noi_bat', 'noi_bat');
+    const theme = firstValue(row, 'chu_de', 'chude');
     const partner = firstValue(row, 'doi_tac', 'doi_tac_cong_ty');
     const phone = firstValue(row, 'sdt');
     const headPrice = firstValue(row, 'gia_dau_nguoi', 'head_price', 'per_person_price');
@@ -3253,7 +3327,7 @@ export class GuideService implements OnApplicationBootstrap {
       sectionTitle: SECTION_CONFIG[sectionKey].title,
       name, address,
       type: placeType || SECTION_CONFIG[sectionKey].title,
-      openHours, style, highlight,
+      openHours, style, highlight, theme,
       partnerFlag: partner,
       isPartner: normalizeText(partner) === 'x',
       headPrice,

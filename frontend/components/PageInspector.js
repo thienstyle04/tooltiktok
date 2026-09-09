@@ -53,7 +53,7 @@ export default function PageInspector({
       : page.type === 'cover' ? 60 : 90;
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
-  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days') || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days') || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>

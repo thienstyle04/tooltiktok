@@ -23,6 +23,7 @@ export const HINH_NEN_IMAGE_GROUPS: readonly HinhNenImageGroup[] = ['default', '
 
 export type HinhNenDriveImageGroups = Record<HinhNenImageGroup, DriveFolderEntry[]>;
 export type HinhNenSourceLinkGroups = Record<HinhNenImageGroup, string[]>;
+export type HinhNenHookSourceGroups = Partial<Record<HinhNenImageGroup, string>>;
 
 function emptyHinhNenDriveImageGroups(): HinhNenDriveImageGroups {
   return { default: [], green: [], dark: [], random: [] };
@@ -63,6 +64,8 @@ export interface SheetDriveImageManifest {
   /** Các pool đặc biệt được tách theo nhãn hiển thị trong sheet Hinh_nen. */
   coverImageGroups?: HinhNenDriveImageGroups;
   coverSourceLinkGroups?: HinhNenSourceLinkGroups;
+  /** Google Docs hook đặt cùng dòng với folder ảnh đặc biệt trong Hinh_nen. */
+  hookSourceGroups?: HinhNenHookSourceGroups;
 }
 
 function isLikelyLinkHeader(header: string): boolean {
@@ -88,6 +91,8 @@ function workbookRowsWithLinks(sheet: XLSX.WorkSheet): Array<Record<string, stri
       if (hyperlink) {
         rowMap[`${header}__hyperlink`] = hyperlink;
         rowMap[`${header}__display`] = rawValue;
+        // Giữ hyperlink theo vị trí cột, kể cả cột Sheet không có header.
+        rowMap[`__column_${columnIndex + 1}__hyperlink`] = hyperlink;
       }
     });
     results.push(rowMap);
@@ -178,7 +183,7 @@ function legacySheetDriveManifestPath(dataRoot: string): string {
 
 export function emptySheetDriveManifest(): SheetDriveImageManifest {
   return {
-    version: 2,
+    version: 3,
     generatedAt: new Date(0).toISOString(),
     workbookName: PREFERRED_WORKBOOK_NAME,
     workbookMtimeMs: 0,
@@ -187,6 +192,7 @@ export function emptySheetDriveManifest(): SheetDriveImageManifest {
     coverSourceLinks: [],
     coverImageGroups: emptyHinhNenDriveImageGroups(),
     coverSourceLinkGroups: emptyHinhNenSourceLinkGroups(),
+    hookSourceGroups: {},
   };
 }
 
@@ -230,6 +236,11 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
         dark: Array.isArray(parsedSourceGroups.dark) ? parsedSourceGroups.dark.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
         random: Array.isArray(parsedSourceGroups.random) ? parsedSourceGroups.random.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
       },
+      hookSourceGroups: parsed.hookSourceGroups && typeof parsed.hookSourceGroups === 'object'
+        ? Object.fromEntries(Object.entries(parsed.hookSourceGroups)
+          .map(([group, url]) => [group, String(url || '').trim()])
+          .filter(([, url]) => Boolean(url))) as HinhNenHookSourceGroups
+        : {},
     };
 
     return manifest;
@@ -255,6 +266,7 @@ export async function buildSheetDriveManifest(
     HINH_NEN_IMAGE_GROUPS.map((group) => [group, new Map<string, DriveFolderEntry>()]),
   ) as Record<HinhNenImageGroup, Map<string, DriveFolderEntry>>;
   const coverSourceLinkGroups = emptyHinhNenSourceLinkGroups();
+  const hookSourceGroups: HinhNenHookSourceGroups = {};
   const itemTasks: Array<() => Promise<void>> = [];
   const coverTasks: Array<() => Promise<void>> = [];
   const coverResolveErrors = Object.fromEntries(
@@ -281,6 +293,11 @@ export async function buildSheetDriveManifest(
         if (!imageLink) continue;
         const group = classifyHinhNenImageGroup(firstLinkDisplayValue(row));
         coverSourceLinkGroups[group].push(imageLink);
+        const hookDocUrl = Object.entries(row).find(([key, value]) => (
+          key.endsWith('__hyperlink')
+          && /^https:\/\/docs\.google\.com\/document\/d\//i.test(String(value || '').trim())
+        ))?.[1];
+        if (hookDocUrl) hookSourceGroups[group] = String(hookDocUrl).trim();
       }
       continue;
     }
@@ -503,7 +520,7 @@ export async function buildSheetDriveManifest(
   }
 
   return {
-    version: 2,
+    version: 3,
     generatedAt: new Date().toISOString(),
     workbookName: source.workbookName,
     workbookMtimeMs: source.fetchedAt,
@@ -512,6 +529,7 @@ export async function buildSheetDriveManifest(
     coverSourceLinks: nextCoverSourceLinkGroups.default,
     coverImageGroups: nextCoverImageGroups,
     coverSourceLinkGroups: nextCoverSourceLinkGroups,
+    hookSourceGroups,
   };
 }
 

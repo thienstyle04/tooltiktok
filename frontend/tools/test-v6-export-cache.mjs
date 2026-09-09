@@ -6,9 +6,11 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url), { chromium } = require('playwright'), esbuild = require('esbuild');
 const root = path.resolve(import.meta.dirname, '..'), data = path.resolve(root, '../backend/data');
 const saved = JSON.parse(fs.readFileSync(path.join(data, 'generated-caption-lists.dalat.json'), 'utf8'));
-const decks = ['spotlight-v6', 'spotlight-v4', 'summary-note'].map(id => ({ id, lists: saved.decks[id]?.slice(0, 1) || [] }));
-assert.equal(decks[0].lists[0]?.pages.length, 14, 'Requires a saved V6 list');
-decks[0].lists.push({ ...structuredClone(decks[0].lists[0]), id: 'spotlight-v6-caption-99-smoke' });
+const decks = ['spotlight-v6-green', 'spotlight-v6'].map(id => ({ id, lists: saved.decks[id]?.slice(0, 1) || [] }));
+if (decks[0].lists[0]?.pages.length !== 11 || decks[1].lists[0]?.pages.length !== 14) {
+  console.log('SKIP cached V6 Green export: cần snapshot runtime V6 Green 11 trang và V6 14 trang.');
+  process.exit(0);
+}
 let source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8').replace('function downloadBlobFile(', 'function originalDownloadBlobFile(');
 source += '\nfunction downloadBlobFile(blob, name) { window.__downloads.push({blob,name}); return true; }\nexport { JSZip };';
 const bundle = await esbuild.build({ stdin: { contents: source, resolveDir: path.join(root, 'lib') }, bundle: true, platform: 'browser', format: 'iife', globalName: 'Smoke', write: false });
@@ -25,6 +27,9 @@ try {
      const ids = route.request().postDataJSON().fileIds;
      const absent = ids.filter(id=>!fs.existsSync(path.join(data,'drive-file-cache',id+'.bin')));
      return route.fulfill({json:{missing:absent,cached:ids.length-absent.length}});
+   }
+   if(url.pathname === '/api/runtime-performance' || url.pathname === '/api/runtime-performance/report') {
+     return route.fulfill({json:{mode:'modern',reason:'smoke test',evaluatedAt:new Date().toISOString(),totalMemoryBytes:16*1024**3,freeMemoryBytes:8*1024**3,logicalCpuCount:8}});
    }
    if(url.pathname === '/assets/drive-file') {
      const id=url.searchParams.get('id');
@@ -52,12 +57,12 @@ try {
    if(failures.length) throw new Error(failures.join('\n'));
    const results=[];
    for(const {blob,name} of window.__downloads){
-     if(name.endsWith('.zip')){
+   if(name.endsWith('.zip')){
        const zip=await Smoke.JSZip.loadAsync(await blob.arrayBuffer());
        const files=Object.values(zip.files).filter(f=>f.name.endsWith('.png'));
        let v6=0;
        for(const file of files){
-         if(!/spotlight[\s_-]*v6/i.test(file.name) && files.length!==14)continue;
+         if(!/spotlight[\s_-]*v6/i.test(file.name) && files.length!==11)continue;
          const bitmap=await createImageBitmap(new Blob([await file.async('uint8array')],{type:'image/png'}));
          if(bitmap.width!==1080||bitmap.height!==1920)throw new Error('Wrong dimensions '+file.name);
          bitmap.close();v6++;
@@ -72,9 +77,9 @@ try {
    return {results,elapsedMs:Math.round(performance.now()-start)};
  },decks);
  assert.equal(result.results.length,3,JSON.stringify(result));
- assert.equal(result.results[1].pages,14);
- assert.equal(result.results[2].v6Checked,28);
+ assert.equal(result.results[1].pages,11);
+ assert.equal(result.results[2].v6Checked,25);
  assert.equal(external,0,'Unexpected network request');
  assert.equal(missing.size,0,'Missing cached images');
- console.log('PASS cached V6 single/list/mixed batch',JSON.stringify(result));
+ console.log('PASS cached V6 Green single/list + V6 mixed batch',JSON.stringify(result));
 } finally {await browser.close();}

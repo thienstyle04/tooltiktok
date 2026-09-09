@@ -109,6 +109,8 @@ export interface GuideItem {
   openHours: string;
   style: string;
   highlight: string;
+  /** Chủ đề nguyên bản từ cột Sheet `Chu_de` (ví dụ: Mảng xanh). */
+  theme?: string;
   partnerFlag: string;
   isPartner: boolean;
   /** Giá đầu người — cột sheet `gia_dau_nguoi`, dùng cho bảng chi phí 72H. */
@@ -191,7 +193,7 @@ export interface GuideDeckList {
   templateVersion?: number;
   canvasPreset?: 'default' | 'tiktok-4x5' | 'tiktok-9x16';
   hookSnapshot?: {
-    mode: 'festival';
+    mode: 'festival' | 'green';
     sourceId: string;
     sourceRevision: string;
   };
