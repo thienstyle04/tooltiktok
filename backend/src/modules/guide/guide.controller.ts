@@ -18,6 +18,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import * as path from 'node:path';
 import { getAppConfig } from '../../config';
 import { DriveCacheWarmStatus, GuideService, LocalWorkbookUpload } from './guide.service';
+import { RuntimePerformanceReport, RuntimePerformanceService, RuntimePerformanceStatus } from './runtime-performance.service';
 import { MAX_WORKBOOK_FILE_BYTES } from './sync/workbook-source';
 import { HookSourceUpload, MAX_HOOK_SOURCE_FILE_BYTES } from './sync/festival-hook-source';
 import {
@@ -48,7 +49,10 @@ import {
 
 @Controller()
 export class GuideController {
-  constructor(private readonly guideService: GuideService) {}
+  constructor(
+    private readonly guideService: GuideService,
+    private readonly runtimePerformance: RuntimePerformanceService,
+  ) {}
 
   private sendBinaryAsset(response: any, body: Buffer, contentType: string, cacheControl: string): void {
     response.setHeader('Content-Type', contentType);
@@ -132,6 +136,17 @@ export class GuideController {
     return this.guideService.addDestination(request);
   }
 
+  @Get('api/runtime-performance')
+  getRuntimePerformance(): RuntimePerformanceStatus {
+    return this.runtimePerformance.getStatus();
+  }
+
+  @Post('api/runtime-performance/report')
+  @HttpCode(200)
+  reportRuntimePerformance(@Body() report: RuntimePerformanceReport): RuntimePerformanceStatus {
+    return this.runtimePerformance.report(report || {});
+  }
+
   @Post('api/destinations/xlsx')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_WORKBOOK_FILE_BYTES } }))
   addXlsxDestination(
@@ -206,12 +221,12 @@ export class GuideController {
 
   @Post('api/decks/generate-from-caption')
   generateDeckFromCaption(@Body() request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
-    return this.guideService.generateDeckFromCaption(request);
+    return this.guideService.enqueueGeneration(() => this.guideService.generateDeckFromCaption(request));
   }
 
   @Post('api/decks/generate-batch')
   generateBatchLists(@Body() request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
-    return this.guideService.generateBatchLists(request);
+    return this.guideService.enqueueGeneration(() => this.guideService.generateBatchLists(request));
   }
 
   @Post('api/decks/delete-lists')
@@ -222,7 +237,7 @@ export class GuideController {
 
   @Post('api/decks/generate-partner-spotlight')
   generatePartnerSpotlight(@Body() request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
-    return this.guideService.generatePartnerSpotlight(request);
+    return this.guideService.enqueueGeneration(() => this.guideService.generatePartnerSpotlight(request));
   }
 
   @Post('api/drive-files/cache-status')

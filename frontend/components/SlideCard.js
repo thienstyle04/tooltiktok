@@ -1,3 +1,4 @@
+import { fitItineraryNote } from '../lib/itineraryNote';
 import { useEffect, useRef } from 'react';
 import { renderCoverPage, renderListPage } from '../lib/pageMarkup';
 
@@ -100,6 +101,13 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
+    fitItineraryNote(root);
+    const noteNode = root.querySelector('.itinerary-note-day');
+    const noteResizeObserver = noteNode && typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => fitItineraryNote(root))
+      : null;
+    if (noteNode) noteResizeObserver?.observe(noteNode);
+    document.fonts?.ready.then(() => { if (root.isConnected) fitItineraryNote(root); });
 
     let cancelled = false;
     const controllers = [];
@@ -187,6 +195,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     });
 
     return () => {
+      noteResizeObserver?.disconnect();
       cancelled = true;
       controllers.forEach((controller) => controller.abort());
     };

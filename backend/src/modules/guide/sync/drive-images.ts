@@ -222,6 +222,7 @@ export async function warmDriveFileDiskCache(
   fileIds: string[],
   options: {
     concurrency?: number;
+    runTask?: <T>(task: () => Promise<T>) => Promise<T>;
     shouldCancel?: () => boolean;
     onProgress?: (result: WarmDriveFileDiskCacheResult) => void;
   } = {},
@@ -269,7 +270,9 @@ export async function warmDriveFileDiskCache(
       index += 1;
       const fileId = pending[current];
       try {
-        const asset = await fetchDriveFileAsset(fileId);
+        const asset = await (options.runTask
+          ? options.runTask(() => fetchDriveFileAsset(fileId))
+          : fetchDriveFileAsset(fileId));
         if (asset?.body?.length && !asset.isFallback && hasDriveFileDiskCache(fileId)) {
           result.ok += 1;
         } else if (asset?.body?.length && !asset.isFallback) {

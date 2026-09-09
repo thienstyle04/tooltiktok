@@ -35,10 +35,10 @@ export default function CaptionTools({
   const isSpotlightPartnerDeck = activeDeck?.id === 'spotlight-partner';
   const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1'
     || activeDeck?.id === 'one-way-story'
-    || activeDeck?.id === 'summary-note';
-  const nonAiTemplateName = activeDeck?.id === 'one-way-story'
+    || (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-2days');
+  const nonAiTemplateName = activeDeck?.id === 'itinerary-note-2days' ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
     ? 'Đường một chiều'
-    : activeDeck?.id === 'summary-note'
+    : (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-2days')
       ? 'Tổng hợp địa điểm'
       : 'Mẫu 1';
   const creationDisabled = busy || !cacheReady;

@@ -1,0 +1,13 @@
+.story-page.itinerary-note-day { position:relative; width:397px; height:706px; aspect-ratio:9/16; box-sizing:border-box; border-radius:0; background:#fff; color:#505050; isolation:isolate; font-family:Arial,sans-serif; padding:0; overflow:hidden; }
+.itinerary-note-day svg { width:24px; height:24px; display:inline-block; flex:none; }
+.itinerary-note-day .in-toolbar { position:absolute; top:18px; left:10px; right:18px; display:flex; justify-content:space-between; color:#e9b000; font-size:18px; }
+.itinerary-note-day .in-toolbar span { display:flex; align-items:center; gap:8px; }
+.itinerary-note-day .in-toolbar span:last-child { gap:24px; }
+.itinerary-note-day .in-content { position:absolute; top:62px; bottom:28px; left:26px; right:24px; overflow:visible; }
+.itinerary-note-day .in-content h1 { margin:0 0 10px; font-size:28px; font-weight:800; line-height:1.2; color:#484848; overflow-wrap:anywhere; }
+.itinerary-note-day .in-day { margin:0 0 4px; font-size:var(--in-font-size,18px); line-height:1.45; }
+.itinerary-note-day ul { margin:0; padding:0 0 0 34px; list-style:none; font-size:var(--in-font-size,18px); line-height:1.5; }
+.itinerary-note-day li { position:relative; margin:0 0 5px; overflow-wrap:anywhere; }
+.itinerary-note-day li::before { content:"–"; position:absolute; left:-24px; top:0; }
+.itinerary-note-day .in-home { position:absolute; bottom:7px; width:125px; height:5px; left:50%; transform:translateX(-50%); background:#111; border-radius:5px; }
+.itinerary-note-day[data-note-overflow="true"] .in-content { outline:2px solid #c33; }

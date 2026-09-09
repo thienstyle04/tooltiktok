@@ -3,7 +3,10 @@
 import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
+import { generateExportZip } from './exportZip';
+import { ensureRuntimePerformanceForBalancedExport, getRuntimePerformance, markRuntimeResourceFailure } from './runtimePerformance';
 import { buildCaptionExportText } from './captionText';
+import { fitItineraryNote } from './itineraryNote';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
 import { budget72HListHasLegacyScheduleCosts, formatListSetLabel, listIsMain, parseListSetIndex, resolveBudget72HExportList, sanitizeFilePart } from './utils';
@@ -147,8 +150,86 @@ function exportCallbacks(callbacks = {}) {
   };
 }
 
-function exportQualityProfile(quality) {
-  return EXPORT_QUALITY_PROFILES[quality] || EXPORT_QUALITY_PROFILES.optimized;
+function exportQualityProfile(quality, deckId, runtimeMode = 'modern') {
+  const profile = EXPORT_QUALITY_PROFILES[quality] || EXPORT_QUALITY_PROFILES.optimized;
+  if (profile.id !== 'optimized' || runtimeMode === 'legacy') {
+    return runtimeMode === 'legacy' && profile.id === 'optimized'
+      ? { ...profile, label: 'Cân bằng tương thích', compatibility: true, imagePrepareConcurrency: 1, renderChunkSize: 1, captureConcurrency: 1 }
+      : profile;
+  }
+  return { ...profile, label: 'Cân bằng mới', losslessSource: true, fullResolutionV6: deckId === 'spotlight-v6',
+    pixelRatio: deckId === 'spotlight-v6' ? 1080 / 397 + 1e-9 : profile.pixelRatio,
+    sourceImageMaxDimension: 0, sourceImageFormat: 'image/png', sourceImageQuality: 1 };
+}
+
+async function exportRuntimeProfile(quality, cb) {
+  if (quality !== 'optimized') return { mode: 'original', reason: '' };
+  cb.setStatus('Đang kiểm tra sức máy trước khi xuất...');
+  const runtime = await ensureRuntimePerformanceForBalancedExport();
+  if (runtime.mode === 'legacy') cb.setStatus(`Dùng Cân bằng tương thích: ${runtime.reason}`);
+  return runtime;
+}
+
+function isResourceExportError(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  if (/drive|http\s*(403|404|429|5\d\d)|network|mạng|quyền|dữ liệu|overflow|tràn chữ/.test(message)) return false;
+  return /out of memory|memory|allocation|bitmap|canvas|decode|context lost|quota|insufficient resource/.test(message);
+}
+
+async function assertRuntimeResources(profile) {
+  if (!profile.losslessSource) return;
+  const current = await getRuntimePerformance();
+  if (!current.unavailable && current.mode === 'legacy') {
+    throw new Error('Insufficient resource: backend đã xác nhận cần dùng Cân bằng tương thích.');
+  }
+}
+
+function prepareQualityLayout(nodes, profile) {
+  for (const node of nodes) {
+    node.dataset.exportStrict = profile.id === 'original' ? 'false' : 'true';
+    if (!profile.losslessSource) { delete node.dataset.exportLossless; continue; }
+    node.dataset.exportLossless = 'true';
+    // Only normalized portrait layouts need a different design height.
+    if (!isSpotlightV6PageNode(node) && !isSpotlightV5PageNode(node)) continue;
+    // Use the design frame rather than responsive preview dimensions.
+    node.style.setProperty('width', '397px', 'important');
+    node.style.setProperty('height', `${397 * (isSpotlightV5PageNode(node) ? 1.25 : 16 / 9)}px`, 'important');
+    node.style.setProperty('min-height', '0', 'important');
+    node.style.setProperty('max-width', 'none', 'important');
+    node.style.setProperty('flex-shrink', '0', 'important');
+  }
+}
+
+function isV6ExportPage(pageNode) {
+  return ['spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page']
+    .some((name) => pageNode?.classList?.contains(name));
+}
+
+function usesFullResolutionV6(pageNode, options) {
+  return options.pixelRatio === exportQualityProfile('optimized', 'spotlight-v6').pixelRatio
+    && isV6ExportPage(pageNode);
+}
+
+function balancedPixelRatio(node, fallback) {
+  if (node?.dataset?.exportLossless !== 'true') return fallback;
+  const rect = node.getBoundingClientRect();
+  if (isSpotlightV5PageNode(node) || isSpotlightV6PageNode(node)) {
+    return Math.max(1080 / rect.width, (isSpotlightV5PageNode(node) ? 1350 : 1920) / rect.height) + 1e-9;
+  }
+  return fallback;
+}
+
+async function mapExportWithSequentialRetry(items, limit, mapper, canRetry) {
+  // Settle every in-flight capture before retrying, to release competing canvases.
+  const failures = [];
+  await mapWithConcurrency(items, limit, async (item, index) => {
+    try { await mapper(item, index); }
+    catch (error) { failures.push({ item, index, error }); }
+  });
+  for (const failure of failures) {
+    if (!canRetry(failure.item)) throw failure.error;
+    await mapper(failure.item, failure.index);
+  }
 }
 
 function collectDriveFileIdsFromValue(value, ids = new Set()) {
@@ -326,6 +407,7 @@ function parsePixelValue(value, fallback = 0) {
 }
 
 function exportCornerRadiusFor(pageNode, outputWidth) {
+  if (isV6ExportPage(pageNode)) return 0;
   const rect = pageNode.getBoundingClientRect();
   const scale = rect.width > 0 ? outputWidth / rect.width : 1;
   const styles = window.getComputedStyle?.(pageNode);
@@ -742,6 +824,8 @@ async function waitForImageReady(img) {
 
 /** Cho batch export: đợi ảnh trong trang load xong trước khi inline/fetch. */
 async function waitForPageImagesSettled(node, timeoutMs = 20000) {
+  await document.fonts.ready;
+  fitItineraryNote(node, true);
   const images = Array.from(node?.querySelectorAll?.('img') || []);
   if (!images.length) return;
   await Promise.all(images.map(async (img) => {
@@ -997,6 +1081,7 @@ function isSourceClaimed(claimedSources, source) {
 }
 
 async function prepareImageTarget(target, options = {}) {
+  const strict = (target.root || target.img?.closest('.story-page') || target.element?.closest('.story-page'))?.dataset?.exportStrict === 'true';
   const shouldWaitForReady = options.waitForReady !== false;
   const shouldUseUniqueObjectUrl = options.uniqueObjectUrl === true;
   const claimedSources = options.claimedSources || null;
@@ -1007,8 +1092,8 @@ async function prepareImageTarget(target, options = {}) {
   };
   // Cover / ô giữa: được lấy ảnh khác cùng trang khi Drive lỗi.
   // Ô địa điểm: không fallback chéo (tránh sai ảnh quán).
-  const allowCrossImageFallback = options.allowCrossImageFallback === true
-    || (options.allowCrossImageFallback !== false && isSharedBackgroundTarget(target));
+  const allowCrossImageFallback = !strict && (options.allowCrossImageFallback === true
+    || (options.allowCrossImageFallback !== false && isSharedBackgroundTarget(target)));
 
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
@@ -1079,7 +1164,7 @@ async function prepareImageTarget(target, options = {}) {
     const displayBlob = await fitImageBlobToElement(selectedBlob, img, {
       ...blobOptions,
       fitImagesToElement: options.fitImagesToElement,
-      fitPixelRatio: options.fitPixelRatio,
+      fitPixelRatio: balancedPixelRatio(target.root || img.closest('.story-page'), options.fitPixelRatio),
     });
     const shouldUseTargetObjectUrl = Boolean(displayBlob && (shouldUseUniqueObjectUrl || displayBlob !== selectedBlob || ownedObjectUrl));
     const preparedBlobUrl = shouldUseTargetObjectUrl && displayBlob
@@ -1090,6 +1175,7 @@ async function prepareImageTarget(target, options = {}) {
       ownedObjectUrl = null;
     }
     if (!preparedBlobUrl) {
+      if (strict) throw new Error('Không tải được ảnh nguồn; hãy kiểm tra mạng và quyền Drive rồi xuất lại.');
       img.dataset.originalSrc = originalSrc;
       img.dataset.exportFallbackSrc = 'neutral-placeholder';
       img.src = neutralImageDataUrl(target);
@@ -1130,6 +1216,7 @@ async function prepareImageTarget(target, options = {}) {
   if (blob && source) claimExportSource(claimedSources, source);
   const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
   if (!preparedBlobUrl) {
+    if (strict) throw new Error('Không tải được ảnh nền; hãy kiểm tra mạng và quyền Drive rồi xuất lại.');
     const neutralUrl = neutralImageDataUrl(target, 'background');
     element.dataset.originalBackgroundImage = originalBackgroundImage;
     element.style.backgroundImage = originalBackgroundImage.replace(/url\((['"]?)(.*?)\1\)/i, `url("${neutralUrl}")`);
@@ -1170,12 +1257,15 @@ async function prepareImageTargets(targets, options = {}) {
     const claimedSources = getClaimedSet(root);
     // Trong cùng một trang phải claim candidate tuần tự. Chạy song song khiến
     // hai ô cùng thấy một candidate "chưa dùng" rồi lấy trùng ảnh khi primary fail.
-    const prepared = await mapWithConcurrency(rootTargets, 1, (target) => prepareImageTarget(target, {
-      ...options,
-      fallbackContext,
-      claimedSources,
-    }));
-    handles.push(...prepared.filter(Boolean));
+    try {
+      for (const target of rootTargets) {
+        const handle = await prepareImageTarget(target, { ...options, fallbackContext, claimedSources });
+        if (handle) handles.push(handle);
+      }
+    } catch (error) {
+      restoreImagesFromBlobs(handles);
+      throw error;
+    }
   }
   return handles;
 }
@@ -1228,6 +1318,7 @@ function renderPageMarkupForExport(list, page, index) {
 
 function prepareExportStoryPages(pageNodes) {
   pageNodes.forEach((pageNode) => {
+    if (isV6ExportPage(pageNode)) pageNode.style.setProperty('border-radius', '0', 'important');
     pageNode.querySelectorAll('img').forEach((img) => {
       img.loading = 'eager';
       img.decoding = 'sync';
@@ -1465,7 +1556,7 @@ function isSpotlightV5PageNode(pageNode) {
 }
 
 function isSpotlightV6PageNode(pageNode) {
-  return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page'));
+  return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day'));
 }
 
 function normalizeSpotlightV6Canvas(canvas, pageNode) {
@@ -1549,6 +1640,7 @@ function deckShortName(deckId) {
     'spotlight-v5': 'spotlightv5',
     'spotlight-v6': 'spotlightv6',
     'summary-note': 'summary-note',
+    'itinerary-note-2days': 'itinerary-note-2days',
     'carousel-mau-1': 'mau1',
     'one-way-story': 'duong-mot-chieu',
     'spotlight-partner': 'partner',
@@ -1629,8 +1721,21 @@ function renderBatchTaskPages(tasks) {
 }
 
 export async function renderPageBlob(pageNode, options = {}) {
+  // V6 output is full-bleed: preview rounding must never enter the PNG.
+  if (isV6ExportPage(pageNode)) pageNode.style.setProperty('border-radius', '0', 'important');
   const imagesReady = options.imagesReady === true;
-  const pixelRatio = Number(options.pixelRatio || EXPORT_PIXEL_RATIO);
+  const pixelRatio = balancedPixelRatio(pageNode, Number(options.pixelRatio || EXPORT_PIXEL_RATIO));
+  const fullResolutionV6 = usesFullResolutionV6(pageNode, options);
+  const lossless = pageNode.dataset.exportLossless === 'true' || fullResolutionV6;
+  const targetCanvas = () => {
+    if (!lossless) return undefined;
+    const canvas = document.createElement('canvas');
+    const rect = pageNode.getBoundingClientRect();
+    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode);
+    canvas.width = normalized ? 1080 : Math.floor(rect.width * pixelRatio);
+    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : 1920) : Math.floor(rect.height * pixelRatio);
+    return canvas;
+  };
   const renderTimeoutMs = Number(options.renderTimeoutMs || PAGE_RENDER_TIMEOUT_MS);
   const imageFormat = options.imageFormat || 'image/png';
 
@@ -1658,14 +1763,19 @@ export async function renderPageBlob(pageNode, options = {}) {
   const backgroundColor = options.backgroundColor ?? (imageFormat === 'image/jpeg' ? '#ffffff' : null);
   const preferHtml2Canvas = options.preferHtml2Canvas === true;
   const shouldEmbedFonts = options.embedFonts !== false;
-  const allowFallback = options.allowFallback !== false;
+  const allowFallback = options.allowFallback !== false && pageNode.dataset.exportStrict !== 'true';
   const allowEngineFallbacks = options.allowEngineFallbacks !== false;
   let cornersAlreadyClipped = false;
-  const finalizeCanvasBlob = (canvas) => canvasToBlob(
-    normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor), pageNode), pageNode),
-    imageFormat,
-    imageQuality,
-  );
+  const finalizeCanvasBlob = async (canvas) => {
+    const clipped = clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor);
+    const normalized = normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode);
+    try { return await canvasToBlob(normalized, imageFormat, imageQuality); }
+    finally {
+      if (lossless) for (const bitmap of new Set([canvas, clipped, normalized])) {
+        bitmap.width = 0; bitmap.height = 0;
+      }
+    }
+  };
   const finalizeBlob = (blob) => cornersAlreadyClipped ? blob : clipBlobToPageCorners(
     blob,
     pageNode,
@@ -1684,6 +1794,7 @@ export async function renderPageBlob(pageNode, options = {}) {
     if (preferHtml2Canvas || document.visibilityState === 'hidden') {
       try {
         const canvas = await rejectAfter(html2canvas(pageNode, {
+          canvas: targetCanvas(),
           scale: pixelRatio,
           useCORS: true,
           imageTimeout: 30000,
@@ -1742,6 +1853,7 @@ export async function renderPageBlob(pageNode, options = {}) {
     if (allowEngineFallbacks && !preferHtml2Canvas && document.visibilityState !== 'hidden') {
       try {
         const canvas = await rejectAfter(html2canvas(pageNode, {
+          canvas: targetCanvas(),
           scale: pixelRatio,
           useCORS: true,
           imageTimeout: 30000,
@@ -1758,7 +1870,7 @@ export async function renderPageBlob(pageNode, options = {}) {
       }
     }
     if (!allowFallback) {
-      throw new Error('Render ảnh quá thời gian, chưa tạo được ảnh hợp lệ.');
+      throw new Error('Canvas render quá thời gian, chưa tạo được ảnh hợp lệ.');
     }
     const fallbackBlob = await createFallbackPageBlob(pageNode, pixelRatio, imageFormat, imageQuality);
     return await finalizeBlob(fallbackBlob);
@@ -1769,6 +1881,9 @@ export async function renderPageBlob(pageNode, options = {}) {
 }
 
 async function renderPageBlobWithRetry(pageNode, options = {}) {
+  if (usesFullResolutionV6(pageNode, options) || pageNode.dataset.exportLossless === 'true') {
+    options = { ...options, allowFallbackOnRetry: false };
+  }
   const isBatchRender = options.batchRender === true;
   try {
     return await renderPageBlob(pageNode, {
@@ -1842,11 +1957,45 @@ function assertMau1PrefetchReady(deckOrItems, summary) {
   }
 }
 
-export async function exportSelectedPagePng(context, callbacks = {}) {
+let exportQueue = Promise.resolve();
+
+async function runAdaptiveExport(attempt, context, callbacks) {
+  const previous = exportQueue;
+  let release;
+  exportQueue = new Promise(resolve => { release = resolve; });
+  await previous;
+  try {
+    try {
+      return await attempt(context, callbacks);
+    } catch (error) {
+      if (!error?.retryCompatibleExport) throw error;
+      await markRuntimeResourceFailure();
+      exportCallbacks(callbacks).setStatus('Thiếu tài nguyên khi xuất; đang xuất lại toàn bộ bằng Cân bằng tương thích...');
+      return await attempt({ ...context, _compatRetry: true }, callbacks);
+    }
+  } finally {
+    release();
+  }
+}
+
+export function exportSelectedPagePng(context, callbacks = {}) {
+  return runAdaptiveExport(exportSelectedPagePngAttempt, context, callbacks);
+}
+
+export function exportActiveList(context, callbacks = {}) {
+  return runAdaptiveExport(exportActiveListAttempt, context, callbacks);
+}
+
+export function exportBatch(context, callbacks = {}) {
+  return runAdaptiveExport(exportBatchAttempt, context, callbacks);
+}
+
+async function exportSelectedPagePngAttempt(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { deck, list, selectedPageIndex, quality = 'optimized', dataset = null } = context;
-  const qualityProfile = exportQualityProfile(quality);
+  const { deck, list, selectedPageIndex, quality = 'optimized', dataset = null, _compatRetry = false } = context;
   if (!deck || !list) return;
+  const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
+  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode);
 
   const exportList = resolveExportList(deck, list, dataset);
   const page = exportList.pages?.[selectedPageIndex];
@@ -1863,13 +2012,14 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
     const prefetchSummary = await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
     assertMau1PrefetchReady(deck, prefetchSummary);
     const visiblePageNode = findVisibleSelectedPageNode(list, selectedPageIndex);
-    const preferFreshRender = page?.layoutVariant === 'budget-3n2d-table'
+    const preferFreshRender = qualityProfile.losslessSource || page?.layoutVariant === 'budget-3n2d-table'
       || page?.layoutVariant === 'budget-3n2d'
       || page?.layoutVariant === 'grid-8-quaytung-menu'
       || page?.type === 'cover' && String(page?.layoutVariant || '').startsWith('budget');
     const pageNodes = (!preferFreshRender && visiblePageNode)
       ? [cloneVisiblePageForExport(visiblePageNode)]
       : renderPagesForExport(exportList, { pageIndex: selectedPageIndex });
+    prepareQualityLayout(pageNodes, qualityProfile);
     await waitForExportLayout();
     cb.updateProgress(18, `Đang dựng layout trang ${selectedPageIndex + 1}/${list.pages.length}...`);
     const pageNode = pageNodes.find((node) => Number(node.dataset.pageIndex) === selectedPageIndex);
@@ -1886,6 +2036,7 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
     });
     let blob;
     try {
+      await assertRuntimeResources(qualityProfile);
       cb.updateProgress(66, 'Đang render PNG...');
       blob = await renderPageBlobWithRetry(pageNode, {
         imagesReady: true,
@@ -1900,12 +2051,17 @@ export async function exportSelectedPagePng(context, callbacks = {}) {
       restoreImagesFromBlobs(preparedImages);
     }
     cb.updateProgress(92, 'Đang lưu file PNG...');
+    await assertRuntimeResources(qualityProfile);
     if (!downloadBlobFile(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${pageNode.dataset.exportName}`)) {
       throw new Error('Trình duyệt chặn bước tải PNG. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
     }
     cb.completeProgress('Đã xuất xong PNG.');
     cb.setStatus('Đã xuất PNG.');
   } catch (error) {
+    if (!_compatRetry && quality === 'optimized' && runtime.mode === 'modern' && isResourceExportError(error)) {
+      error.retryCompatibleExport = true;
+      throw error;
+    }
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`Page PNG export failed: ${message}`);
     cb.failProgress(`Xuất PNG thất bại: ${message}`);
@@ -1925,18 +2081,22 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
   const pageNodes = (options.pageNodes || renderPagesForExport(list))
     .sort((a, b) => Number(a.dataset.pageIndex) - Number(b.dataset.pageIndex));
 
-  if (pageNodes.length === 0) throw new Error(`List "${list.id}" not found in grid.`);
+  if (pageNodes.length === 0 || pageNodes.length !== list.pages?.length) throw new Error(`List "${list.id}" thiếu trang; đã dừng xuất để tránh ZIP không đầy đủ.`);
 
   const baseDate = Date.now();
   const concurrencyLimit = Number(options.renderConcurrencyLimit || renderConcurrencyLimit());
+  prepareQualityLayout(pageNodes, options);
   for (let i = 0; i < pageNodes.length; i += concurrencyLimit) {
+    await assertRuntimeResources(options);
     const chunk = pageNodes.slice(i, i + concurrencyLimit);
     const chunkStart = i + 1;
     const chunkEnd = i + chunk.length;
     cb.setStatus(`Đang chuẩn bị ảnh "${list.title}": ${chunkStart}-${chunkEnd}/${pageNodes.length}...`);
     options.onChunkPreparing?.({ list, chunkStart, chunkEnd, pageCount: pageNodes.length });
     await Promise.all(chunk.map((pageNode) => waitForPageImagesSettled(pageNode, BATCH_IMAGE_SETTLE_TIMEOUT_MS)));
-    const preparedImages = (await Promise.all(chunk.map((pageNode) => inlineImagesAsBlobs(pageNode, {
+    const preparedImages = [];
+    try {
+      const preparedResults = await Promise.allSettled(chunk.map(pageNode => inlineImagesAsBlobs(pageNode, {
       waitForReady: options.waitForImageReady,
       fitImagesToElement: true,
       fitPixelRatio: options.pixelRatio || EXPORT_PIXEL_RATIO,
@@ -1944,9 +2104,13 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
       sourceImageFormat: options.sourceImageFormat,
       sourceImageQuality: options.sourceImageQuality,
       uniqueObjectUrl: true,
-    })))).flat();
-    try {
-      await Promise.all(chunk.map(async (pageNode, chunkIdx) => {
+      })));
+      for (const result of preparedResults) {
+        if (result.status === 'fulfilled') preparedImages.push(...result.value);
+      }
+      const preparationFailure = preparedResults.find(result => result.status === 'rejected');
+      if (preparationFailure) throw preparationFailure.reason;
+      await mapExportWithSequentialRetry(chunk, options.losslessSource ? 2 : chunk.length, async (pageNode, chunkIdx) => {
         const globalIdx = i + chunkIdx;
         cb.setStatus(`Đang render "${list.title}": ${globalIdx + 1}/${pageNodes.length}...`);
 
@@ -1967,26 +2131,24 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
           compression: 'STORE',
         });
         options.onPageRendered?.({ list, pageNode, pageIndex: globalIdx, pageCount: pageNodes.length });
-      }));
+      }, () => Boolean(options.losslessSource));
     } finally {
       restoreImagesFromBlobs(preparedImages);
     }
   }
 
   await addListMetadataFiles(folder, list);
+  await assertRuntimeResources(options);
 
-  return zipInstance ? null : await currentZip.generateAsync({
-    type: 'blob',
-    compression: 'STORE',
-    streamFiles: true,
-  }, options.onZipProgress);
+  return zipInstance ? null : await generateExportZip(currentZip, options.onZipProgress);
 }
 
-export async function exportActiveList(context, callbacks = {}) {
+async function exportActiveListAttempt(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { deck, list, quality = 'optimized', dataset = null } = context;
-  const qualityProfile = exportQualityProfile(quality);
+  const { deck, list, quality = 'optimized', dataset = null, _compatRetry = false } = context;
   if (!deck || !list) return;
+  const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
+  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode);
 
   const exportList = resolveExportList(deck, list, dataset);
   assertBudget72HExportReady(deck, exportList);
@@ -2007,6 +2169,9 @@ export async function exportActiveList(context, callbacks = {}) {
     const blob = await generateZipForList(exportList, null, {
       pageNodes,
       deckId: deck.id,
+      fullResolutionV6: qualityProfile.fullResolutionV6,
+      losslessSource: qualityProfile.losslessSource,
+      compatibility: qualityProfile.compatibility,
       pixelRatio: qualityProfile.pixelRatio,
       maxImageDimension: qualityProfile.sourceImageMaxDimension,
       sourceImageFormat: qualityProfile.sourceImageFormat,
@@ -2030,6 +2195,7 @@ export async function exportActiveList(context, callbacks = {}) {
       },
     }, cb);
     cb.updateProgress(99, 'Đang lưu file ZIP...');
+    await assertRuntimeResources(qualityProfile);
     const setLabel = formatListSetLabel(parseListSetIndex(list));
     if (!downloadBlobFile(blob, `${deckShortName(deck.id)}-${setLabel}.zip`)) {
       throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
@@ -2037,6 +2203,10 @@ export async function exportActiveList(context, callbacks = {}) {
     cb.completeProgress(`Đã xuất xong ZIP cho "${list.title}".`);
     cb.setStatus(`Đã xong ZIP cho list "${list.title}".`);
   } catch (error) {
+    if (!_compatRetry && quality === 'optimized' && runtime.mode === 'modern' && isResourceExportError(error)) {
+      error.retryCompatibleExport = true;
+      throw error;
+    }
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`List ZIP export failed: ${message}`);
     cb.failProgress(`Xuất ZIP thất bại: ${message}`);
@@ -2048,11 +2218,12 @@ export async function exportActiveList(context, callbacks = {}) {
   }
 }
 
-export async function exportBatch(context, callbacks = {}) {
+async function exportBatchAttempt(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
-  const { dataset, selectedListIds, quality = 'optimized' } = context;
+  const { dataset, selectedListIds, quality = 'optimized', _compatRetry = false } = context;
   if (!dataset || selectedListIds.size === 0) return;
-  const qualityProfile = exportQualityProfile(quality);
+  const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
+  const qualityProfile = exportQualityProfile(quality, undefined, runtime.mode);
 
   const listIds = Array.from(selectedListIds);
   const allLists = [];
@@ -2098,17 +2269,17 @@ export async function exportBatch(context, callbacks = {}) {
       const setIndex = parseListSetIndex(item.list);
       return mainZip.folder(batchFolderName(item.deck.id, setIndex, dataset));
     });
-    await mapWithConcurrency(orderedLists, 6, (item, index) => addListMetadataFiles(folders[index], item.list));
+    await mapWithConcurrency(orderedLists, qualityProfile.compatibility ? 1 : 6, (item, index) => addListMetadataFiles(folders[index], item.list));
 
     const pageTasks = [];
     orderedLists.forEach((item, listIndex) => {
       const pages = item.list.pages || [];
       if (pages.length === 0) {
-        console.warn(`[export] Bỏ qua list "${item.list.id}" vì không có trang.`);
-        return;
+        throw new Error(`List "${item.list.id}" không có trang; đã dừng xuất.`);
       }
       pages.forEach((page, pageIndex) => {
         pageTasks.push({
+          qualityProfile: exportQualityProfile(quality, item.deck.id, runtime.mode),
           list: item.list,
           listIndex,
           page,
@@ -2123,6 +2294,7 @@ export async function exportBatch(context, callbacks = {}) {
     const concurrencyLimit = batchRenderChunkSize(qualityProfile);
     let pagesSinceLastTrim = 0;
     for (let i = 0; i < pageTasks.length; i += concurrencyLimit) {
+      await assertRuntimeResources(qualityProfile);
       const chunk = pageTasks.slice(i, i + concurrencyLimit);
       const chunkStart = i + 1;
       const chunkEnd = i + chunk.length;
@@ -2131,16 +2303,24 @@ export async function exportBatch(context, callbacks = {}) {
       const renderedChunk = renderBatchTaskPages(chunk);
       await waitForExportLayout();
       const validChunk = renderedChunk.filter((task) => task.pageNode);
-      if (validChunk.length === 0) {
-        console.warn('[export] Chunk không có trang nào render được, bỏ qua.');
-        continue;
-      }
-      if (validChunk.length < renderedChunk.length) {
-        console.warn(`[export] ${renderedChunk.length - validChunk.length} trang không render được, bỏ qua.`);
+      validChunk.forEach((task) => prepareQualityLayout([task.pageNode], task.qualityProfile));
+      if (validChunk.length !== chunk.length) {
+        throw new Error('Thiếu trang khi dựng layout; đã dừng xuất để tránh ZIP không đầy đủ.');
       }
       // Đợi ảnh preview/load xong trước khi inline — tránh fetch lại Drive rồi ra nền xám.
       await Promise.all(validChunk.map((task) => waitForPageImagesSettled(task.pageNode, BATCH_IMAGE_SETTLE_TIMEOUT_MS)));
-      const preparedImages = await inlineImagesForNodes(validChunk.map((task) => task.pageNode), {
+      const preparedImages = [];
+      try {
+      // Keep image caches/profile selection isolated in mixed-template batches.
+      const profileGroups = new Map();
+      for (const task of validChunk) {
+        const key = task.qualityProfile.fullResolutionV6 ? 'v6' : 'standard';
+        if (!profileGroups.has(key)) profileGroups.set(key, []);
+        profileGroups.get(key).push(task);
+      }
+      for (const tasks of profileGroups.values()) {
+        const qualityProfile = tasks[0].qualityProfile;
+        preparedImages.push(...await inlineImagesForNodes(tasks.map((task) => task.pageNode), {
         waitForReady: true,
         concurrency: qualityProfile.imagePrepareConcurrency,
         maxImageDimension: qualityProfile.sourceImageMaxDimension,
@@ -2149,10 +2329,10 @@ export async function exportBatch(context, callbacks = {}) {
         fitImagesToElement: true,
         fitPixelRatio: qualityProfile.pixelRatio,
         uniqueObjectUrl: true,
-      });
-
-      try {
-        await mapWithConcurrency(validChunk, batchCaptureConcurrencyForProfile(qualityProfile), async (task, chunkIdx) => {
+      }));
+      }
+        await mapExportWithSequentialRetry(validChunk, batchCaptureConcurrencyForProfile(qualityProfile), async (task, chunkIdx) => {
+          const qualityProfile = task.qualityProfile;
           const globalIdx = i + chunkIdx;
           const blob = await renderPageBlobWithRetry(task.pageNode, {
             batchRender: true,
@@ -2173,7 +2353,7 @@ export async function exportBatch(context, callbacks = {}) {
           });
           renderedPages += 1;
           cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang render ${qualityProfile.label} ${renderedPages}/${totalPages} trang...`);
-        });
+        }, (task) => Boolean(task.qualityProfile.losslessSource));
       } finally {
         restoreImagesFromBlobs(preparedImages);
         clearBatchExportRoot();
@@ -2187,11 +2367,7 @@ export async function exportBatch(context, callbacks = {}) {
     }
 
     cb.updateProgress(90, 'Đang đóng file ZIP hàng loạt...');
-    const archive = await mainZip.generateAsync({
-      type: 'blob',
-      compression: 'STORE',
-      streamFiles: true,
-    }, (metadata) => {
+    const archive = await generateExportZip(mainZip, (metadata) => {
       const zipPercent = Number(metadata?.percent || 0);
       cb.updateProgress(
         Math.min(98, 90 + (zipPercent * 0.08)),
@@ -2199,6 +2375,7 @@ export async function exportBatch(context, callbacks = {}) {
       );
     });
     cb.updateProgress(99, 'Đang lưu file ZIP hàng loạt...');
+    await assertRuntimeResources(qualityProfile);
     // Yield to event loop before download — lets the browser settle after
     // heavy ZIP generation so the download trigger is more reliable.
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -2216,6 +2393,10 @@ export async function exportBatch(context, callbacks = {}) {
       })),
     };
   } catch (error) {
+    if (!_compatRetry && quality === 'optimized' && runtime.mode === 'modern' && isResourceExportError(error)) {
+      error.retryCompatibleExport = true;
+      throw error;
+    }
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`Batch export failed: ${message}`);
     cb.failProgress(`Xuất hàng loạt thất bại: ${message}`);

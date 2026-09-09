@@ -7,6 +7,7 @@ import {
   GuideDeck,
   GuideDeckList,
   GuideItem,
+  HinhNenImageUrlPools,
   ImageLibraryFolderEntry,
   ListPage,
   MutantContentStyle,
@@ -5257,6 +5258,7 @@ export function buildPagesForDeck(
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
   coverImageUrls: string[] = [],
+  hinhNenImagePools?: HinhNenImageUrlPools,
 ): DeckPage[] {
   if (isV2DeckId(deckId)) {
     return buildPagesForDeckV2(
@@ -5268,6 +5270,7 @@ export function buildPagesForDeck(
       globalUsedItemIds,
       globalUsedImageUrls,
       coverImageUrls,
+      hinhNenImagePools,
     );
   }
   const pools = createDeckBuildPools(itemsBySection);
@@ -5297,8 +5300,9 @@ export function buildDecks(
   coverImageUrls: string[] = [],
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
+  hinhNenImagePools?: HinhNenImageUrlPools,
 ): GuideDeck[] {
-  const common = { itemsBySection, imageUrls, libraryEntries, coverImageUrls, globalUsedItemIds, globalUsedImageUrls };
+  const common = { itemsBySection, imageUrls, libraryEntries, coverImageUrls, hinhNenImagePools, globalUsedItemIds, globalUsedImageUrls };
   return [
     {
       id: 'itinerary-3n2d',

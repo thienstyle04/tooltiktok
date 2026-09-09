@@ -740,6 +740,7 @@ const V2_LIST_VARIANTS = new Set([
   'spotlight-v6-image',
   'spotlight-v6-page',
   'summary-note-page',
+  'itinerary-note-day',
   'carousel-mau-1-page',
   'one-way-story-road',
   'one-way-story-slope',
@@ -1832,6 +1833,7 @@ function renderSpotlightV4VenuePage(page, index, listId, list) {
   `;
 }
 
+import { renderItineraryNotePage } from './itineraryNote';
 function renderSummaryNotePage(page, index, listId) {
   const title = page.title !== undefined ? String(page.title || '').trim() : '';
   const rows = (page.items || []).slice(0, 8).map((item) => {
@@ -1860,7 +1862,6 @@ function renderSpotlightV6Cover(page, index, listId, coverTitle, backgroundImage
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
       <div class="spotlight-v6-bg">${imageUrl ? renderPreviewImage(imageUrl, hookTitle || 'cover') : ''}</div>
-      <div class="spotlight-v6-shade" aria-hidden="true"></div>
       ${hookTitle ? `<h1 class="spotlight-v6-cover-title">${escapeHtml(hookTitle)}</h1>` : ''}
     </article>
   `;
@@ -1883,7 +1884,6 @@ function renderSpotlightV6VenuePage(page, index, listId, list) {
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || 'dia-diem')}.png">
       <div class="spotlight-v6-bg">${imageUrl ? renderPreviewImage(imageUrl, name || 'Địa điểm') : ''}</div>
-      <div class="spotlight-v6-shade" aria-hidden="true"></div>
       <div class="spotlight-v6-page-copy">
         ${name ? `<h2 class="spotlight-v6-page-name">${escapeHtml(name)}</h2>` : ''}
         ${address ? `<p class="spotlight-v6-page-address">${escapeHtml(address)}</p>` : ''}
@@ -2395,6 +2395,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   if (page.layoutVariant === 'spotlight-v4-image') {
     return renderSpotlightV4ImagePage(page, index, listId);
   }
+  if (page.layoutVariant === 'itinerary-note-day') return renderItineraryNotePage(page, index, listId);
   if (page.layoutVariant === 'summary-note-page') {
     return renderSummaryNotePage(page, index, listId);
   }
