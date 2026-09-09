@@ -15,7 +15,7 @@ assert.equal(classifyHinhNenImageGroup('ảnh ramdom'), 'random');
 assert.equal(classifyHinhNenImageGroup('ảnh 12'), 'default');
 
 const rows = [
-  ['STT', 'Link_drive'],
+  ['STT', 'Link_drive', '', ''],
   ['1', 'Ảnh 1'],
   ['2', 'Ảnh mảng xanh'],
   ['3', 'Ảnh tone đen'],
@@ -23,6 +23,7 @@ const rows = [
   ['5', 'Ảnh ramdom'],
 ];
 const sheet = XLSX.utils.aoa_to_sheet(rows);
+sheet.D3 = { t: 's', v: 'Hook mảng xanh', l: { Target: 'https://docs.google.com/document/d/green-hook-doc-id/edit' } };
 const ids = {
   default: 'default-file-id-0001',
   green: 'green-file-id-0001',
@@ -48,7 +49,8 @@ const source: SheetWorkbookSource = {
 
 async function main(): Promise<void> {
   const manifest = await buildSheetDriveManifest(source, emptySheetDriveManifest());
-  assert.equal(manifest.version, 2);
+  assert.equal(manifest.version, 3);
+  assert.equal(manifest.hookSourceGroups?.green, 'https://docs.google.com/document/d/green-hook-doc-id/edit');
   assert.deepEqual(manifest.coverImages.map((entry) => entry.fileId), [ids.default]);
   assert.deepEqual(manifest.coverImageGroups?.default.map((entry) => entry.fileId), [ids.default]);
   assert.deepEqual(manifest.coverImageGroups?.green.map((entry) => entry.fileId), [ids.green]);
@@ -62,7 +64,7 @@ async function main(): Promise<void> {
   assert.ok(!defaultIds.has(ids.dark));
   assert.ok(!defaultIds.has(ids.random));
   assert.ok(!defaultIds.has(ids.ramdom));
-  console.log('PASS Hinh_nen: default/green/dark/random được tách riêng, random và ramdom cùng nhóm.');
+  console.log('PASS Hinh_nen: tách pool ảnh và đọc đúng hyperlink Hook mảng xanh cùng dòng.');
 }
 
 void main();

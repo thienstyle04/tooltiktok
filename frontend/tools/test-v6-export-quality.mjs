@@ -18,7 +18,7 @@ try {
     const t = TestExport;
     const check = (ok, message) => { if (!ok) throw new Error(message); };
     const standard = t.exportQualityProfile('optimized', 'spotlight-v4');
-    for (const id of ['spotlight-v4', 'spotlight-v5', 'spotlight-v6', 'summary-note', 'itinerary-note-2days']) {
+    for (const id of ['spotlight-v4', 'spotlight-v5', 'spotlight-v6', 'spotlight-v6-green', 'summary-note', 'itinerary-note-2days']) {
       const legacy = t.exportQualityProfile('optimized', id, 'legacy');
       check(legacy.compatibility && legacy.pixelRatio === 2.5 && legacy.sourceImageMaxDimension === 3000 && legacy.sourceImageFormat === 'image/jpeg' && legacy.sourceImageQuality === 0.97, 'Wrong compatible image profile');
       check(legacy.imagePrepareConcurrency === 1 && legacy.captureConcurrency === 1 && legacy.renderChunkSize === 1, 'Wrong compatible concurrency');
@@ -31,6 +31,8 @@ try {
     }
     check(t.exportQualityProfile('original', 'spotlight-v6') === t.exportQualityProfile('original'), 'Changed Original');
     const profile = t.exportQualityProfile('optimized', 'spotlight-v6');
+    const greenProfile = t.exportQualityProfile('optimized', 'spotlight-v6-green');
+    check(greenProfile.fullResolutionV6 && greenProfile.pixelRatio === profile.pixelRatio && greenProfile.sourceImageFormat === 'image/png', 'Green V6 does not share full-resolution profile');
     check(profile.sourceImageMaxDimension === 0 && profile.sourceImageFormat === 'image/png', 'Wrong source policy');
     check(profile.captureConcurrency === standard.captureConcurrency && profile.renderChunkSize === standard.renderChunkSize, 'Changed scheduling');
     const source = document.createElement('canvas'); source.width = 3600; source.height = 2400;
