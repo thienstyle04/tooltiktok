@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { exportActiveList, exportBatch, exportSelectedPagePng } from '../lib/exportClient';
+import { getRuntimePerformance as ensureRuntimePerformanceForBalancedExport } from '../lib/runtimePerformance';
 import { apiFetch, fetchGuideDataset, formatApiError } from '../lib/apiClient';
 import {
   clearCachedDataset,
@@ -133,6 +134,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v5',
   'spotlight-v6',
   'summary-note',
+  'itinerary-note-2days',
   'carousel-mau-1',
   'one-way-story',
   'itinerary-4n3d-stack',
@@ -306,6 +308,7 @@ export default function DeckStudio({ initialDataset = null }) {
     percent: 0,
     message: 'Đang kiểm tra cache ảnh Google Drive...',
   });
+  const [runtimePerformance, setRuntimePerformance] = useState({ mode: 'checking', reason: 'Đang đánh giá khả năng xử lý của máy.' });
   const [driveCacheReadyNotice, setDriveCacheReadyNotice] = useState(false);
   const [dismissedCacheDestinationId, setDismissedCacheDestinationId] = useState(null);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
@@ -413,6 +416,14 @@ export default function DeckStudio({ initialDataset = null }) {
     if (!response.ok) throw new Error(`Không tải được danh sách điểm đến: HTTP ${response.status}`);
     const payload = await response.json();
     setDestinationInfo(payload);
+    return payload;
+  }, []);
+
+  const loadRuntimePerformance = useCallback(async () => {
+    const response = await apiFetch('/api/runtime-performance', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Không tải được trạng thái sức máy: HTTP ${response.status}`);
+    const payload = await response.json();
+    setRuntimePerformance(payload);
     return payload;
   }, []);
 
@@ -671,6 +682,7 @@ export default function DeckStudio({ initialDataset = null }) {
 
     const bootstrap = async () => {
       loadHookSources().catch((error) => console.error(error));
+      loadRuntimePerformance().catch((error) => console.error(error));
       let destinations = null;
       try {
         destinations = await loadDestinations();
@@ -732,7 +744,7 @@ export default function DeckStudio({ initialDataset = null }) {
     return () => {
       cancelled = true;
     };
-  }, [applyDataset, initialDataset, loadDataset, loadDestinations, loadHookSources]);
+  }, [applyDataset, initialDataset, loadDataset, loadDestinations, loadHookSources, loadRuntimePerformance]);
 
   useEffect(() => {
     let cancelled = false;
@@ -922,6 +934,7 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
+                ...(updates.items !== undefined && page.layoutVariant === 'itinerary-note-day' ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
               };
@@ -958,11 +971,12 @@ export default function DeckStudio({ initialDataset = null }) {
         body: JSON.stringify({
           title: activePage.title || '',
           subtitle: activePage.subtitle || '',
+          ...(activePage.layoutVariant === 'itinerary-note-day' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
         }),
       });
       const payload = await readApiPayload(response);
       if (!response.ok) throw new Error(apiErrorMessage(payload, `Lưu nội dung trang thất bại: HTTP ${response.status}`));
-      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle });
+      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle, ...(payload.items ? { items: payload.items } : {}) });
       if (result?.nextDataset) writeCachedDataset(result.nextDataset);
       setStatus(`Đã lưu nội dung trang ${selectedPageIndex + 1}.`);
     } catch (error) {
@@ -1034,7 +1048,7 @@ export default function DeckStudio({ initialDataset = null }) {
     }
     const isNonAiTemplate = activeDeck.id === 'carousel-mau-1'
       || activeDeck.id === 'one-way-story'
-      || activeDeck.id === 'summary-note';
+      || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-2days');
     const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
       && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
     const coverTitle = (caption.coverTitle || '').trim();
@@ -1044,9 +1058,20 @@ export default function DeckStudio({ initialDataset = null }) {
     }
 
     setBusy(true);
-    setStatus(isNonAiTemplate
+    setStatus('Đang kiểm tra sức máy trước khi tạo list...');
+    try {
+      const runtime = await ensureRuntimePerformanceForBalancedExport();
+      setRuntimePerformance(runtime);
+      setStatus(runtime.mode === 'legacy'
+        ? `Tạo list ở chế độ tương thích: ${runtime.reason}`
+        : (isNonAiTemplate
+          ? `Đang tạo ${activeDeck.navTitle} từ dữ liệu...`
+          : `Đang tạo list AI mới trong deck "${activeDeck.navTitle}"...`));
+    } catch {
+      setStatus(isNonAiTemplate
       ? `Đang tạo ${activeDeck.navTitle} từ dữ liệu...`
       : `Đang tạo list AI mới trong deck "${activeDeck.navTitle}"...`);
+    }
     try {
       const response = await apiFetch('/api/decks/generate-from-caption', {
         method: 'POST',
@@ -1099,8 +1124,13 @@ export default function DeckStudio({ initialDataset = null }) {
     creatingListsRef.current = true;
     const requestId = `${activeDeck.id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     setBusy(true);
-    setStatus(`Đang tạo ${safeCount} list AI (xoay vòng tone)...`);
+    setStatus('Đang kiểm tra sức máy trước khi tạo list...');
     try {
+      const runtime = await ensureRuntimePerformanceForBalancedExport();
+      setRuntimePerformance(runtime);
+      setStatus(runtime.mode === 'legacy'
+        ? `Đang tạo ${safeCount} list ở chế độ tương thích...`
+        : `Đang tạo ${safeCount} list AI (xoay vòng tone)...`);
       const response = await apiFetch('/api/decks/generate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1139,8 +1169,13 @@ export default function DeckStudio({ initialDataset = null }) {
       return;
     }
     setBusy(true);
-    setStatus(`Đang tạo spotlight cho "${partner.name}"...`);
+    setStatus('Đang kiểm tra sức máy trước khi tạo spotlight...');
     try {
+      const runtime = await ensureRuntimePerformanceForBalancedExport();
+      setRuntimePerformance(runtime);
+      setStatus(runtime.mode === 'legacy'
+        ? `Đang tạo spotlight ở chế độ tương thích cho "${partner.name}"...`
+        : `Đang tạo spotlight cho "${partner.name}"...`);
       const response = await apiFetch('/api/decks/generate-partner-spotlight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1345,7 +1380,8 @@ export default function DeckStudio({ initialDataset = null }) {
       selectedPageIndex,
       quality: exportQuality,
     }, exportCb);
-  }, [activeDeck, activeList, dataset, exportCb, exportQuality, selectedPageIndex]);
+    await loadRuntimePerformance().catch(() => undefined);
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, loadRuntimePerformance, selectedPageIndex]);
 
   const handleExportList = useCallback(async () => {
     await exportActiveList({
@@ -1354,13 +1390,15 @@ export default function DeckStudio({ initialDataset = null }) {
       dataset,
       quality: exportQuality,
     }, exportCb);
-  }, [activeDeck, activeList, dataset, exportCb, exportQuality]);
+    await loadRuntimePerformance().catch(() => undefined);
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, loadRuntimePerformance]);
 
   const handleExportBatch = useCallback(async (options = {}) => {
     const shouldDelete = options.deleteAfterExport !== false;
     setExportModalOpen(false);
     setActiveView('preview');
     const result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality }, exportCb);
+    await loadRuntimePerformance().catch(() => undefined);
     setSelectedListsForExport(new Set());
     if (result?.success && shouldDelete) {
       setBusy(true);
@@ -1372,7 +1410,7 @@ export default function DeckStudio({ initialDataset = null }) {
         setBusy(false);
       }
     }
-  }, [dataset, exportCb, exportQuality, removeExportedGeneratedLists, selectedListsForExport]);
+  }, [dataset, exportCb, exportQuality, loadRuntimePerformance, removeExportedGeneratedLists, selectedListsForExport]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -1796,6 +1834,7 @@ export default function DeckStudio({ initialDataset = null }) {
         setSelectedIds={setSelectedListsForExport}
         quality={exportQuality}
         setQuality={setExportQuality}
+        runtimePerformance={runtimePerformance}
         busy={busy}
         onClose={() => {
           setExportModalOpen(false);

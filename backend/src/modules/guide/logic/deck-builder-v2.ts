@@ -4,6 +4,7 @@ import type {
   GuideDeck,
   GuideDeckList,
   GuideItem,
+  HinhNenImageUrlPools,
   ImageLibraryFolderEntry,
   ListPage,
   PageItem,
@@ -42,6 +43,7 @@ import type { TitlePlacement } from '../../../common/interfaces/guide.types';
 import { BUNDLED_ONE_WAY_HOOKS } from '../sync/hook-fallbacks';
 import { getActiveDestinationLocalize } from '../sync/destination-localize';
 
+import { buildItineraryNotePages, ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './itinerary-note';
 export const GRID_8_FEED_TEMPLATE_VERSION = 17;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
 
@@ -66,7 +68,7 @@ export const SPOTLIGHT_V2_TEMPLATE_VERSION = 17;
 export const SPOTLIGHT_V3_TEMPLATE_VERSION = 2;
 export const SPOTLIGHT_V4_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V5_TEMPLATE_VERSION = 1;
-export const SPOTLIGHT_V6_TEMPLATE_VERSION = 1;
+export const SPOTLIGHT_V6_TEMPLATE_VERSION = 2;
 export const SUMMARY_NOTE_TEMPLATE_VERSION = 1;
 export const CAROUSEL_MAU_1_TEMPLATE_VERSION = 1;
 export const POV_3_V2_TEMPLATE_VERSION = 13;
@@ -85,6 +87,7 @@ export const V2_DECK_IDS = [
   'spotlight-v5',
   'spotlight-v6',
   'summary-note',
+  'itinerary-note-2days',
   'carousel-mau-1',
   'pov-3-v2',
   'itinerary-4n3d-stack',
@@ -114,6 +117,7 @@ type DeckBuildCommon = {
   imageUrls: string[];
   libraryEntries: ImageLibraryFolderEntry[];
   coverImageUrls: string[];
+  hinhNenImagePools?: HinhNenImageUrlPools;
   globalUsedItemIds?: Set<string>;
   globalUsedImageUrls?: Set<string>;
 };
@@ -600,24 +604,81 @@ function pickSpotlightV4Venues(
  * Ảnh cover được chọn từ pool Hinh_nen
  * và ưu tiên URL chưa dùng ở các list trước; khi hết pool thì mở vòng mới.
  */
+type SpotlightBackgroundOverride = {
+  coverImageUrls: string[];
+  interleavedImageUrls: string[];
+  templateName: string;
+  coverPoolName: string;
+  interleavedPoolName: string;
+};
+
+function pickSpotlightBackgroundImages(
+  pool: string[],
+  count: number,
+  seed: string,
+  globallyUsedImages: Set<string>,
+): string[] {
+  const fresh = pool.filter((url) => !globallyUsedImages.has(url));
+  const candidates = fresh.length >= count ? fresh : pool;
+  return [...candidates]
+    .sort((left, right) => stableHash(`${seed}:${left}`) - stableHash(`${seed}:${right}`))
+    .slice(0, count);
+}
+
 export function buildSpotlightV4Pages(
   common: DeckBuildCommon,
   seedPrefix: string,
   options: SpotlightV3BuildContext = {},
+  backgroundOverride?: SpotlightBackgroundOverride,
 ): DeckPage[] {
-  const imagePool = uniquePortableImages(common.coverImageUrls).filter(spotlightV4BackgroundAllowed);
-  if (imagePool.length < SPOTLIGHT_V4_BACKGROUND_COUNT) {
-    throw new Error(`Mẫu Spotlight V4 cần ít nhất ${SPOTLIGHT_V4_BACKGROUND_COUNT} ảnh Hinh_nen khác nhau (${imagePool.length}/${SPOTLIGHT_V4_BACKGROUND_COUNT}).`);
-  }
-
   const globallyUsedImages = common.globalUsedImageUrls || new Set<string>();
-  const freshImages = imagePool.filter((url) => !globallyUsedImages.has(url));
-  const candidateImages = freshImages.length >= SPOTLIGHT_V4_BACKGROUND_COUNT ? freshImages : imagePool;
-  const selectedImages = [...candidateImages]
-    .sort((left, right) => stableHash(`${seedPrefix}:spotlight-v4-image:${left}`) - stableHash(`${seedPrefix}:spotlight-v4-image:${right}`))
-    .slice(0, SPOTLIGHT_V4_BACKGROUND_COUNT);
+  let selectedImages: string[];
+  if (backgroundOverride) {
+    const coverPool = uniquePortableImages(backgroundOverride.coverImageUrls).filter(spotlightV4BackgroundAllowed);
+    if (coverPool.length < 1) {
+      throw new Error(
+        `${backgroundOverride.templateName} cần ít nhất 1 ảnh trong folder ${backgroundOverride.coverPoolName} (${coverPool.length}/1).`,
+      );
+    }
+    const selectedCover = pickSpotlightBackgroundImages(
+      coverPool,
+      1,
+      `${seedPrefix}:special-cover`,
+      globallyUsedImages,
+    )[0];
+    const interleavedPool = uniquePortableImages(backgroundOverride.interleavedImageUrls)
+      .filter(spotlightV4BackgroundAllowed)
+      .filter((url) => url !== selectedCover);
+    const interleavedCount = SPOTLIGHT_V4_BACKGROUND_COUNT - 1;
+    if (interleavedPool.length < interleavedCount) {
+      throw new Error(
+        `${backgroundOverride.templateName} cần ít nhất ${interleavedCount} ảnh khác nhau trong folder ${backgroundOverride.interleavedPoolName} (${interleavedPool.length}/${interleavedCount}).`,
+      );
+    }
+    const selectedInterleaved = pickSpotlightBackgroundImages(
+      interleavedPool,
+      interleavedCount,
+      `${seedPrefix}:special-interleaved`,
+      globallyUsedImages,
+    );
+    selectedImages = [selectedCover, ...selectedInterleaved];
+  } else {
+    const imagePool = uniquePortableImages(common.coverImageUrls).filter(spotlightV4BackgroundAllowed);
+    if (imagePool.length < SPOTLIGHT_V4_BACKGROUND_COUNT) {
+      throw new Error(`Mẫu Spotlight V4 cần ít nhất ${SPOTLIGHT_V4_BACKGROUND_COUNT} ảnh Hinh_nen khác nhau (${imagePool.length}/${SPOTLIGHT_V4_BACKGROUND_COUNT}).`);
+    }
+    selectedImages = pickSpotlightBackgroundImages(
+      imagePool,
+      SPOTLIGHT_V4_BACKGROUND_COUNT,
+      `${seedPrefix}:spotlight-v4-image`,
+      globallyUsedImages,
+    );
+  }
   if (selectedImages.length < SPOTLIGHT_V4_BACKGROUND_COUNT) {
-    throw new Error(`Mẫu Spotlight V4 cần ít nhất ${SPOTLIGHT_V4_BACKGROUND_COUNT} ảnh Hinh_nen khác nhau (${selectedImages.length}/${SPOTLIGHT_V4_BACKGROUND_COUNT}).`);
+    const templateName = backgroundOverride?.templateName || 'Spotlight V4';
+    throw new Error(
+      `${templateName} không chọn đủ ${SPOTLIGHT_V4_BACKGROUND_COUNT} ảnh nền khác nhau (${selectedImages.length}/${SPOTLIGHT_V4_BACKGROUND_COUNT}).`,
+    );
   }
   selectedImages.forEach((url) => globallyUsedImages.add(url));
 
@@ -734,7 +795,22 @@ export function buildSpotlightV6Pages(
   seedPrefix: string,
   options: SpotlightV3BuildContext = {},
 ): DeckPage[] {
-  const pages = buildSpotlightV4Pages(common, `${seedPrefix}:spotlight-v6`, options);
+  const useDalatSpecialPools = String(options.destinationId || '').toLowerCase() === 'dalat';
+  const backgroundOverride: SpotlightBackgroundOverride | undefined = useDalatSpecialPools
+    ? {
+        coverImageUrls: common.hinhNenImagePools?.dark || [],
+        interleavedImageUrls: common.hinhNenImagePools?.random || [],
+        templateName: 'Mẫu Spotlight V6',
+        coverPoolName: 'Ảnh tone đen',
+        interleavedPoolName: 'Ảnh random',
+      }
+    : undefined;
+  const pages = buildSpotlightV4Pages(
+    common,
+    `${seedPrefix}:spotlight-v6`,
+    options,
+    backgroundOverride,
+  );
   return pages.map((page): DeckPage => {
     const layout = page.type === 'cover'
       ? 'spotlight-v6-cover'
@@ -1358,6 +1434,7 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'spotlight-v5': SPOTLIGHT_V5_TEMPLATE_VERSION,
   'spotlight-v6': SPOTLIGHT_V6_TEMPLATE_VERSION,
   'summary-note': SUMMARY_NOTE_TEMPLATE_VERSION,
+  'itinerary-note-2days': ITINERARY_NOTE_TEMPLATE_VERSION,
   'carousel-mau-1': CAROUSEL_MAU_1_TEMPLATE_VERSION,
   'pov-3-v2': POV_3_V2_TEMPLATE_VERSION,
   'itinerary-4n3d-stack': ITINERARY_4N3D_STACK_TEMPLATE_VERSION,
@@ -1414,6 +1491,7 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     description: 'Biến thể Spotlight V4 khung 9:16: hook hiện hành, ảnh nền xen kẽ và 8 địa điểm; title căn giữa.',
     listName: 'List spotlight V6',
   },
+  'itinerary-note-2days': { nav: 'Lịch trình Note 2 ngày', title: 'Lịch trình Note 2 ngày', description: 'Hai trang ghi chú, mỗi trang một ngày với 7 hoạt động đa dạng.', listName: 'Lịch trình Note 2 ngày' },
   'summary-note': {
     nav: 'Tổng hợp địa điểm',
     title: 'Trang note tổng hợp địa điểm',
@@ -1490,12 +1568,14 @@ export function buildPagesForDeckV2(
   globalUsedItemIds?: Set<string>,
   globalUsedImageUrls?: Set<string>,
   coverImageUrls: string[] = [],
+  hinhNenImagePools?: HinhNenImageUrlPools,
 ): DeckPage[] {
   const common: DeckBuildCommon = {
     itemsBySection,
     imageUrls,
     libraryEntries,
     coverImageUrls,
+    hinhNenImagePools,
     globalUsedItemIds,
     globalUsedImageUrls,
   };
@@ -1517,6 +1597,8 @@ export function buildPagesForDeckV2(
       return buildSpotlightV5Pages(common, seedPrefix);
     case 'spotlight-v6':
       return buildSpotlightV6Pages(common, seedPrefix, getSpotlightV3BuildContext());
+    case 'itinerary-note-2days':
+      return buildItineraryNotePages(common, seedPrefix);
     case 'summary-note':
       return buildSummaryNotePages(common, seedPrefix);
     case 'carousel-mau-1':
@@ -1545,6 +1627,7 @@ function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): GuideDeckLi
     common.globalUsedItemIds,
     common.globalUsedImageUrls,
     common.coverImageUrls,
+    common.hinhNenImagePools,
   );
   if (pages.length === 0) return null;
 
@@ -1559,6 +1642,9 @@ function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): GuideDeckLi
   list.templateVersion = V2_TEMPLATE_VERSIONS[deckId];
   if (deckId === 'spotlight-v5') list.canvasPreset = 'tiktok-4x5';
   if (deckId === 'spotlight-v6') list.canvasPreset = 'tiktok-9x16';
+  if (deckId === 'itinerary-note-2days') {
+    list.canvasPreset = 'tiktok-9x16'; list.postCaption = ITINERARY_NOTE_CAPTION; list.captionBody = ''; list.captionHashtags = [];
+  }
   if (deckId === 'summary-note') {
     list.canvasPreset = 'tiktok-9x16';
     list.postCaption = summaryNoteDefaultCaption();
@@ -1576,6 +1662,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   const summaryNoteQuanAnCount = dedupeItems(common.itemsBySection.quan_an || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   return V2_DECK_IDS
     .filter((deckId) => deckId !== 'carousel-mau-1')
+    .filter((deckId) => deckId !== 'itinerary-note-2days' || activeDestinationId === 'dalat')
     // Không làm hỏng lần nạp dataset chung khi máy đang có pool Hinh_nen/ảnh
     // venue chưa sẵn sàng. List mới vẫn đi qua builder strict và trả lỗi rõ ràng;
     // catalog chỉ bỏ tạm mẫu không thể dựng khung cho đến lần sync kế tiếp.
@@ -1586,12 +1673,21 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       && v4VenueCount >= SPOTLIGHT_V4_VENUE_COUNT
     ))
     .filter((deckId) => deckId !== 'spotlight-v5' || (activeDestinationId === 'dalat' && uniquePortableImages(common.coverImageUrls).length >= 2 && v5VenueCount >= 13))
-    .filter((deckId) => deckId !== 'spotlight-v6' || ((activeDestinationId === 'dalat' || activeDestinationId === 'greenland') && uniquePortableImages(common.coverImageUrls).filter(spotlightV4BackgroundAllowed).length >= SPOTLIGHT_V4_BACKGROUND_COUNT && v4VenueCount >= SPOTLIGHT_V4_VENUE_COUNT))
+    .filter((deckId) => deckId !== 'spotlight-v6' || (
+      activeDestinationId === 'dalat'
+        ? uniquePortableImages(common.hinhNenImagePools?.dark || []).filter(spotlightV4BackgroundAllowed).length >= 1
+          && uniquePortableImages(common.hinhNenImagePools?.random || []).filter(spotlightV4BackgroundAllowed).length >= SPOTLIGHT_V4_BACKGROUND_COUNT - 1
+          && v4VenueCount >= SPOTLIGHT_V4_VENUE_COUNT
+        : activeDestinationId === 'greenland'
+          && uniquePortableImages(common.coverImageUrls).filter(spotlightV4BackgroundAllowed).length >= SPOTLIGHT_V4_BACKGROUND_COUNT
+          && v4VenueCount >= SPOTLIGHT_V4_VENUE_COUNT
+    ))
     .filter((deckId) => deckId !== 'summary-note' || ((activeDestinationId === 'dalat' || activeDestinationId === 'greenland') && summaryNoteCafeCount >= 4 && summaryNoteQuanAnCount >= 4))
     .filter((deckId) => deckId !== 'one-way-story' || activeDestinationId === 'dalat')
     .map((deckId) => {
     const meta = V2_DECK_META[deckId];
-    const mainList = buildV2MainList(deckId, common);
+    let mainList: GuideDeckList | null = null;
+    try { mainList = buildV2MainList(deckId, common); } catch (error) { if (deckId !== 'itinerary-note-2days') throw error; }
     return {
       id: deckId,
       navTitle: meta.nav,

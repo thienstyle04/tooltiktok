@@ -18,6 +18,28 @@ export const SHEET_DRIVE_MANIFEST_FILE = 'sheet-drive-images.json';
 /** Giữ thấp để tránh Google trả HTTP 401 hàng loạt khi list embeddedfolderview. */
 const DRIVE_MANIFEST_CONCURRENCY = 2;
 
+export type HinhNenImageGroup = 'default' | 'green' | 'dark' | 'random';
+export const HINH_NEN_IMAGE_GROUPS: readonly HinhNenImageGroup[] = ['default', 'green', 'dark', 'random'];
+
+export type HinhNenDriveImageGroups = Record<HinhNenImageGroup, DriveFolderEntry[]>;
+export type HinhNenSourceLinkGroups = Record<HinhNenImageGroup, string[]>;
+
+function emptyHinhNenDriveImageGroups(): HinhNenDriveImageGroups {
+  return { default: [], green: [], dark: [], random: [] };
+}
+
+function emptyHinhNenSourceLinkGroups(): HinhNenSourceLinkGroups {
+  return { default: [], green: [], dark: [], random: [] };
+}
+
+export function classifyHinhNenImageGroup(label: string): HinhNenImageGroup {
+  const normalized = normalizeText(label).replace(/_/g, ' ');
+  if (normalized.includes('mang xanh')) return 'green';
+  if (normalized.includes('tone den')) return 'dark';
+  if (normalized.includes('random') || normalized.includes('ramdom')) return 'random';
+  return 'default';
+}
+
 export interface SheetDriveImageManifestEntry {
   key: string;
   sectionKey: SectionKey;
@@ -35,8 +57,12 @@ export interface SheetDriveImageManifest {
   workbookName: string;
   workbookMtimeMs: number;
   items: Record<string, SheetDriveImageManifestEntry>;
+  /** Pool Hinh_nen thông thường, giữ tương thích cho các mẫu hiện có. */
   coverImages: DriveFolderEntry[];
   coverSourceLinks?: string[];
+  /** Các pool đặc biệt được tách theo nhãn hiển thị trong sheet Hinh_nen. */
+  coverImageGroups?: HinhNenDriveImageGroups;
+  coverSourceLinkGroups?: HinhNenSourceLinkGroups;
 }
 
 function isLikelyLinkHeader(header: string): boolean {
@@ -59,12 +85,34 @@ function workbookRowsWithLinks(sheet: XLSX.WorkSheet): Array<Record<string, stri
       const hyperlink = typeof cell?.l?.Target === 'string' ? cell.l.Target.trim() : '';
 
       rowMap[header] = hyperlink && isLikelyLinkHeader(header) ? hyperlink : rawValue;
-      if (hyperlink) rowMap[`${header}__hyperlink`] = hyperlink;
+      if (hyperlink) {
+        rowMap[`${header}__hyperlink`] = hyperlink;
+        rowMap[`${header}__display`] = rawValue;
+      }
     });
     results.push(rowMap);
   }
 
   return results;
+}
+
+function firstLinkDisplayValue(row: Record<string, string>): string {
+  const preferred = firstValue(
+    row,
+    'link_drive__display',
+    'link_anh__display',
+    'link_hinh__display',
+    'link_hinh_anh__display',
+    'hinh_anh__display',
+    'anh__display',
+    'image_link__display',
+  );
+  if (preferred) return preferred;
+
+  const displayEntry = Object.entries(row).find(([header, value]) => (
+    header.endsWith('__display') && isLikelyLinkHeader(header) && String(value ?? '').trim()
+  ));
+  return String(displayEntry?.[1] ?? '').trim();
 }
 
 function preferredImageLink(row: Record<string, string>): string {
@@ -130,13 +178,15 @@ function legacySheetDriveManifestPath(dataRoot: string): string {
 
 export function emptySheetDriveManifest(): SheetDriveImageManifest {
   return {
-    version: 1,
+    version: 2,
     generatedAt: new Date(0).toISOString(),
     workbookName: PREFERRED_WORKBOOK_NAME,
     workbookMtimeMs: 0,
     items: {},
     coverImages: [],
     coverSourceLinks: [],
+    coverImageGroups: emptyHinhNenDriveImageGroups(),
+    coverSourceLinkGroups: emptyHinhNenSourceLinkGroups(),
   };
 }
 
@@ -152,6 +202,12 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
   try {
     const raw = fs.readFileSync(resolvedPath, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<SheetDriveImageManifest>;
+    const parsedImageGroups = parsed.coverImageGroups && typeof parsed.coverImageGroups === 'object'
+      ? parsed.coverImageGroups as Partial<HinhNenDriveImageGroups>
+      : {};
+    const parsedSourceGroups = parsed.coverSourceLinkGroups && typeof parsed.coverSourceLinkGroups === 'object'
+      ? parsed.coverSourceLinkGroups as Partial<HinhNenSourceLinkGroups>
+      : {};
     const manifest: SheetDriveImageManifest = {
       version: Number(parsed.version ?? 1),
       generatedAt: String(parsed.generatedAt ?? new Date(0).toISOString()),
@@ -162,6 +218,18 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
       coverSourceLinks: Array.isArray(parsed.coverSourceLinks)
         ? parsed.coverSourceLinks.map((entry) => String(entry || '').trim()).filter(Boolean)
         : [],
+      coverImageGroups: {
+        default: Array.isArray(parsedImageGroups.default) ? parsedImageGroups.default : [],
+        green: Array.isArray(parsedImageGroups.green) ? parsedImageGroups.green : [],
+        dark: Array.isArray(parsedImageGroups.dark) ? parsedImageGroups.dark : [],
+        random: Array.isArray(parsedImageGroups.random) ? parsedImageGroups.random : [],
+      },
+      coverSourceLinkGroups: {
+        default: Array.isArray(parsedSourceGroups.default) ? parsedSourceGroups.default.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
+        green: Array.isArray(parsedSourceGroups.green) ? parsedSourceGroups.green.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
+        dark: Array.isArray(parsedSourceGroups.dark) ? parsedSourceGroups.dark.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
+        random: Array.isArray(parsedSourceGroups.random) ? parsedSourceGroups.random.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
+      },
     };
 
     return manifest;
@@ -183,11 +251,15 @@ export async function buildSheetDriveManifest(
   const revalidateUncached = Boolean(options.revalidateUncached);
   const workbook = source.workbook;
   const items: Record<string, SheetDriveImageManifestEntry> = {};
-  const coverImages = new Map<string, DriveFolderEntry>();
-  const coverSourceLinks: string[] = [];
+  const coverImagesByGroup = Object.fromEntries(
+    HINH_NEN_IMAGE_GROUPS.map((group) => [group, new Map<string, DriveFolderEntry>()]),
+  ) as Record<HinhNenImageGroup, Map<string, DriveFolderEntry>>;
+  const coverSourceLinkGroups = emptyHinhNenSourceLinkGroups();
   const itemTasks: Array<() => Promise<void>> = [];
   const coverTasks: Array<() => Promise<void>> = [];
-  let coverResolveErrors = 0;
+  const coverResolveErrors = Object.fromEntries(
+    HINH_NEN_IMAGE_GROUPS.map((group) => [group, 0]),
+  ) as Record<HinhNenImageGroup, number>;
   const syncStats = {
     resolved: 0,
     keptPrevious: 0,
@@ -207,8 +279,8 @@ export async function buildSheetDriveManifest(
       for (const row of workbookRowsWithLinks(sheet)) {
         const imageLink = firstLinkValue(row);
         if (!imageLink) continue;
-
-        coverSourceLinks.push(imageLink);
+        const group = classifyHinhNenImageGroup(firstLinkDisplayValue(row));
+        coverSourceLinkGroups[group].push(imageLink);
       }
       continue;
     }
@@ -332,36 +404,58 @@ export async function buildSheetDriveManifest(
     }
   }
 
-  const previousCoverSourceLinks = (previousManifest.coverSourceLinks || [])
-    .map((entry) => String(entry || '').trim())
-    .filter(Boolean);
-  const normalizedCoverLinks = [...new Set(coverSourceLinks)].sort();
-  const normalizedPreviousCoverLinks = [...new Set(previousCoverSourceLinks)].sort();
-  const coverLinksUnchanged = normalizedPreviousCoverLinks.length === normalizedCoverLinks.length
-    && normalizedPreviousCoverLinks.every((entry, index) => entry === normalizedCoverLinks[index]);
-  const reusePreviousCovers = !forceRevalidate
-    && previousManifest.coverImages.length > 0
-    && (normalizedPreviousCoverLinks.length === 0 || coverLinksUnchanged);
+  const normalizedCoverLinkGroups = Object.fromEntries(
+    HINH_NEN_IMAGE_GROUPS.map((group) => [group, [...new Set(coverSourceLinkGroups[group])].sort()]),
+  ) as HinhNenSourceLinkGroups;
+  const previousImageGroups = previousManifest.version >= 2
+    ? {
+        default: previousManifest.coverImageGroups?.default || previousManifest.coverImages || [],
+        green: previousManifest.coverImageGroups?.green || [],
+        dark: previousManifest.coverImageGroups?.dark || [],
+        random: previousManifest.coverImageGroups?.random || [],
+      }
+    : emptyHinhNenDriveImageGroups();
+  const previousSourceGroups = previousManifest.version >= 2
+    ? {
+        default: previousManifest.coverSourceLinkGroups?.default || previousManifest.coverSourceLinks || [],
+        green: previousManifest.coverSourceLinkGroups?.green || [],
+        dark: previousManifest.coverSourceLinkGroups?.dark || [],
+        random: previousManifest.coverSourceLinkGroups?.random || [],
+      }
+    : emptyHinhNenSourceLinkGroups();
 
-  if (reusePreviousCovers) {
-    for (const entry of previousManifest.coverImages) {
-      if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
+  for (const group of HINH_NEN_IMAGE_GROUPS) {
+    const normalizedLinks = normalizedCoverLinkGroups[group];
+    const normalizedPreviousLinks = [...new Set(previousSourceGroups[group])].sort();
+    const linksUnchanged = normalizedPreviousLinks.length === normalizedLinks.length
+      && normalizedPreviousLinks.every((entry, index) => entry === normalizedLinks[index]);
+    const reusePreviousGroup = !forceRevalidate
+      && previousManifest.version >= 2
+      && previousImageGroups[group].length > 0
+      && linksUnchanged;
+
+    if (reusePreviousGroup) {
+      for (const entry of previousImageGroups[group]) {
+        if (entry.fileId) coverImagesByGroup[group].set(entry.fileId, entry);
+      }
+      continue;
     }
-  } else {
-    for (const imageLink of normalizedCoverLinks) {
+
+    for (const imageLink of normalizedLinks) {
       coverTasks.push(async () => {
-        const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', 50).catch((error) => {
-          console.warn(`[sync] Bo qua anh nen Drive loi: ${error instanceof Error ? error.message : String(error)}`);
+        const maxEntries = group === 'default' ? 50 : 200;
+        const candidateImages = await resolveDriveLinkToEntries(imageLink, 'hinh nen', '', maxEntries).catch((error) => {
+          console.warn('[sync] Bo qua anh nen Drive loi (' + group + '): ' + (error instanceof Error ? error.message : String(error)));
           return null as DriveFolderEntry[] | null;
         });
 
         if (candidateImages === null) {
-          coverResolveErrors += 1;
+          coverResolveErrors[group] += 1;
           return;
         }
 
         for (const entry of candidateImages) {
-          if (entry.fileId && !coverImages.has(entry.fileId)) coverImages.set(entry.fileId, entry);
+          if (entry.fileId) coverImagesByGroup[group].set(entry.fileId, entry);
         }
       });
     }
@@ -382,28 +476,42 @@ export async function buildSheetDriveManifest(
     console.warn(`[sync] ${sample}`);
   }
 
-  let nextCoverImages = [...coverImages.values()];
-  if ((nextCoverImages.length === 0 || coverResolveErrors > 0) && (previousManifest.coverImages || []).length > 0) {
-    const merged = new Map(nextCoverImages.map((entry) => [entry.fileId, entry]));
-    for (const entry of previousManifest.coverImages) {
+  const nextCoverImageGroups = emptyHinhNenDriveImageGroups();
+  const nextCoverSourceLinkGroups = { ...normalizedCoverLinkGroups };
+  for (const group of HINH_NEN_IMAGE_GROUPS) {
+    const current = [...coverImagesByGroup[group].values()];
+    const previous = previousImageGroups[group];
+    const canReusePrevious = previousManifest.version >= 2
+      && normalizedCoverLinkGroups[group].length > 0
+      && coverResolveErrors[group] > 0
+      && previous.length > 0;
+    if (!canReusePrevious) {
+      nextCoverImageGroups[group] = current;
+      continue;
+    }
+
+    const merged = new Map(current.map((entry) => [entry.fileId, entry]));
+    for (const entry of previous) {
       if (entry.fileId && !merged.has(entry.fileId)) merged.set(entry.fileId, entry);
     }
-    nextCoverImages = [...merged.values()];
-    if (coverImages.size === 0) {
-      console.warn(`[sync] Pool anh nen trong: dung lai ${nextCoverImages.length} anh nen tu ban truoc.`);
-    } else if (coverResolveErrors > 0) {
-      console.warn(`[sync] Anh nen loi ${coverResolveErrors} link: gop them ban truoc -> ${nextCoverImages.length} anh.`);
-    }
+    nextCoverImageGroups[group] = [...merged.values()];
+    nextCoverSourceLinkGroups[group] = previousSourceGroups[group];
+    console.warn(
+      '[sync] Anh nen loi ' + coverResolveErrors[group] + ' link (' + group
+      + '): giu cache cu -> ' + nextCoverImageGroups[group].length + ' anh.',
+    );
   }
 
   return {
-    version: 1,
+    version: 2,
     generatedAt: new Date().toISOString(),
     workbookName: source.workbookName,
     workbookMtimeMs: source.fetchedAt,
     items,
-    coverImages: nextCoverImages,
-    coverSourceLinks: normalizedCoverLinks,
+    coverImages: nextCoverImageGroups.default,
+    coverSourceLinks: nextCoverSourceLinkGroups.default,
+    coverImageGroups: nextCoverImageGroups,
+    coverSourceLinkGroups: nextCoverSourceLinkGroups,
   };
 }
 
@@ -414,6 +522,12 @@ export function writeSheetDriveManifest(
 ): string {
   fs.mkdirSync(dataRoot, { recursive: true });
   const manifestPath = getSheetDriveManifestPath(dataRoot, destinationId);
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  const tempPath = `${manifestPath}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    fs.writeFileSync(tempPath, JSON.stringify(manifest, null, 2), 'utf-8');
+    fs.renameSync(tempPath, manifestPath);
+  } finally {
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+  }
   return manifestPath;
 }

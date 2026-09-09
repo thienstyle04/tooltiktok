@@ -5,7 +5,7 @@ const EXPORT_QUALITY_OPTIONS = [
   {
     id: 'optimized',
     title: 'Chất lượng cân bằng',
-    description: 'Mặc định, khuyên dùng cho 30-50 list. Nhanh hơn bản trước (song song nhiều trang hơn), nét cao (~2.5–3 MB/ảnh).',
+    description: 'Tự chọn Cân bằng mới hoặc Cân bằng tương thích theo sức máy. Thời gian và dung lượng phụ thuộc ảnh, mẫu và số list.',
   },
   {
     id: 'original',
@@ -21,6 +21,7 @@ export default function ExportModal({
   setSelectedIds,
   quality,
   setQuality,
+  runtimePerformance,
   busy,
   onClose,
   onExport,
@@ -57,6 +58,15 @@ export default function ExportModal({
             <div>
               <p className="panel-kicker">Chất lượng render</p>
               <p className="modal-description compact">Chọn mức xuất phù hợp số lượng list và mục đích dùng ảnh.</p>
+              {quality === 'optimized' ? (
+                <p className="modal-description compact">
+                  {runtimePerformance?.mode === 'legacy'
+                    ? `Cân bằng tương thích — tự điều chỉnh theo sức máy. ${runtimePerformance.reason || ''}`
+                    : runtimePerformance?.mode === 'modern'
+                      ? 'Cân bằng mới — máy đang đáp ứng phép kiểm tra.'
+                      : 'Cân bằng sẽ tự kiểm tra sức máy trước lần xuất đầu.'}
+                </p>
+              ) : null}
             </div>
             <div className="export-quality-options">
               {EXPORT_QUALITY_OPTIONS.map((option) => (

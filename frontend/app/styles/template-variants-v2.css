@@ -2641,7 +2641,6 @@
 .story-page.spotlight-v6-cover .spotlight-v6-bg img,
 .story-page.spotlight-v6-image .spotlight-v6-bg img,
 .story-page.spotlight-v6-page .spotlight-v6-bg img { width:100%; height:100%; object-fit:cover; display:block; }
-.spotlight-v6-shade { position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.58)); }
 .spotlight-v6-cover-title,
 .spotlight-v6-page-copy { position:absolute; z-index:1; left:8%; right:8%; top:50%; transform:translateY(-50%); text-align:center; color:#fff; font-weight:900; text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000; }
 .spotlight-v6-cover-title { margin:0; font-size:13px; line-height:1.15; }

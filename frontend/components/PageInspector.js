@@ -53,7 +53,7 @@ export default function PageInspector({
       : page.type === 'cover' ? 60 : 90;
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
-  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'summary-note' || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days') || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -78,6 +78,13 @@ export default function PageInspector({
               <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
             </label>
           ) : null}
+          {page.layoutVariant === 'itinerary-note-day' ? items.map((item, i) => (
+            <div className="inspector-field" key={i}>
+              <span>Hoạt động {i + 1}</span>
+              <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+            </div>
+          )) : null}
           <div className="inspector-editor-actions">
             <span>Xem trước cập nhật ngay · chỉ lưu khi bấm nút.</span>
             {canSavePage ? (

@@ -1,0 +1,34 @@
+/* Photo veils disabled: preserve text, layout and image elements. Imported last. */
+.story-page .spotlight-shade,
+.story-page .spotlight-list-shade,
+.story-page .spotlight-v2-cover-dim,
+.story-page .spotlight-v2-shade,
+.story-page .spotlight-v2-list-shade,
+.story-page .spotlight-v4-cover-shade,
+.story-page .spotlight-v4-page-shade,
+.story-page .spotlight-v5-shade,
+.story-page .one-way-story-shade,
+.story-page .grid8-feed-cover-dim,
+.story-page .grid8-feed-page-dim,
+.story-page .itinerary-4n3d-stack-cover-dim,
+.story-page .itinerary-4n3d-stack-page-cell-shade,
+.story-page .itl-cover-shade {
+  background: transparent !important;
+  background-image: none !important;
+}
+/* Remove only brightness reduction; retain intentional background blur. */
+.story-page.grid8-feed-cover .grid8-feed-cover-cell img,
+.story-page.spotlight-v2-cover .spotlight-v2-cover-cell img,
+.story-page.itinerary-4n3d-stack-cover .itinerary-4n3d-stack-cover-grid {
+  filter: none !important;
+}
+.story-page.grid8-feed-page .grid8-feed-page-bg-grid {
+  filter: blur(8px) !important;
+}
+.story-page.itinerary-timeline-day .itl-day-bg,
+.story-page.itinerary-timeline-day .itl-day-bg img {
+  filter: blur(10px) !important;
+}
+.story-page.itinerary-4n3d-stack-page::before {
+  background: transparent !important;
+}
