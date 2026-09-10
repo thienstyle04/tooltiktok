@@ -2,9 +2,10 @@ import type { GuideItem, SectionKey, ListPage, WorkbookItemsBySection } from '..
 import { itemUsageKey } from './data-allocator';
 import { stableHash } from './image-resolver';
 
-export const ITINERARY_NOTE_TEMPLATE_VERSION = 1;
+export const ITINERARY_NOTE_TEMPLATE_VERSION = 2;
 export const ITINERARY_NOTE_CAPTION = 'Mình tổng hợp lịch trình Đà Lạt 2 ngày như hình bên dưới.\nMọi người xem giúp mình lịch này có ổn không, có điểm nào nên ghé thêm không ạ?';
 const visits: SectionKey[] = ['check_in', 'khu_du_lich', 'hoat_dong', 'dia_diem_lich_su', 'choi_dem'];
+const PARTNER_TARGETS = [4, 3] as const;
 const identity = (item: GuideItem) => item.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '');
 
 export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsBySection; globalUsedItemIds?: Set<string> }, seed: string, now = new Date()): ListPage[] {
@@ -15,15 +16,16 @@ export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsB
   const used = new Set<string>();
   const counts: Record<string, number>[] = [{}, {}];
   const partners = [0, 0];
-  // Rotate partner categories too, so food/cafe do not always consume both slots.
-  const preferredPartners = [0, 1].map(day => Object.keys(pools)
-    .filter(key => pools[key as SectionKey].some(item => item.isPartner))
-    .sort((a, b) => stableHash(seed + ':partner:' + day + a) - stableHash(seed + ':partner:' + day + b))
-    .slice(0, 2));
+  const partnerAvailable = new Set(Object.values(pools).flat()
+    .filter(item => item.isPartner)
+    .map(identity)).size;
+  if (partnerAvailable < 7) {
+    throw new Error(`Lịch trình Note 2 ngày cần đúng 7 đối tác khác nhau, hiện chỉ có ${partnerAvailable} đối tác hợp lệ trong các nhóm được dùng.`);
+  }
   let attempts = 0;
   // Backtracking across both days avoids consuming a scarce category on day one.
   function select(slot: number): boolean {
-    if (slot === 14) return true;
+    if (slot === 14) return partners[0] === PARTNER_TARGETS[0] && partners[1] === PARTNER_TARGETS[1];
     if (++attempts > 200000) return false;
     // Reserve enough distinct candidates for later mandatory slots, including
     // venues duplicated across Sheet categories.
@@ -36,15 +38,22 @@ export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsB
       if (new Set(pools[key].filter(item => !used.has(identity(item))).map(identity)).size < required) return false;
     }
     const day = Math.floor(slot / 7), position = slot % 7;
+    if (position === 0 && day > 0 && partners[day - 1] !== PARTNER_TARGETS[day - 1]) return false;
+    const remainingForDay = 7 - position;
+    const partnerNeeded = PARTNER_TARGETS[day] - partners[day];
+    if (partnerNeeded < 0 || partnerNeeded > remainingForDay) return false;
     const groups: SectionKey[] = position === 0 || position === 5 ? ['quan_an'] : position === 1 ? ['cafe'] : visits;
     const candidates = groups.flatMap(key => pools[key]).filter(item =>
-      !used.has(identity(item)) && (counts[day][item.sectionKey] || 0) < 2 && (!item.isPartner || partners[day] < 2));
+      !used.has(identity(item))
+      && (counts[day][item.sectionKey] || 0) < 2
+      && (!item.isPartner || partnerNeeded > 0)
+      && (item.isPartner || partnerNeeded < remainingForDay));
     candidates.sort((a, b) => {
       const rank = (item: GuideItem) => {
         const key = item.sectionKey;
         return (counts[day][key] || 0) * 100
           + (position === 6 ? (key === 'choi_dem' ? 0 : 20) : (key === 'choi_dem' ? 20 : 0))
-          + (item.isPartner ? (preferredPartners[day].includes(key) ? 0 : 8) : 4)
+          + (item.isPartner ? 0 : 4)
           + (common.globalUsedItemIds?.has(itemUsageKey(item)) || common.globalUsedItemIds?.has(item.id) ? 2 : 0);
       };
       return rank(a) - rank(b) || stableHash(seed + ':' + slot + ':' + a.id) - stableHash(seed + ':' + slot + ':' + b.id);
@@ -59,7 +68,7 @@ export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsB
     }
     return false;
   }
-  if (!select(0)) throw new Error('Lịch trình Note 2 ngày không đủ địa điểm hợp lệ, không trùng: cần 4 Quán ăn, 2 Cafe, 8 điểm tham quan/trải nghiệm; mỗi nhóm tối đa 2/ngày và đối tác tối đa 2/ngày.');
+  if (!select(0)) throw new Error('Lịch trình Note 2 ngày không đủ địa điểm hợp lệ, không trùng để tạo đúng 4 đối tác ngày 1 và 3 đối tác ngày 2; vẫn cần 4 Quán ăn, 2 Cafe, 8 điểm tham quan/trải nghiệm và mỗi nhóm tối đa 2/ngày.');
   chosen.forEach(item => { common.globalUsedItemIds?.add(itemUsageKey(item)); common.globalUsedItemIds?.add(item.id); });
   const month = new Intl.DateTimeFormat('en-US', { month: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }).format(now);
   return [0, 1].map(day => ({

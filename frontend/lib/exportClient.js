@@ -6,7 +6,7 @@ import JSZip from 'jszip';
 import { generateExportZip } from './exportZip';
 import { ensureRuntimePerformanceForBalancedExport, getRuntimePerformance, markRuntimeResourceFailure } from './runtimePerformance';
 import { buildCaptionExportText } from './captionText';
-import { fitItineraryNote } from './itineraryNote';
+import { fitItineraryNote, fitItineraryNoteTimed } from './itineraryNote';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
 import { budget72HListHasLegacyScheduleCosts, formatListSetLabel, listIsMain, parseListSetIndex, resolveBudget72HExportList, sanitizeFilePart } from './utils';
@@ -827,6 +827,7 @@ async function waitForImageReady(img) {
 async function waitForPageImagesSettled(node, timeoutMs = 20000) {
   await document.fonts.ready;
   fitItineraryNote(node, true);
+  fitItineraryNoteTimed(node, true);
   const images = Array.from(node?.querySelectorAll?.('img') || []);
   if (!images.length) return;
   await Promise.all(images.map(async (img) => {
@@ -1557,7 +1558,7 @@ function isSpotlightV5PageNode(pageNode) {
 }
 
 function isSpotlightV6PageNode(pageNode) {
-  return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day'));
+  return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day') || pageNode?.classList?.contains('itinerary-note-timed-day'));
 }
 
 function normalizeSpotlightV6Canvas(canvas, pageNode) {
@@ -1643,6 +1644,7 @@ function deckShortName(deckId) {
     'spotlight-v6-green': 'spotlightv6-mang-xanh',
     'summary-note': 'summary-note',
     'itinerary-note-2days': 'itinerary-note-2days',
+    'itinerary-note-timed': 'itinerary-note-timed',
     'carousel-mau-1': 'mau1',
     'one-way-story': 'duong-mot-chieu',
     'spotlight-partner': 'partner',

@@ -53,7 +53,8 @@ export default function PageInspector({
       : page.type === 'cover' ? 60 : 90;
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
-  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days') || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const isTimedNote = page.layoutVariant === 'itinerary-note-timed-day';
+  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days' || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -68,10 +69,15 @@ export default function PageInspector({
 
       {canEditPage ? (
         <div className="inspector-cover-editor inspector-page-editor">
-          <label className="inspector-field">
+          {!isTimedNote ? <label className="inspector-field">
             <span className="inspector-field-head"><span>Tiêu đề trang</span><span>{pageTitle.length}/{titleLimit}</span></span>
             <textarea value={pageTitle} placeholder="Nhập tiêu đề trang..." rows={2} maxLength={titleLimit} onChange={(event) => onPageTextChange({ title: event.target.value })} />
-          </label>
+          </label> : (
+            <label className="inspector-field">
+              <span className="inspector-field-head"><span>Nhãn ngày</span><span>{String(page.chipText || '').length}/40</span></span>
+              <input value={page.chipText ?? ''} maxLength={40} onChange={(event) => onPageTextChange({ chipText: event.target.value })} />
+            </label>
+          )}
           {!hideSubtitleEditor ? (
             <label className="inspector-field">
               <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/220</span></span>
@@ -83,6 +89,14 @@ export default function PageInspector({
               <span>Hoạt động {i + 1}</span>
               <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
               <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+            </div>
+          )) : null}
+          {isTimedNote ? items.map((item, i) => (
+            <div className="inspector-field" key={item.id || i}>
+              <span>{item.fixedRow ? `Dòng cố định ${i + 1}` : `Hoạt động ${i + 1}`}</span>
+              <input aria-label={'Khung giờ ' + (i + 1)} value={item.scheduleTime ?? ''} maxLength={24} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, scheduleTime: event.target.value } : row) })} />
+              <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              {!item.fixedRow ? <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} /> : null}
             </div>
           )) : null}
           <div className="inspector-editor-actions">

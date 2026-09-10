@@ -741,6 +741,7 @@ const V2_LIST_VARIANTS = new Set([
   'spotlight-v6-page',
   'summary-note-page',
   'itinerary-note-day',
+  'itinerary-note-timed-day',
   'carousel-mau-1-page',
   'one-way-story-road',
   'one-way-story-slope',
@@ -1833,7 +1834,7 @@ function renderSpotlightV4VenuePage(page, index, listId, list) {
   `;
 }
 
-import { renderItineraryNotePage } from './itineraryNote';
+import { renderItineraryNotePage, renderItineraryNoteTimedPage } from './itineraryNote';
 function renderSummaryNotePage(page, index, listId) {
   const title = page.title !== undefined ? String(page.title || '').trim() : '';
   const rows = (page.items || []).slice(0, 8).map((item) => {
@@ -2396,6 +2397,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
     return renderSpotlightV4ImagePage(page, index, listId);
   }
   if (page.layoutVariant === 'itinerary-note-day') return renderItineraryNotePage(page, index, listId);
+  if (page.layoutVariant === 'itinerary-note-timed-day') return renderItineraryNoteTimedPage(page, index, listId);
   if (page.layoutVariant === 'summary-note-page') {
     return renderSummaryNotePage(page, index, listId);
   }

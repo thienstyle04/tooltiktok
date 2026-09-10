@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import {
   buildSpotlightV6GreenPages,
+  buildV2MainList,
   spotlightV6GreenVenuePool,
   V2_DECK_IDS,
 } from '../logic/deck-builder-v2';
+import { setActiveDestinationLocalize } from '../sync/destination-localize';
 
 const keys: SectionKey[] = ['quan_an', 'cafe', 'homestay', 'check_in', 'dich_vu', 'choi_dem', 'hoat_dong', 'dia_diem_lich_su', 'khu_du_lich'];
 function makeItem(sectionKey: SectionKey, index: number, theme = 'Mảng xanh'): GuideItem {
@@ -41,6 +43,11 @@ const common = {
 
 assert.ok(V2_DECK_IDS.includes('spotlight-v6-green'));
 assert.equal(spotlightV6GreenVenuePool(itemsBySection).length, 5);
+setActiveDestinationLocalize('dalat');
+const previewList = buildV2MainList('spotlight-v6-green', common);
+assert.ok(previewList, 'Spotlight V6 Mảng xanh phải có List chính để preview.');
+assert.equal(previewList?.id, 'spotlight-v6-green-main');
+assert.equal(previewList?.pages.length, 11);
 const pages = buildSpotlightV6GreenPages(common, 'green-test', {
   destinationId: 'dalat',
   hooks: ['Hook chỉ dành cho mảng xanh'],

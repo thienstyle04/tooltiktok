@@ -136,6 +136,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v6-green',
   'summary-note',
   'itinerary-note-2days',
+  'itinerary-note-timed',
   'carousel-mau-1',
   'one-way-story',
   'itinerary-4n3d-stack',
@@ -935,7 +936,8 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && page.layoutVariant === 'itinerary-note-day' ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day') ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
               };
@@ -972,12 +974,14 @@ export default function DeckStudio({ initialDataset = null }) {
         body: JSON.stringify({
           title: activePage.title || '',
           subtitle: activePage.subtitle || '',
+          ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { chipText: activePage.chipText || '' } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-day' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
+          ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { items: activePage.items.map(({ name, metaPrimary, scheduleTime }) => ({ name, metaPrimary, scheduleTime })) } : {}),
         }),
       });
       const payload = await readApiPayload(response);
       if (!response.ok) throw new Error(apiErrorMessage(payload, `Lưu nội dung trang thất bại: HTTP ${response.status}`));
-      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle, ...(payload.items ? { items: payload.items } : {}) });
+      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle, ...(payload.chipText !== undefined ? { chipText: payload.chipText } : {}), ...(payload.items ? { items: payload.items } : {}) });
       if (result?.nextDataset) writeCachedDataset(result.nextDataset);
       setStatus(`Đã lưu nội dung trang ${selectedPageIndex + 1}.`);
     } catch (error) {
@@ -1039,17 +1043,18 @@ export default function DeckStudio({ initialDataset = null }) {
   }, [activeDeck, caption, captionSourceList, captionTone]);
 
   const createDeckFromCaption = useCallback(async () => {
-    if (!driveCacheStatus.ready) {
-      setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
-      return;
-    }
     if (!activeDeck) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
     }
+    if (!driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed') {
+      setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
+      return;
+    }
     const isNonAiTemplate = activeDeck.id === 'carousel-mau-1'
       || activeDeck.id === 'one-way-story'
-      || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-2days');
+      || activeDeck.id === 'spotlight-v6-green'
+      || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-2days' || activeDeck.id === 'itinerary-note-timed');
     const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
       && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
     const coverTitle = (caption.coverTitle || '').trim();
@@ -1111,12 +1116,12 @@ export default function DeckStudio({ initialDataset = null }) {
   }, [activeDeck, activeListId, caption, captionSourceList, driveCacheStatus.ready, hookSourcesInfo, loadDataset, loadHookSources]);
 
   const createBatchLists = useCallback(async (count) => {
-    if (!driveCacheStatus.ready) {
-      setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
-      return;
-    }
     if (!activeDeck) {
       setStatus('Chưa có deck để tạo batch list.');
+      return;
+    }
+    if (!driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed') {
+      setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
     if (creatingListsRef.current) return;

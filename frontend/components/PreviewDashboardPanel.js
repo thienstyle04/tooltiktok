@@ -25,6 +25,7 @@ export default function PreviewDashboardPanel({
   'spotlight-v6-green',
   'summary-note',
   'itinerary-note-2days',
+  'itinerary-note-timed',
     'carousel-mau-1',
     'one-way-story',
     'pov-3-v2',
