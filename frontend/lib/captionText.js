@@ -20,6 +20,7 @@ export function buildSummaryNoteCaptionText(list) {
 }
 
 export function buildCaptionExportText(list, overrides = {}) {
+  if (list?.pages?.some(page => page.layoutVariant === 'itinerary-note-timed-day')) return String(overrides.title ?? list.postCaption ?? 'Lịch trình Đà Lạt 2 ngày theo khung giờ tham khảo mình đã tổng hợp ở bên dưới.');
   if (list?.pages?.some(page => page.layoutVariant === 'itinerary-note-day')) return String(overrides.title ?? list.postCaption ?? 'Mình tổng hợp lịch trình Đà Lạt 2 ngày như hình bên dưới.');
   if (isSummaryNoteList(list)) return buildSummaryNoteCaptionText(list);
   const title = String(

@@ -44,6 +44,7 @@ import { BUNDLED_ONE_WAY_HOOKS } from '../sync/hook-fallbacks';
 import { getActiveDestinationLocalize } from '../sync/destination-localize';
 
 import { buildItineraryNotePages, ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './itinerary-note';
+import { buildItineraryNoteTimedPages, ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './itinerary-note-timed';
 export const GRID_8_FEED_TEMPLATE_VERSION = 17;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
 
@@ -69,7 +70,7 @@ export const SPOTLIGHT_V3_TEMPLATE_VERSION = 2;
 export const SPOTLIGHT_V4_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V5_TEMPLATE_VERSION = 2;
 export const SPOTLIGHT_V6_TEMPLATE_VERSION = 2;
-export const SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION = 1;
+export const SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION = 2;
 export const SUMMARY_NOTE_TEMPLATE_VERSION = 1;
 export const CAROUSEL_MAU_1_TEMPLATE_VERSION = 1;
 export const POV_3_V2_TEMPLATE_VERSION = 13;
@@ -90,6 +91,7 @@ export const V2_DECK_IDS = [
   'spotlight-v6-green',
   'summary-note',
   'itinerary-note-2days',
+  'itinerary-note-timed',
   'carousel-mau-1',
   'pov-3-v2',
   'itinerary-4n3d-stack',
@@ -826,6 +828,7 @@ export function buildSpotlightV6Pages(
 const SPOTLIGHT_V6_GREEN_BACKGROUND_COUNT = 6;
 const SPOTLIGHT_V6_GREEN_VENUE_COUNT = 5;
 const SPOTLIGHT_V6_GREEN_SECTIONS = new Set(['quan_an', 'cafe', 'hoat_dong', 'check_in', 'khu_du_lich']);
+const SPOTLIGHT_V6_GREEN_PREVIEW_HOOK = 'luỵ những mảng xanh ở Đà Lạt';
 
 export function spotlightV6GreenVenuePool(itemsBySection: WorkbookItemsBySection): GuideItem[] {
   const seen = new Set<string>();
@@ -1607,6 +1610,7 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'spotlight-v6-green': SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION,
   'summary-note': SUMMARY_NOTE_TEMPLATE_VERSION,
   'itinerary-note-2days': ITINERARY_NOTE_TEMPLATE_VERSION,
+  'itinerary-note-timed': ITINERARY_NOTE_TIMED_TEMPLATE_VERSION,
   'carousel-mau-1': CAROUSEL_MAU_1_TEMPLATE_VERSION,
   'pov-3-v2': POV_3_V2_TEMPLATE_VERSION,
   'itinerary-4n3d-stack': ITINERARY_4N3D_STACK_TEMPLATE_VERSION,
@@ -1670,6 +1674,7 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     listName: 'List Spotlight V6 Mảng xanh',
   },
   'itinerary-note-2days': { nav: 'Lịch trình Note 2 ngày', title: 'Lịch trình Note 2 ngày', description: 'Hai trang ghi chú, mỗi trang một ngày với 7 hoạt động đa dạng.', listName: 'Lịch trình Note 2 ngày' },
+  'itinerary-note-timed': { nav: 'Lịch trình Note theo giờ', title: 'Lịch trình Note theo giờ', description: 'Hai trang Ghi chú iPhone: lịch trình Đà Lạt theo giờ với đúng 4 đối tác ngày 1 và 3 đối tác ngày 2.', listName: 'Lịch trình Note theo giờ' },
   'summary-note': {
     nav: 'Tổng hợp địa điểm',
     title: 'Trang note tổng hợp địa điểm',
@@ -1779,6 +1784,8 @@ export function buildPagesForDeckV2(
       return buildSpotlightV6GreenPages(common, seedPrefix, getSpotlightV3BuildContext());
     case 'itinerary-note-2days':
       return buildItineraryNotePages(common, seedPrefix);
+    case 'itinerary-note-timed':
+      return buildItineraryNoteTimedPages(common, seedPrefix);
     case 'summary-note':
       return buildSummaryNotePages(common, seedPrefix);
     case 'carousel-mau-1':
@@ -1796,21 +1803,26 @@ export function buildPagesForDeckV2(
   }
 }
 
-function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): GuideDeckList | null {
-  // Hook riêng chỉ được tải/reserve khi tạo list; không dựng list mẫu bằng Hook khác.
-  if (deckId === 'spotlight-v6-green') return null;
+export function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): GuideDeckList | null {
   const meta = V2_DECK_META[deckId];
-  const pages = buildPagesForDeckV2(
-    deckId,
-    common.itemsBySection,
-    common.imageUrls,
-    common.libraryEntries,
-    `${deckId}-main`,
-    common.globalUsedItemIds,
-    common.globalUsedImageUrls,
-    common.coverImageUrls,
-    common.hinhNenImagePools,
-  );
+  // List chính chỉ là preview và bị loại khỏi export. Hook preview không reserve,
+  // không commit vào vòng Hook Mảng xanh; list tạo mới vẫn dùng GreenHookSourceStore.
+  const pages = deckId === 'spotlight-v6-green'
+    ? buildSpotlightV6GreenPages(common, `${deckId}-main`, {
+        destinationId: getActiveDestinationLocalize(),
+        hooks: [SPOTLIGHT_V6_GREEN_PREVIEW_HOOK],
+      })
+    : buildPagesForDeckV2(
+        deckId,
+        common.itemsBySection,
+        common.imageUrls,
+        common.libraryEntries,
+        `${deckId}-main`,
+        common.globalUsedItemIds,
+        common.globalUsedImageUrls,
+        common.coverImageUrls,
+        common.hinhNenImagePools,
+      );
   if (pages.length === 0) return null;
 
   const list = buildDeckList(
@@ -1823,9 +1835,12 @@ function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): GuideDeckLi
   );
   list.templateVersion = V2_TEMPLATE_VERSIONS[deckId];
   if (deckId === 'spotlight-v5') list.canvasPreset = 'tiktok-4x5';
-  if (deckId === 'spotlight-v6') list.canvasPreset = 'tiktok-9x16';
+  if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green') list.canvasPreset = 'tiktok-9x16';
   if (deckId === 'itinerary-note-2days') {
     list.canvasPreset = 'tiktok-9x16'; list.postCaption = ITINERARY_NOTE_CAPTION; list.captionBody = ''; list.captionHashtags = [];
+  }
+  if (deckId === 'itinerary-note-timed') {
+    list.canvasPreset = 'tiktok-9x16'; list.postCaption = ITINERARY_NOTE_TIMED_CAPTION; list.captionBody = ''; list.captionHashtags = [];
   }
   if (deckId === 'summary-note') {
     list.canvasPreset = 'tiktok-9x16';
@@ -1848,6 +1863,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   return V2_DECK_IDS
     .filter((deckId) => deckId !== 'carousel-mau-1')
     .filter((deckId) => deckId !== 'itinerary-note-2days' || activeDestinationId === 'dalat')
+    .filter((deckId) => deckId !== 'itinerary-note-timed' || activeDestinationId === 'dalat')
     // Không làm hỏng lần nạp dataset chung khi máy đang có pool Hinh_nen/ảnh
     // venue chưa sẵn sàng. List mới vẫn đi qua builder strict và trả lỗi rõ ràng;
     // catalog chỉ bỏ tạm mẫu không thể dựng khung cho đến lần sync kế tiếp.
@@ -1882,7 +1898,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
     .map((deckId) => {
     const meta = V2_DECK_META[deckId];
     let mainList: GuideDeckList | null = null;
-    try { mainList = buildV2MainList(deckId, common); } catch (error) { if (deckId !== 'itinerary-note-2days') throw error; }
+    try { mainList = buildV2MainList(deckId, common); } catch (error) { if (deckId !== 'itinerary-note-2days' && deckId !== 'itinerary-note-timed') throw error; }
     return {
       id: deckId,
       navTitle: meta.nav,

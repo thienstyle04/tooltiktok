@@ -141,6 +141,9 @@ export interface PageItem {
   candidateImageUrls?: string[];
   isPartner?: boolean;
   rawName?: string;
+  scheduleTime?: string;
+  scheduleIcon?: string;
+  fixedRow?: boolean;
 }
 
 export type TitlePlacement =
@@ -171,11 +174,12 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'summary-note-page' | 'itinerary-note-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
+  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
   titlePlacement?: TitlePlacement;
   contentStyle?: MutantContentStyle;
   playlistLines?: string[];
   canvasPreset?: 'default' | 'tiktok-4x5' | 'tiktok-9x16';
+  noteStatusTime?: string;
 }
 
 export type DeckPage = CoverPage | ListPage;
@@ -385,13 +389,15 @@ export interface UpdateGeneratedListCoverResponse {
 }
 
 export interface UpdatePageTextRequest {
-  items?: Array<{ name: string; metaPrimary: string }>;
+  items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }>;
+  chipText?: string;
   title?: string;
   subtitle?: string;
 }
 
 export interface UpdatePageTextResponse {
-  items?: Array<{ name: string; metaPrimary: string }>;
+  items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }>;
+  chipText?: string;
   deckId: string;
   listId: string;
   pageIndex: number;
@@ -402,7 +408,7 @@ export interface UpdatePageTextResponse {
 export interface PageTextOverrideStore {
   version: 1;
   savedAt: string;
-  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; items?: Array<{ name: string; metaPrimary: string }> }>>>;
+  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; chipText?: string; items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }> }>>>;
 }
 
 export interface DatasetBuildContext {

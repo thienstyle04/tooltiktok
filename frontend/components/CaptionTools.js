@@ -35,13 +35,14 @@ export default function CaptionTools({
   const isSpotlightPartnerDeck = activeDeck?.id === 'spotlight-partner';
   const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1'
     || activeDeck?.id === 'one-way-story'
-    || (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-2days');
-  const nonAiTemplateName = activeDeck?.id === 'itinerary-note-2days' ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
+    || activeDeck?.id === 'spotlight-v6-green'
+    || (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id === 'itinerary-note-timed');
+  const nonAiTemplateName = activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : activeDeck?.id === 'itinerary-note-2days' ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
     ? 'Đường một chiều'
-    : (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-2days')
+    : activeDeck?.id === 'summary-note'
       ? 'Tổng hợp địa điểm'
       : 'Mẫu 1';
-  const creationDisabled = busy || !cacheReady;
+  const creationDisabled = busy || (!cacheReady && activeDeck?.id !== 'itinerary-note-timed');
 
   const handleDeckChange = (event) => {
     const deck = decks.find((item) => item.id === event.target.value);
@@ -197,7 +198,9 @@ export default function CaptionTools({
 
       {isNonAiTemplate ? (
         <div className="ai-cache-warning" role="note">
-          {activeDeck?.id === 'one-way-story'
+          {activeDeck?.id === 'spotlight-v6-green'
+            ? 'Cover dùng riêng Hook mảng xanh; ảnh nền và địa điểm chỉ lấy từ dữ liệu Mảng xanh. Mẫu này không gọi AI.'
+            : activeDeck?.id === 'one-way-story'
             ? 'Trang bìa luân phiên hook có sẵn; 11 trang còn lại lấy đúng ảnh Đà Lạt theo từng nhóm. Mẫu này không gọi AI.'
             : 'Trang bìa lấy hook từ Google Docs; 13 trang còn lại lấy trực tiếp từ Google Sheet đang chọn. Mẫu này không gọi AI.'}
         </div>
