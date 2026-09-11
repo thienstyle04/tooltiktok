@@ -31,6 +31,11 @@ itemsBySection.check_in.push(makeItem('check_in', 4, 'MẢNG XANH'));
 itemsBySection.khu_du_lich.push(makeItem('khu_du_lich', 5, 'mảng xanh'));
 itemsBySection.choi_dem.push(makeItem('choi_dem', 6, 'Mảng xanh'));
 itemsBySection.quan_an.push(makeItem('quan_an', 7, 'Tone đen'));
+itemsBySection.quan_an.push(makeItem('quan_an', 8, 'Mảng xanh'));
+itemsBySection.cafe.push(makeItem('cafe', 9, 'Mảng xanh'));
+itemsBySection.hoat_dong.push(makeItem('hoat_dong', 10, 'Mảng xanh'));
+itemsBySection.check_in.push(makeItem('check_in', 11, 'Mảng xanh'));
+itemsBySection.khu_du_lich.push(makeItem('khu_du_lich', 12, 'Mảng xanh'));
 
 const green = Array.from({ length: 8 }, (_, index) => `http://localhost:3000/api/drive-image?id=green-bg-${index + 1}`);
 const common = {
@@ -42,13 +47,15 @@ const common = {
 };
 
 assert.ok(V2_DECK_IDS.includes('spotlight-v6-green'));
-assert.equal(spotlightV6GreenVenuePool(itemsBySection).length, 5);
+assert.equal(spotlightV6GreenVenuePool(itemsBySection).length, 10);
 setActiveDestinationLocalize('dalat');
 const previewList = buildV2MainList('spotlight-v6-green', common);
 assert.ok(previewList, 'Spotlight V6 Mảng xanh phải có List chính để preview.');
 assert.equal(previewList?.id, 'spotlight-v6-green-main');
 assert.equal(previewList?.pages.length, 11);
-const pages = buildSpotlightV6GreenPages(common, 'green-test', {
+const usedItems = new Set<string>();
+const listCommon = { ...common, globalUsedItemIds: usedItems };
+const pages = buildSpotlightV6GreenPages(listCommon, 'green-test', {
   destinationId: 'dalat',
   hooks: ['Hook chỉ dành cho mảng xanh'],
 });
@@ -65,7 +72,19 @@ assert.equal(new Set(backgrounds).size, 6);
 assert.ok(backgrounds.every((url) => green.includes(url)));
 assert.ok(!pages.some((page) => page.backgroundImage === 'dark' || page.backgroundImage === 'random'));
 assert.equal(new Set(venuePages.map((page) => page.type === 'list' ? page.items[0]?.sourceKey : '')).size, 5);
-assert.ok(venuePages.some((page) => page.type === 'list' && page.items[0]?.metaPrimary === ''));
+assert.deepEqual(
+  venuePages.map((page) => page.type === 'list' ? page.items[0]?.sourceSectionKey : ''),
+  ['quan_an', 'cafe', 'hoat_dong', 'check_in', 'khu_du_lich'],
+);
+assert.ok(spotlightV6GreenVenuePool(itemsBySection).some((item) => item.address === ''), 'Pool phải giữ địa điểm Mảng xanh không có địa chỉ.');
+
+const secondPages = buildSpotlightV6GreenPages(listCommon, 'green-test-2', {
+  destinationId: 'dalat',
+  hooks: ['Hook chỉ dành cho mảng xanh'],
+});
+const secondVenuePages = secondPages.filter((page) => page.layoutVariant === 'spotlight-v6-page');
+const firstKeys = new Set(venuePages.map((page) => page.type === 'list' ? page.items[0]?.sourceKey : ''));
+assert.ok(secondVenuePages.every((page) => page.type === 'list' && !firstKeys.has(page.items[0]?.sourceKey)), 'List thứ hai phải luân phiên sang địa điểm mới trong từng nhóm.');
 
 assert.throws(
   () => buildSpotlightV6GreenPages({ ...common, hinhNenImagePools: { ...common.hinhNenImagePools, green: green.slice(0, 5) } }, 'short-images', { destinationId: 'dalat', hooks: ['Hook xanh'] }),
@@ -73,11 +92,11 @@ assert.throws(
 );
 assert.throws(
   () => buildSpotlightV6GreenPages({ ...common, itemsBySection: { ...itemsBySection, khu_du_lich: [] } }, 'short-venues', { destinationId: 'dalat', hooks: ['Hook xanh'] }),
-  /4\/5.*thiếu 1/,
+  /đang thiếu: Khu du lịch/,
 );
 assert.throws(
   () => buildSpotlightV6GreenPages(common, 'wrong-destination', { destinationId: 'greenland', hooks: ['Hook xanh'] }),
   /chỉ áp dụng cho Đà Lạt/,
 );
 
-console.log('PASS Spotlight V6 Mảng xanh: catalog, Chu_de, 11 trang, 6 ảnh xanh, 5 địa điểm và lỗi thiếu pool.');
+console.log('PASS Spotlight V6 Mảng xanh: catalog, Chu_de, 11 trang, 6 ảnh xanh, đủ 5 nhóm, luân phiên và lỗi thiếu pool.');
