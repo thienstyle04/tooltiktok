@@ -35,18 +35,12 @@ if exist "backend\data\generated-caption-lists.json" (
 )
 
 echo Dang khoi dong Backend va Frontend cung luc...
-echo Sau khi san sang, tool se mo Chrome; neu khong co Chrome se mo Edge hoac trinh duyet mac dinh.
-echo Neu port bi doi, xem dong [dev] frontend trong cua so nay.
+echo Sau khi san sang, tool se mo cua so rieng tren Chrome; neu khong co Chrome se dung Edge.
+echo Tool dung co dinh backend 3000 va frontend 3001 de tranh lech phien.
 echo (Ban co the nhan Ctrl+C de tat tool khi khong su dung)
 echo.
 
 set DALAT_OPEN_BROWSER=1
-
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr /r /c:":3000 .*LISTENING" /c:":3001 .*LISTENING"') do (
-  echo Canh bao: Port 3000 hoac 3001 dang duoc su dung boi PID %%a.
-  echo Neu giao dien van loi 404, hay tat cua so tool cu hoac chay: taskkill /PID %%a /F
-  echo.
-)
 
 if exist "frontend\.next" (
   echo Dang xoa cache Next.js cu de tranh loi khi doi may...
@@ -54,5 +48,9 @@ if exist "frontend\.next" (
 )
 
 call npm run dev
-
-pause
+if errorlevel 1 (
+  echo.
+  echo [LOI] Tool da dung bat thuong. Xem thong bao phia tren de xu ly.
+  pause
+  exit /b 1
+)

@@ -9,6 +9,7 @@ import { buildCaptionExportText } from './captionText';
 import { fitItineraryNote, fitItineraryNoteTimed } from './itineraryNote';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
+import { verifyRuntimeSession } from './runtimeSession';
 import { budget72HListHasLegacyScheduleCosts, formatListSetLabel, listIsMain, parseListSetIndex, resolveBudget72HExportList, sanitizeFilePart } from './utils';
 
 function coverImageUrlsForExport() {
@@ -323,6 +324,11 @@ async function prefetchDriveFilesForExport(fileIds, cb = {}) {
         ? AbortSignal.timeout(60 * 1000)
         : undefined,
     });
+    if (statusResponse.status === 404) {
+      const error = new Error('API kiểm tra cache ảnh trả 404. Frontend/backend không đồng bộ; hãy chạy lại start.bat.');
+      error.runtimeSessionError = true;
+      throw error;
+    }
     if (statusResponse.ok) {
       const status = await statusResponse.json();
       missingIds = Array.isArray(status?.missing) ? status.missing.map((id) => String(id || '').trim()).filter(Boolean) : uniqueIds;
@@ -335,6 +341,7 @@ async function prefetchDriveFilesForExport(fileIds, cb = {}) {
       }
     }
   } catch (error) {
+    if (error?.runtimeSessionError) throw error;
     console.warn(`[export] Cache-status lỗi, fallback prefetch đầy đủ: ${error?.message || error}`);
     missingIds = uniqueIds;
   }
@@ -356,6 +363,11 @@ async function prefetchDriveFilesForExport(fileIds, cb = {}) {
           : undefined,
       });
       if (!response.ok) {
+        if (response.status === 404) {
+          const error = new Error('API tải trước ảnh trả 404. Frontend/backend không đồng bộ; hãy chạy lại start.bat.');
+          error.runtimeSessionError = true;
+          throw error;
+        }
         console.warn(`[export] Prefetch Drive chunk HTTP ${response.status} (${done}/${missingIds.length})`);
         summary.fail += chunk.length;
         continue;
@@ -366,6 +378,7 @@ async function prefetchDriveFilesForExport(fileIds, cb = {}) {
       summary.fail += Number(result.fail || 0);
       summary.chunks += 1;
     } catch (error) {
+      if (error?.runtimeSessionError) throw error;
       console.warn(`[export] Prefetch Drive chunk lỗi (${done}/${missingIds.length}): ${error?.message || error}`);
       summary.fail += chunk.length;
     }
@@ -1969,6 +1982,17 @@ async function runAdaptiveExport(attempt, context, callbacks) {
   exportQueue = new Promise(resolve => { release = resolve; });
   await previous;
   try {
+    const cb = exportCallbacks(callbacks);
+    try {
+      cb.setStatus('Đang xác minh phiên frontend/backend trước khi xuất...');
+      const assetFileId = collectRuntimePreflightFileIds(context)[0] || '';
+      await verifyRuntimeSession({ checkExportRoutes: true, assetFileId });
+    } catch (error) {
+      const message = error?.message || 'Không xác minh được phiên tool.';
+      cb.failProgress(`Không thể xuất: ${message}`);
+      cb.setStatus(`Lỗi: ${message}`);
+      return { success: false, error: message, exportedLists: [] };
+    }
     try {
       return await attempt(context, callbacks);
     } catch (error) {
@@ -1980,6 +2004,21 @@ async function runAdaptiveExport(attempt, context, callbacks) {
   } finally {
     release();
   }
+}
+
+function collectRuntimePreflightFileIds(context) {
+  if (context?.list) return collectDriveFileIdsFromLists([{ list: context.list }]);
+  const selectedIds = context?.selectedListIds instanceof Set
+    ? context.selectedListIds
+    : new Set(context?.selectedListIds || []);
+  if (!context?.dataset || !selectedIds.size) return [];
+  const selectedLists = [];
+  for (const deck of context.dataset.decks || []) {
+    for (const list of deck.lists || []) {
+      if (selectedIds.has(list.id) && !listIsMain(list)) selectedLists.push({ list });
+    }
+  }
+  return collectDriveFileIdsFromLists(selectedLists);
 }
 
 export function exportSelectedPagePng(context, callbacks = {}) {

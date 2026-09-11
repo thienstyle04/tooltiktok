@@ -14,6 +14,7 @@ import {
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
 import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, budget72HListHasLegacyScheduleCosts, budget72HTableMatchesMain, listIsMain, sanitizeDataset } from '../lib/utils';
 import { setSpotlightV2CoverImagePool } from '../lib/pageMarkup';
+import { verifyRuntimeSession } from '../lib/runtimeSession';
 import CaptionTools from './CaptionTools';
 import DataStatsPanel from './DataStatsPanel';
 import DeleteListsModal from './DeleteListsModal';
@@ -750,12 +751,49 @@ export default function DeckStudio({ initialDataset = null }) {
 
   useEffect(() => {
     let cancelled = false;
+    let timer = null;
+    let warned = false;
+    const checkSession = async () => {
+      let delay = 5000;
+      try {
+        await verifyRuntimeSession();
+        warned = false;
+      } catch (error) {
+        delay = 15000;
+        if (!error?.runtimeReloading && !warned) {
+          warned = true;
+          console.warn(`[runtime] ${error?.message || error}`);
+        }
+      } finally {
+        if (!cancelled) timer = window.setTimeout(checkSession, delay);
+      }
+    };
+    checkSession();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     let readyNoticeTimer = null;
+    let pollTimer = null;
+    let lastFailureStatus = null;
 
     const loadDriveCacheStatus = async () => {
+      let nextDelay = 1200;
       try {
         const response = await apiFetch('/api/drive-cache/status', { cache: 'no-store' });
-        if (!response.ok) return;
+        if (!response.ok) {
+          nextDelay = 10000;
+          if (lastFailureStatus !== response.status) {
+            console.warn(`[drive-cache] status HTTP ${response.status}; tạm giảm tần suất kiểm tra.`);
+            lastFailureStatus = response.status;
+          }
+          return;
+        }
+        lastFailureStatus = null;
         const next = await response.json();
         if (cancelled) return;
         setDriveCacheStatus(next);
@@ -769,15 +807,17 @@ export default function DeckStudio({ initialDataset = null }) {
           readyNoticeTimer = window.setTimeout(() => setDriveCacheReadyNotice(false), 5000);
         }
       } catch {
+        nextDelay = 10000;
         // Backend guard vẫn chặn tạo list nếu cache chưa sẵn sàng.
+      } finally {
+        if (!cancelled) pollTimer = window.setTimeout(loadDriveCacheStatus, nextDelay);
       }
     };
 
     loadDriveCacheStatus();
-    const interval = window.setInterval(loadDriveCacheStatus, 1200);
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (pollTimer) window.clearTimeout(pollTimer);
       if (readyNoticeTimer) window.clearTimeout(readyNoticeTimer);
     };
   }, []);

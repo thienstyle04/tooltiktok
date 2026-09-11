@@ -21,6 +21,7 @@ import { DriveCacheWarmStatus, GuideService, LocalWorkbookUpload } from './guide
 import { RuntimePerformanceReport, RuntimePerformanceService, RuntimePerformanceStatus } from './runtime-performance.service';
 import { MAX_WORKBOOK_FILE_BYTES } from './sync/workbook-source';
 import { HookSourceUpload, MAX_HOOK_SOURCE_FILE_BYTES } from './sync/festival-hook-source';
+import { getRuntimeSession } from '../../runtime-session';
 import {
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
@@ -106,8 +107,8 @@ export class GuideController {
   }
 
   @Get('api/health')
-  getHealth(): { status: string } {
-    return { status: 'ok' };
+  getHealth(): { status: string; sessionId: string; appVersion: string } {
+    return { status: 'ok', ...getRuntimeSession() };
   }
 
   @Get('api/drive-cache/status')
