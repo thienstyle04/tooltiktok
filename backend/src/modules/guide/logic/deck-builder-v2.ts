@@ -8,6 +8,7 @@ import type {
   ImageLibraryFolderEntry,
   ListPage,
   PageItem,
+  SectionKey,
   WorkbookItemsBySection,
 } from '../../../common/interfaces/guide.types';
 import {
@@ -70,7 +71,7 @@ export const SPOTLIGHT_V3_TEMPLATE_VERSION = 2;
 export const SPOTLIGHT_V4_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V5_TEMPLATE_VERSION = 2;
 export const SPOTLIGHT_V6_TEMPLATE_VERSION = 2;
-export const SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION = 2;
+export const SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION = 3;
 export const SUMMARY_NOTE_TEMPLATE_VERSION = 1;
 export const CAROUSEL_MAU_1_TEMPLATE_VERSION = 1;
 export const POV_3_V2_TEMPLATE_VERSION = 13;
@@ -827,13 +828,21 @@ export function buildSpotlightV6Pages(
 
 const SPOTLIGHT_V6_GREEN_BACKGROUND_COUNT = 6;
 const SPOTLIGHT_V6_GREEN_VENUE_COUNT = 5;
-const SPOTLIGHT_V6_GREEN_SECTIONS = new Set(['quan_an', 'cafe', 'hoat_dong', 'check_in', 'khu_du_lich']);
+const SPOTLIGHT_V6_GREEN_SECTION_ORDER: SectionKey[] = ['quan_an', 'cafe', 'hoat_dong', 'check_in', 'khu_du_lich'];
+const SPOTLIGHT_V6_GREEN_SECTIONS = new Set<SectionKey>(SPOTLIGHT_V6_GREEN_SECTION_ORDER);
+const SPOTLIGHT_V6_GREEN_SECTION_LABELS: Record<string, string> = {
+  quan_an: 'Quán ăn',
+  cafe: 'Cafe',
+  hoat_dong: 'Hoạt động',
+  check_in: 'Check-in',
+  khu_du_lich: 'Khu du lịch',
+};
 const SPOTLIGHT_V6_GREEN_PREVIEW_HOOK = 'luỵ những mảng xanh ở Đà Lạt';
 
 export function spotlightV6GreenVenuePool(itemsBySection: WorkbookItemsBySection): GuideItem[] {
   const seen = new Set<string>();
   return Object.entries(itemsBySection)
-    .filter(([sectionKey]) => SPOTLIGHT_V6_GREEN_SECTIONS.has(sectionKey))
+    .filter(([sectionKey]) => SPOTLIGHT_V6_GREEN_SECTIONS.has(sectionKey as SectionKey))
     .flatMap(([, items]) => items || [])
     .filter((item) => normalizeText(item.theme) === 'mang_xanh')
     .filter(hasOwnImage)
@@ -843,6 +852,20 @@ export function spotlightV6GreenVenuePool(itemsBySection: WorkbookItemsBySection
       seen.add(key);
       return true;
     });
+}
+
+function spotlightV6GreenVenueGroups(itemsBySection: WorkbookItemsBySection): Array<{ sectionKey: SectionKey; items: GuideItem[] }> {
+  const pool = spotlightV6GreenVenuePool(itemsBySection);
+  return SPOTLIGHT_V6_GREEN_SECTION_ORDER.map((sectionKey) => ({
+    sectionKey,
+    items: pool.filter((item) => item.sectionKey === sectionKey),
+  }));
+}
+
+function spotlightV6GreenMissingSections(itemsBySection: WorkbookItemsBySection): SectionKey[] {
+  return spotlightV6GreenVenueGroups(itemsBySection)
+    .filter((group) => group.items.length === 0)
+    .map((group) => group.sectionKey);
 }
 
 /** Cover + 5 ảnh Mảng xanh xen kẽ + 5 địa điểm đúng chủ đề. */
@@ -874,12 +897,19 @@ export function buildSpotlightV6GreenPages(
   }
   backgroundImages.forEach((url) => globallyUsedImages.add(url));
 
-  const venuePool = spotlightV6GreenVenuePool(common.itemsBySection);
-  if (venuePool.length < SPOTLIGHT_V6_GREEN_VENUE_COUNT) {
-    throw new Error(`Mẫu Spotlight V6 Mảng xanh cần 5 địa điểm Chu_de = Mảng xanh có ảnh (${venuePool.length}/5), còn thiếu ${SPOTLIGHT_V6_GREEN_VENUE_COUNT - venuePool.length}.`);
+  const venueGroups = spotlightV6GreenVenueGroups(common.itemsBySection);
+  const venuePool = venueGroups.flatMap((group) => group.items);
+  const missingSections = venueGroups.filter((group) => group.items.length === 0).map((group) => group.sectionKey);
+  if (missingSections.length > 0) {
+    const missingLabels = missingSections.map((sectionKey) => SPOTLIGHT_V6_GREEN_SECTION_LABELS[sectionKey]).join(', ');
+    throw new Error(`Mẫu Spotlight V6 Mảng xanh cần ít nhất 1 địa điểm Chu_de = Mảng xanh có ảnh ở mỗi nhóm; đang thiếu: ${missingLabels}. Tổng pool hiện có ${venuePool.length} địa điểm.`);
   }
   const pick = createListPicker(common.globalUsedItemIds);
-  const venues = pick(venuePool, SPOTLIGHT_V6_GREEN_VENUE_COUNT, `${seedPrefix}:green-venues`);
+  const venues = venueGroups.flatMap((group) => pick(
+    group.items,
+    1,
+    `${seedPrefix}:green-venues:${group.sectionKey}`,
+  ));
   if (venues.length < SPOTLIGHT_V6_GREEN_VENUE_COUNT) {
     throw new Error(`Mẫu Spotlight V6 Mảng xanh không chọn đủ 5 địa điểm không trùng (${venues.length}/5).`);
   }
@@ -1670,7 +1700,7 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
   'spotlight-v6-green': {
     nav: 'Spotlight V6 Mảng xanh',
     title: 'Spotlight V6 Mảng xanh',
-    description: 'Bản thử Đà Lạt 11 trang: Hook mảng xanh, ảnh Mảng xanh xen kẽ và 5 địa điểm đúng Chu_de Mảng xanh.',
+    description: 'Đà Lạt 11 trang: Hook mảng xanh, ảnh Mảng xanh xen kẽ và 5 địa điểm cân bằng theo 5 nhóm dữ liệu.',
     listName: 'List Spotlight V6 Mảng xanh',
   },
   'itinerary-note-2days': { nav: 'Lịch trình Note 2 ngày', title: 'Lịch trình Note 2 ngày', description: 'Hai trang ghi chú, mỗi trang một ngày với 7 hoạt động đa dạng.', listName: 'Lịch trình Note 2 ngày' },
@@ -1858,6 +1888,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   const v5VenueCount = v5VenuePool.length;
   const v5PartnerCount = spotlightV5PartnerPool(createDeckBuildPools(common.itemsBySection)).length;
   const v6GreenVenueCount = spotlightV6GreenVenuePool(common.itemsBySection).length;
+  const v6GreenMissingSections = spotlightV6GreenMissingSections(common.itemsBySection);
   const summaryNoteCafeCount = dedupeItems(common.itemsBySection.cafe || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   const summaryNoteQuanAnCount = dedupeItems(common.itemsBySection.quan_an || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   return V2_DECK_IDS
@@ -1892,6 +1923,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       activeDestinationId === 'dalat'
       && uniquePortableImages(common.hinhNenImagePools?.green || []).filter(spotlightV4BackgroundAllowed).length >= SPOTLIGHT_V6_GREEN_BACKGROUND_COUNT
       && v6GreenVenueCount >= SPOTLIGHT_V6_GREEN_VENUE_COUNT
+      && v6GreenMissingSections.length === 0
     ))
     .filter((deckId) => deckId !== 'summary-note' || ((activeDestinationId === 'dalat' || activeDestinationId === 'greenland') && summaryNoteCafeCount >= 4 && summaryNoteQuanAnCount >= 4))
     .filter((deckId) => deckId !== 'one-way-story' || activeDestinationId === 'dalat')
