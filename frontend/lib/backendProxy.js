@@ -20,6 +20,7 @@ export async function proxyBackendRequest(request, options = {}) {
   const method = request.method.toUpperCase();
   const requestBody = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();
   const errors = [];
+  let fallback404 = null;
 
   for (const backendOrigin of backendOrigins) {
     const backendUrl = new URL(`${requestUrl.pathname}${requestUrl.search}`, backendOrigin);
@@ -40,20 +41,33 @@ export async function proxyBackendRequest(request, options = {}) {
       if (options.cacheControl && !isDriveFallbackImage) {
         headers.set('Cache-Control', options.cacheControl);
       }
+      if (requestUrl.pathname === '/api/health') {
+        const frontendSession = String(process.env.NEXT_PUBLIC_DALAT_SESSION_ID || '').trim();
+        const frontendVersion = String(process.env.NEXT_PUBLIC_DALAT_APP_VERSION || '').trim();
+        if (frontendSession) headers.set('X-Dalat-Frontend-Session', frontendSession);
+        if (frontendVersion) headers.set('X-Dalat-Frontend-Version', frontendVersion);
+      }
 
       const body = method === 'HEAD' || BODYLESS_RESPONSE_STATUSES.has(response.status)
         ? null
         : await response.arrayBuffer();
 
-      return new Response(body, {
+      const proxiedResponse = new Response(body, {
         status: response.status,
         statusText: response.statusText,
         headers,
       });
+      if (response.status === 404 && isInfrastructureRoute(requestUrl.pathname)) {
+        fallback404 ||= proxiedResponse;
+        continue;
+      }
+      return proxiedResponse;
     } catch (error) {
       errors.push(`${backendOrigin}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+
+  if (fallback404) return fallback404;
 
   return Response.json(
     {
@@ -62,6 +76,14 @@ export async function proxyBackendRequest(request, options = {}) {
     },
     { status: 502 },
   );
+}
+
+function isInfrastructureRoute(pathname) {
+  return pathname === '/api/health'
+    || pathname === '/api/drive-cache/status'
+    || pathname === '/api/drive-files/cache-status'
+    || pathname === '/api/drive-files/prefetch'
+    || pathname === '/assets/drive-file';
 }
 
 function getForwardHeaders(request) {

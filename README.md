@@ -63,7 +63,7 @@ Các bước chạy:
 2. Mở thư mục gốc `dalat-tiktok-carousel-tool`.
 3. Chạy thẳng `start.bat`.
 4. Trong lần chạy đầu tiên, mở `backend/.env` và kiểm tra API key nếu được yêu cầu.
-5. Mở trình duyệt tại `http://localhost:3001`.
+5. Chờ tool tự mở cửa sổ Chrome riêng; nếu không có Chrome, tool dùng Edge.
 
 `start.bat` tự kiểm tra Node.js (tự cài qua winget nếu thiếu), tự dùng lại dependencies và `backend/.env` được lưu trong `%LOCALAPPDATA%\DalatTikTokCarouselTool`, và tự hỏi `DEEPSEEK_API_KEY` nếu file `.env` chưa có key hợp lệ. Khi giải nén phiên bản mới trên cùng máy, không cần chạy file cài đặt nào riêng — chỉ `start.bat`. Hệ thống chỉ cài lại dependencies một lần khi danh sách dependencies thực sự thay đổi.
 
@@ -122,7 +122,7 @@ Mặc định:
 - Backend: `http://127.0.0.1:3000`
 - Frontend: `http://127.0.0.1:3001`
 
-Nếu port `3000` hoặc `3001` đang bận, script `scripts/dev.js` có thể chọn port trống kế tiếp và in URL thật ra terminal.
+Tool luôn dùng backend `3000` và frontend `3001`. Mỗi máy chỉ chạy một phiên: lần chạy mới sẽ xác minh rồi tắt đúng phiên tool cũ và cửa sổ Chrome/Edge chuyên dụng. Nếu một ứng dụng khác chiếm cổng hoặc phiên cũ không thể tắt, startup dừng và báo PID thay vì tự đổi cổng.
 
 ## Lệnh Hữu Ích
 
@@ -176,7 +176,7 @@ npm run sync:sheet
 
 ### Next.js báo còn dev server cũ
 
-`start.bat` sẽ xóa cache `frontend/.next` trước khi chạy. Nếu vẫn còn lỗi, tắt process cũ theo PID được in trong terminal rồi chạy lại `start.bat`.
+`start.bat` sẽ xóa cache `frontend/.next` trước khi chạy. Launcher chỉ mở giao diện sau khi health và API cache ảnh của frontend/backend cùng phiên, cùng phiên bản. Nếu vẫn báo cổng bị chiếm, đóng ứng dụng theo PID được in trong terminal rồi chạy lại `start.bat`.
 
 ## Kiểm Tra Trước Khi Đẩy Code
 

@@ -5,7 +5,7 @@ export async function apiFetch(path, init = {}) {
 
   try {
     sameOriginResponse = await fetch(path, init);
-    if (!canFallback || !shouldFallbackResponse(sameOriginResponse)) {
+    if (!canFallback || !shouldFallbackResponse(sameOriginResponse, path)) {
       return sameOriginResponse;
     }
   } catch (error) {
@@ -38,10 +38,17 @@ function isRetrySafeMethod(init) {
   return method === 'GET' || method === 'HEAD';
 }
 
-function shouldFallbackResponse(response) {
-  // Không fallback 404: Nest trả 404 JSON là lỗi nghiệp vụ thật (list/deck thiếu),
-  // không phải proxy miss. Fallback khiến UI hiện lỗi rối khi xóa list đã mất.
-  return [500, 502, 503, 504].includes(Number(response?.status));
+function shouldFallbackResponse(response, path) {
+  // 404 chỉ được fallback cho endpoint hạ tầng đọc-only. Các route nghiệp vụ
+  // vẫn giữ nguyên 404 để tránh gọi nhầm backend hoặc tạo thông báo rối.
+  const status = Number(response?.status);
+  if ([500, 502, 503, 504].includes(status)) return true;
+  return status === 404 && isInfrastructureRoute(path);
+}
+
+function isInfrastructureRoute(path) {
+  const pathname = String(path || '').split('?')[0];
+  return pathname === '/api/health' || pathname === '/api/drive-cache/status';
 }
 
 function sleep(ms) {
@@ -82,8 +89,11 @@ function toBackendUrl(path, origin) {
 }
 
 function getBackendOrigins() {
+  const configuredOrigin = typeof process !== 'undefined'
+    ? process.env?.NEXT_PUBLIC_BACKEND_ORIGIN
+    : '';
   const origins = [
-    process.env.NEXT_PUBLIC_BACKEND_ORIGIN,
+    configuredOrigin,
     getBrowserHostBackendOrigin(),
     'http://127.0.0.1:3000',
     'http://localhost:3000',
