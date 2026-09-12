@@ -158,7 +158,7 @@ function exportQualityProfile(quality, deckId, runtimeMode = 'modern') {
       ? { ...profile, label: 'Cân bằng tương thích', compatibility: true, imagePrepareConcurrency: 1, renderChunkSize: 1, captureConcurrency: 1 }
       : profile;
   }
-  const isV6Family = deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green';
+  const isV6Family = deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-maps';
   return { ...profile, label: 'Cân bằng mới', losslessSource: true, fullResolutionV6: isV6Family,
     pixelRatio: isV6Family ? 1080 / 397 + 1e-9 : profile.pixelRatio,
     sourceImageMaxDimension: 0, sourceImageFormat: 'image/png', sourceImageQuality: 1 };
@@ -192,10 +192,10 @@ function prepareQualityLayout(nodes, profile) {
     if (!profile.losslessSource) { delete node.dataset.exportLossless; continue; }
     node.dataset.exportLossless = 'true';
     // Only normalized portrait layouts need a different design height.
-    if (!isSpotlightV6PageNode(node) && !isSpotlightV5PageNode(node)) continue;
+    if (!isSpotlightV6PageNode(node) && !isSpotlightV5PageNode(node) && !isSpotlightV6MapsPageNode(node)) continue;
     // Use the design frame rather than responsive preview dimensions.
     node.style.setProperty('width', '397px', 'important');
-    node.style.setProperty('height', `${397 * (isSpotlightV5PageNode(node) ? 1.25 : 16 / 9)}px`, 'important');
+    node.style.setProperty('height', `${397 * (isSpotlightV5PageNode(node) ? 1.25 : isSpotlightV6MapsPageNode(node) ? 4 / 3 : 16 / 9)}px`, 'important');
     node.style.setProperty('min-height', '0', 'important');
     node.style.setProperty('max-width', 'none', 'important');
     node.style.setProperty('flex-shrink', '0', 'important');
@@ -203,7 +203,7 @@ function prepareQualityLayout(nodes, profile) {
 }
 
 function isV6ExportPage(pageNode) {
-  return ['spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page']
+  return ['spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page', 'spotlight-v6-map-page', 'spotlight-v6-map-place']
     .some((name) => pageNode?.classList?.contains(name));
 }
 
@@ -215,8 +215,9 @@ function usesFullResolutionV6(pageNode, options) {
 function balancedPixelRatio(node, fallback) {
   if (node?.dataset?.exportLossless !== 'true') return fallback;
   const rect = node.getBoundingClientRect();
-  if (isSpotlightV5PageNode(node) || isSpotlightV6PageNode(node)) {
-    return Math.max(1080 / rect.width, (isSpotlightV5PageNode(node) ? 1350 : 1920) / rect.height) + 1e-9;
+  if (isSpotlightV5PageNode(node) || isSpotlightV6PageNode(node) || isSpotlightV6MapsPageNode(node)) {
+    const targetHeight = isSpotlightV5PageNode(node) ? 1350 : isSpotlightV6MapsPageNode(node) ? 1440 : 1920;
+    return Math.max(1080 / rect.width, targetHeight / rect.height) + 1e-9;
   }
   return fallback;
 }
@@ -1554,7 +1555,14 @@ function collectPartnerNames(list) {
         .replace(/^[^:]{1,30}:\s*/, '')
         .trim();
       if (!partnerName) return;
-      const imageUrl = String(item?.imageUrl || '').trim();
+      // V5 lưu ảnh đã chọn của trang trong backgroundImage. Sau khi refresh
+      // dataset, item.imageUrl có thể chuyển sang một ảnh khác trong cùng folder,
+      // trong khi renderer vẫn hiển thị backgroundImage. Đối chiếu đúng ảnh mà
+      // V5 thực sự render để không loại nhầm đối tác khỏi partners-set*.xlsx.
+      // Giữ nguyên quy tắc item.imageUrl cho toàn bộ mẫu còn lại.
+      const imageUrl = page.layoutVariant === 'spotlight-v5-place'
+        ? String(page.backgroundImage || item?.imageUrl || '').trim()
+        : String(item?.imageUrl || '').trim();
       // Chỉ đối chiếu ảnh đã render khi item có ảnh riêng (grid/gallery...), để tránh đếm
       // nhầm đối tác mà ảnh thật không lên hình. Dòng không có ảnh (bảng chi phí...) thì
       // tin trực tiếp cờ isPartner từ dữ liệu.
@@ -1572,6 +1580,21 @@ function isSpotlightV5PageNode(pageNode) {
 
 function isSpotlightV6PageNode(pageNode) {
   return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day') || pageNode?.classList?.contains('itinerary-note-timed-day'));
+}
+
+function isSpotlightV6MapsPageNode(pageNode) {
+  return Boolean(pageNode?.classList?.contains('spotlight-v6-map-page') || pageNode?.classList?.contains('spotlight-v6-map-place'));
+}
+
+function normalizeSpotlightV6MapsCanvas(canvas, pageNode) {
+  if (!isSpotlightV6MapsPageNode(pageNode) || !canvas) return canvas;
+  const target = document.createElement('canvas');
+  target.width = 1080;
+  target.height = 1440;
+  const ctx = target.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.drawImage(canvas, 0, 0, target.width, target.height);
+  return target;
 }
 
 function normalizeSpotlightV6Canvas(canvas, pageNode) {
@@ -1655,6 +1678,8 @@ function deckShortName(deckId) {
     'spotlight-v5': 'spotlightv5',
     'spotlight-v6': 'spotlightv6',
     'spotlight-v6-green': 'spotlightv6-mang-xanh',
+    'spotlight-v6-dark': 'spotlightv6-tone-den',
+    'spotlight-v6-maps': 'spotlightv6-google-maps',
     'summary-note': 'summary-note',
     'itinerary-note-2days': 'itinerary-note-2days',
     'itinerary-note-timed': 'itinerary-note-timed',
@@ -1748,9 +1773,9 @@ export async function renderPageBlob(pageNode, options = {}) {
     if (!lossless) return undefined;
     const canvas = document.createElement('canvas');
     const rect = pageNode.getBoundingClientRect();
-    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode);
+    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode) || isSpotlightV6MapsPageNode(pageNode);
     canvas.width = normalized ? 1080 : Math.floor(rect.width * pixelRatio);
-    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : 1920) : Math.floor(rect.height * pixelRatio);
+    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : isSpotlightV6MapsPageNode(pageNode) ? 1440 : 1920) : Math.floor(rect.height * pixelRatio);
     return canvas;
   };
   const renderTimeoutMs = Number(options.renderTimeoutMs || PAGE_RENDER_TIMEOUT_MS);
@@ -1785,7 +1810,7 @@ export async function renderPageBlob(pageNode, options = {}) {
   let cornersAlreadyClipped = false;
   const finalizeCanvasBlob = async (canvas) => {
     const clipped = clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor);
-    const normalized = normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode);
+    const normalized = normalizeSpotlightV6MapsCanvas(normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode), pageNode);
     try { return await canvasToBlob(normalized, imageFormat, imageQuality); }
     finally {
       if (lossless) for (const bitmap of new Set([canvas, clipped, normalized])) {

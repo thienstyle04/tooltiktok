@@ -29,8 +29,8 @@ export default function PreviewPanel({ deck, list, selectedPageIndex, onPageSele
   }
 
   if (!list) {
-    const emptyMessage = deck.id === 'spotlight-v6-green'
-      ? 'Mẫu chưa có list. Mở Caption AI, chọn số lượng và bấm “Tạo Spotlight V6 Mảng xanh” để dựng list đầu tiên.'
+    const emptyMessage = deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark'
+      ? `Mẫu chưa có list. Mở Caption AI, chọn số lượng và bấm “Tạo ${deck.navTitle}” để dựng list đầu tiên.`
       : 'Mẫu này chưa có list để preview.';
     return (
       <section className="preview-panel">

@@ -36,8 +36,10 @@ export default function CaptionTools({
   const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1'
     || activeDeck?.id === 'one-way-story'
     || activeDeck?.id === 'spotlight-v6-green'
+    || activeDeck?.id === 'spotlight-v6-dark'
+    || activeDeck?.id === 'spotlight-v6-maps'
     || (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id === 'itinerary-note-timed');
-  const nonAiTemplateName = activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : activeDeck?.id === 'itinerary-note-2days' ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
+  const nonAiTemplateName = activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'spotlight-v6-dark' ? 'Spotlight V6 Tone đen' : activeDeck?.id === 'spotlight-v6-maps' ? 'Spotlight V6 Google Maps' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : activeDeck?.id === 'itinerary-note-2days' ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
     ? 'Đường một chiều'
     : activeDeck?.id === 'summary-note'
       ? 'Tổng hợp địa điểm'
@@ -200,6 +202,10 @@ export default function CaptionTools({
         <div className="ai-cache-warning" role="note">
           {activeDeck?.id === 'spotlight-v6-green'
             ? 'Cover dùng riêng Hook mảng xanh; ảnh nền và địa điểm chỉ lấy từ dữ liệu Mảng xanh. Mẫu này không gọi AI.'
+            : activeDeck?.id === 'spotlight-v6-dark'
+            ? 'Cover dùng riêng Hook tone tối; ảnh nền và địa điểm chỉ lấy từ dữ liệu Tone đen. Mẫu này không gọi AI.'
+            : activeDeck?.id === 'spotlight-v6-maps'
+            ? 'Mỗi địa điểm gồm một trang Maps và một trang ảnh thật; mẫu không dùng cover, Hook hoặc AI.'
             : activeDeck?.id === 'one-way-story'
             ? 'Trang bìa luân phiên hook có sẵn; 11 trang còn lại lấy đúng ảnh Đà Lạt theo từng nhóm. Mẫu này không gọi AI.'
             : 'Trang bìa lấy hook từ Google Docs; 13 trang còn lại lấy trực tiếp từ Google Sheet đang chọn. Mẫu này không gọi AI.'}

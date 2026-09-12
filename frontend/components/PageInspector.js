@@ -43,7 +43,7 @@ export default function PageInspector({
     ? page.backgroundImage
     : firstPortableListImage(list) || page.backgroundImage || '';
   const coverImage = hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
-  const isSpotlightV4ImagePage = page.layoutVariant === 'spotlight-v4-image';
+  const isSpotlightV4ImagePage = page.layoutVariant === 'spotlight-v4-image' || page.layoutVariant === 'spotlight-v6-map-page';
   const canEditPage = typeof onPageTextChange === 'function' && !isSpotlightV4ImagePage;
   const canSavePage = canEditPage && typeof onPageTextSave === 'function';
   const titleLimit = page.layoutVariant === 'one-way-story-cover'
@@ -54,7 +54,7 @@ export default function PageInspector({
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
   const isTimedNote = page.layoutVariant === 'itinerary-note-timed-day';
-  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days' || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days' || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -98,6 +98,12 @@ export default function PageInspector({
               <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
               {!item.fixedRow ? <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} /> : null}
             </div>
+          )) : null}
+          {page.layoutVariant === 'spotlight-v6-map-place' ? items.map((item, i) => (
+            <label className="inspector-field" key={item.id || i}>
+              <span>Địa chỉ địa điểm</span>
+              <textarea aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+            </label>
           )) : null}
           <div className="inspector-editor-actions">
             <span>Xem trước cập nhật ngay · chỉ lưu khi bấm nút.</span>

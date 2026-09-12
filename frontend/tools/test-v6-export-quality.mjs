@@ -18,7 +18,7 @@ try {
     const t = TestExport;
     const check = (ok, message) => { if (!ok) throw new Error(message); };
     const standard = t.exportQualityProfile('optimized', 'spotlight-v4');
-    for (const id of ['spotlight-v4', 'spotlight-v5', 'spotlight-v6', 'spotlight-v6-green', 'summary-note', 'itinerary-note-2days']) {
+    for (const id of ['spotlight-v4', 'spotlight-v5', 'spotlight-v6', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-maps', 'summary-note', 'itinerary-note-2days']) {
       const legacy = t.exportQualityProfile('optimized', id, 'legacy');
       check(legacy.compatibility && legacy.pixelRatio === 2.5 && legacy.sourceImageMaxDimension === 3000 && legacy.sourceImageFormat === 'image/jpeg' && legacy.sourceImageQuality === 0.97, 'Wrong compatible image profile');
       check(legacy.imagePrepareConcurrency === 1 && legacy.captureConcurrency === 1 && legacy.renderChunkSize === 1, 'Wrong compatible concurrency');
@@ -32,7 +32,11 @@ try {
     check(t.exportQualityProfile('original', 'spotlight-v6') === t.exportQualityProfile('original'), 'Changed Original');
     const profile = t.exportQualityProfile('optimized', 'spotlight-v6');
     const greenProfile = t.exportQualityProfile('optimized', 'spotlight-v6-green');
+    const darkProfile = t.exportQualityProfile('optimized', 'spotlight-v6-dark');
+    const mapsProfile = t.exportQualityProfile('optimized', 'spotlight-v6-maps');
     check(greenProfile.fullResolutionV6 && greenProfile.pixelRatio === profile.pixelRatio && greenProfile.sourceImageFormat === 'image/png', 'Green V6 does not share full-resolution profile');
+    check(darkProfile.fullResolutionV6 && darkProfile.pixelRatio === profile.pixelRatio && darkProfile.sourceImageFormat === 'image/png', 'Dark V6 does not share full-resolution profile');
+    check(mapsProfile.fullResolutionV6 && mapsProfile.pixelRatio === profile.pixelRatio && mapsProfile.sourceImageFormat === 'image/png', 'Maps V6 does not share full-resolution profile');
     check(profile.sourceImageMaxDimension === 0 && profile.sourceImageFormat === 'image/png', 'Wrong source policy');
     check(profile.captureConcurrency === standard.captureConcurrency && profile.renderChunkSize === standard.renderChunkSize, 'Changed scheduling');
     const source = document.createElement('canvas'); source.width = 3600; source.height = 2400;
@@ -69,6 +73,14 @@ try {
       probe.width = 0; probe.height = 0;
       image.close(); sizes.push(output.size);
     }
+    node.className = 'story-page spotlight-v6-map-page';
+    node.style.cssText = 'position:relative;width:397px;height:529.333px;overflow:hidden;background:black;border-radius:18px;';
+    t.prepareQualityLayout([node], mapsProfile);
+    check(Math.abs(node.getBoundingClientRect().height - (397 * 4 / 3)) < 1, 'Wrong Maps design ratio');
+    const mapsOutput = await t.renderPageBlobWithRetry(node, { ...mapsProfile, preferHtml2Canvas: true, imagesReady: true, embedFonts: false });
+    const mapsBitmap = await createImageBitmap(mapsOutput);
+    check(mapsBitmap.width === 1080 && mapsBitmap.height === 1440, 'Wrong Maps output dimensions');
+    mapsBitmap.close();
     const variants = ['spotlight-cover', 'spotlight-v2-cover', 'spotlight-v3-page', 'spotlight-v4-page', 'spotlight-v5-cover', 'spotlight-v5-playlist', 'spotlight-v5-place', 'summary-note-page', 'itinerary-note-day', 'grid6'];
     for (const variant of variants) {
       node.className = 'story-page ' + variant;
@@ -85,7 +97,7 @@ try {
       active++; try { if (item === 0 && attempts++ === 0) throw new Error('Out of memory'); await new Promise(r => setTimeout(r, 5)); if (attempts > 1) check(active === 1, 'Retry overlaps capture'); } finally { active--; }
     }, () => true);
     URL.revokeObjectURL(cropUrl); URL.revokeObjectURL(url); node.remove();
-    return { pages: sizes.length, bytes: sizes.reduce((a, b) => a + b, 0), elapsedMs: Math.round(performance.now() - start), pngIntermediate: true, dimensions: '1080x1920' };
+    return { pages: sizes.length, bytes: sizes.reduce((a, b) => a + b, 0), elapsedMs: Math.round(performance.now() - start), pngIntermediate: true, dimensions: '1080x1920', mapsDimensions: '1080x1440' };
   });
   assert.equal(result.pages, 14); console.log('PASS V6 export quality', JSON.stringify(result));
 } finally { await browser.close(); }

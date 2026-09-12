@@ -135,6 +135,8 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v5',
   'spotlight-v6',
   'spotlight-v6-green',
+  'spotlight-v6-dark',
+  'spotlight-v6-maps',
   'summary-note',
   'itinerary-note-2days',
   'itinerary-note-timed',
@@ -976,7 +978,7 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day') ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-map-place') ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
@@ -1017,6 +1019,7 @@ export default function DeckStudio({ initialDataset = null }) {
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { chipText: activePage.chipText || '' } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-day' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { items: activePage.items.map(({ name, metaPrimary, scheduleTime }) => ({ name, metaPrimary, scheduleTime })) } : {}),
+          ...(activePage.layoutVariant === 'spotlight-v6-map-place' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
         }),
       });
       const payload = await readApiPayload(response);
@@ -1094,6 +1097,8 @@ export default function DeckStudio({ initialDataset = null }) {
     const isNonAiTemplate = activeDeck.id === 'carousel-mau-1'
       || activeDeck.id === 'one-way-story'
       || activeDeck.id === 'spotlight-v6-green'
+      || activeDeck.id === 'spotlight-v6-dark'
+      || activeDeck.id === 'spotlight-v6-maps'
       || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-2days' || activeDeck.id === 'itinerary-note-timed');
     const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
       && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
