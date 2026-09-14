@@ -266,8 +266,19 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   async chooseOutputDirectory(): Promise<{ path: string; directory: string; fileName: string }> {
     if (process.platform !== 'win32') throw new BadRequestException('Chọn thư mục tự động hiện chỉ hỗ trợ Windows.');
     const script = [
+      '$ErrorActionPreference = "Stop"',
+      '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
       'Add-Type -AssemblyName System.Windows.Forms',
       '[System.Windows.Forms.Application]::EnableVisualStyles()',
+      // A topmost owner keeps the native dialog above the browser app window.
+      // Hide the helper from the taskbar and dispose it on OK, Cancel or error.
+      '$owner = New-Object System.Windows.Forms.Form',
+      '$owner.ShowInTaskbar = $false',
+      '$owner.TopMost = $true',
+      '$owner.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None',
+      '$owner.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen',
+      '$owner.Size = New-Object System.Drawing.Size(1, 1)',
+      '$owner.Opacity = 0',
       '$dialog = New-Object System.Windows.Forms.SaveFileDialog',
       '$dialog.Title = "Chọn nơi lưu ZIP tự động"',
       '$dialog.Filter = "Tệp ZIP (*.zip)|*.zip"',
@@ -275,11 +286,9 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       '$dialog.AddExtension = $true',
       '$dialog.OverwritePrompt = $false',
       '$dialog.FileName = "dalat-carousel-tu-dong.zip"',
-      '$result = $dialog.ShowDialog()',
-      'if ($result -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($dialog.FileName) }',
-      '$dialog.Dispose()',
+      'try { $owner.Show(); $owner.Activate(); $owner.BringToFront(); $result = $dialog.ShowDialog($owner); if ($result -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($dialog.FileName) } } finally { $dialog.Dispose(); $owner.Dispose() }',
     ].join('; ');
-    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-STA', '-Command', script], { windowsHide: false });
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-STA', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true });
     const selected = String(stdout || '').trim();
     if (!selected) throw new BadRequestException('Bạn chưa chọn nơi lưu file ZIP.');
     const resolved = path.resolve(selected);
