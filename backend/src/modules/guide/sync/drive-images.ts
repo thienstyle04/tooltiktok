@@ -1,5 +1,7 @@
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as zlib from 'node:zlib';
 
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -32,6 +34,7 @@ const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.jf
 let driveFileDiskCacheDir = '';
 let knownFailedDriveFileIds: Set<string> | null = null;
 let knownFailedDriveFileIdsExpiresAt = 0;
+const driveFileVisualFingerprintCache = new Map<string, { size: number; mtimeMs: number; fingerprint: string }>();
 
 export interface DriveFolderEntry {
   fileId: string;
@@ -50,6 +53,7 @@ export function configureDriveFileDiskCache(dir: string): void {
   driveFileDiskCacheDir = String(dir || '').trim();
   knownFailedDriveFileIds = null;
   knownFailedDriveFileIdsExpiresAt = 0;
+  driveFileVisualFingerprintCache.clear();
 }
 
 function resolveDriveFileDiskCacheDir(): string {
@@ -69,6 +73,165 @@ function diskCachePaths(fileId: string): { binPath: string; metaPath: string } {
     binPath: path.join(dir, `${key}.bin`),
     metaPath: path.join(dir, `${key}.json`),
   };
+}
+
+function paethPredictor(left: number, above: number, upperLeft: number): number {
+  const estimate = left + above - upperLeft;
+  const leftDistance = Math.abs(estimate - left);
+  const aboveDistance = Math.abs(estimate - above);
+  const upperLeftDistance = Math.abs(estimate - upperLeft);
+  if (leftDistance <= aboveDistance && leftDistance <= upperLeftDistance) return left;
+  return aboveDistance <= upperLeftDistance ? above : upperLeft;
+}
+
+/**
+ * Hash pixel bytes instead of the PNG file bytes. Google Drive can contain the
+ * same picture under two file IDs with different PNG metadata/compression, so
+ * an ordinary SHA hash would incorrectly treat them as different images.
+ */
+function pngPixelFingerprint(body: Buffer): string | null {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (body.length < 33 || !body.subarray(0, 8).equals(signature)) return null;
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let bitDepth = 0;
+  let colorType = -1;
+  let interlace = -1;
+  const compressed: Buffer[] = [];
+  while (offset + 12 <= body.length) {
+    const length = body.readUInt32BE(offset);
+    const type = body.toString('ascii', offset + 4, offset + 8);
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    if (dataEnd + 4 > body.length) return null;
+    if (type === 'IHDR' && length >= 13) {
+      width = body.readUInt32BE(dataStart);
+      height = body.readUInt32BE(dataStart + 4);
+      bitDepth = body[dataStart + 8];
+      colorType = body[dataStart + 9];
+      interlace = body[dataStart + 12];
+    } else if (type === 'IDAT') {
+      compressed.push(body.subarray(dataStart, dataEnd));
+    } else if (type === 'IEND') {
+      break;
+    }
+    offset = dataEnd + 4;
+  }
+  const channels = ({ 0: 1, 2: 3, 4: 2, 6: 4 } as Record<number, number>)[colorType];
+  if (!width || !height || bitDepth !== 8 || interlace !== 0 || !channels || compressed.length === 0) return null;
+  const stride = width * channels;
+  const inflated = zlib.inflateSync(Buffer.concat(compressed));
+  if (inflated.length !== (stride + 1) * height) return null;
+  const pixels = Buffer.allocUnsafe(stride * height);
+  let sourceOffset = 0;
+  for (let row = 0; row < height; row += 1) {
+    const filter = inflated[sourceOffset];
+    sourceOffset += 1;
+    const rowOffset = row * stride;
+    const previousOffset = rowOffset - stride;
+    for (let column = 0; column < stride; column += 1) {
+      const raw = inflated[sourceOffset + column];
+      const left = column >= channels ? pixels[rowOffset + column - channels] : 0;
+      const above = row > 0 ? pixels[previousOffset + column] : 0;
+      const upperLeft = row > 0 && column >= channels ? pixels[previousOffset + column - channels] : 0;
+      let value: number;
+      if (filter === 0) value = raw;
+      else if (filter === 1) value = raw + left;
+      else if (filter === 2) value = raw + above;
+      else if (filter === 3) value = raw + Math.floor((left + above) / 2);
+      else if (filter === 4) value = raw + paethPredictor(left, above, upperLeft);
+      else return null;
+      pixels[rowOffset + column] = value & 0xff;
+    }
+    sourceOffset += stride;
+  }
+  const samplesAcross = 8;
+  const luminance = Array.from({ length: 8 }, () => Array<number>(9).fill(0));
+  const pixelLuminance = (x: number, y: number): number => {
+    const index = (y * width + x) * channels;
+    if (colorType === 0 || colorType === 4) return pixels[index];
+    return Math.round(0.2126 * pixels[index] + 0.7152 * pixels[index + 1] + 0.0722 * pixels[index + 2]);
+  };
+  for (let outputY = 0; outputY < 8; outputY += 1) {
+    for (let outputX = 0; outputX < 9; outputX += 1) {
+      let total = 0;
+      for (let sampleY = 0; sampleY < samplesAcross; sampleY += 1) {
+        const y = Math.min(height - 1, Math.floor((outputY + (sampleY + 0.5) / samplesAcross) * height / 8));
+        for (let sampleX = 0; sampleX < samplesAcross; sampleX += 1) {
+          const x = Math.min(width - 1, Math.floor((outputX + (sampleX + 0.5) / samplesAcross) * width / 9));
+          total += pixelLuminance(x, y);
+        }
+      }
+      luminance[outputY][outputX] = total / (samplesAcross * samplesAcross);
+    }
+  }
+  let differenceHash = 0n;
+  for (let y = 0; y < 8; y += 1) {
+    for (let x = 0; x < 8; x += 1) {
+      differenceHash = (differenceHash << 1n) | (luminance[y][x] > luminance[y][x + 1] ? 1n : 0n);
+    }
+  }
+  return `dhash64:${differenceHash.toString(16).padStart(16, '0')}`;
+}
+
+export function getCachedDriveFileVisualFingerprint(fileId: string): string {
+  const normalized = String(fileId || '').trim();
+  if (!normalized) return '';
+  const { binPath } = diskCachePaths(normalized);
+  try {
+    const stat = fs.statSync(binPath);
+    const cached = driveFileVisualFingerprintCache.get(normalized);
+    if (cached && cached.size === stat.size && cached.mtimeMs === stat.mtimeMs) return cached.fingerprint;
+    const { metaPath } = diskCachePaths(normalized);
+    try {
+      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as {
+        visualFingerprint?: unknown;
+        visualFingerprintContentLength?: unknown;
+      };
+      const persisted = String(meta.visualFingerprint || '').trim();
+      if (persisted && Number(meta.visualFingerprintContentLength) === stat.size) {
+        driveFileVisualFingerprintCache.set(normalized, { size: stat.size, mtimeMs: stat.mtimeMs, fingerprint: persisted });
+        return persisted;
+      }
+    } catch {
+      // Metadata cũ chưa có fingerprint; tính từ ảnh cache ở dưới.
+    }
+    const body = fs.readFileSync(binPath);
+    const fingerprint = pngPixelFingerprint(body)
+      || crypto.createHash('sha256').update(body).digest('hex');
+    driveFileVisualFingerprintCache.set(normalized, { size: stat.size, mtimeMs: stat.mtimeMs, fingerprint });
+    try {
+      const { metaPath } = diskCachePaths(normalized);
+      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as Record<string, unknown>;
+      fs.writeFileSync(metaPath, JSON.stringify({
+        ...meta,
+        visualFingerprint: fingerprint,
+        visualFingerprintContentLength: stat.size,
+      }), 'utf8');
+    } catch {
+      // Fingerprint trong RAM vẫn dùng được; lỗi ghi metadata không làm hỏng tạo list.
+    }
+    return fingerprint;
+  } catch {
+    return '';
+  }
+}
+
+export function uniqueCachedDriveFileIdsByVisualContent(fileIds: string[]): string[] {
+  const seenIds = new Set<string>();
+  const seenFingerprints = new Set<string>();
+  const result: string[] = [];
+  for (const value of fileIds || []) {
+    const fileId = String(value || '').trim();
+    if (!fileId || seenIds.has(fileId)) continue;
+    seenIds.add(fileId);
+    const fingerprint = getCachedDriveFileVisualFingerprint(fileId);
+    if (fingerprint && seenFingerprints.has(fingerprint)) continue;
+    if (fingerprint) seenFingerprints.add(fingerprint);
+    result.push(fileId);
+  }
+  return result;
 }
 
 function failedDriveFileIdsPath(): string {
@@ -166,6 +329,7 @@ function writeDriveFileDiskCache(fileId: string, asset: DriveFileAsset): void {
     const dir = resolveDriveFileDiskCacheDir();
     fs.mkdirSync(dir, { recursive: true });
     const { binPath, metaPath } = diskCachePaths(fileId);
+    driveFileVisualFingerprintCache.delete(fileId);
     fs.writeFileSync(binPath, asset.body);
     fs.writeFileSync(metaPath, JSON.stringify({
       fileId,

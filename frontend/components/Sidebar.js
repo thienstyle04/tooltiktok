@@ -9,6 +9,7 @@ export default function Sidebar({
   onOpenExport,
   onOpenData,
   onOpenSettings,
+  onOpenScheduler,
   onOpenDelete,
 }) {
   const menuItems = [
@@ -18,6 +19,7 @@ export default function Sidebar({
     { id: 'export', label: 'Xuất file', icon: 'export', onClick: onOpenExport, buttonId: 'batchExportBtn' },
     { id: 'data', label: 'Dữ liệu trang', icon: 'data', onClick: onOpenData },
     { id: 'settings', label: 'Cài đặt', icon: 'settings', onClick: onOpenSettings },
+    { id: 'scheduler', label: 'Hẹn giờ', icon: 'scheduler', onClick: onOpenScheduler },
     { id: 'delete', label: 'Xóa list', icon: 'delete', onClick: onOpenDelete, buttonId: 'deleteListsBtn' },
   ];
 

@@ -11,6 +11,7 @@ const V2_DECK_IDS = new Set([
   'spotlight-v6',
   'spotlight-v6-green',
   'spotlight-v6-dark',
+  'spotlight-v6-persimmon',
   'spotlight-v6-maps',
   'summary-note',
   'itinerary-note-2days',

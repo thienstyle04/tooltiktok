@@ -1872,9 +1872,11 @@ function renderSpotlightV6Cover(page, index, listId, coverTitle, backgroundImage
 
 function renderSpotlightV6ImagePage(page, index, listId) {
   const imageUrl = page.backgroundImage || '';
+  const title = String(page.title || '').trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-image'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-image.png">
       <div class="spotlight-v6-bg">${imageUrl ? renderPreviewImage(imageUrl, 'Hình nền') : ''}</div>
+      ${title ? `<h2 class="spotlight-v6-image-title">${escapeHtml(title)}</h2>` : ''}
     </article>
   `;
 }

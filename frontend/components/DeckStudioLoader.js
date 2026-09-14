@@ -12,6 +12,8 @@ const DeckStudio = dynamic(() => import('./DeckStudio'), {
   ),
 });
 
+const AutomationExportRunner = dynamic(() => import('./AutomationExportRunner'), { ssr: false });
+
 export default function DeckStudioLoader() {
   const [clientReady, setClientReady] = useState(false);
 
@@ -24,5 +26,11 @@ export default function DeckStudioLoader() {
     return null;
   }
 
+  const params = new URLSearchParams(window.location.search);
+  const automationRunId = params.get('automationRunId');
+  const automationToken = params.get('automationToken');
+  if (automationRunId && automationToken) {
+    return <AutomationExportRunner runId={automationRunId} token={automationToken} />;
+  }
   return <DeckStudio />;
 }

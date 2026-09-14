@@ -63,12 +63,32 @@ try {
       }],
       captionHashtags: [],
     };
+    const persimmonList = {
+      id: 'spotlight-v6-persimmon-caption-test',
+      pages: v5Pages.slice(0, 7).map((sourcePage, index) => ({
+        ...sourcePage,
+        layoutVariant: 'spotlight-v6-page',
+        backgroundImage: `/assets/drive-file?id=persimmon-partner-${index + 1}`,
+        items: [{
+          ...sourcePage.items[0],
+          imageUrl: `/assets/drive-file?id=persimmon-partner-${index + 1}`,
+          isPartner: true,
+        }],
+      })),
+      captionHashtags: [],
+    };
+    const persimmonNames = TestExport.collectPartnerNames(persimmonList);
+    const persimmonWorkbookBlob = await TestExport.createHorizontalXlsx(persimmonNames);
+    const persimmonWorkbook = await TestExport.JSZip.loadAsync(persimmonWorkbookBlob);
+    const persimmonSheetXml = await persimmonWorkbook.file('xl/worksheets/sheet1.xml').async('string');
     return {
       names,
       cellCount: (sheetXml.match(/<c r="[A-Z]+1"/g) || []).length,
       hasFirst: sheetXml.includes('Địa điểm 1'),
       hasSeventh: sheetXml.includes('Địa điểm 7'),
       otherTemplateNames: TestExport.collectPartnerNames(stableOtherTemplate),
+      persimmonNames,
+      persimmonCellCount: (persimmonSheetXml.match(/<c r="[A-Z]+1"/g) || []).length,
     };
   });
 
@@ -78,7 +98,9 @@ try {
   assert.equal(result.hasFirst, true);
   assert.equal(result.hasSeventh, true);
   assert.deepEqual(result.otherTemplateNames, []);
-  console.log('PASS Spotlight V5 partners export: 7 tên sau refresh, XLSX đủ 7 ô; mẫu khác giữ nguyên bộ lọc ảnh.');
+  assert.equal(result.persimmonNames.length, 7);
+  assert.equal(result.persimmonCellCount, 7);
+  console.log('PASS partner export: Spotlight V5 và Spotlight Mùa hồng đều ghi đúng 7 tên vào XLSX.');
 } finally {
   await browser.close();
 }

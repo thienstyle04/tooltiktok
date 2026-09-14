@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import * as zlib from 'node:zlib';
 
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import {
@@ -8,6 +12,7 @@ import {
   V2_DECK_IDS,
 } from '../logic/deck-builder-v2';
 import { setActiveDestinationLocalize } from '../sync/destination-localize';
+import { configureDriveFileDiskCache, uniqueCachedDriveFileIdsByVisualContent } from '../sync/drive-images';
 
 const keys: SectionKey[] = ['quan_an', 'cafe', 'homestay', 'check_in', 'dich_vu', 'choi_dem', 'hoat_dong', 'dia_diem_lich_su', 'khu_du_lich'];
 function makeItem(sectionKey: SectionKey, index: number, theme = 'Tone đen'): GuideItem {
@@ -86,4 +91,46 @@ assert.throws(
   /chỉ áp dụng cho Đà Lạt/,
 );
 
-console.log('PASS Spotlight V6 Tone đen: catalog, Chu_de, 11 trang, 6 ảnh tối, cân bằng nhóm, chống trùng và lỗi thiếu pool.');
+function pngChunk(type: string, data: Buffer): Buffer {
+  const header = Buffer.alloc(8);
+  header.writeUInt32BE(data.length, 0);
+  header.write(type, 4, 4, 'ascii');
+  return Buffer.concat([header, data, Buffer.alloc(4)]);
+}
+
+function testPng(label: string, compressionLevel: number): Buffer {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(2, 0);
+  header.writeUInt32BE(2, 4);
+  header[8] = 8;
+  header[9] = 6;
+  const pixels = Buffer.from([
+    0, 10, 20, 30, 255, 40, 50, 60, 255,
+    0, 70, 80, 90, 255, 100, 110, 120, 255,
+  ]);
+  return Buffer.concat([
+    signature,
+    pngChunk('IHDR', header),
+    pngChunk('tEXt', Buffer.from(`Comment\0${label}`)),
+    pngChunk('IDAT', zlib.deflateSync(pixels, { level: compressionLevel })),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+const fingerprintCache = fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-dark-fingerprint-'));
+try {
+  configureDriveFileDiskCache(fingerprintCache);
+  fs.writeFileSync(path.join(fingerprintCache, 'same-a.bin'), testPng('first metadata', 1));
+  fs.writeFileSync(path.join(fingerprintCache, 'same-b.bin'), testPng('second metadata', 9));
+  fs.writeFileSync(path.join(fingerprintCache, 'different.bin'), Buffer.from('not-the-same-image'));
+  assert.deepEqual(
+    uniqueCachedDriveFileIdsByVisualContent(['same-a', 'same-b', 'different']),
+    ['same-a', 'different'],
+    'Hai PNG cùng pixel nhưng khác metadata/compression phải được xem là một ảnh.',
+  );
+} finally {
+  fs.rmSync(fingerprintCache, { recursive: true, force: true });
+}
+
+console.log('PASS Spotlight V6 Tone đen: catalog, Chu_de, 11 trang, 6 ảnh tối, cân bằng nhóm, chống trùng Drive ID/nội dung và lỗi thiếu pool.');

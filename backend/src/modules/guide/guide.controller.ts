@@ -10,6 +10,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   Res,
   UploadedFile,
   UseInterceptors,
@@ -22,6 +23,8 @@ import { RuntimePerformanceReport, RuntimePerformanceService, RuntimePerformance
 import { MAX_WORKBOOK_FILE_BYTES } from './sync/workbook-source';
 import { HookSourceUpload, MAX_HOOK_SOURCE_FILE_BYTES } from './sync/festival-hook-source';
 import { getRuntimeSession } from '../../runtime-session';
+import { AutomationSchedulerService } from './automation-scheduler.service';
+import { AutomationScheduleInput } from './automation-scheduler.types';
 import {
   DeepSeekCaptionRequest,
   DeepSeekCaptionResponse,
@@ -53,6 +56,7 @@ export class GuideController {
   constructor(
     private readonly guideService: GuideService,
     private readonly runtimePerformance: RuntimePerformanceService,
+    private readonly automationScheduler: AutomationSchedulerService,
   ) {}
 
   private sendBinaryAsset(response: any, body: Buffer, contentType: string, cacheControl: string): void {
@@ -119,6 +123,7 @@ export class GuideController {
   @Get('api/guide-data')
   getGuideData(@Query('refresh') refresh?: string): Promise<GuideDataset> {
     const shouldRefresh = ['1', 'true', 'yes'].includes(String(refresh ?? '').trim().toLowerCase());
+    if (shouldRefresh) this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.getDataset({ refresh: shouldRefresh });
   }
 
@@ -129,11 +134,13 @@ export class GuideController {
 
   @Post('api/destination')
   setDestination(@Body() request: SetDestinationRequest): Promise<SetDestinationResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.setActiveDestination(request);
   }
 
   @Post('api/destinations')
   addDestination(@Body() request: AddDestinationRequest): Promise<AddDestinationResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.addDestination(request);
   }
 
@@ -154,6 +161,7 @@ export class GuideController {
     @Body() request: AddXlsxDestinationRequest,
     @UploadedFile() file?: LocalWorkbookUpload,
   ): Promise<AddDestinationResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.addXlsxDestination(request, file);
   }
 
@@ -163,11 +171,13 @@ export class GuideController {
     @Param('id') id: string,
     @UploadedFile() file?: LocalWorkbookUpload,
   ): Promise<SetDestinationResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.replaceDestinationWorkbook(id, file);
   }
 
   @Post('api/destinations/:id/refresh-from-sheet')
   refreshDestinationFromSheet(@Param('id') id: string): Promise<SetDestinationResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.refreshDestinationFromSheet(id);
   }
 
@@ -182,6 +192,7 @@ export class GuideController {
     @Body() request: { name?: string; docUrl?: string },
     @UploadedFile() file?: HookSourceUpload,
   ): Promise<HookSourcesResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.addHookSource(request, file);
   }
 
@@ -192,21 +203,25 @@ export class GuideController {
     @Body() request: { name?: string; docUrl?: string },
     @UploadedFile() file?: HookSourceUpload,
   ): Promise<HookSourcesResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.updateHookSource(id, request, file);
   }
 
   @Delete('api/hook-sources/:id')
   deleteHookSource(@Param('id') id: string): HookSourcesResponse {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.deleteHookSource(id);
   }
 
   @Post('api/hook-sources/:id/refresh')
   refreshHookSource(@Param('id') id: string): Promise<HookSourcesResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.refreshHookSource(id);
   }
 
   @Post('api/hook-mode')
   setHookMode(@Body() request: SetHookModeRequest): HookSourcesResponse {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.setHookMode(request);
   }
 
@@ -222,22 +237,26 @@ export class GuideController {
 
   @Post('api/decks/generate-from-caption')
   generateDeckFromCaption(@Body() request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.enqueueGeneration(() => this.guideService.generateDeckFromCaption(request));
   }
 
   @Post('api/decks/generate-batch')
   generateBatchLists(@Body() request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.enqueueGeneration(() => this.guideService.generateBatchLists(request));
   }
 
   @Post('api/decks/delete-lists')
   @HttpCode(200)
   deleteGeneratedLists(@Body() request: DeleteGeneratedListsRequest): DeleteGeneratedListsResponse {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.deleteGeneratedLists(request.groups || []);
   }
 
   @Post('api/decks/generate-partner-spotlight')
   generatePartnerSpotlight(@Body() request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.enqueueGeneration(() => this.guideService.generatePartnerSpotlight(request));
   }
 
@@ -269,6 +288,7 @@ export class GuideController {
     @Param('listId') listId: string,
     @Body() request: UpdateGeneratedListCoverRequest,
   ): UpdateGeneratedListCoverResponse {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.updateGeneratedListCover(deckId, listId, request);
   }
 
@@ -279,6 +299,7 @@ export class GuideController {
     @Param('pageIndex') pageIndex: string,
     @Body() request: UpdatePageTextRequest,
   ): UpdatePageTextResponse {
+    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.updatePageText(deckId, listId, Number(pageIndex), request);
   }
 
@@ -288,7 +309,88 @@ export class GuideController {
     @Param('deckId') deckId: string,
     @Param('listId') listId: string,
   ): void {
+    this.automationScheduler.assertUserMutationAllowed();
     this.guideService.deleteGeneratedList(deckId, listId);
+  }
+
+  @Get('api/automation')
+  getAutomationState() {
+    return this.automationScheduler.getState();
+  }
+
+  @Post('api/automation/schedules')
+  createAutomationSchedule(@Body() request: AutomationScheduleInput) {
+    return this.automationScheduler.create(request);
+  }
+
+  @Put('api/automation/schedules/:id')
+  updateAutomationSchedule(@Param('id') id: string, @Body() request: AutomationScheduleInput) {
+    return this.automationScheduler.update(id, request);
+  }
+
+  @Delete('api/automation/schedules/:id')
+  deleteAutomationSchedule(@Param('id') id: string) {
+    return this.automationScheduler.delete(id);
+  }
+
+  @Post('api/automation/schedules/:id/enabled')
+  setAutomationScheduleEnabled(@Param('id') id: string, @Body() request: { enabled?: boolean }) {
+    return this.automationScheduler.setEnabled(id, Boolean(request?.enabled));
+  }
+
+  @Post('api/automation/schedules/:id/run-now')
+  runAutomationScheduleNow(@Param('id') id: string) {
+    return this.automationScheduler.runNow(id);
+  }
+
+  @Post('api/automation/runs/:id/retry')
+  retryAutomationRun(@Param('id') id: string) {
+    return this.automationScheduler.retry(id);
+  }
+
+  @Post('api/automation/runs/:id/cancel')
+  cancelAutomationRun(@Param('id') id: string) {
+    return this.automationScheduler.cancel(id);
+  }
+
+  @Post('api/automation/choose-output-directory')
+  chooseAutomationOutputDirectory() {
+    return this.automationScheduler.chooseOutputDirectory();
+  }
+
+  @Post('api/automation/manual-export')
+  setAutomationManualExport(@Body() request: { active?: boolean }) {
+    return this.automationScheduler.setManualExportActive(Boolean(request?.active));
+  }
+
+  @Get('api/automation/runs/:id/export-context')
+  getAutomationExportContext(@Param('id') id: string, @Query('token') token: string) {
+    return this.automationScheduler.getExportContext(id, token);
+  }
+
+  @Post('api/automation/runs/:id/progress')
+  @HttpCode(204)
+  reportAutomationProgress(
+    @Param('id') id: string,
+    @Query('token') token: string,
+    @Body() request: { progress?: number; phase?: string },
+  ): void {
+    this.automationScheduler.reportProgress(id, token, Number(request?.progress), String(request?.phase || ''));
+  }
+
+  @Post('api/automation/runs/:id/archive')
+  acceptAutomationArchive(@Param('id') id: string, @Query('token') token: string, @Req() request: any) {
+    return this.automationScheduler.acceptArchive(id, token, request);
+  }
+
+  @Post('api/automation/runs/:id/export-failure')
+  @HttpCode(204)
+  reportAutomationExportFailure(
+    @Param('id') id: string,
+    @Query('token') token: string,
+    @Body() request: { message?: string },
+  ): void {
+    this.automationScheduler.reportExportFailure(id, token, String(request?.message || ''));
   }
 
   @Get('assets/dalat/:fileName')

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { GuideService } from '../guide.service';
 import { buildSpotlightV6DarkPages, spotlightV6DarkVenuePool } from '../logic/deck-builder-v2';
 import { getDestinationConfig } from '../sync/destination-config';
-import { extractDriveFileIdFromProxyUrl, getDriveImageProxyUrl, hasDriveFileDiskCache } from '../sync/drive-images';
+import { configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, getDriveImageProxyUrl, hasDriveFileDiskCache, uniqueCachedDriveFileIdsByVisualContent } from '../sync/drive-images';
 import { readSheetDriveManifest } from '../sync/sheet-drive-manifest';
 import { fetchWorkbookFromSheet } from '../sync/workbook-source';
 
@@ -11,6 +11,7 @@ async function main(): Promise<void> {
   const service = new GuideService() as any;
   const source = await fetchWorkbookFromSheet(getDestinationConfig('dalat'));
   const manifest = readSheetDriveManifest(service.dataRoot, 'dalat');
+  configureDriveFileDiskCache(service.dataRoot + '/drive-file-cache');
   const itemsBySection = service.loadWorkbookItems(
     source.workbook,
     [],
@@ -19,7 +20,9 @@ async function main(): Promise<void> {
     manifest,
   );
   const darkEntries = manifest.coverImageGroups?.dark || [];
-  const darkUrls = darkEntries.map((entry) => getDriveImageProxyUrl(entry.fileId));
+  const darkFileIds = darkEntries.map((entry) => entry.fileId).filter((fileId) => hasDriveFileDiskCache(fileId));
+  const visuallyUniqueDarkFileIds = uniqueCachedDriveFileIdsByVisualContent(darkFileIds);
+  const darkUrls = visuallyUniqueDarkFileIds.map((fileId) => getDriveImageProxyUrl(fileId));
   assert.ok(darkUrls.length >= 6, `Pool Ảnh tone đen chỉ có ${darkUrls.length}/6 ảnh.`);
   const venues = spotlightV6DarkVenuePool(itemsBySection);
   assert.ok(venues.length >= 5, `Pool địa điểm Tone đen chỉ có ${venues.length}/5 địa điểm.`);
@@ -65,7 +68,7 @@ async function main(): Promise<void> {
   const firstVenues = new Set(lists[0].filter((page) => page.layoutVariant === 'spotlight-v6-page').map((page) => page.type === 'list' ? page.items[0]?.sourceKey : ''));
   const secondVenues = lists[1].filter((page) => page.layoutVariant === 'spotlight-v6-page').map((page) => page.type === 'list' ? page.items[0]?.sourceKey : '');
   assert.ok(secondVenues.every((key) => !firstVenues.has(key)), 'Hai list thử không được lặp địa điểm Tone đen khi từng nhóm còn đủ.');
-  console.log(`PASS live Spotlight V6 Tone đen: darkImages=${darkUrls.length}, venues=${venues.length}, sections=${JSON.stringify(sectionCounts)}.`);
+  console.log(`PASS live Spotlight V6 Tone đen: darkImages=${darkUrls.length}, visualDuplicatesRemoved=${darkFileIds.length - visuallyUniqueDarkFileIds.length}, venues=${venues.length}, sections=${JSON.stringify(sectionCounts)}.`);
 }
 
 void main();

@@ -9,5 +9,6 @@ const image={type:'list',chipText:'',title:'',subtitle:'',items:[],backgroundIma
 const place={type:'list',chipText:'',title:'Quán thử',subtitle:'',items:[{name:'Quán thử',rawName:'Quán thử',imageUrl:'https://example.invalid/place.jpg',metaPrimary:'33 Ngô Quyền, Cam Ly - Đà Lạt',metaSecondary:''}],backgroundImage:'https://example.invalid/place.jpg',layoutVariant:'spotlight-v6-page',titlePlacement:'center'}; list.pages=[cover,image,place];
 const ch=renderCoverPage(cover,0,14,list.id,[],list,[]); assert.match(ch,/spotlight-v6-cover/); assert.match(ch,/spotlight-v6-cover-title/); assert.match(ch,/Hook hiện hành/); assert.doesNotMatch(ch,/spotlight-v6-shade/);
 const ih=renderListPage(image,1,14,list.id,[],list); assert.match(ih,/spotlight-v6-image/);
+const titledImage={...image,title:'Lên Đà Lạt để tui giới thiệu vài chỗ ăn ngon'}; const tih=renderListPage(titledImage,3,14,list.id,[],list); assert.match(tih,/spotlight-v6-image-title/); assert.match(tih,/Lên Đà Lạt/);
 const ph=renderListPage(place,2,14,list.id,[],list); assert.match(ph,/spotlight-v6-page/); assert.match(ph,/spotlight-v6-page-copy/); assert.match(ph,/Quán thử/); assert.match(ph,/33 Ngô Quyền/); assert.doesNotMatch(ph,/Giá:|Khung giờ|pin|chip|spotlight-v6-shade/);
 console.log('PASS spotlight-v6 renderer: ảnh giữ nguyên độ sáng, khung dọc, title căn giữa, trang ảnh và địa điểm.');

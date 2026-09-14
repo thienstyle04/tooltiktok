@@ -26,3 +26,4 @@ backend/data/active-destination.json
 backend/data/*-hooks.json
 backend/data/premade-hooks.json
 backend/data/hook-sources.*.json
+backend/data/automation-*.json

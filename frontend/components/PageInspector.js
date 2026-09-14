@@ -54,7 +54,7 @@ export default function PageInspector({
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
   const isTimedNote = page.layoutVariant === 'itinerary-note-timed-day';
-  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days' || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days' || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -100,6 +100,12 @@ export default function PageInspector({
             </div>
           )) : null}
           {page.layoutVariant === 'spotlight-v6-map-place' ? items.map((item, i) => (
+            <label className="inspector-field" key={item.id || i}>
+              <span>Địa chỉ địa điểm</span>
+              <textarea aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+            </label>
+          )) : null}
+          {deck.id === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page' ? items.map((item, i) => (
             <label className="inspector-field" key={item.id || i}>
               <span>Địa chỉ địa điểm</span>
               <textarea aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />

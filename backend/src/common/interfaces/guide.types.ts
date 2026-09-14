@@ -90,6 +90,7 @@ export interface HinhNenImageUrlPools {
   green: string[];
   dark: string[];
   random: string[];
+  persimmon?: string[];
 }
 
 export type AccentTone = 'terracotta' | 'gold' | 'pine' | 'berry' | 'slate';
@@ -199,9 +200,11 @@ export interface GuideDeckList {
   captionBody?: string;
   captionHashtags?: string[];
   templateVersion?: number;
+  automationRunId?: string;
+  automationPosition?: string;
   canvasPreset?: 'default' | 'tiktok-3x4' | 'tiktok-4x5' | 'tiktok-9x16';
   hookSnapshot?: {
-    mode: 'festival' | 'green' | 'dark';
+    mode: 'festival' | 'green' | 'dark' | 'persimmon';
     sourceId: string;
     sourceRevision: string;
   };
@@ -325,6 +328,9 @@ export interface GenerateCaptionDeckRequest {
   listId?: string;
   tone?: DeepSeekCaptionResponse['tone'];
   caption?: Partial<CaptionBlocks>;
+  hookSelection?: { mode: 'normal' | 'festival'; sourceId?: string };
+  automationRunId?: string;
+  automationPosition?: string;
 }
 
 export interface GenerateCaptionDeckResponse {
@@ -338,6 +344,8 @@ export interface GenerateBatchListsRequest {
   deckId?: string;
   count?: number;
   requestId?: string;
+  hookSelection?: { mode: 'normal' | 'festival'; sourceId?: string };
+  automationRunId?: string;
 }
 
 export interface DeleteGeneratedListsRequest {
