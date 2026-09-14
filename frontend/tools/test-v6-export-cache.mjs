@@ -23,10 +23,17 @@ try {
  await page.route('**/*', async route => {
    const url = new URL(route.request().url());
    if(url.pathname === '/') return route.fulfill({contentType:'text/html',body:'<html><head><style>'+css+'</style></head><body></body></html>'});
+   if(url.pathname === '/api/health') return route.fulfill({json:{status:'ok',sessionId:'cached-v6-smoke',appVersion:'0.6.03'}});
+   if(url.pathname === '/api/drive-cache/status') return route.fulfill({json:{phase:'ready',ready:true,destinationId:'dalat',total:1,completed:1,cached:1,failed:0,percent:100}});
    if(url.pathname === '/api/drive-files/cache-status') {
      const ids = route.request().postDataJSON().fileIds;
      const absent = ids.filter(id=>!fs.existsSync(path.join(data,'drive-file-cache',id+'.bin')));
      return route.fulfill({json:{missing:absent,cached:ids.length-absent.length}});
+   }
+   if(url.pathname === '/api/drive-files/prefetch') {
+     const ids = route.request().postDataJSON().fileIds;
+     const absent = ids.filter(id=>!fs.existsSync(path.join(data,'drive-file-cache',id+'.bin')));
+     return route.fulfill({json:{total:ids.length,skipped:ids.length-absent.length,ok:0,fail:absent.length,cancelled:false}});
    }
    if(url.pathname === '/api/runtime-performance' || url.pathname === '/api/runtime-performance/report') {
      return route.fulfill({json:{mode:'modern',reason:'smoke test',evaluatedAt:new Date().toISOString(),totalMemoryBytes:16*1024**3,freeMemoryBytes:8*1024**3,logicalCpuCount:8}});

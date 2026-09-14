@@ -12,6 +12,7 @@ assert.equal(classifyHinhNenImageGroup('Ảnh mảng xanh'), 'green');
 assert.equal(classifyHinhNenImageGroup('ẢNH TONE ĐEN'), 'dark');
 assert.equal(classifyHinhNenImageGroup('Ảnh random'), 'random');
 assert.equal(classifyHinhNenImageGroup('ảnh ramdom'), 'random');
+assert.equal(classifyHinhNenImageGroup('Ảnh mùa hồng (ảnh ở trong)'), 'persimmon');
 assert.equal(classifyHinhNenImageGroup('ảnh 12'), 'default');
 
 const rows = [
@@ -21,15 +22,19 @@ const rows = [
   ['3', 'Ảnh tone đen'],
   ['4', 'Ảnh random'],
   ['5', 'Ảnh ramdom'],
+  ['6', 'Ảnh mùa hồng'],
 ];
 const sheet = XLSX.utils.aoa_to_sheet(rows);
 sheet.D3 = { t: 's', v: 'Hook mảng xanh', l: { Target: 'https://docs.google.com/document/d/green-hook-doc-id/edit' } };
+sheet.D4 = { t: 's', v: 'Hook tone tối', l: { Target: 'https://docs.google.com/document/d/dark-hook-doc-id/edit' } };
+sheet.D7 = { t: 's', v: 'Hook mùa hồng', l: { Target: 'https://docs.google.com/document/d/persimmon-hook-doc-id/edit' } };
 const ids = {
   default: 'default-file-id-0001',
   green: 'green-file-id-0001',
   dark: 'dark-file-id-0001',
   random: 'random-file-id-0001',
   ramdom: 'ramdom-file-id-0001',
+  persimmon: 'persimmon-file-id-0001',
 };
 Object.values(ids).forEach((id, index) => {
   const cell = sheet[XLSX.utils.encode_cell({ r: index + 1, c: 1 })];
@@ -49,8 +54,10 @@ const source: SheetWorkbookSource = {
 
 async function main(): Promise<void> {
   const manifest = await buildSheetDriveManifest(source, emptySheetDriveManifest());
-  assert.equal(manifest.version, 3);
+  assert.equal(manifest.version, 5);
   assert.equal(manifest.hookSourceGroups?.green, 'https://docs.google.com/document/d/green-hook-doc-id/edit');
+  assert.equal(manifest.hookSourceGroups?.dark, 'https://docs.google.com/document/d/dark-hook-doc-id/edit');
+  assert.equal(manifest.hookSourceGroups?.persimmon, 'https://docs.google.com/document/d/persimmon-hook-doc-id/edit');
   assert.deepEqual(manifest.coverImages.map((entry) => entry.fileId), [ids.default]);
   assert.deepEqual(manifest.coverImageGroups?.default.map((entry) => entry.fileId), [ids.default]);
   assert.deepEqual(manifest.coverImageGroups?.green.map((entry) => entry.fileId), [ids.green]);
@@ -59,12 +66,14 @@ async function main(): Promise<void> {
     new Set(manifest.coverImageGroups?.random.map((entry) => entry.fileId)),
     new Set([ids.random, ids.ramdom]),
   );
+  assert.deepEqual(manifest.coverImageGroups?.persimmon.map((entry) => entry.fileId), [ids.persimmon]);
   const defaultIds = new Set(manifest.coverImages.map((entry) => entry.fileId));
   assert.ok(!defaultIds.has(ids.green));
   assert.ok(!defaultIds.has(ids.dark));
   assert.ok(!defaultIds.has(ids.random));
   assert.ok(!defaultIds.has(ids.ramdom));
-  console.log('PASS Hinh_nen: tách pool ảnh và đọc đúng hyperlink Hook mảng xanh cùng dòng.');
+  assert.ok(!defaultIds.has(ids.persimmon));
+  console.log('PASS Hinh_nen: tách pool ảnh và đọc đúng hyperlink Hook mảng xanh/Hook tone tối/Hook mùa hồng cùng dòng.');
 }
 
 void main();

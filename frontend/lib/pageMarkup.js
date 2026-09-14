@@ -739,6 +739,8 @@ const V2_LIST_VARIANTS = new Set([
   'spotlight-v5-place',
   'spotlight-v6-image',
   'spotlight-v6-page',
+  'spotlight-v6-map-page',
+  'spotlight-v6-map-place',
   'summary-note-page',
   'itinerary-note-day',
   'itinerary-note-timed-day',
@@ -1870,9 +1872,11 @@ function renderSpotlightV6Cover(page, index, listId, coverTitle, backgroundImage
 
 function renderSpotlightV6ImagePage(page, index, listId) {
   const imageUrl = page.backgroundImage || '';
+  const title = String(page.title || '').trim();
   return `
     <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-image'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-image.png">
       <div class="spotlight-v6-bg">${imageUrl ? renderPreviewImage(imageUrl, 'Hình nền') : ''}</div>
+      ${title ? `<h2 class="spotlight-v6-image-title">${escapeHtml(title)}</h2>` : ''}
     </article>
   `;
 }
@@ -1888,6 +1892,36 @@ function renderSpotlightV6VenuePage(page, index, listId, list) {
       <div class="spotlight-v6-page-copy">
         ${name ? `<h2 class="spotlight-v6-page-name">${escapeHtml(name)}</h2>` : ''}
         ${address ? `<p class="spotlight-v6-page-address">${escapeHtml(address)}</p>` : ''}
+      </div>
+    </article>
+  `;
+}
+
+function renderSpotlightV6MapPage(page, index, listId) {
+  const item = page.items?.[0] || {};
+  // backgroundImage là snapshot ảnh Maps riêng của trang. Không ưu tiên
+  // item.imageUrl vì các bản cũ từng refresh trường này về ảnh Link_drive.
+  const imageUrl = page.backgroundImage || item.imageUrl || '';
+  const name = String(item.rawName || item.name || 'dia-diem').trim();
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-map-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-map-${sanitizeFilePart(name)}.png">
+      <div class="spotlight-v6-map-bg">${imageUrl ? renderPreviewImage(imageUrl, `Google Maps ${name}`) : ''}</div>
+    </article>
+  `;
+}
+
+function renderSpotlightV6MapPlace(page, index, listId) {
+  const item = page.items?.[0] || {};
+  // Giữ cùng nguyên tắc snapshot cho ảnh thật của nửa sau mỗi cặp.
+  const imageUrl = page.backgroundImage || item.imageUrl || '';
+  const name = page.title !== undefined ? String(page.title || '').trim() : String(item.rawName || item.name || '').trim();
+  const address = String(item.metaPrimary || '').trim();
+  return `
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-map-place'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || 'dia-diem')}.png">
+      <div class="spotlight-v6-map-bg">${imageUrl ? renderPreviewImage(imageUrl, name || 'Địa điểm') : ''}</div>
+      <div class="spotlight-v6-map-copy">
+        ${name ? `<h2 class="spotlight-v6-map-name">${escapeHtml(name)}</h2>` : ''}
+        ${address ? `<p class="spotlight-v6-map-address">${escapeHtml(address)}</p>` : ''}
       </div>
     </article>
   `;
@@ -2403,6 +2437,12 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   }
   if (page.layoutVariant === 'spotlight-v6-image') {
     return renderSpotlightV6ImagePage(page, index, listId);
+  }
+  if (page.layoutVariant === 'spotlight-v6-map-page') {
+    return renderSpotlightV6MapPage(page, index, listId);
+  }
+  if (page.layoutVariant === 'spotlight-v6-map-place') {
+    return renderSpotlightV6MapPlace(page, index, listId);
   }
   if (page.layoutVariant === 'spotlight-v6-page') {
     return renderSpotlightV6VenuePage(page, index, listId, list);

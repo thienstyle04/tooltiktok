@@ -183,10 +183,16 @@ export class FestivalHookSourceStore {
     this.persist();
   }
 
-  reserve(deckId: string, destinationId: string): HookReservation | null {
-    if (destinationId !== FESTIVAL_HOOK_DESTINATION_ID || this.state.mode !== 'festival' || !FESTIVAL_HOOK_DECK_IDS.includes(deckId as typeof FESTIVAL_HOOK_DECK_IDS[number])) return null;
+  reserve(
+    deckId: string,
+    destinationId: string,
+    selection?: { mode?: HookMode; sourceId?: string },
+  ): HookReservation | null {
+    const mode = selection?.mode || this.state.mode;
+    const sourceId = selection?.mode === 'festival' ? String(selection.sourceId || '').trim() : this.state.activeSourceId;
+    if (destinationId !== FESTIVAL_HOOK_DESTINATION_ID || mode !== 'festival' || !FESTIVAL_HOOK_DECK_IDS.includes(deckId as typeof FESTIVAL_HOOK_DECK_IDS[number])) return null;
     if (this.mutating) throw new Error('Nguồn Hook lễ đang được cập nhật. Vui lòng thử lại sau.');
-    const source = this.requireSource(this.state.activeSourceId);
+    const source = this.requireSource(sourceId);
     const reserved = new Set([...this.reservations.values()].filter((entry) => entry.sourceId === source.id).map((entry) => entry.key));
     let candidates = source.hooks.filter((hook) => !source.usedKeys.includes(keyOf(hook)) && !reserved.has(keyOf(hook)));
     if (!candidates.length && reserved.size === 0) { source.usedKeys = []; candidates = source.hooks.filter((hook) => !reserved.has(keyOf(hook))); }

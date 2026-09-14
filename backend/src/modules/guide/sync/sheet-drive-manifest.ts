@@ -18,25 +18,26 @@ export const SHEET_DRIVE_MANIFEST_FILE = 'sheet-drive-images.json';
 /** Giữ thấp để tránh Google trả HTTP 401 hàng loạt khi list embeddedfolderview. */
 const DRIVE_MANIFEST_CONCURRENCY = 2;
 
-export type HinhNenImageGroup = 'default' | 'green' | 'dark' | 'random';
-export const HINH_NEN_IMAGE_GROUPS: readonly HinhNenImageGroup[] = ['default', 'green', 'dark', 'random'];
+export type HinhNenImageGroup = 'default' | 'green' | 'dark' | 'random' | 'persimmon';
+export const HINH_NEN_IMAGE_GROUPS: readonly HinhNenImageGroup[] = ['default', 'green', 'dark', 'random', 'persimmon'];
 
 export type HinhNenDriveImageGroups = Record<HinhNenImageGroup, DriveFolderEntry[]>;
 export type HinhNenSourceLinkGroups = Record<HinhNenImageGroup, string[]>;
 export type HinhNenHookSourceGroups = Partial<Record<HinhNenImageGroup, string>>;
 
 function emptyHinhNenDriveImageGroups(): HinhNenDriveImageGroups {
-  return { default: [], green: [], dark: [], random: [] };
+  return { default: [], green: [], dark: [], random: [], persimmon: [] };
 }
 
 function emptyHinhNenSourceLinkGroups(): HinhNenSourceLinkGroups {
-  return { default: [], green: [], dark: [], random: [] };
+  return { default: [], green: [], dark: [], random: [], persimmon: [] };
 }
 
 export function classifyHinhNenImageGroup(label: string): HinhNenImageGroup {
   const normalized = normalizeText(label).replace(/_/g, ' ');
   if (normalized.includes('mang xanh')) return 'green';
   if (normalized.includes('tone den')) return 'dark';
+  if (normalized.includes('mua hong')) return 'persimmon';
   if (normalized.includes('random') || normalized.includes('ramdom')) return 'random';
   return 'default';
 }
@@ -50,6 +51,10 @@ export interface SheetDriveImageManifestEntry {
   fileId: string;
   fileName: string;
   candidateImages?: DriveFolderEntry[];
+  mapSourceLink?: string;
+  mapFileId?: string;
+  mapFileName?: string;
+  mapCandidateImages?: DriveFolderEntry[];
 }
 
 export interface SheetDriveImageManifest {
@@ -140,6 +145,11 @@ function preferredImageLink(row: Record<string, string>): string {
   );
 }
 
+/** Cột Maps là nguồn độc lập; tuyệt đối không cho phép fallback sang Link_drive. */
+export function preferredGoogleMapsImageLink(row: Record<string, string>): string {
+  return firstValue(row, 'anh_gg_maps__hyperlink', 'anh_gg_maps');
+}
+
 function firstLinkValue(row: Record<string, string>): string {
   const preferred = preferredImageLink(row);
   if (preferred) return preferred;
@@ -183,7 +193,7 @@ function legacySheetDriveManifestPath(dataRoot: string): string {
 
 export function emptySheetDriveManifest(): SheetDriveImageManifest {
   return {
-    version: 3,
+    version: 5,
     generatedAt: new Date(0).toISOString(),
     workbookName: PREFERRED_WORKBOOK_NAME,
     workbookMtimeMs: 0,
@@ -229,12 +239,14 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
         green: Array.isArray(parsedImageGroups.green) ? parsedImageGroups.green : [],
         dark: Array.isArray(parsedImageGroups.dark) ? parsedImageGroups.dark : [],
         random: Array.isArray(parsedImageGroups.random) ? parsedImageGroups.random : [],
+        persimmon: Array.isArray(parsedImageGroups.persimmon) ? parsedImageGroups.persimmon : [],
       },
       coverSourceLinkGroups: {
         default: Array.isArray(parsedSourceGroups.default) ? parsedSourceGroups.default.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
         green: Array.isArray(parsedSourceGroups.green) ? parsedSourceGroups.green.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
         dark: Array.isArray(parsedSourceGroups.dark) ? parsedSourceGroups.dark.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
         random: Array.isArray(parsedSourceGroups.random) ? parsedSourceGroups.random.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
+        persimmon: Array.isArray(parsedSourceGroups.persimmon) ? parsedSourceGroups.persimmon.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
       },
       hookSourceGroups: parsed.hookSourceGroups && typeof parsed.hookSourceGroups === 'object'
         ? Object.fromEntries(Object.entries(parsed.hookSourceGroups)
@@ -268,6 +280,7 @@ export async function buildSheetDriveManifest(
   const coverSourceLinkGroups = emptyHinhNenSourceLinkGroups();
   const hookSourceGroups: HinhNenHookSourceGroups = {};
   const itemTasks: Array<() => Promise<void>> = [];
+  const mapTasks: Array<() => Promise<void>> = [];
   const coverTasks: Array<() => Promise<void>> = [];
   const coverResolveErrors = Object.fromEntries(
     HINH_NEN_IMAGE_GROUPS.map((group) => [group, 0]),
@@ -311,11 +324,12 @@ export async function buildSheetDriveManifest(
       const rawAddress = firstValue(row, 'dia_chi');
       const address = composeAddress(rawAddress, firstValue(row, 'ten_phuong'));
       const imageLink = preferredImageLink(row);
-      if (!imageLink) continue;
+      const mapImageLink = preferredGoogleMapsImageLink(row);
+      if (!imageLink && !mapImageLink) continue;
       const key = itemMappingKey(sectionKey, name, address);
       const legacyKey = rawAddress === address ? '' : itemMappingKey(sectionKey, name, rawAddress);
 
-      itemTasks.push(async () => {
+      if (imageLink) itemTasks.push(async () => {
         const previousEntry = previousManifest.items[key] ?? (legacyKey ? previousManifest.items[legacyKey] : undefined);
         // Sheet lớn (VD: Đà Lạt ~680 mục) mà re-resolve toàn bộ qua mạng mỗi lần đổi
         // điểm đến/đồng bộ sẽ rất chậm (concurrency thấp để tránh 401 hàng loạt) và có
@@ -418,6 +432,78 @@ export async function buildSheetDriveManifest(
           candidateImages: accessibleImages,
         };
       });
+
+      // Chạy sau phase ảnh thật để việc cập nhật hai nguồn không ghi đè lẫn nhau.
+      mapTasks.push(async () => {
+        const previousEntry = previousManifest.items[key] ?? (legacyKey ? previousManifest.items[legacyKey] : undefined);
+        const currentEntry = items[key];
+        if (!mapImageLink) {
+          if (currentEntry) {
+            const { mapSourceLink: _source, mapFileId: _id, mapFileName: _name, mapCandidateImages: _candidates, ...withoutMap } = currentEntry;
+            items[key] = withoutMap as SheetDriveImageManifestEntry;
+          }
+          return;
+        }
+
+        const previousCandidates = previousEntry
+          ? (previousEntry.mapCandidateImages?.length
+              ? previousEntry.mapCandidateImages
+              : previousEntry.mapFileId
+                ? [{ fileId: previousEntry.mapFileId, fileName: previousEntry.mapFileName || '', viewUrl: '' }]
+                : [])
+            .filter((entry) => entry.fileId)
+          : [];
+        const reusableCandidates = revalidateUncached
+          ? previousCandidates.filter((entry) => hasDriveFileDiskCache(entry.fileId))
+          : previousCandidates;
+        let resolvedMaps: DriveFolderEntry[] | null = null;
+        if (!forceRevalidate && previousEntry?.mapSourceLink === mapImageLink && reusableCandidates.length > 0) {
+          resolvedMaps = reusableCandidates;
+        } else {
+          const candidates = await resolveDriveLinkToEntries(mapImageLink, `${name} Google Maps`, address).catch(() => null);
+          resolvedMaps = candidates === null
+            ? null
+            : (candidates.length > 0 ? await filterAccessibleDriveEntries(candidates) : []);
+        }
+
+        // Lỗi mạng/quyền tạm thời không được phá cache Maps đã xác minh trước đó.
+        const resolvedSuccessfully = Boolean(resolvedMaps && resolvedMaps.length > 0);
+        const usableMaps = resolvedSuccessfully ? resolvedMaps! : previousCandidates;
+        if (usableMaps.length === 0) {
+          if (currentEntry) {
+            items[key] = {
+              ...currentEntry,
+              mapSourceLink: mapImageLink,
+              mapFileId: '',
+              mapFileName: '',
+              mapCandidateImages: [],
+            };
+          }
+          return;
+        }
+        const primary = usableMaps.find((entry) => entry.fileId === previousEntry?.mapFileId) || usableMaps[0];
+        const baseEntry: SheetDriveImageManifestEntry = currentEntry || previousEntry || {
+          key,
+          sectionKey,
+          name,
+          address,
+          sourceLink: imageLink,
+          fileId: '',
+          fileName: '',
+          candidateImages: [],
+        };
+        items[key] = {
+          ...baseEntry,
+          key,
+          sectionKey,
+          name,
+          address,
+          mapSourceLink: resolvedSuccessfully ? mapImageLink : (previousEntry?.mapSourceLink || mapImageLink),
+          mapFileId: primary.fileId,
+          mapFileName: primary.fileName,
+          mapCandidateImages: usableMaps,
+        };
+      });
     }
   }
 
@@ -430,6 +516,7 @@ export async function buildSheetDriveManifest(
         green: previousManifest.coverImageGroups?.green || [],
         dark: previousManifest.coverImageGroups?.dark || [],
         random: previousManifest.coverImageGroups?.random || [],
+        persimmon: previousManifest.coverImageGroups?.persimmon || [],
       }
     : emptyHinhNenDriveImageGroups();
   const previousSourceGroups = previousManifest.version >= 2
@@ -438,6 +525,7 @@ export async function buildSheetDriveManifest(
         green: previousManifest.coverSourceLinkGroups?.green || [],
         dark: previousManifest.coverSourceLinkGroups?.dark || [],
         random: previousManifest.coverSourceLinkGroups?.random || [],
+        persimmon: previousManifest.coverSourceLinkGroups?.persimmon || [],
       }
     : emptyHinhNenSourceLinkGroups();
 
@@ -479,6 +567,7 @@ export async function buildSheetDriveManifest(
   }
 
   await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY, options.onProgress);
+  await runLimited(mapTasks, DRIVE_MANIFEST_CONCURRENCY);
 
   console.log(
     `[sync] Drive manifest: resolved=${syncStats.resolved}`
@@ -520,7 +609,7 @@ export async function buildSheetDriveManifest(
   }
 
   return {
-    version: 3,
+    version: 5,
     generatedAt: new Date().toISOString(),
     workbookName: source.workbookName,
     workbookMtimeMs: source.fetchedAt,

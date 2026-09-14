@@ -152,6 +152,12 @@ async function main(): Promise<void> {
     status = store.getStatus('dalat');
     assert.equal(status.sources.find((entry) => entry.name === 'TXT Noel')?.hookCount, 2);
     assert.equal(status.sources.find((entry) => entry.name === 'DOCX Quốc khánh')?.hookCount, 2);
+    const txtId = status.sources.find((entry) => entry.name === 'TXT Noel')?.id || '';
+    const scheduledReservation = store.reserve('spotlight-v3', 'dalat', { mode: 'festival', sourceId: txtId });
+    assert.ok(scheduledReservation, 'Lịch phải chọn được nguồn Hook lễ riêng khi chế độ giao diện đang là Hook thường');
+    assert.match(scheduledReservation?.hook || '', /^Noel [AB]$/);
+    store.commit(scheduledReservation);
+    assert.equal(store.getStatus('dalat').mode, 'normal', 'Hook của lịch không được thay đổi chế độ Hook trên giao diện');
 
     const restarted = new FestivalHookSourceStore(root, fetchDoc, () => 0);
     const restored = restarted.getStatus('dalat');

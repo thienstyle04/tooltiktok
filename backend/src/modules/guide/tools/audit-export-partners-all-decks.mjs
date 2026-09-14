@@ -9,7 +9,28 @@
  *   KEEP_LISTS=0
  *   DECKS=... (mặc định: tất cả deck trong guide-data)
  */
-import { renderCoverPage, renderListPage } from '../../../../../frontend/lib/pageMarkup.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import { createRequire } from 'node:module';
+
+// pageMarkup dùng import kiểu bundler của Next.js. Bundle trong bộ nhớ để audit
+// chạy ổn định trên Node/Windows mà không thay đổi module production.
+const require = createRequire(import.meta.url);
+const esbuild = require('esbuild');
+const frontendRoot = path.resolve(import.meta.dirname, '../../../../../frontend');
+const markupSource = fs.readFileSync(path.join(frontendRoot, 'lib/pageMarkup.js'), 'utf8');
+const markupBundle = await esbuild.build({
+  stdin: { contents: markupSource, resolveDir: path.join(frontendRoot, 'lib') },
+  bundle: true,
+  platform: 'browser',
+  format: 'iife',
+  globalName: 'AuditMarkup',
+  write: false,
+});
+const markupContext = { console };
+vm.runInNewContext(markupBundle.outputFiles[0].text, markupContext);
+const { renderCoverPage, renderListPage } = markupContext.AuditMarkup;
 
 const API = process.env.TEST_API_URL || 'http://127.0.0.1:3000';
 const LISTS_PER_DECK = Math.max(1, Number(process.env.LISTS_PER_DECK || 1));
@@ -71,7 +92,9 @@ function collectPartnerNames(list) {
         .replace(/^[^:]{1,30}:\s*/, '')
         .trim();
       if (!partnerName) return;
-      const imageUrl = String(item?.imageUrl || '').trim();
+      const imageUrl = page.layoutVariant === 'spotlight-v5-place'
+        ? String(page.backgroundImage || item?.imageUrl || '').trim()
+        : String(item?.imageUrl || '').trim();
       if (imageUrl && !renderedMarkupIncludesImage(renderedMarkup, imageUrl)) return;
       partnerNames.add(partnerName);
     });

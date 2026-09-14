@@ -158,7 +158,7 @@ function exportQualityProfile(quality, deckId, runtimeMode = 'modern') {
       ? { ...profile, label: 'Cân bằng tương thích', compatibility: true, imagePrepareConcurrency: 1, renderChunkSize: 1, captureConcurrency: 1 }
       : profile;
   }
-  const isV6Family = deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green';
+  const isV6Family = deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
   return { ...profile, label: 'Cân bằng mới', losslessSource: true, fullResolutionV6: isV6Family,
     pixelRatio: isV6Family ? 1080 / 397 + 1e-9 : profile.pixelRatio,
     sourceImageMaxDimension: 0, sourceImageFormat: 'image/png', sourceImageQuality: 1 };
@@ -192,10 +192,10 @@ function prepareQualityLayout(nodes, profile) {
     if (!profile.losslessSource) { delete node.dataset.exportLossless; continue; }
     node.dataset.exportLossless = 'true';
     // Only normalized portrait layouts need a different design height.
-    if (!isSpotlightV6PageNode(node) && !isSpotlightV5PageNode(node)) continue;
+    if (!isSpotlightV6PageNode(node) && !isSpotlightV5PageNode(node) && !isSpotlightV6MapsPageNode(node)) continue;
     // Use the design frame rather than responsive preview dimensions.
     node.style.setProperty('width', '397px', 'important');
-    node.style.setProperty('height', `${397 * (isSpotlightV5PageNode(node) ? 1.25 : 16 / 9)}px`, 'important');
+    node.style.setProperty('height', `${397 * (isSpotlightV5PageNode(node) ? 1.25 : isSpotlightV6MapsPageNode(node) ? 4 / 3 : 16 / 9)}px`, 'important');
     node.style.setProperty('min-height', '0', 'important');
     node.style.setProperty('max-width', 'none', 'important');
     node.style.setProperty('flex-shrink', '0', 'important');
@@ -203,7 +203,7 @@ function prepareQualityLayout(nodes, profile) {
 }
 
 function isV6ExportPage(pageNode) {
-  return ['spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page']
+  return ['spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page', 'spotlight-v6-map-page', 'spotlight-v6-map-place']
     .some((name) => pageNode?.classList?.contains(name));
 }
 
@@ -215,8 +215,9 @@ function usesFullResolutionV6(pageNode, options) {
 function balancedPixelRatio(node, fallback) {
   if (node?.dataset?.exportLossless !== 'true') return fallback;
   const rect = node.getBoundingClientRect();
-  if (isSpotlightV5PageNode(node) || isSpotlightV6PageNode(node)) {
-    return Math.max(1080 / rect.width, (isSpotlightV5PageNode(node) ? 1350 : 1920) / rect.height) + 1e-9;
+  if (isSpotlightV5PageNode(node) || isSpotlightV6PageNode(node) || isSpotlightV6MapsPageNode(node)) {
+    const targetHeight = isSpotlightV5PageNode(node) ? 1350 : isSpotlightV6MapsPageNode(node) ? 1440 : 1920;
+    return Math.max(1080 / rect.width, targetHeight / rect.height) + 1e-9;
   }
   return fallback;
 }
@@ -564,6 +565,41 @@ function resetBatchImageCache() {
   batchImageCache.clear();
 }
 
+function localDriveImageUrl(src) {
+  try {
+    const url = new URL(src, window.location.href);
+    return url.origin === window.location.origin && url.pathname === '/assets/drive-file' ? url : null;
+  } catch { return null; }
+}
+
+// A separate browser transport can recover when fetch fails although the local
+// image endpoint is healthy. Read the same file, never capture an unverified DOM image.
+function recoverLocalDriveImage(src) {
+  const url = localDriveImageUrl(src);
+  if (!url || typeof XMLHttpRequest === 'undefined') return Promise.resolve({ blob: null });
+  url.searchParams.set('_exportRetry', `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    const finish = (result) => {
+      xhr.onload = xhr.onerror = xhr.ontimeout = xhr.onabort = null;
+      resolve(result);
+    };
+    xhr.open('GET', url.href);
+    xhr.responseType = 'blob';
+    xhr.timeout = IMAGE_FETCH_TIMEOUT_MS;
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) return finish({ blob: null, reason: `HTTP ${xhr.status}` });
+      if (xhr.getResponseHeader('x-drive-image-fallback') === '1') return finish({ blob: null, reason: 'Backend trả ảnh placeholder', fallback: true });
+      finish({ blob: xhr.response });
+    };
+    xhr.onerror = () => finish({ blob: null, reason: 'Trình duyệt không nhận được ảnh từ backend (fetch và XHR đều lỗi)' });
+    xhr.ontimeout = () => finish({ blob: null, reason: 'Quá thời gian nhận ảnh từ backend', timedOut: true });
+    xhr.onabort = () => finish({ blob: null, reason: 'Request ảnh bị hủy' });
+    xhr.send();
+  });
+}
+
 async function fetchImageBlob(src) {
   const maxAttempts = 2;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -579,7 +615,7 @@ async function fetchImageBlob(src) {
 
     try {
       const response = await fetch(src, {
-        cache: attempt === 0 ? 'force-cache' : 'reload',
+        cache: localDriveImageUrl(src) ? 'no-store' : (attempt === 0 ? 'force-cache' : 'reload'),
         ...(controller ? { signal: controller.signal } : {}),
       });
       if (!response.ok) {
@@ -588,20 +624,23 @@ async function fetchImageBlob(src) {
           await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
           continue;
         }
-        return { blob: null, timedOut };
+        return { blob: null, timedOut, reason: `HTTP ${response.status}` };
       }
-      if (timer) clearTimeout(timer);
       if (response.headers?.get?.('x-drive-image-fallback') === '1') {
-        return { blob: null, timedOut: false, fallback: true };
+        if (timer) clearTimeout(timer);
+        return { blob: null, timedOut: false, fallback: true, reason: 'Backend trả ảnh placeholder' };
       }
-      return { blob: await response.blob(), timedOut: false };
-    } catch {
+      const blob = await response.blob();
+      if (timer) clearTimeout(timer);
+      return { blob, timedOut: false };
+    } catch (error) {
       if (timer) clearTimeout(timer);
       if (attempt < maxAttempts - 1) {
         await new Promise((r) => setTimeout(r, timedOut ? 600 * (attempt + 1) : 350 * (attempt + 1)));
         continue;
       }
-      return { blob: null, timedOut };
+      const recovered = await recoverLocalDriveImage(src);
+      return { timedOut, reason: timedOut ? 'Quá thời gian tải ảnh' : String(error?.message || 'Lỗi tải ảnh'), ...recovered };
     }
   }
   return { blob: null, timedOut: false };
@@ -781,7 +820,7 @@ async function getCachedImageBlobUrl(src, options = {}) {
     const entry = batchImageCache.get(cacheKey);
     const result = await entry.blobPromise;
     const blob = result?.blob || null;
-    if (!blob) return { blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
+    if (!blob) return { ...result, blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
     if (!entry.objectUrl) entry.objectUrl = URL.createObjectURL(blob);
     return { blob, blobUrl: entry.objectUrl, timedOut: false };
   }
@@ -789,7 +828,10 @@ async function getCachedImageBlobUrl(src, options = {}) {
   const blobPromise = fetchImageBlob(src).then(async (result) => {
     if (!result?.blob) return result;
     if (await blobLooksLikeDriveFallback(result.blob)) {
-      return { ...result, blob: null, fallback: true };
+      return { ...result, blob: null, fallback: true, reason: 'Nội dung ảnh là placeholder' };
+    }
+    if (localDriveImageUrl(src) && (!result.blob.size || !/^image\//i.test(result.blob.type))) {
+      return { blob: null, reason: `Nội dung không phải ảnh (${result.blob.type || 'thiếu Content-Type'})` };
     }
     return {
       ...result,
@@ -804,7 +846,7 @@ async function getCachedImageBlobUrl(src, options = {}) {
   if (!blob) {
     // Không cache thất bại — lần chuẩn bị sau vẫn thử lại được.
     batchImageCache.delete(cacheKey);
-    return { blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
+    return { ...result, blob: null, blobUrl: null, timedOut: Boolean(result?.timedOut) };
   }
   entry.objectUrl = URL.createObjectURL(blob);
   return { blob, blobUrl: entry.objectUrl, timedOut: false };
@@ -1126,6 +1168,7 @@ async function prepareImageTarget(target, options = {}) {
     let selectedBlobUrl = null;
     let selectedSource = '';
     let ownedObjectUrl = null;
+    let sourceFailure = '';
     const reservePlaceImage = !allowCrossImageFallback && Boolean(claimedSources);
     if (!isSourceClaimed(claimedSources, domCurrentSrc)) {
       selectedBlob = await captureDomImageBlob(img);
@@ -1143,6 +1186,7 @@ async function prepareImageTarget(target, options = {}) {
         reserveOnTry: reservePlaceImage,
       });
       selectedBlob = fetched.blob;
+      sourceFailure = fetched.reason || '';
       selectedBlobUrl = fetched.blobUrl;
       selectedSource = fetched.source;
       ownedObjectUrl = null;
@@ -1190,7 +1234,7 @@ async function prepareImageTarget(target, options = {}) {
       ownedObjectUrl = null;
     }
     if (!preparedBlobUrl) {
-      if (strict) throw new Error('Không tải được ảnh nguồn; hãy kiểm tra mạng và quyền Drive rồi xuất lại.');
+      if (strict) throw new Error(`Không tải được ảnh nguồn ở trang ${Number(target.root?.dataset?.pageIndex || 0) + 1}: ${originalSrc}. ${sourceFailure || 'Không còn nguồn ảnh hợp lệ cho trang này'}`);
       img.dataset.originalSrc = originalSrc;
       img.dataset.exportFallbackSrc = 'neutral-placeholder';
       img.src = neutralImageDataUrl(target);
@@ -1554,7 +1598,14 @@ function collectPartnerNames(list) {
         .replace(/^[^:]{1,30}:\s*/, '')
         .trim();
       if (!partnerName) return;
-      const imageUrl = String(item?.imageUrl || '').trim();
+      // V5 lưu ảnh đã chọn của trang trong backgroundImage. Sau khi refresh
+      // dataset, item.imageUrl có thể chuyển sang một ảnh khác trong cùng folder,
+      // trong khi renderer vẫn hiển thị backgroundImage. Đối chiếu đúng ảnh mà
+      // V5 thực sự render để không loại nhầm đối tác khỏi partners-set*.xlsx.
+      // Giữ nguyên quy tắc item.imageUrl cho toàn bộ mẫu còn lại.
+      const imageUrl = page.layoutVariant === 'spotlight-v5-place'
+        ? String(page.backgroundImage || item?.imageUrl || '').trim()
+        : String(item?.imageUrl || '').trim();
       // Chỉ đối chiếu ảnh đã render khi item có ảnh riêng (grid/gallery...), để tránh đếm
       // nhầm đối tác mà ảnh thật không lên hình. Dòng không có ảnh (bảng chi phí...) thì
       // tin trực tiếp cờ isPartner từ dữ liệu.
@@ -1572,6 +1623,21 @@ function isSpotlightV5PageNode(pageNode) {
 
 function isSpotlightV6PageNode(pageNode) {
   return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day') || pageNode?.classList?.contains('itinerary-note-timed-day'));
+}
+
+function isSpotlightV6MapsPageNode(pageNode) {
+  return Boolean(pageNode?.classList?.contains('spotlight-v6-map-page') || pageNode?.classList?.contains('spotlight-v6-map-place'));
+}
+
+function normalizeSpotlightV6MapsCanvas(canvas, pageNode) {
+  if (!isSpotlightV6MapsPageNode(pageNode) || !canvas) return canvas;
+  const target = document.createElement('canvas');
+  target.width = 1080;
+  target.height = 1440;
+  const ctx = target.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.drawImage(canvas, 0, 0, target.width, target.height);
+  return target;
 }
 
 function normalizeSpotlightV6Canvas(canvas, pageNode) {
@@ -1655,6 +1721,9 @@ function deckShortName(deckId) {
     'spotlight-v5': 'spotlightv5',
     'spotlight-v6': 'spotlightv6',
     'spotlight-v6-green': 'spotlightv6-mang-xanh',
+    'spotlight-v6-dark': 'spotlightv6-tone-den',
+    'spotlight-v6-persimmon': 'spotlight-mua-hong',
+    'spotlight-v6-maps': 'spotlightv6-google-maps',
     'summary-note': 'summary-note',
     'itinerary-note-2days': 'itinerary-note-2days',
     'itinerary-note-timed': 'itinerary-note-timed',
@@ -1748,9 +1817,9 @@ export async function renderPageBlob(pageNode, options = {}) {
     if (!lossless) return undefined;
     const canvas = document.createElement('canvas');
     const rect = pageNode.getBoundingClientRect();
-    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode);
+    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode) || isSpotlightV6MapsPageNode(pageNode);
     canvas.width = normalized ? 1080 : Math.floor(rect.width * pixelRatio);
-    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : 1920) : Math.floor(rect.height * pixelRatio);
+    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : isSpotlightV6MapsPageNode(pageNode) ? 1440 : 1920) : Math.floor(rect.height * pixelRatio);
     return canvas;
   };
   const renderTimeoutMs = Number(options.renderTimeoutMs || PAGE_RENDER_TIMEOUT_MS);
@@ -1785,7 +1854,7 @@ export async function renderPageBlob(pageNode, options = {}) {
   let cornersAlreadyClipped = false;
   const finalizeCanvasBlob = async (canvas) => {
     const clipped = clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor);
-    const normalized = normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode);
+    const normalized = normalizeSpotlightV6MapsCanvas(normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode), pageNode);
     try { return await canvasToBlob(normalized, imageFormat, imageQuality); }
     finally {
       if (lossless) for (const bitmap of new Set([canvas, clipped, normalized])) {
@@ -2422,9 +2491,14 @@ async function exportBatchAttempt(context, callbacks = {}) {
     // Yield to event loop before download — lets the browser settle after
     // heavy ZIP generation so the download trigger is more reliable.
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const downloadStarted = downloadBlobFile(archive, `${todayDateTag()}.zip`);
-    if (!downloadStarted) {
-      throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    const archiveName = `${todayDateTag()}.zip`;
+    if (typeof context.onArchive === 'function') {
+      await context.onArchive(archive, archiveName);
+    } else {
+      const downloadStarted = downloadBlobFile(archive, archiveName);
+      if (!downloadStarted) {
+        throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+      }
     }
     cb.completeProgress(`Đã xuất xong ${orderedLists.length} list.`);
     cb.setStatus(`Đã xuất xong ${orderedLists.length} list.`);

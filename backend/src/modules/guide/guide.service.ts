@@ -70,10 +70,10 @@ import {
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_DARK_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION, SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
-import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, warmDriveFileDiskCache } from './sync/drive-images';
+import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, uniqueCachedDriveFileIdsByVisualContent, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
   DEFAULT_DESTINATION_ID,
@@ -89,6 +89,8 @@ import {
 import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
 import { FestivalHookSourceStore, HookReservation, HookSourceUpload } from './sync/festival-hook-source';
 import { GreenHookReservation, GreenHookSourceStore } from './sync/green-hook-source';
+import { DarkHookReservation, DarkHookSourceStore } from './sync/dark-hook-source';
+import { PersimmonHookReservation, PersimmonHookSourceStore } from './sync/persimmon-hook-source';
 import { localizeDecks, localizeText, setActiveDestinationLocalize, getMarketingCopy, buildCaptionHashtags, getDeckHashtagExtras, resolveDeckIdFromListId, cityLabel } from './sync/destination-localize';
 import {
   fetchWorkbookFromSheet,
@@ -123,7 +125,7 @@ const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(dec
 import { ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './logic/itinerary-note';
 import { ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
 const isTextNoteDeck = (deckId: string): boolean => deckId === 'summary-note' || deckId === 'itinerary-note-2days' || deckId === 'itinerary-note-timed';
-const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || isTextNoteDeck(deckId);
+const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -195,6 +197,8 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
   private readonly festivalHookSources: FestivalHookSourceStore;
   private readonly greenHookSource: GreenHookSourceStore;
+  private readonly darkHookSource: DarkHookSourceStore;
+  private readonly persimmonHookSource: PersimmonHookSourceStore;
   private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
   private usedAllocator = new DataAllocator();
@@ -237,6 +241,7 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly AUTO_WARM_DRIVE_CACHE = !['0', 'false', 'no'].includes(String(process.env.DALAT_AUTO_WARM_DRIVE_CACHE ?? 'true').trim().toLowerCase());
   private driveCacheWarmToken = 0;
   private generationQueue: Promise<void> = Promise.resolve();
+  private generationQueueDepth = 0;
   private driveCacheWarmStatus: DriveCacheWarmStatus = {
     phase: this.AUTO_WARM_DRIVE_CACHE ? 'checking' : 'ready',
     ready: !this.AUTO_WARM_DRIVE_CACHE,
@@ -255,6 +260,8 @@ export class GuideService implements OnApplicationBootstrap {
   constructor(private readonly runtimePerformance: RuntimePerformanceService = new RuntimePerformanceService()) {
     this.festivalHookSources = new FestivalHookSourceStore(this.dataRoot);
     this.greenHookSource = new GreenHookSourceStore(this.dataRoot);
+    this.darkHookSource = new DarkHookSourceStore(this.dataRoot);
+    this.persimmonHookSource = new PersimmonHookSourceStore(this.dataRoot);
     this.loadCustomDestinations();
     this.activeDestinationId = this.loadActiveDestinationId();
     this.driveCacheWarmStatus.destinationId = this.activeDestinationId;
@@ -266,6 +273,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   async enqueueGeneration<T>(task: () => Promise<T>): Promise<T> {
+    this.generationQueueDepth += 1;
     const previous = this.generationQueue;
     let release: () => void = () => undefined;
     this.generationQueue = new Promise<void>((resolve) => { release = resolve; });
@@ -273,8 +281,13 @@ export class GuideService implements OnApplicationBootstrap {
     try {
       return await this.runtimePerformance.runGenerationTask(task);
     } finally {
+      this.generationQueueDepth = Math.max(0, this.generationQueueDepth - 1);
       release();
     }
+  }
+
+  isGenerationBusy(): boolean {
+    return this.generationQueueDepth > 0;
   }
 
   private driveCacheConcurrency(configured: number, max: number): number {
@@ -1337,9 +1350,12 @@ export class GuideService implements OnApplicationBootstrap {
     store.decks[deckId][listId] ||= {};
     const previousItems = store.decks[deckId][listId][String(pageIndex)]?.items;
     let items = previousItems;
-    const isEditableNoteRows = page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day';
+    const isEditableNoteRows = page.layoutVariant === 'itinerary-note-day'
+      || page.layoutVariant === 'itinerary-note-timed-day'
+      || page.layoutVariant === 'spotlight-v6-map-place'
+      || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page');
     if (isEditableNoteRows && page.type === 'list' && request.items !== undefined) {
-      if (!Array.isArray(request.items) || request.items.length !== page.items.length) throw new BadRequestException(`Cần giữ đủ ${page.items.length} dòng lịch trình.`);
+      if (!Array.isArray(request.items) || request.items.length !== page.items.length) throw new BadRequestException(`Cần giữ đủ ${page.items.length} dòng dữ liệu.`);
       items = request.items.map(item => ({
         name: this.normalizeEditablePageText(item.name ?? ''),
         metaPrimary: this.normalizeEditablePageText(item.metaPrimary ?? ''),
@@ -1383,13 +1399,22 @@ export class GuideService implements OnApplicationBootstrap {
       deckId,
     );
 
-    if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'spotlight-v6-green' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
+    if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'spotlight-v6-green' && deckId !== 'spotlight-v6-dark' && deckId !== 'spotlight-v6-persimmon' && deckId !== 'spotlight-v6-maps' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
       throw new BadRequestException('Cần có tiêu đề cover trước khi tạo list mới.');
     }
 
     await this.prepareWorkbookForDataset(false);
     const greenReadyImageIds = deckId === 'spotlight-v6-green'
       ? await this.prepareSpotlightV6GreenResources()
+      : null;
+    const darkReadyImageIds = deckId === 'spotlight-v6-dark'
+      ? await this.prepareSpotlightV6DarkResources()
+      : null;
+    const persimmonReadyImageIds = deckId === 'spotlight-v6-persimmon'
+      ? await this.prepareSpotlightV6PersimmonResources()
+      : null;
+    const mapsReadyImageIds = deckId === 'spotlight-v6-maps'
+      ? await this.prepareSpotlightV6MapsResources()
       : null;
     const context = this.buildDatasetContext();
     if (greenReadyImageIds) {
@@ -1400,6 +1425,46 @@ export class GuideService implements OnApplicationBootstrap {
           return Boolean(fileId && greenReadyImageIds.has(fileId));
         }),
       };
+    }
+    if (darkReadyImageIds) {
+      context.hinhNenImagePools = {
+        ...context.hinhNenImagePools,
+        dark: context.hinhNenImagePools.dark.filter((url) => {
+          const fileId = extractDriveFileIdFromProxyUrl(url);
+          return Boolean(fileId && darkReadyImageIds.has(fileId));
+        }),
+      };
+    }
+    if (persimmonReadyImageIds) {
+      context.hinhNenImagePools = {
+        ...context.hinhNenImagePools,
+        persimmon: (context.hinhNenImagePools.persimmon || []).filter((url) => {
+          const fileId = extractDriveFileIdFromProxyUrl(url);
+          return Boolean(fileId && persimmonReadyImageIds.has(fileId));
+        }),
+      };
+    }
+    if (mapsReadyImageIds) {
+      for (const items of Object.values(context.itemsBySection)) {
+        for (const item of items || []) {
+          const mapUrls = [item.mapImageUrl || '', ...(item.mapCandidateImageUrls || [])].filter((url) => {
+            const id = extractDriveFileIdFromProxyUrl(url);
+            return Boolean(id && mapsReadyImageIds.map.has(id));
+          });
+          const realUrls = [item.imageUrl, ...(item.candidateImageUrls || [])].filter((url) => {
+            const id = extractDriveFileIdFromProxyUrl(url);
+            return Boolean(id && mapsReadyImageIds.real.has(id));
+          });
+          item.mapImageUrl = mapUrls[0] || '';
+          item.mapCandidateImageUrls = [...new Set(mapUrls)];
+          if (item.mapImageUrl) {
+            item.imageUrl = realUrls[0] || '';
+            item.candidateImageUrls = [...new Set(realUrls)];
+            item.imageMapped = Boolean(item.imageUrl);
+            item.imageSource = item.imageUrl ? 'manual' : 'fallback';
+          }
+        }
+      }
     }
     const currentDeck = context.decks.find((d) => d.id === deckId);
     if (!currentDeck) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
@@ -1415,9 +1480,13 @@ export class GuideService implements OnApplicationBootstrap {
 
     let festivalReservation: HookReservation | null = null;
     let greenHookReservation: GreenHookReservation | null = null;
+    let darkHookReservation: DarkHookReservation | null = null;
+    let persimmonHookReservation: PersimmonHookReservation | null = null;
     try {
-      festivalReservation = this.festivalHookSources.reserve(deckId, this.activeDestinationId);
+      festivalReservation = this.festivalHookSources.reserve(deckId, this.activeDestinationId, request.hookSelection);
       if (deckId === 'spotlight-v6-green') greenHookReservation = this.greenHookSource.reserve();
+      if (deckId === 'spotlight-v6-dark') darkHookReservation = this.darkHookSource.reserve();
+      if (deckId === 'spotlight-v6-persimmon') persimmonHookReservation = this.persimmonHookSource.reserve();
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : String(error));
     }
@@ -1425,7 +1494,11 @@ export class GuideService implements OnApplicationBootstrap {
     try {
     this.ensureInventoryLoaded();
     const deckUsage = this.createUsageScope();
-    currentDeck.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
+    currentDeck.lists.forEach((list) => {
+      const isPreviewList = /-main$/i.test(String(list.id || '')) || String(list.id || '').toLowerCase() === 'main';
+      if (deckId === 'spotlight-v6-persimmon' && isPreviewList) return;
+      this.markUsedInDeck(list.pages, deckUsage);
+    });
     // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
     for (const prevList of existing) {
       for (const page of prevList.pages) {
@@ -1439,6 +1512,18 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'spotlight-v6-green') {
       setSpotlightV3BuildContext({
         hooks: greenHookReservation ? [greenHookReservation.hook] : [],
+        destinationId: this.activeDestinationId,
+        usedHookTitles: this.getUsedCaptionTitles(deckId),
+      });
+    } else if (deckId === 'spotlight-v6-dark') {
+      setSpotlightV3BuildContext({
+        hooks: darkHookReservation ? [darkHookReservation.hook] : [],
+        destinationId: this.activeDestinationId,
+        usedHookTitles: this.getUsedCaptionTitles(deckId),
+      });
+    } else if (deckId === 'spotlight-v6-persimmon') {
+      setSpotlightV3BuildContext({
+        hooks: persimmonHookReservation ? [persimmonHookReservation.hook] : [],
         destinationId: this.activeDestinationId,
         usedHookTitles: this.getUsedCaptionTitles(deckId),
       });
@@ -1474,6 +1559,10 @@ export class GuideService implements OnApplicationBootstrap {
       ? festivalReservation.hook
       : greenHookReservation
       ? greenHookReservation.hook
+      : darkHookReservation
+      ? darkHookReservation.hook
+      : persimmonHookReservation
+      ? persimmonHookReservation.hook
       : isSectionedGoogleDocHookDeck(deckId)
       ? await this.resolveDeckHookCoverTitle(deckId, seed)
       : isLegacyGoogleDocHookDeck(deckId)
@@ -1499,13 +1588,18 @@ export class GuideService implements OnApplicationBootstrap {
       ? currentDeck.navTitle
       : (deckId === 'summary-note' || deckId === 'itinerary-note-2days')
       ? String((generatedPages.find((page) => page.type === 'list') as ListPage | undefined)?.title || '').trim()
-      : deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green'
+      : deckId === 'spotlight-v6-maps'
+      ? currentDeck.navTitle
+      : deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon'
       ? String((generatedPages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
       : finalCaption.coverTitle;
 
-    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' ? 14 : deckId === 'spotlight-v6-green' ? 11 : isTextNoteDeck(deckId) ? (deckId === 'summary-note' ? 1 : 2) : 0;
+    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' || deckId === 'spotlight-v6-maps' ? 14 : deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' ? 11 : isTextNoteDeck(deckId) ? (deckId === 'summary-note' ? 1 : 2) : 0;
     if (expectedNonAiPageCount && generatedPages.length !== expectedNonAiPageCount) {
       throw new BadRequestException(`Mẫu ${currentDeck.navTitle} phải có đúng ${expectedNonAiPageCount} trang, hiện có ${generatedPages.length}.`);
+    }
+    if (deckId === 'spotlight-v6-persimmon' && (generatedPages.length < 9 || generatedPages.length > 11)) {
+      throw new BadRequestException(`Mẫu ${currentDeck.navTitle} phải có từ 9 đến 11 trang, hiện có ${generatedPages.length}.`);
     }
     const generatedList = buildDeckList(
       deckId,
@@ -1517,18 +1611,33 @@ export class GuideService implements OnApplicationBootstrap {
     );
     generatedList.coverTitle = effectiveCoverTitle;
     if (deckId === 'spotlight-v5') generatedList.canvasPreset = 'tiktok-4x5';
-    if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green') generatedList.canvasPreset = 'tiktok-9x16';
+    if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon') generatedList.canvasPreset = 'tiktok-9x16';
+    if (deckId === 'spotlight-v6-maps') generatedList.canvasPreset = 'tiktok-3x4';
     if (isTextNoteDeck(deckId)) generatedList.canvasPreset = 'tiktok-9x16';
-    generatedList.postCaption = isTextNoteDeck(deckId)
+    generatedList.postCaption = deckId === 'spotlight-v6-persimmon'
+      ? 'Đà Lạt mùa hồng 🍂\nLưu lại những địa điểm trong list để tham khảo cho chuyến đi nhé.'
+      : deckId === 'spotlight-v6-maps'
+      ? 'tới Đà Lạt vì'
+      : isTextNoteDeck(deckId)
       ? (deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_CAPTION : deckId === 'itinerary-note-2days' ? ITINERARY_NOTE_CAPTION : summaryNoteDefaultCaption())
       : finalCaption.headline;
     // Không dùng chung `description`: trường đó có thể bị làm rỗng để list con
     // bám đúng cấu trúc chữ của mẫu mẹ, còn caption xuất file vẫn phải giữ mô tả.
-    generatedList.captionBody = isTextNoteDeck(deckId)
+    generatedList.captionBody = deckId === 'spotlight-v6-persimmon'
+      ? ''
+      : deckId === 'spotlight-v6-maps'
+      ? ''
+      : isTextNoteDeck(deckId)
       ? ''
       : (this.sanitizeContentText(caption.body) || this.captionBodyFallback());
-    generatedList.captionHashtags = isTextNoteDeck(deckId) ? [] : finalCaption.hashtags;
+    generatedList.captionHashtags = deckId === 'spotlight-v6-persimmon'
+      ? []
+      : deckId === 'spotlight-v6-maps'
+      ? ['#dalat', '#reviewdalat', '#dalatreview', '#dalatdidau', '#dalattrip']
+      : isTextNoteDeck(deckId) ? [] : finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
+    if (request.automationRunId) generatedList.automationRunId = String(request.automationRunId).slice(0, 100);
+    if (request.automationPosition) generatedList.automationPosition = String(request.automationPosition).slice(0, 100);
     if (festivalReservation) {
       generatedList.hookSnapshot = {
         mode: 'festival',
@@ -1543,6 +1652,20 @@ export class GuideService implements OnApplicationBootstrap {
         sourceRevision: greenHookReservation.sourceRevision,
       };
     }
+    if (darkHookReservation) {
+      generatedList.hookSnapshot = {
+        mode: 'dark',
+        sourceId: darkHookReservation.sourceId,
+        sourceRevision: darkHookReservation.sourceRevision,
+      };
+    }
+    if (persimmonHookReservation) {
+      generatedList.hookSnapshot = {
+        mode: 'persimmon',
+        sourceId: persimmonHookReservation.sourceId,
+        sourceRevision: persimmonHookReservation.sourceRevision,
+      };
+    }
     const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList, deckId);
 
     this.markUsedInDeck(sanitizedGeneratedList.pages);
@@ -1552,11 +1675,15 @@ export class GuideService implements OnApplicationBootstrap {
     this.persistGeneratedLists();
     this.festivalHookSources.commit(festivalReservation);
     this.greenHookSource.commit(greenHookReservation);
+    this.darkHookSource.commit(darkHookReservation);
+    this.persimmonHookSource.commit(persimmonHookReservation);
 
     return { deckId, listId: sanitizedGeneratedList.id, navTitle: sanitizedGeneratedList.navTitle, title: sanitizedGeneratedList.title };
     } catch (error) {
       this.festivalHookSources.rollback(festivalReservation);
       this.greenHookSource.rollback(greenHookReservation);
+      this.darkHookSource.rollback(darkHookReservation);
+      this.persimmonHookSource.rollback(persimmonHookReservation);
       throw error;
     }
   }
@@ -1621,20 +1748,26 @@ export class GuideService implements OnApplicationBootstrap {
     if (isNonAiDeck(deckId)) {
       const results: Array<{ listId: string; navTitle: string; tone: string }> = [];
       let failCount = 0;
+      const errors: Array<{ index: number; tone: string; message: string }> = [];
       for (let i = 0; i < count; i += 1) {
         try {
           const generated = await this.generateDeckFromCaption({
             deckId,
             tone: 'lich_trinh_huu_ich',
             caption: { coverTitle: '', headline: '', body: '', hashtags: [] },
+            hookSelection: request.hookSelection,
+            automationRunId: request.automationRunId,
+            automationPosition: `${deckId}:${i + 1}`,
           });
           results.push({ listId: generated.listId, navTitle: generated.navTitle, tone: 'không AI' });
         } catch (error) {
-          console.warn(`[batch] Lỗi tạo ${deckId} ${i + 1}/${count}:`, error instanceof Error ? error.message : error);
+          const message = error instanceof Error ? error.message : String(error);
+          console.warn(`[batch] Lỗi tạo ${deckId} ${i + 1}/${count}:`, message);
+          errors.push({ index: i + 1, tone: 'lich_trinh_huu_ich', message });
           failCount += 1;
         }
       }
-      return { deckId, lists: results, successCount: results.length, failCount };
+      return { deckId, lists: results, successCount: results.length, failCount, errors };
     }
 
     const apiKey = String(process.env.DEEPSEEK_API_KEY ?? '').trim();
@@ -1735,6 +1868,9 @@ export class GuideService implements OnApplicationBootstrap {
             body: caption.body,
             hashtags: caption.hashtags,
           },
+          hookSelection: request.hookSelection,
+          automationRunId: request.automationRunId,
+          automationPosition: `${deckId}:${i + 1}`,
         });
 
         results.push({ listId: generated.listId, navTitle: generated.navTitle, tone });
@@ -2105,7 +2241,7 @@ export class GuideService implements OnApplicationBootstrap {
         if (!ownOverride) return page;
         return { ...page, title: ownOverride.title, subtitle: ownOverride.subtitle,
           ...(page.layoutVariant === 'itinerary-note-timed-day' && ownOverride.chipText !== undefined ? { chipText: ownOverride.chipText } : {}),
-          ...(page.type === 'list' && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day') && ownOverride.items ? {
+          ...(page.type === 'list' && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
             items: page.items.map((item, index) => ({ ...item, ...ownOverride.items?.[index] })),
           } : {}),
         };
@@ -2263,6 +2399,9 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'spotlight-v5') return SPOTLIGHT_V5_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v6') return SPOTLIGHT_V6_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v6-green') return SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-v6-dark') return SPOTLIGHT_V6_DARK_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-v6-persimmon') return SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-v6-maps') return SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION;
     if (isTextNoteDeck(deckId)) return deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_TEMPLATE_VERSION : deckId === 'itinerary-note-2days' ? ITINERARY_NOTE_TEMPLATE_VERSION : SUMMARY_NOTE_TEMPLATE_VERSION;
     if (deckId === 'carousel-mau-1') return CAROUSEL_MAU_1_TEMPLATE_VERSION;
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
@@ -2674,7 +2813,7 @@ export class GuideService implements OnApplicationBootstrap {
       const refreshedLists = lists.map((list, listIndex) => {
         // Spotlight V4/V5 lưu snapshot hook, ảnh và địa điểm; thay đổi mẫu chỉ
         // áp dụng cho list mới, không rebuild các list người dùng đã tạo.
-        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || isTextNoteDeck(deckId)) return list;
+        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) return list;
         if (deckId === 'spotlight-partner') {
           const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
           if (!partnerItem) return list;
@@ -2950,7 +3089,10 @@ export class GuideService implements OnApplicationBootstrap {
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (deckId === 'spotlight-partner' || isTextNoteDeck(deckId)) continue;
+      // Maps lưu snapshot theo cặp: item của trang Maps phải giữ file Anh_GG_maps.
+      // Luồng refresh chung chỉ biết ảnh thật Link_drive và sẽ thay nhầm trang Maps
+      // thành ảnh địa điểm sau lần reload/getDataset đầu tiên.
+      if (deckId === 'spotlight-partner' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
       const refreshedLists = lists.map((list) => ({
         ...list,
         pages: list.pages.map((page) => {
@@ -3071,6 +3213,7 @@ export class GuideService implements OnApplicationBootstrap {
           .filter((item) => item.id && Array.isArray(item.pages));
         if (normalizedLists.length > 0) this.generatedListsByDeckId.set(deckId, normalizedLists);
       });
+      this.repairSpotlightV6MapsSnapshots();
       this.migrateGeneratedListTextStore();
     } catch {
       this.generatedListsByDeckId.clear();
@@ -3089,12 +3232,48 @@ export class GuideService implements OnApplicationBootstrap {
     // (bộ nhớ, luôn mới nhất) ngay trong buildDatasetContext(), nên CRUD list không cần rebuild Sheet.
   }
 
+  /** Sửa một lần các list Maps tạo bởi bản cũ bị refresh item về ảnh Link_drive. */
+  private repairSpotlightV6MapsSnapshots(): void {
+    const lists = this.generatedListsByDeckId.get('spotlight-v6-maps');
+    if (!lists?.length) return;
+    let changed = false;
+    const repaired = lists.map((list) => ({
+      ...list,
+      pages: list.pages.map((page) => {
+        if (page.type !== 'list'
+          || (page.layoutVariant !== 'spotlight-v6-map-page' && page.layoutVariant !== 'spotlight-v6-map-place')
+          || !page.items[0]
+          || !String(page.backgroundImage || '').trim()) return page;
+        const expectedImage = String(page.backgroundImage).trim();
+        const firstItem = page.items[0];
+        if (firstItem.imageUrl === expectedImage
+          && firstItem.candidateImageUrls?.length === 1
+          && firstItem.candidateImageUrls[0] === expectedImage) return page;
+        changed = true;
+        return {
+          ...page,
+          items: [{
+            ...firstItem,
+            imageUrl: expectedImage,
+            candidateImageUrls: [expectedImage],
+            imageMapped: true,
+            imageSource: 'manual' as const,
+            ...(page.layoutVariant === 'spotlight-v6-map-page' ? { isPartner: false } : {}),
+          }, ...page.items.slice(1)],
+        };
+      }),
+    }));
+    if (!changed) return;
+    this.generatedListsByDeckId.set('spotlight-v6-maps', repaired);
+    this.persistGeneratedLists();
+  }
+
   private migrateGeneratedListTextStore(): void {
     if (this.generatedListsByDeckId.size === 0) return;
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || isTextNoteDeck(deckId)) continue;
+      if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
       const sanitizedLists = lists.map((list) => {
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
@@ -3176,6 +3355,7 @@ export class GuideService implements OnApplicationBootstrap {
       green: toProxyUrls(grouped?.green || [], specialLimit),
       dark: toProxyUrls(grouped?.dark || [], specialLimit),
       random: toProxyUrls(grouped?.random || [], specialLimit),
+      persimmon: toProxyUrls(grouped?.persimmon || [], specialLimit),
     };
   }
 
@@ -3215,6 +3395,133 @@ export class GuideService implements OnApplicationBootstrap {
       throw new BadRequestException(`Mẫu Spotlight V6 Mảng xanh chỉ tải được ${readyIds.size}/6 ảnh Mảng xanh; còn thiếu ${6 - readyIds.size}.`);
     }
     return readyIds;
+  }
+
+  private async prepareSpotlightV6DarkResources(): Promise<Set<string>> {
+    if (this.activeDestinationId !== 'dalat') {
+      throw new BadRequestException('Mẫu Spotlight V6 Tone đen hiện chỉ áp dụng cho Đà Lạt.');
+    }
+    const manifest = this.loadSheetDriveManifest();
+    const docUrl = String(manifest.hookSourceGroups?.dark || '').trim();
+    if (!docUrl) {
+      if (!this.darkHookSource.getCachedHooks().length) {
+        throw new BadRequestException('Không tìm thấy hyperlink “Hook tone tối” cùng dòng “Ảnh tone đen” trong Sheet Hinh_nen và chưa có cache Hook cũ.');
+      }
+      console.warn('[spotlight-v6-dark] Sheet tạm thiếu hyperlink Hook tone tối; giữ cache Hook đã tải thành công trước đó.');
+    } else {
+      await this.darkHookSource.ensureReady(docUrl);
+    }
+
+    const entries = (manifest.coverImageGroups?.dark || [])
+      .filter((entry, index, all) => Boolean(entry?.fileId) && all.findIndex((candidate) => candidate.fileId === entry.fileId) === index);
+    if (entries.length < 6) {
+      throw new BadRequestException(`Mẫu Spotlight V6 Tone đen cần ít nhất 6 ảnh trong folder Ảnh tone đen (${entries.length}/6).`);
+    }
+    const fileIds = entries.map((entry) => String(entry.fileId || '').trim()).filter(Boolean);
+    const missing = listUncachedDriveFileIds(fileIds);
+    if (missing.length) {
+      const warmed = await warmDriveFileDiskCache(missing, {
+        runTask: (task) => this.runtimePerformance.runDriveTask(4, task),
+        concurrency: this.driveCacheConcurrency(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 4), 4),
+      });
+      if (warmed.fail > 0) {
+        console.warn(`[spotlight-v6-dark] Có ${warmed.fail} ảnh Tone đen chưa tải được; builder chỉ dùng ảnh cache thật.`);
+      }
+    }
+    const cachedIds = fileIds.filter((fileId) => hasDriveFileDiskCache(fileId));
+    const visuallyUniqueIds = uniqueCachedDriveFileIdsByVisualContent(cachedIds);
+    const readyIds = new Set(visuallyUniqueIds);
+    if (visuallyUniqueIds.length < cachedIds.length) {
+      console.warn(`[spotlight-v6-dark] Đã loại ${cachedIds.length - visuallyUniqueIds.length} ảnh trùng nội dung trong pool Tone đen.`);
+    }
+    if (readyIds.size < 6) {
+      throw new BadRequestException(`Mẫu Spotlight V6 Tone đen chỉ có ${readyIds.size}/6 ảnh Tone đen khác nội dung; còn thiếu ${6 - readyIds.size}.`);
+    }
+    return readyIds;
+  }
+
+  private async prepareSpotlightV6PersimmonResources(): Promise<Set<string>> {
+    if (this.activeDestinationId !== 'dalat') {
+      throw new BadRequestException('Mẫu Spotlight Mùa hồng hiện chỉ áp dụng cho Đà Lạt.');
+    }
+    const manifest = this.loadSheetDriveManifest();
+    const docUrl = String(manifest.hookSourceGroups?.persimmon || '').trim();
+    if (!docUrl) {
+      if (!this.persimmonHookSource.getCachedHooks().length) {
+        throw new BadRequestException('Không tìm thấy hyperlink “Hook mùa hồng” cùng dòng “Ảnh mùa hồng” trong Sheet Hinh_nen và chưa có cache Hook cũ.');
+      }
+      console.warn('[spotlight-v6-persimmon] Sheet tạm thiếu hyperlink Hook mùa hồng; giữ cache Hook đã tải thành công trước đó.');
+    } else {
+      await this.persimmonHookSource.ensureReady(docUrl);
+    }
+
+    const entries = (manifest.coverImageGroups?.persimmon || [])
+      .filter((entry, index, all) => Boolean(entry?.fileId) && all.findIndex((candidate) => candidate.fileId === entry.fileId) === index);
+    if (entries.length < 4) {
+      throw new BadRequestException(`Mẫu Spotlight Mùa hồng cần ít nhất 4 ảnh trong folder Ảnh mùa hồng (${entries.length}/4).`);
+    }
+    const fileIds = entries.map((entry) => String(entry.fileId || '').trim()).filter(Boolean);
+    const missing = listUncachedDriveFileIds(fileIds);
+    if (missing.length) {
+      const warmed = await warmDriveFileDiskCache(missing, {
+        runTask: (task) => this.runtimePerformance.runDriveTask(4, task),
+        concurrency: this.driveCacheConcurrency(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 4), 4),
+      });
+      if (warmed.fail > 0) {
+        console.warn(`[spotlight-v6-persimmon] Có ${warmed.fail} ảnh Mùa hồng chưa tải được; builder chỉ dùng ảnh cache thật.`);
+      }
+    }
+    const cachedIds = fileIds.filter((fileId) => hasDriveFileDiskCache(fileId));
+    const visuallyUniqueIds = uniqueCachedDriveFileIdsByVisualContent(cachedIds);
+    const readyIds = new Set(visuallyUniqueIds);
+    if (visuallyUniqueIds.length < cachedIds.length) {
+      console.warn(`[spotlight-v6-persimmon] Đã loại ${cachedIds.length - visuallyUniqueIds.length} ảnh trùng nội dung trong pool Mùa hồng.`);
+    }
+    if (readyIds.size < 4) {
+      throw new BadRequestException(`Mẫu Spotlight Mùa hồng chỉ có ${readyIds.size}/4 ảnh khác nội dung; còn thiếu ${4 - readyIds.size}.`);
+    }
+    return readyIds;
+  }
+
+  private async prepareSpotlightV6MapsResources(): Promise<{ map: Set<string>; real: Set<string> }> {
+    if (this.activeDestinationId !== 'dalat') {
+      throw new BadRequestException('Mẫu Spotlight V6 Google Maps hiện chỉ áp dụng cho Đà Lạt.');
+    }
+    const manifest = this.loadSheetDriveManifest();
+    const entries = Object.values(manifest.items).filter((entry) => Boolean(entry.mapSourceLink || entry.mapFileId || entry.mapCandidateImages?.length));
+    const mapIds = [...new Set(entries.flatMap((entry) => (
+      entry.mapCandidateImages?.length ? entry.mapCandidateImages.map((candidate) => candidate.fileId) : [entry.mapFileId || '']
+    )).filter(Boolean))];
+    const realIds = [...new Set(entries.flatMap((entry) => (
+      entry.candidateImages?.length ? entry.candidateImages.map((candidate) => candidate.fileId) : [entry.fileId || '']
+    )).filter(Boolean))];
+    const allIds = [...new Set([...mapIds, ...realIds])];
+    if (allIds.length) {
+      const missing = listUncachedDriveFileIds(allIds);
+      if (missing.length) {
+        const concurrency = this.driveCacheConcurrency(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 3), 5);
+        await warmDriveFileDiskCache(missing, {
+          concurrency,
+          runTask: (task) => this.runtimePerformance.runDriveTask(concurrency, task),
+        });
+      }
+    }
+    const readyMap = new Set(mapIds.filter((id) => hasDriveFileDiskCache(id)));
+    const readyReal = new Set(realIds.filter((id) => hasDriveFileDiskCache(id)));
+    const eligible = entries.filter((entry) => {
+      const maps = entry.mapCandidateImages?.length ? entry.mapCandidateImages : entry.mapFileId ? [{ fileId: entry.mapFileId }] : [];
+      const reals = entry.candidateImages?.length ? entry.candidateImages : entry.fileId ? [{ fileId: entry.fileId }] : [];
+      return maps.some((candidate) => readyMap.has(candidate.fileId))
+        && reals.some((candidate) => readyReal.has(candidate.fileId));
+    });
+    if (eligible.length < 7) {
+      const broken = entries.filter((entry) => !eligible.includes(entry)).map((entry) => entry.name).slice(0, 10);
+      throw new BadRequestException(
+        `Mẫu Spotlight V6 Google Maps chỉ có ${eligible.length}/7 địa điểm tải được cả ảnh Maps và ảnh thật.`
+        + (broken.length ? ` Dòng lỗi: ${broken.join(', ')}.` : ''),
+      );
+    }
+    return { map: readyMap, real: readyReal };
   }
 
   private loadWorkbookItems(
@@ -3299,6 +3606,16 @@ export class GuideService implements OnApplicationBootstrap {
           .map((entry) => getDriveImageProxyUrl(entry.fileId))
       : [];
     const sheetDriveCandidateUrls = filterKnownAvailableDriveProxyUrls(rawSheetDriveCandidateUrls);
+    const rawMapCandidateUrls = sheetDriveEntry
+      ? (sheetDriveEntry.mapCandidateImages?.length
+          ? sheetDriveEntry.mapCandidateImages
+          : sheetDriveEntry.mapFileId
+            ? [{ fileId: sheetDriveEntry.mapFileId, fileName: sheetDriveEntry.mapFileName || '', viewUrl: '' }]
+            : [])
+        .filter((entry) => entry.fileId)
+        .map((entry) => getDriveImageProxyUrl(entry.fileId))
+      : [];
+    const mapCandidateImageUrls = filterKnownAvailableDriveProxyUrls(rawMapCandidateUrls);
     const sheetDriveUrlsBlocked = rawSheetDriveCandidateUrls.length > 0
       && (sheetDriveCandidateUrls.length === 0
         || rawSheetDriveCandidateUrls.every((url) => isKnownUnavailableDriveProxyUrl(url)));
@@ -3359,6 +3676,9 @@ export class GuideService implements OnApplicationBootstrap {
       imageMappingKey: resolvedImage.imageMappingKey,
       imageSource: resolvedImage.imageSource,
       candidateImageUrls: resolvedImage.candidateImageUrls,
+      mapImageUrl: mapCandidateImageUrls[0] || '',
+      mapCandidateImageUrls: Array.from(new Set(mapCandidateImageUrls)),
+      mapSourceLink: String(sheetDriveEntry?.mapSourceLink || '').trim(),
     };
   }
 

@@ -57,4 +57,18 @@ const noPartners = Object.fromEntries(keys.map((key) => [key, pools[key].map((en
 assert.throws(() => buildItineraryNoteTimedPages({ itemsBySection: noPartners }, 'missing-partners'), /cần đúng 7 đối tác/);
 assert.throws(() => buildItineraryNoteTimedPages({ itemsBySection: { ...pools, choi_dem: [] } }, 'missing-night'), /choi_dem/);
 
-console.log('PASS itinerary-note-timed: 2 trang, giờ cố định, 13 địa điểm không trùng, 4\/3 đối tác, 2 dòng cố định, snapshot giờ Việt Nam và lỗi thiếu dữ liệu.');
+// Có đủ 7 tên đối tác tổng cộng nhưng phân bố sai nhóm: Ngày 2 chỉ có hai slot
+// tham quan nên không thể đạt ba đối tác. Trường hợp này từng vét 750.000 tổ hợp
+// và làm backend khởi động hơn một phút trước khi trả lỗi.
+const impossiblePartnerDistribution = Object.fromEntries(keys.map((key) => [key, pools[key].map((entry) => {
+  const isPartner = ['check_in', 'khu_du_lich', 'hoat_dong', 'dia_diem_lich_su'].includes(key);
+  return { ...entry, isPartner, partnerFlag: isPartner ? 'X' : '' };
+})])) as WorkbookItemsBySection;
+const impossibleStartedAt = Date.now();
+assert.throws(
+  () => buildItineraryNoteTimedPages({ itemsBySection: impossiblePartnerDistribution }, 'impossible-partner-groups'),
+  /Không thể tạo Lịch trình Note theo giờ/,
+);
+assert.ok(Date.now() - impossibleStartedAt < 1_000, 'Ràng buộc đối tác bất khả thi phải được phát hiện dưới 1 giây.');
+
+console.log('PASS itinerary-note-timed: 2 trang, giờ cố định, 13 địa điểm không trùng, 4\/3 đối tác, 2 dòng cố định, snapshot giờ Việt Nam và chặn nhanh phân bố đối tác bất khả thi.');

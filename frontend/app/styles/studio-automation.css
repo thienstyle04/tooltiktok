@@ -1,0 +1,33 @@
+.automation-runner {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #111715;
+  color: #f4f2eb;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.automation-runner section {
+  width: min(520px, calc(100vw - 48px));
+  padding: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  background: #1b2420;
+  text-align: center;
+}
+
+.automation-runner-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
+  background: #ef7958;
+  font-weight: 900;
+}
+
+.automation-runner h1 { margin: 18px 0 8px; }
+.automation-runner p { min-height: 44px; color: #b8c0bc; }
+.automation-runner section > div { overflow: hidden; height: 10px; border-radius: 99px; background: #35403b; }
+.automation-runner i { display: block; height: 100%; border-radius: inherit; background: #ef7958; transition: width 180ms ease; }
+.automation-runner strong { display: block; margin-top: 10px; }

@@ -25,6 +25,7 @@ import ProgressBar from './ProgressBar';
 import Sidebar from './Sidebar';
 import SettingsPanel from './SettingsPanel';
 import TemplateGalleryPanel from './TemplateGalleryPanel';
+import AutomationSchedulerPanel from './AutomationSchedulerPanel';
 
 const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 const SPOTLIGHT_PARTNER_DECK_ID = 'spotlight-partner';
@@ -135,14 +136,27 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v5',
   'spotlight-v6',
   'spotlight-v6-green',
+  'spotlight-v6-dark',
+  'spotlight-v6-persimmon',
+  'spotlight-v6-maps',
   'summary-note',
   'itinerary-note-2days',
   'itinerary-note-timed',
-  'carousel-mau-1',
   'one-way-story',
   'itinerary-4n3d-stack',
   'itinerary-timeline',
 ];
+
+const DALAT_ONLY_CATALOG_DECK_IDS = new Set([
+  'spotlight-v5',
+  'spotlight-v6-green',
+  'spotlight-v6-dark',
+  'spotlight-v6-persimmon',
+  'spotlight-v6-maps',
+  'itinerary-note-2days',
+  'itinerary-note-timed',
+  'one-way-story',
+]);
 
 const REQUIRED_CATALOG_DECK_IDS = [
   'grid-5',
@@ -156,7 +170,11 @@ function hasEmptySpotlightPartnerDeck(dataset) {
 
 function missingCatalogDecks(dataset) {
   const deckIds = new Set((dataset?.decks || []).map((deck) => deck.id));
-  return REQUIRED_CATALOG_DECK_IDS.filter((deckId) => !deckIds.has(deckId));
+  const destinationId = String(dataset?.source?.destinationId || 'dalat');
+  return REQUIRED_CATALOG_DECK_IDS.filter((deckId) => (
+    !deckIds.has(deckId)
+    && !(destinationId !== 'dalat' && DALAT_ONLY_CATALOG_DECK_IDS.has(deckId))
+  ));
 }
 
 function hasRetiredCatalogDecks(dataset) {
@@ -312,6 +330,7 @@ export default function DeckStudio({ initialDataset = null }) {
     message: 'Đang kiểm tra cache ảnh Google Drive...',
   });
   const [runtimePerformance, setRuntimePerformance] = useState({ mode: 'checking', reason: 'Đang đánh giá khả năng xử lý của máy.' });
+  const [automationState, setAutomationState] = useState({ locked: false, schedules: [], runs: [] });
   const [driveCacheReadyNotice, setDriveCacheReadyNotice] = useState(false);
   const [dismissedCacheDestinationId, setDismissedCacheDestinationId] = useState(null);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
@@ -319,9 +338,12 @@ export default function DeckStudio({ initialDataset = null }) {
   const selectionHistoryRef = useRef([]);
   const spotlightPartnerRefreshRef = useRef(false);
   const datasetRef = useRef(initialDataset);
-  const focusRefreshRef = useRef(0);
+  // Không kiểm tra lại guide-data ngay khi cửa sổ trình duyệt vừa được launcher
+  // đưa lên foreground; bootstrap bên dưới đang tải đúng dữ liệu đó.
+  const focusRefreshRef = useRef(Date.now());
   const driveCacheWasWaitingRef = useRef(false);
   const creatingListsRef = useRef(false);
+  const datasetLoadPromiseRef = useRef(null);
 
   const activeDeck = useMemo(
     () => dataset?.decks?.find((deck) => deck.id === activeDeckId) || null,
@@ -387,6 +409,7 @@ export default function DeckStudio({ initialDataset = null }) {
       ...preferredSelection,
     });
     datasetRef.current = sanitized;
+    focusRefreshRef.current = Date.now();
     setDataset(sanitized);
     setActiveDeckId(normalized.activeDeckId);
     setActiveListId(normalized.activeListId);
@@ -395,22 +418,34 @@ export default function DeckStudio({ initialDataset = null }) {
   }, []);
 
   const loadDataset = useCallback(async (message = 'Đang tải dữ liệu workbook...', preferredSelection = {}, forceRefresh = false, options = {}) => {
-    if (!options.silent) setStatus(message);
-    if (forceRefresh) setRefreshing(true);
+    // React Strict Mode chạy effect bootstrap hai lần trong development. Dùng
+    // chung request đang chạy để không đồng bộ manifest và dựng toàn bộ catalog
+    // hai lần, đồng thời focus event cũng không mở thêm request guide-data.
+    if (datasetLoadPromiseRef.current) return datasetLoadPromiseRef.current;
+    const request = (async () => {
+      if (!options.silent) setStatus(message);
+      if (forceRefresh) setRefreshing(true);
+      try {
+        const endpoint = forceRefresh ? '/api/guide-data?refresh=1' : '/api/guide-data';
+        if (forceRefresh) clearCachedDataset();
+        const response = await fetchGuideDataset(endpoint, forceRefresh ? { cache: 'no-store' } : {});
+        if (!response.ok) throw new Error(await formatApiError(response, 'Không tải được dữ liệu'));
+        const nextDataset = await response.json();
+        writeCachedDataset(nextDataset);
+        markCatalogRevisionStored();
+        applyDataset(nextDataset, preferredSelection);
+        const label = nextDataset?.source?.destinationLabel || 'Sheet';
+        setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm (${label}).`);
+        return nextDataset;
+      } finally {
+        if (forceRefresh) setRefreshing(false);
+      }
+    })();
+    datasetLoadPromiseRef.current = request;
     try {
-      const endpoint = forceRefresh ? '/api/guide-data?refresh=1' : '/api/guide-data';
-      if (forceRefresh) clearCachedDataset();
-      const response = await fetchGuideDataset(endpoint, forceRefresh ? { cache: 'no-store' } : {});
-      if (!response.ok) throw new Error(await formatApiError(response, 'Không tải được dữ liệu'));
-      const nextDataset = await response.json();
-      writeCachedDataset(nextDataset);
-      markCatalogRevisionStored();
-      applyDataset(nextDataset, preferredSelection);
-      const label = nextDataset?.source?.destinationLabel || 'Sheet';
-      setStatus(`Đã tải ${nextDataset.source.totalItems} địa điểm (${label}).`);
-      return nextDataset;
+      return await request;
     } finally {
-      if (forceRefresh) setRefreshing(false);
+      if (datasetLoadPromiseRef.current === request) datasetLoadPromiseRef.current = null;
     }
   }, [applyDataset]);
 
@@ -435,6 +470,14 @@ export default function DeckStudio({ initialDataset = null }) {
     const payload = await readApiPayload(response);
     if (!response.ok) throw new Error(apiErrorMessage(payload, `Không tải được nguồn Hook: HTTP ${response.status}`));
     setHookSourcesInfo(payload);
+    return payload;
+  }, []);
+
+  const loadAutomationState = useCallback(async () => {
+    const response = await apiFetch('/api/automation', { cache: 'no-store' });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    setAutomationState((current) => JSON.stringify(current) === JSON.stringify(payload) ? current : payload);
     return payload;
   }, []);
 
@@ -686,6 +729,7 @@ export default function DeckStudio({ initialDataset = null }) {
     const bootstrap = async () => {
       loadHookSources().catch((error) => console.error(error));
       loadRuntimePerformance().catch((error) => console.error(error));
+      loadAutomationState().catch((error) => console.error(error));
       let destinations = null;
       try {
         destinations = await loadDestinations();
@@ -731,23 +775,46 @@ export default function DeckStudio({ initialDataset = null }) {
       });
     };
 
-    bootstrap().catch((error) => {
-      console.error(error);
-      if (!cancelled) setStatus(error.message);
-    });
+    // Development dùng React Strict Mode: effect được setup/cleanup/setup một
+    // lượt để phát hiện side effect. Đẩy bootstrap sang macrotask để cleanup đầu
+    // tiên hủy nó; chỉ setup thực sự mới gọi các API dữ liệu nặng.
+    const bootstrapTimer = window.setTimeout(() => {
+      bootstrap().catch((error) => {
+        console.error(error);
+        if (!cancelled) setStatus(error.message);
+      });
+
+      apiFetch('/api/partners').then(async (res) => {
+        if (res.ok && !cancelled) setPartners(await res.json());
+      }).catch(() => {});
+    }, 0);
 
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
-    // Fetch partner list
-    apiFetch('/api/partners').then(async (res) => {
-      if (res.ok) setPartners(await res.json());
-    }).catch(() => {});
-
     return () => {
       cancelled = true;
+      window.clearTimeout(bootstrapTimer);
     };
-  }, [applyDataset, initialDataset, loadDataset, loadDestinations, loadHookSources, loadRuntimePerformance]);
+  }, [applyDataset, initialDataset, loadAutomationState, loadDataset, loadDestinations, loadHookSources, loadRuntimePerformance]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+    const poll = async () => {
+      let delay = 15_000;
+      try {
+        const next = await loadAutomationState();
+        if (next?.locked) delay = 2_000;
+      } catch {
+        delay = 30_000;
+      } finally {
+        if (!cancelled) timer = window.setTimeout(poll, delay);
+      }
+    };
+    timer = window.setTimeout(poll, 15_000);
+    return () => { cancelled = true; if (timer) window.clearTimeout(timer); };
+  }, [loadAutomationState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -796,7 +863,13 @@ export default function DeckStudio({ initialDataset = null }) {
         lastFailureStatus = null;
         const next = await response.json();
         if (cancelled) return;
-        setDriveCacheStatus(next);
+        // Khi cache đã sẵn sàng, payload thường không đổi. Tránh tạo state object
+        // mới mỗi 1,2 giây vì nó buộc toàn bộ studio/catalog ảnh render lại dù
+        // không có tiến độ mới.
+        setDriveCacheStatus((current) => (
+          JSON.stringify(current) === JSON.stringify(next) ? current : next
+        ));
+        nextDelay = next.ready ? 5000 : 1200;
         if (!next.ready) {
           driveCacheWasWaitingRef.current = true;
         } else if (driveCacheWasWaitingRef.current) {
@@ -976,7 +1049,7 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day') ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
@@ -1017,6 +1090,8 @@ export default function DeckStudio({ initialDataset = null }) {
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { chipText: activePage.chipText || '' } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-day' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { items: activePage.items.map(({ name, metaPrimary, scheduleTime }) => ({ name, metaPrimary, scheduleTime })) } : {}),
+          ...(activePage.layoutVariant === 'spotlight-v6-map-place' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
+          ...(activeDeck.id === 'spotlight-v6-persimmon' && activePage.layoutVariant === 'spotlight-v6-page' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
         }),
       });
       const payload = await readApiPayload(response);
@@ -1094,6 +1169,9 @@ export default function DeckStudio({ initialDataset = null }) {
     const isNonAiTemplate = activeDeck.id === 'carousel-mau-1'
       || activeDeck.id === 'one-way-story'
       || activeDeck.id === 'spotlight-v6-green'
+      || activeDeck.id === 'spotlight-v6-dark'
+      || activeDeck.id === 'spotlight-v6-persimmon'
+      || activeDeck.id === 'spotlight-v6-maps'
       || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-2days' || activeDeck.id === 'itinerary-note-timed');
     const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
       && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
@@ -1418,32 +1496,53 @@ export default function DeckStudio({ initialDataset = null }) {
     setStatus(`Đã xuất và xóa ${deleteResult.deletedCount}/${cleanupCount} list AI đã xuất.`);
   }, [activeDeckId, activeListId, applyDataset, dataset]);
 
+  const setManualExportActive = useCallback(async (active) => {
+    const response = await apiFetch('/api/automation/manual-export', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active }),
+    });
+    if (!response.ok && active) throw new Error(await formatApiError(response, 'Chưa thể bắt đầu xuất'));
+  }, []);
+
   const handleExportPage = useCallback(async () => {
-    await exportSelectedPagePng({
-      deck: activeDeck,
-      list: activeList,
-      dataset,
-      selectedPageIndex,
-      quality: exportQuality,
-    }, exportCb);
-    await loadRuntimePerformance().catch(() => undefined);
-  }, [activeDeck, activeList, dataset, exportCb, exportQuality, loadRuntimePerformance, selectedPageIndex]);
+    let claimed = false;
+    try {
+      await setManualExportActive(true); claimed = true;
+      await exportSelectedPagePng({ deck: activeDeck, list: activeList, dataset, selectedPageIndex, quality: exportQuality }, exportCb);
+      await loadRuntimePerformance().catch(() => undefined);
+    } catch (error) {
+      setStatus(error?.message || 'Chưa thể xuất trang.');
+    } finally {
+      if (claimed) await setManualExportActive(false).catch(() => undefined);
+    }
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, loadRuntimePerformance, selectedPageIndex, setManualExportActive]);
 
   const handleExportList = useCallback(async () => {
-    await exportActiveList({
-      deck: activeDeck,
-      list: activeList,
-      dataset,
-      quality: exportQuality,
-    }, exportCb);
-    await loadRuntimePerformance().catch(() => undefined);
-  }, [activeDeck, activeList, dataset, exportCb, exportQuality, loadRuntimePerformance]);
+    let claimed = false;
+    try {
+      await setManualExportActive(true); claimed = true;
+      await exportActiveList({ deck: activeDeck, list: activeList, dataset, quality: exportQuality }, exportCb);
+      await loadRuntimePerformance().catch(() => undefined);
+    } catch (error) {
+      setStatus(error?.message || 'Chưa thể xuất list.');
+    } finally {
+      if (claimed) await setManualExportActive(false).catch(() => undefined);
+    }
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, loadRuntimePerformance, setManualExportActive]);
 
   const handleExportBatch = useCallback(async (options = {}) => {
     const shouldDelete = options.deleteAfterExport !== false;
     setExportModalOpen(false);
     setActiveView('preview');
-    const result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality }, exportCb);
+    let claimed = false;
+    let result;
+    try {
+      await setManualExportActive(true); claimed = true;
+      result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality }, exportCb);
+    } catch (error) {
+      setStatus(error?.message || 'Chưa thể xuất hàng loạt.');
+    } finally {
+      if (claimed) await setManualExportActive(false).catch(() => undefined);
+    }
     await loadRuntimePerformance().catch(() => undefined);
     setSelectedListsForExport(new Set());
     if (result?.success && shouldDelete) {
@@ -1456,7 +1555,7 @@ export default function DeckStudio({ initialDataset = null }) {
         setBusy(false);
       }
     }
-  }, [dataset, exportCb, exportQuality, loadRuntimePerformance, removeExportedGeneratedLists, selectedListsForExport]);
+  }, [dataset, exportCb, exportQuality, loadRuntimePerformance, removeExportedGeneratedLists, selectedListsForExport, setManualExportActive]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -1468,13 +1567,7 @@ export default function DeckStudio({ initialDataset = null }) {
       if ((event.ctrlKey || event.metaKey) && key === 's') {
         event.preventDefault();
         if (!busy) {
-          exportSelectedPagePng({
-            deck: activeDeck,
-            list: activeList,
-            dataset,
-            selectedPageIndex,
-            quality: exportQuality,
-          }, exportCb);
+          handleExportPage();
         }
         return;
       }
@@ -1514,6 +1607,7 @@ export default function DeckStudio({ initialDataset = null }) {
     dataset,
     exportCb,
     exportQuality,
+    handleExportPage,
     pushSelectionSnapshot,
     restoreSelectionSnapshot,
     selectedPageIndex,
@@ -1577,6 +1671,11 @@ export default function DeckStudio({ initialDataset = null }) {
     setCaptionToolsVisible(false);
   }, []);
 
+  const openSchedulerView = useCallback(() => {
+    setActiveView('scheduler');
+    setCaptionToolsVisible(false);
+  }, []);
+
   const openDeleteView = useCallback(() => {
     setActiveView('delete');
     setCaptionToolsVisible(false);
@@ -1596,6 +1695,7 @@ export default function DeckStudio({ initialDataset = null }) {
     activeView === 'caption' ? 'caption-mode' : '',
     activeView === 'data' ? 'data-mode' : '',
     activeView === 'settings' ? 'settings-mode' : '',
+    activeView === 'scheduler' ? 'scheduler-mode' : '',
   ].filter(Boolean).join(' ');
 
   const activeDestinationId = destinationInfo?.active?.id || dataset?.source?.destinationId || 'dalat';
@@ -1695,6 +1795,13 @@ export default function DeckStudio({ initialDataset = null }) {
         </div>
       ) : null}
 
+      {automationState.locked ? (
+        <div className="automation-lock-banner" role="status">
+          <strong>Đang chạy lịch tự động</strong>
+          <span>{automationState.runs?.find((run) => run.id === automationState.activeRunId)?.phase || 'Các thao tác thay đổi dữ liệu đang tạm khóa.'}</span>
+        </div>
+      ) : null}
+
       <Sidebar
         dataset={dataset}
         activeView={activeView}
@@ -1704,6 +1811,7 @@ export default function DeckStudio({ initialDataset = null }) {
         onOpenExport={openExportView}
         onOpenData={openDataView}
         onOpenSettings={openSettingsView}
+        onOpenScheduler={openSchedulerView}
         onOpenDelete={openDeleteView}
       />
 
@@ -1784,6 +1892,16 @@ export default function DeckStudio({ initialDataset = null }) {
               onRefresh={() => {
                 loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch((error) => setStatus(error.message));
               }}
+            />
+          </div>
+        ) : activeView === 'scheduler' ? (
+          <div className={workspaceClasses}>
+            <AutomationSchedulerPanel
+              dataset={dataset}
+              destinations={destinationOptions}
+              hookSourcesInfo={hookSourcesInfo}
+              automationState={automationState}
+              onStateChange={setAutomationState}
             />
           </div>
         ) : activeView === 'caption' ? (

@@ -38,8 +38,10 @@ export async function proxyBackendRequest(request, options = {}) {
       headers.delete('content-encoding');
       headers.delete('content-length');
       const isDriveFallbackImage = headers.get('x-drive-image-fallback') === '1';
-      if (options.cacheControl && !isDriveFallbackImage) {
+      if (options.cacheControl && response.ok && !isDriveFallbackImage && !requestUrl.searchParams.has('_exportRetry')) {
         headers.set('Cache-Control', options.cacheControl);
+      } else if (options.cacheControl) {
+        headers.set('Cache-Control', 'no-store');
       }
       if (requestUrl.pathname === '/api/health') {
         const frontendSession = String(process.env.NEXT_PUBLIC_DALAT_SESSION_ID || '').trim();

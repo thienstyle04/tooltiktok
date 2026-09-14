@@ -235,6 +235,19 @@ body {
   background: currentColor;
 }
 
+.side-icon.scheduler::before {
+  inset: 2px;
+  border-radius: 50%;
+}
+
+.side-icon.scheduler::after {
+  left: 8px;
+  top: 5px;
+  width: 4px;
+  height: 5px;
+  border-width: 0 0 2px 2px;
+}
+
 .side-icon.delete::before {
   left: 4px;
   right: 4px;
