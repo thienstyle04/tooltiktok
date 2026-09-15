@@ -20,6 +20,7 @@ export async function proxyBackendRequest(request, options = {}) {
   const method = request.method.toUpperCase();
   const requestBody = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();
   const errors = [];
+  let timedOut = false;
   let fallback404 = null;
 
   for (const backendOrigin of backendOrigins) {
@@ -65,7 +66,11 @@ export async function proxyBackendRequest(request, options = {}) {
       }
       return proxiedResponse;
     } catch (error) {
+      timedOut ||= error?.name === 'TimeoutError' || error?.name === 'AbortError';
       errors.push(`${backendOrigin}: ${error instanceof Error ? error.message : String(error)}`);
+      // The backend may have committed the mutation before the response failed.
+      // Never replay a write after a transport error (including body read errors).
+      if (method !== 'GET' && method !== 'HEAD') break;
     }
   }
 
@@ -73,10 +78,13 @@ export async function proxyBackendRequest(request, options = {}) {
 
   return Response.json(
     {
-      message: 'Không kết nối được backend. Hãy kiểm tra cửa sổ start.bat có dòng backend đang chạy và không bị lỗi.',
+      message: timedOut
+        ? 'Đã hết thời gian chờ phản hồi. Backend có thể vẫn đang xử lý; không gửi lại yêu cầu tự động.'
+        : 'Không nhận được phản hồi từ backend. Kết quả yêu cầu chưa được xác nhận; hãy kiểm tra cửa sổ start.bat.',
+      code: timedOut ? 'BACKEND_TIMEOUT' : 'BACKEND_TRANSPORT_ERROR',
       detail: errors.join(' | '),
     },
-    { status: 502 },
+    { status: timedOut ? 504 : 502 },
   );
 }
 

@@ -15,6 +15,7 @@ import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSele
 import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, budget72HListHasLegacyScheduleCosts, budget72HTableMatchesMain, listIsMain, sanitizeDataset } from '../lib/utils';
 import { setSpotlightV2CoverImagePool } from '../lib/pageMarkup';
 import { verifyRuntimeSession } from '../lib/runtimeSession';
+import { diagnoseUnconfirmedSheetSync } from '../lib/sheetSyncDiagnostic';
 import CaptionTools from './CaptionTools';
 import DataStatsPanel from './DataStatsPanel';
 import DeleteListsModal from './DeleteListsModal';
@@ -277,19 +278,6 @@ function needsTemplateCatalogRefresh(dataset) {
     || needsBudget72HSummaryCatalogRefresh(dataset);
 }
 
-function listCountSignature(dataset) {
-  return (dataset?.decks || [])
-    .map((deck) => `${deck.id}:${(deck.lists || []).length}`)
-    .join('|');
-}
-
-function deckCatalogSignature(dataset) {
-  return (dataset?.decks || [])
-    .map((deck) => deck.id)
-    .sort()
-    .join('|');
-}
-
 export default function DeckStudio({ initialDataset = null }) {
   const initialDeck = initialDataset?.decks?.[0] || null;
   const initialList = initialDeck?.lists?.[0] || null;
@@ -340,7 +328,6 @@ export default function DeckStudio({ initialDataset = null }) {
   const datasetRef = useRef(initialDataset);
   // Không kiểm tra lại guide-data ngay khi cửa sổ trình duyệt vừa được launcher
   // đưa lên foreground; bootstrap bên dưới đang tải đúng dữ liệu đó.
-  const focusRefreshRef = useRef(Date.now());
   const driveCacheWasWaitingRef = useRef(false);
   const creatingListsRef = useRef(false);
   const datasetLoadPromiseRef = useRef(null);
@@ -409,7 +396,6 @@ export default function DeckStudio({ initialDataset = null }) {
       ...preferredSelection,
     });
     datasetRef.current = sanitized;
-    focusRefreshRef.current = Date.now();
     setDataset(sanitized);
     setActiveDeckId(normalized.activeDeckId);
     setActiveListId(normalized.activeListId);
@@ -699,9 +685,13 @@ export default function DeckStudio({ initialDataset = null }) {
       const response = await apiFetch(`/api/destinations/${encodeURIComponent(destinationId)}/refresh-from-sheet`, {
         method: 'POST',
         cache: 'no-store',
-      });
+      }).catch(async () => { throw new Error(await diagnoseUnconfirmedSheetSync()); });
       const payload = await readApiPayload(response);
       if (!response.ok) {
+        if (payload?.code === 'BACKEND_TIMEOUT' || payload?.code === 'BACKEND_TRANSPORT_ERROR') {
+          setStatus('Đang kiểm tra phản hồi backend sau khi đồng bộ bị ngắt...');
+          throw new Error(await diagnoseUnconfirmedSheetSync());
+        }
         throw new Error(apiErrorMessage(payload, `Không tải mới được từ Google Sheet: HTTP ${response.status}`));
       }
       if (payload?.active?.id !== destinationId) {
@@ -895,38 +885,8 @@ export default function DeckStudio({ initialDataset = null }) {
     };
   }, []);
 
-  useEffect(() => {
-    const refreshIfServerChanged = async () => {
-      if (document.visibilityState !== 'visible') return;
-      const now = Date.now();
-      if (now - focusRefreshRef.current < 5000) return;
-      focusRefreshRef.current = now;
-
-      try {
-        const response = await apiFetch('/api/guide-data', { cache: 'no-store' });
-        if (!response.ok) return;
-        const nextDataset = await response.json();
-        if (
-          deckCatalogSignature(nextDataset) === deckCatalogSignature(datasetRef.current)
-          && listCountSignature(nextDataset) === listCountSignature(datasetRef.current)
-        ) return;
-        writeCachedDataset(nextDataset);
-        applyDataset(nextDataset, currentSelectionRef.current);
-        setStatus(`Đã cập nhật dữ liệu mới (${nextDataset.source?.totalItems || 0} địa điểm).`);
-      } catch (error) {
-        console.warn(error);
-      }
-    };
-
-    const onFocus = () => { refreshIfServerChanged(); };
-    const onVisibilityChange = () => { refreshIfServerChanged(); };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => {
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, [applyDataset]);
+  // Returning from a native picker or another window must not reload guide data.
+  // Dataset updates belong to explicit data/list operations, not window focus.
 
   useEffect(() => {
     currentSelectionRef.current = { activeDeckId, activeListId, selectedPageIndex };
