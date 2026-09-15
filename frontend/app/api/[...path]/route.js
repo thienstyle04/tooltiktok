@@ -36,7 +36,8 @@ function proxyApiRequest(request) {
   const isPrefetch = pathname.includes('/api/drive-files/prefetch');
   const isGuideData = pathname.includes('/api/guide-data');
   const isFolderPicker = pathname.includes('/api/automation/choose-output-directory');
-  const timeoutMs = isFolderPicker ? 10 * 60_000 : (isPrefetch ? 280_000 : (isGuideData ? 180_000 : 120_000));
+  const isSheetSync = /^\/api\/destinations\/[^/]+\/refresh-from-sheet$/.test(pathname);
+  const timeoutMs = isFolderPicker ? 10 * 60_000 : ((isPrefetch || isSheetSync) ? 280_000 : (isGuideData ? 180_000 : 120_000));
   return proxyBackendRequest(request, {
     cacheControl: API_CACHE_CONTROL,
     timeoutMs,
