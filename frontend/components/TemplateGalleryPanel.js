@@ -1,4 +1,5 @@
 import { countDeckPages, listIsMain } from '../lib/utils';
+import { useState } from 'react';
 
 const V2_DECK_IDS = new Set([
   'grid-6-quaytung',
@@ -13,6 +14,7 @@ const V2_DECK_IDS = new Set([
   'spotlight-v6-dark',
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
+  'spotlight-v6-diary',
   'summary-note',
   'itinerary-note-2days',
   'itinerary-note-timed',
@@ -63,7 +65,9 @@ export default function TemplateGalleryPanel({
   onPreviewDeck,
   onCaptionDeck,
 }) {
-  const decks = dataset?.decks || [];
+  const [query, setQuery] = useState('');
+  const [group, setGroup] = useState('');
+  const decks = (dataset?.decks || []).filter(deck => `${deck.navTitle} ${deck.title}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')) && (!group || (group === 'Spotlight' ? deck.id.includes('spotlight') : group === 'Note' ? deck.id.includes('note') : group === 'Lưới' ? deck.id.includes('grid') : deck.id.includes('itinerary') || deck.id.includes('budget'))));
 
   return (
     <section className="template-gallery-shell">
@@ -77,6 +81,8 @@ export default function TemplateGalleryPanel({
         </div>
       </div>
 
+      <div className="studio-library-filters"><label>Tìm mẫu<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tên mẫu…"/></label><label>Nhóm mẫu<select value={group} onChange={e=>setGroup(e.target.value)}><option value="">Tất cả</option>{['Spotlight','Note','Lịch trình','Lưới'].map(value=><option key={value}>{value}</option>)}</select></label></div>
+      {!decks.length && <p className="empty-state">Không tìm thấy mẫu phù hợp.</p>}
       <div className="template-gallery-body">
         {decks.map((deck) => {
           const active = deck.id === activeDeckId;
@@ -116,14 +122,14 @@ export default function TemplateGalleryPanel({
                     onClick={() => onListSelect(list)}
                   >
                     <span>{list.navTitle || list.title}</span>
-                    <small>{listIsMain(list) ? 'Gốc' : 'AI'} · {list.pages.length} trang</small>
+                    <small>{listIsMain(list) ? 'Mẫu mẹ' : 'List đã tạo'} · {list.pages.length} trang</small>
                   </button>
                 ))}
               </div>
 
               <div className="template-card-actions">
-                <button className="toolbar-button primary" type="button" onClick={() => onPreviewDeck(deck)}>Preview</button>
-                <button className="toolbar-button" type="button" onClick={() => onCaptionDeck(deck)}>Caption AI</button>
+                <button className="toolbar-button primary" type="button" onClick={() => onPreviewDeck(deck)}>Xem & chỉnh sửa</button>
+                <button className="toolbar-button" type="button" onClick={() => onCaptionDeck(deck)}>Tạo list</button>
               </div>
             </article>
           );

@@ -1,0 +1,26 @@
+/* Keep the editor a scroll container even when responsive/layout rules make
+   other panels overflow:visible. This affects studio UI only, never exports. */
+.workspace-grid .inspector-shell .page-inspector {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  max-height: max(240px, calc(100dvh - 240px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
+.workspace-grid .inspector-shell > .panel-head {
+  flex-shrink: 0;
+}
+
+.workspace-grid .inspector-page-editor input,
+.workspace-grid .inspector-page-editor select {
+  background: #141715;
+  color: var(--studio-ink, #f4f1ea);
+  -webkit-text-fill-color: var(--studio-ink, #f4f1ea);
+  caret-color: var(--studio-clay-strong, #f07f5a);
+  border-color: var(--studio-line-strong, #454943);
+}

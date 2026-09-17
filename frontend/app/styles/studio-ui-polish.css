@@ -1,0 +1,29 @@
+/* Application controls only: never target .story-page/export markup. */
+.modal-card .export-quality-option {
+  background: #242723;
+  color: #f4f1ea;
+}
+.modal-card .export-quality-option.active {
+  background: #3a2c25;
+  border-color: #f07f5a;
+}
+.modal-card .export-quality-option small { color: #c3c6bf; }
+.modal-card .export-quality-option:focus-within {
+  outline: 2px solid #f07f5a;
+  outline-offset: 2px;
+}
+.app-shell button:focus-visible,
+.app-shell select:focus-visible {
+  outline: 2px solid #f07f5a;
+  outline-offset: 3px;
+}
+.automation-form-actions { flex-wrap: wrap; }
+.automation-history .automation-row-actions { min-width: 0; }
+.automation-list strong { overflow-wrap: anywhere; }
+.automation-lock-banner button { margin-top: 8px; min-height: 36px; }
+@media (max-width: 600px) {
+  .automation-form { padding: 12px; }
+  .automation-output > div { flex-wrap: wrap; }
+  .automation-output output { min-width: 0; overflow-wrap: anywhere; }
+  .modal-card .export-quality-options { grid-template-columns: minmax(0, 1fr); }
+}

@@ -50,6 +50,28 @@
   min-width: 0;
 }
 
+.inspector-summary.inspector-summary-text-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.inspector-page-editor input,
+.inspector-page-editor select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-panel);
+  color: inherit;
+  font: inherit;
+}
+
+.page-inspector {
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
 .inspector-eyebrow {
   margin: 0 0 5px;
   color: var(--studio-blue);

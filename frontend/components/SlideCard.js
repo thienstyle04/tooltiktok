@@ -1,4 +1,5 @@
 import { fitItineraryNote, fitItineraryNoteTimed } from '../lib/itineraryNote';
+import { fitSpotlightDiary } from '../lib/spotlightDiary';
 import { useEffect, useRef } from 'react';
 import { renderCoverPage, renderListPage } from '../lib/pageMarkup';
 
@@ -101,7 +102,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
-    const fitNotes = () => { fitItineraryNote(root); fitItineraryNoteTimed(root); };
+    const fitNotes = () => { fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); };
     fitNotes();
     const noteFitFrame = window.requestAnimationFrame(fitNotes);
     const noteFitTimer = window.setTimeout(fitNotes, 120);

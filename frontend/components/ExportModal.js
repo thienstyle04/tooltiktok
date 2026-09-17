@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import useStudioDialog from './useStudioDialog';
 import { formatListSetLabel, listIsMain, parseListSetIndex } from '../lib/utils';
 
 const EXPORT_QUALITY_OPTIONS = [
@@ -27,6 +28,9 @@ export default function ExportModal({
   onExport,
 }) {
   const [deleteAfterExport, setDeleteAfterExport] = useState(true);
+  const dialogRef = useStudioDialog(open, onClose);
+  const [step, setStep] = useState(0);
+  useEffect(() => { if (open) setStep(0); }, [open]);
 
   if (!open) return null;
   const decksWithLists = (dataset?.decks || [])
@@ -40,15 +44,17 @@ export default function ExportModal({
 
   return (
     <div id="exportModal" className="modal-overlay" onClick={(event) => event.target.id === 'exportModal' && onClose()}>
-      <div className="modal-card">
+      <div className="modal-card studio-export-wizard" data-step={step} ref={dialogRef} role="dialog" aria-modal="true" aria-label="Xuất file">
         <div className="modal-head">
           <div>
             <p className="panel-kicker">Xuất hàng loạt</p>
-            <h3 className="modal-title">Chọn bộ ảnh để xuất ZIP</h3>
+            <h3 className="modal-title">{['1 · Chọn list','2 · Chất lượng','3 · Xác nhận xuất'][step]}</h3>
           </div>
-          <button id="closeExportModalBtn" className="modal-close-btn" onClick={onClose}>×</button>
+          <button id="closeExportModalBtn" type="button" aria-label="Đóng hộp thoại xuất file" className="modal-close-btn" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
+          <p role="status">{count} list · {decksWithLists.flatMap(deck=>deck.exportLists).filter(list=>selectedIds.has(list.id)).reduce((n,list)=>n+list.pages.length,0)} trang đã chọn</p>
+          {step===2 && <p>Chất lượng: {quality==='original'?'Gốc':'Cân bằng'}. Kiểm tra tùy chọn xóa list bên dưới trước khi xuất.</p>}
           <p className="modal-description">
             Chọn các list cần xuất. Folder trong ZIP đặt tên <strong>set1 01 grid6</strong> (set trước, rồi thứ tự mẫu)
             để Windows sắp đúng: set1 mẫu A → set1 mẫu B → set2 mẫu A → set2 mẫu B.
@@ -126,7 +132,7 @@ export default function ExportModal({
                             />
                             <div className="export-list-info">
                               <p className="export-list-title">{list.title}</p>
-                              <p className="export-list-meta">AI · {setLabel} · {list.pages.length} trang</p>
+                              <p className="export-list-meta">List đã tạo · {setLabel} · {list.pages.length} trang</p>
                             </div>
                           </label>
                         );
@@ -141,6 +147,8 @@ export default function ExportModal({
           </div>
         </div>
         <div className="modal-foot">
+          {step>0 && <button type="button" className="toolbar-button" disabled={busy} onClick={()=>setStep(step-1)}>Quay lại</button>}
+          {step<2 && <button type="button" className="toolbar-button primary" disabled={!count || busy} onClick={()=>setStep(step+1)}>Tiếp tục</button>}
           <label className="export-delete-toggle">
             <input
               type="checkbox"
@@ -148,7 +156,7 @@ export default function ExportModal({
               onChange={(event) => setDeleteAfterExport(event.target.checked)}
               disabled={busy}
             />
-            <span>Xóa list AI sau khi xuất thành công (giữ workspace gọn)</span>
+            <span>Xóa list đã chọn sau khi xuất thành công</span>
           </label>
           <button
             id="executeBatchExportBtn"

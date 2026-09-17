@@ -5,8 +5,6 @@ import * as zlib from 'node:zlib';
 
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-/** Fallback SVG chỉ cache ngắn — máy mới hay fail tạm thời; cache 30 phút sẽ “đóng băng” ảnh xám. */
-const DRIVE_FILE_FALLBACK_CACHE_TTL_MS = 20 * 1000;
 /** Network/rate-limit failures are transient; never blacklist a valid Drive file indefinitely. */
 const DRIVE_FILE_FAILED_ID_TTL_MS = 10 * 60 * 1000;
 const DRIVE_FILE_ACCESSIBLE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -977,7 +975,10 @@ async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset
 
     for (const url of candidateUrls) {
       const response = await fetchDriveResponseWithRetry(url);
-      if (!response?.ok) continue;
+      if (!response?.ok) {
+        console.warn(`[drive-image] ${fileId}: ${new URL(url).pathname} failed (${response ? `HTTP ${response.status}` : 'network/timeout after retries'})`);
+        continue;
+      }
 
       // Google Drive có thể tự reset kết nối ngay giữa lúc đang đọc nội dung ảnh (ECONNRESET) dù header
       // đã trả 200 OK trước đó. Bọc try/catch ở đây để lỗi mạng rơi qua URL kế tiếp / ảnh fallback,
@@ -992,7 +993,10 @@ async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset
       const headerContentType = String(response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
       const sniffedContentType = sniffImageContentType(body);
       const contentType = headerContentType.startsWith('image/') ? headerContentType : sniffedContentType;
-      if (!contentType) continue;
+      if (!contentType) {
+        console.warn(`[drive-image] ${fileId}: ${new URL(url).pathname} returned non-image (${headerContentType || 'missing content-type'}, ${body.length} bytes)`);
+        continue;
+      }
 
       const asset: DriveFileAsset = {
         body,
@@ -1011,10 +1015,9 @@ async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset
 
     const fallbackAsset = createDriveFallbackAsset(fileId);
     setCachedDriveFileAccessibility(fileId, false);
-    driveFileAssetCache.set(fileId, {
-      expiresAt: Date.now() + DRIVE_FILE_FALLBACK_CACHE_TTL_MS,
-      asset: fallbackAsset,
-    });
+    // Only successful bytes belong in the asset cache. In-flight deduplication
+    // still coalesces simultaneous requests; a later export may retry immediately.
+    console.warn(`[drive-image] ${fileId}: all download candidates failed; returning placeholder (not cached)`);
     return fallbackAsset;
   } finally {
     releaseDriveNetworkSlot();

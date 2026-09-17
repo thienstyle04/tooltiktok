@@ -47,7 +47,7 @@ export default function PreviewPanel({ deck, list, selectedPageIndex, onPageSele
   }
 
   const isMain = listIsMain(list);
-  const badgeText = isMain ? 'Gốc' : `AI ${list.navTitle}`;
+  const badgeText = isMain ? 'Mẫu mẹ' : 'List đã tạo';
   const sectionTone = (list.navTitle || '').toLowerCase().includes('ai') ? 'ai' : 'main';
   const sectionDescription = list.description || (isMain
     ? 'Bản gốc đang dùng làm layout chuẩn.'

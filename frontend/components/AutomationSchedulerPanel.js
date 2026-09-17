@@ -5,7 +5,7 @@ import { apiFetch } from '../lib/apiClient';
 import { listIsMain } from '../lib/utils';
 
 const DALAT_ONLY_DECKS = new Set([
-  'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
+  'spotlight-v6-diary', 'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
   'itinerary-note-2days', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
 ]);
 const DALAT_EXTRA_DECKS = [
@@ -14,6 +14,7 @@ const DALAT_EXTRA_DECKS = [
   { id: 'spotlight-v6-dark', navTitle: 'Spotlight V6 Tone đen' },
   { id: 'spotlight-v6-persimmon', navTitle: 'Spotlight Mùa hồng' },
   { id: 'spotlight-v6-maps', navTitle: 'Spotlight V6 Google Maps' },
+  { id: 'spotlight-v6-diary', navTitle: 'Spotlight Nhật ký Đà Lạt' },
   { id: 'summary-note', navTitle: 'Tổng hợp địa điểm' },
   { id: 'itinerary-note-2days', navTitle: 'Lịch trình Note 2 ngày' },
   { id: 'itinerary-note-timed', navTitle: 'Lịch trình Note theo giờ' },
@@ -91,6 +92,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
   const maxListsPerTemplate = Number(state.maxListsPerTemplate) || 5;
   const [form, setForm] = useState(() => loadDraftForm(currentDestinationId));
   const [editingId, setEditingId] = useState('');
+  const [section, setSection] = useState('create');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const outputPickerReady = state.outputPicker === 'save-file-v1';
@@ -105,6 +107,8 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     return [...entries.values()].filter((deck) => form.destinationId === 'dalat' || !DALAT_ONLY_DECKS.has(deck.id));
   }, [dataset, form.destinationId]);
   const total = form.templates.reduce((sum, entry) => sum + Number(entry.count || 0), 0);
+  const templateLabel = (id) => dataset?.decks?.find(deck => deck.id === id)?.navTitle
+    || DALAT_EXTRA_DECKS.find(deck => deck.id === id)?.navTitle || id;
   const festivalSources = (hookSourcesInfo?.sources || []).filter((entry) => entry.cacheStatus === 'ready');
   const saveDisabledReason = busy
     ? 'Đang lưu lịch...'
@@ -200,6 +204,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
   };
 
   const edit = (schedule) => {
+    setSection('create');
     setEditingId(schedule.id);
     setForm({
       name: schedule.name, destinationId: schedule.destinationId, frequency: schedule.frequency,
@@ -232,7 +237,9 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
         <span className={`automation-browser ${state.browserAvailable ? 'ready' : ''}`}>{state.browserAvailable ? `${state.browserName} sẵn sàng` : 'Thiếu Chrome/Edge'}</span>
       </header>
 
-      <form className="automation-form" onSubmit={save}>
+      <nav className="studio-workflow-steps" aria-label="Quản lý hẹn giờ">{[['create','Tạo / sửa lịch'],['saved','Lịch đã lưu'],['history','Hàng đợi & lịch sử']].map(([id,label])=><button key={id} type="button" aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}>{label}</button>)}</nav>
+      {message && <p role="status">{message}</p>}
+      <form className="automation-form" style={section==='create'?undefined:{display:'none'}} onSubmit={save}>
         <label><span>Tên lịch</span><input required minLength="2" maxLength="80" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ví dụ: Bài sáng Đà Lạt" /></label>
         <label><span>Destination</span><select value={form.destinationId} onChange={(e) => setForm({ ...form, destinationId: e.target.value, hookMode: 'normal', sourceId: '', templates: [] })}>{(destinations || []).map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select></label>
         <label><span>Kiểu lịch</span><select value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })}><option value="once">Chạy một lần</option><option value="daily">Lặp hằng ngày</option></select></label>
@@ -252,19 +259,26 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
         <div className="automation-form-actions"><button className="toolbar-button primary" disabled={Boolean(saveDisabledReason)} title={saveDisabledReason} aria-busy={busy} type="submit">{busy ? 'Đang lưu...' : editingId ? 'Lưu chỉnh sửa' : 'Tạo lịch'}</button>{!form.outputDir ? <button type="button" onClick={chooseDirectory} disabled={busy || !outputPickerReady}>Chọn file ZIP</button> : null}{editingId ? <button type="button" onClick={() => { setEditingId(''); setForm(blankForm(currentDestinationId)); }}>Hủy sửa</button> : null}<span>{message || saveDisabledReason}</span></div>
       </form>
 
-      <div className="automation-list">
+      <div className="automation-list" hidden={section!=='saved'}>
         <h3>Lịch đã lưu</h3>
         {state.schedules.length ? state.schedules.map((schedule) => <article key={schedule.id}>
-          <div><strong>{schedule.name}</strong><small>{schedule.destinationId === 'dalat' ? 'Đà Lạt' : 'Green Land'} · {schedule.templates.map((entry) => `${entry.deckId} ×${entry.count}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small></div>
+          <div><strong>{schedule.name}</strong><small>{schedule.destinationId === 'dalat' ? 'Đà Lạt' : 'Green Land'} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small></div>
           <div className="automation-row-actions"><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/run-now`, { method: 'POST' })} disabled={busy || state.locked}>Chạy ngay</button><button onClick={() => edit(schedule)} disabled={busy || state.activeRunId && state.runs.find((run) => run.id === state.activeRunId)?.scheduleId === schedule.id}>Sửa</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/enabled`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !schedule.enabled }) })} disabled={busy}>{schedule.enabled ? 'Tắt' : 'Bật'}</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}`, { method: 'DELETE' })} disabled={busy}>Xóa</button></div>
         </article>) : <p className="automation-empty">Chưa có lịch tự động.</p>}
       </div>
 
-      <div className="automation-list automation-history">
+      <div className="automation-list automation-history" hidden={section!=='history'}>
         <h3>Lịch sử chạy</h3>
         {state.runs.length ? state.runs.map((run) => <article key={run.id}>
           <div><strong>{run.scheduleName} — {STATUS_LABELS[run.status] || run.status}</strong><small>{new Date(run.scheduledFor).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {run.listIds.length} list</small><small>{run.phase}</small>{run.outputPath ? <small className="automation-path">{run.outputPath}</small> : null}</div>
           <div className="automation-run-progress"><span style={{ width: `${run.progress || 0}%` }} /></div>
+          {!['queued','refreshing','warming','generating','awaiting-export','exporting'].includes(run.status) ? (
+            <div className="automation-row-actions"><button type="button" disabled={busy || state.activeRunId === run.id} onClick={() => {
+              if (window.confirm(`Xóa lịch sử lượt "${run.scheduleName}"? Chỉ xóa bản ghi này, không xóa list đã tạo, file ZIP hoặc lịch hẹn.`)) {
+                mutate(`/api/automation/runs/${encodeURIComponent(run.id)}`, { method: 'DELETE' });
+              }
+            }}>Xóa lịch sử</button></div>
+          ) : null}
           <div className="automation-row-actions">{['queued','refreshing','warming','generating','awaiting-export','exporting'].includes(run.status) ? <button onClick={() => mutate(`/api/automation/runs/${run.id}/cancel`, { method: 'POST' })}>Hủy lượt</button> : null}{['partial','failed','cancelled','interrupted'].includes(run.status) ? <button onClick={() => mutate(`/api/automation/runs/${run.id}/retry`, { method: 'POST' })} disabled={busy || state.locked}>Thử lại lỗi</button> : null}</div>
         </article>) : <p className="automation-empty">Chưa có lượt chạy.</p>}
       </div>

@@ -123,10 +123,8 @@ async function main() {
   releaseStartupLock = null;
 
   if (shouldOpenBrowser()) {
-    // Chờ cả frontend và dữ liệu backend sẵn sàng trước khi mở trình duyệt.
-    // Nếu chỉ chờ frontend, Next có thể trả về trang trong lúc backend vẫn
-    // đang warmup workbook/ảnh; các request đầu tiên sẽ nhận 502 và UI báo
-    // nhầm là backend bị mất kết nối.
+    // Wait for both HTTP servers. Dataset/cache warmup is reported by the UI;
+    // never use a heavyweight dataset request as the process liveness probe.
     await Promise.all([
       waitForServer(frontendOrigin),
       waitForBackendReady(backendOrigin),
@@ -160,7 +158,9 @@ function waitForBackendReady(origin, timeoutMs = 15 * 60 * 1000, intervalMs = 10
         {
           hostname: url.hostname,
           port: url.port,
-          path: '/api/guide-data',
+          // Liveness must not rebuild/serialize the entire dataset on every poll.
+          // The UI already tracks workbook/cache readiness separately.
+          path: '/api/health',
           timeout: 5000,
         },
         (response) => {

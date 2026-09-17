@@ -41,7 +41,8 @@ import {
   type SpotlightV3BuildContext,
 } from '../sync/spotlight-hook-source';
 import type { TitlePlacement } from '../../../common/interfaces/guide.types';
-import { BUNDLED_ONE_WAY_HOOKS } from '../sync/hook-fallbacks';
+import { BUNDLED_ONE_WAY_HOOKS, BUNDLED_SPOTLIGHT_HOOKS } from '../sync/hook-fallbacks';
+import { buildDiaryPages, DIARY_TEMPLATE_VERSION, DIARY_CAPTION } from './spotlight-diary';
 import { getActiveDestinationLocalize } from '../sync/destination-localize';
 
 import { buildItineraryNotePages, ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './itinerary-note';
@@ -96,6 +97,7 @@ export const V2_DECK_IDS = [
   'spotlight-v6-dark',
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
+  'spotlight-v6-diary',
   'summary-note',
   'itinerary-note-2days',
   'itinerary-note-timed',
@@ -2062,6 +2064,7 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'spotlight-v6-dark': SPOTLIGHT_V6_DARK_TEMPLATE_VERSION,
   'spotlight-v6-persimmon': SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION,
   'spotlight-v6-maps': SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION,
+  'spotlight-v6-diary': DIARY_TEMPLATE_VERSION,
   'summary-note': SUMMARY_NOTE_TEMPLATE_VERSION,
   'itinerary-note-2days': ITINERARY_NOTE_TEMPLATE_VERSION,
   'itinerary-note-timed': ITINERARY_NOTE_TIMED_TEMPLATE_VERSION,
@@ -2144,6 +2147,11 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     title: 'Spotlight V6 Google Maps',
     description: 'Đà Lạt 14 trang theo 7 cặp: ảnh Google Maps đã thiết kế và ảnh thật đúng địa điểm.',
     listName: 'List Spotlight V6 Google Maps',
+  },
+  'spotlight-v6-diary': {
+    nav: 'Spotlight Nhật ký Đà Lạt', title: 'Spotlight Nhật ký Đà Lạt — Thử nghiệm',
+    description: '10 trang khổ 3:4: 3 ảnh Random, 4 đối tác Quán ăn và 3 đối tác Cafe; mỗi địa điểm một câu mô tả nguồn.',
+    listName: 'Spotlight Nhật ký Đà Lạt',
   },
   'itinerary-note-2days': { nav: 'Lịch trình Note 2 ngày', title: 'Lịch trình Note 2 ngày', description: 'Hai trang ghi chú, mỗi trang một ngày với 7 hoạt động đa dạng.', listName: 'Lịch trình Note 2 ngày' },
   'itinerary-note-timed': { nav: 'Lịch trình Note theo giờ', title: 'Lịch trình Note theo giờ', description: 'Hai trang Ghi chú iPhone: lịch trình Đà Lạt theo giờ với đúng 4 đối tác ngày 1 và 3 đối tác ngày 2.', listName: 'Lịch trình Note theo giờ' },
@@ -2260,6 +2268,14 @@ export function buildPagesForDeckV2(
       return buildSpotlightV6PersimmonPages(common, seedPrefix, getSpotlightV3BuildContext());
     case 'spotlight-v6-maps':
       return buildSpotlightV6MapsPages(common, seedPrefix);
+    case 'spotlight-v6-diary': {
+      const options = getSpotlightV3BuildContext();
+      const hooks = options.hooks?.length ? options.hooks : getCachedSpotlightV3Hooks();
+      return buildDiaryPages({ destinationId: getActiveDestinationLocalize(), itemsBySection,
+        randomImages: hinhNenImagePools?.random || [], seed: seedPrefix,
+        hook: pickSpotlightV3Hook(hooks, options.usedHookTitles || [], seedPrefix),
+        usedImages: globalUsedImageUrls, usedPlaces: globalUsedItemIds, usedLines: options.diaryUsedLines });
+    }
     case 'itinerary-note-2days':
       return buildItineraryNotePages(common, seedPrefix);
     case 'itinerary-note-timed':
@@ -2300,6 +2316,21 @@ export function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): Guid
         destinationId: getActiveDestinationLocalize(),
         hooks: [SPOTLIGHT_V6_PERSIMMON_PREVIEW_HOOK],
       })
+    : deckId === 'spotlight-v6-diary'
+    ? buildDiaryPages({
+        destinationId: getActiveDestinationLocalize(),
+        itemsBySection: common.itemsBySection,
+        randomImages: common.hinhNenImagePools?.random || [],
+        seed: `${deckId}-main`,
+        // Preview must also work before async hook warmup finishes. Only use
+        // the existing common-hook fallback; generated lists keep their own flow.
+        hook: pickSpotlightV3Hook(
+          getSpotlightV3BuildContext().hooks?.length
+            ? getSpotlightV3BuildContext().hooks!
+            : getCachedSpotlightV3Hooks().length ? getCachedSpotlightV3Hooks() : BUNDLED_SPOTLIGHT_HOOKS,
+          [], `${deckId}-main`,
+        ),
+      })
     : buildPagesForDeckV2(
         deckId,
         common.itemsBySection,
@@ -2322,6 +2353,10 @@ export function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): Guid
     pages,
   );
   list.templateVersion = V2_TEMPLATE_VERSIONS[deckId];
+  if (deckId === 'spotlight-v6-diary') {
+    list.canvasPreset = 'tiktok-3x4'; list.postCaption = DIARY_CAPTION; list.captionBody = '';
+    list.captionHashtags = ['#dalat', '#reviewdalat', '#dalatreview', '#dalatdidau', '#dalattrip'];
+  }
   if (deckId === 'spotlight-v5') list.canvasPreset = 'tiktok-4x5';
   if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon') list.canvasPreset = 'tiktok-9x16';
   if (deckId === 'spotlight-v6-maps') {
@@ -2360,6 +2395,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   const summaryNoteQuanAnCount = dedupeItems(common.itemsBySection.quan_an || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   return V2_DECK_IDS
     .filter((deckId) => deckId !== 'carousel-mau-1')
+    .filter((deckId) => deckId !== 'spotlight-v6-diary' || activeDestinationId === 'dalat')
     .filter((deckId) => deckId !== 'itinerary-note-2days' || activeDestinationId === 'dalat')
     .filter((deckId) => deckId !== 'itinerary-note-timed' || activeDestinationId === 'dalat')
     // Không làm hỏng lần nạp dataset chung khi máy đang có pool Hinh_nen/ảnh
@@ -2410,12 +2446,16 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
     .map((deckId) => {
     const meta = V2_DECK_META[deckId];
     let mainList: GuideDeckList | null = null;
-    try { mainList = buildV2MainList(deckId, common); } catch (error) { if (deckId !== 'itinerary-note-2days' && deckId !== 'itinerary-note-timed') throw error; }
+    let previewError = '';
+    try { mainList = buildV2MainList(deckId, common); } catch (error) {
+      if (deckId !== 'spotlight-v6-diary' && deckId !== 'itinerary-note-2days' && deckId !== 'itinerary-note-timed') throw error;
+      if (deckId === 'spotlight-v6-diary') previewError = error instanceof Error ? error.message : String(error);
+    }
     return {
       id: deckId,
       navTitle: meta.nav,
       title: meta.title,
-      description: meta.description,
+      description: previewError ? `${meta.description} Chưa thể dựng list mẫu: ${previewError}` : meta.description,
       lists: mainList ? [mainList] : [],
     };
     });

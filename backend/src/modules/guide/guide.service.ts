@@ -120,12 +120,13 @@ const isLegacyGoogleDocHookDeck = (deckId: string): boolean =>
   deckId === 'spotlight-v3' || deckId === 'spotlight-v4' || deckId === 'spotlight-v6' || deckId === 'carousel-mau-1' || deckId === 'spotlight-guide';
 const isSectionedGoogleDocHookDeck = (deckId: string): boolean => Boolean(HOOK_SECTION_BY_DECK[deckId]);
 const isGoogleDocHookDeck = (deckId: string): boolean =>
-  isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
+  deckId === 'spotlight-v6-diary' || isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
 import { ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './logic/itinerary-note';
+import { DIARY_TEMPLATE_VERSION, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
 import { ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
 const isTextNoteDeck = (deckId: string): boolean => deckId === 'summary-note' || deckId === 'itinerary-note-2days' || deckId === 'itinerary-note-timed';
-const isNonAiDeck = (deckId: string): boolean => deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
+const isNonAiDeck = (deckId: string): boolean => deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -195,6 +196,8 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly customDestinationsPath = path.join(this.dataRoot, 'custom-destinations.json');
   private activeDestinationId: DestinationId = DEFAULT_DESTINATION_ID;
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
+  // Written atomically with diary snapshots; deleting a list does not reset its cycle.
+  private diaryUsedLines: Record<string, string[]> = {};
   private readonly festivalHookSources: FestivalHookSourceStore;
   private readonly greenHookSource: GreenHookSourceStore;
   private readonly darkHookSource: DarkHookSourceStore;
@@ -1335,7 +1338,7 @@ export class GuideService implements OnApplicationBootstrap {
     const page = list.pages?.[pageIndex];
     if (!page) throw new NotFoundException(`Khong tim thay trang: ${pageIndex + 1}`);
 
-    const titleLimit = page.layoutVariant === 'one-way-story-cover'
+    const titleLimit = page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
       ? 110
       : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
         ? 220
@@ -1353,6 +1356,7 @@ export class GuideService implements OnApplicationBootstrap {
     const isEditableNoteRows = page.layoutVariant === 'itinerary-note-day'
       || page.layoutVariant === 'itinerary-note-timed-day'
       || page.layoutVariant === 'spotlight-v6-map-place'
+      || page.layoutVariant === 'spotlight-v6-diary-page'
       || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page');
     if (isEditableNoteRows && page.type === 'list' && request.items !== undefined) {
       if (!Array.isArray(request.items) || request.items.length !== page.items.length) throw new BadRequestException(`Cần giữ đủ ${page.items.length} dòng dữ liệu.`);
@@ -1365,12 +1369,20 @@ export class GuideService implements OnApplicationBootstrap {
     const chipText = page.layoutVariant === 'itinerary-note-timed-day'
       ? this.normalizeEditablePageText(request.chipText ?? page.chipText).slice(0, 40)
       : undefined;
-    store.decks[deckId][listId][String(pageIndex)] = { title, subtitle, ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
+    const titlePlacement = page.layoutVariant === 'spotlight-v6-diary-page'
+      ? request.titlePlacement ?? store.decks[deckId][listId][String(pageIndex)]?.titlePlacement ?? page.titlePlacement
+      : undefined;
+    if (titlePlacement && !['top-center', 'center', 'bottom-center'].includes(titlePlacement)) throw new BadRequestException('Vị trí chữ Nhật ký phải là trên, giữa hoặc dưới.');
+    const diaryFontSize = page.layoutVariant === 'spotlight-v6-diary-page'
+      ? request.diaryFontSize ?? store.decks[deckId][listId][String(pageIndex)]?.diaryFontSize ?? page.diaryFontSize ?? 13
+      : undefined;
+    if (diaryFontSize !== undefined && (typeof diaryFontSize !== 'number' || !Number.isFinite(diaryFontSize) || diaryFontSize < 9 || diaryFontSize > 13 || diaryFontSize * 2 !== Math.round(diaryFontSize * 2))) throw new BadRequestException('Cỡ chữ Nhật ký phải từ 9 đến 13px, bước 0.5px.');
+    store.decks[deckId][listId][String(pageIndex)] = { title, subtitle, ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
     store.savedAt = new Date().toISOString();
     this.ensureDataRoot();
     this.writeJsonFileSafe(this.getDestinationDataPath('page-text-overrides'), store);
 
-    return { deckId, listId, pageIndex, title, subtitle, ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
+    return { deckId, listId, pageIndex, title, subtitle, ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
@@ -1496,11 +1508,12 @@ export class GuideService implements OnApplicationBootstrap {
     const deckUsage = this.createUsageScope();
     currentDeck.lists.forEach((list) => {
       const isPreviewList = /-main$/i.test(String(list.id || '')) || String(list.id || '').toLowerCase() === 'main';
-      if (deckId === 'spotlight-v6-persimmon' && isPreviewList) return;
+      if ((deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary') && isPreviewList) return;
       this.markUsedInDeck(list.pages, deckUsage);
     });
     // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
     for (const prevList of existing) {
+      if (deckId === 'spotlight-v6-diary') this.markUsedInDeck(prevList.pages, deckUsage);
       for (const page of prevList.pages) {
         if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
         if (page.type !== 'list') continue;
@@ -1535,6 +1548,7 @@ export class GuideService implements OnApplicationBootstrap {
         : (await this.warmSpotlightV3Hooks(), undefined);
       setSpotlightV3BuildContext({
         ...(hooks ? { hooks } : {}),
+        ...(deckId === 'spotlight-v6-diary' ? { diaryUsedLines: this.diaryUsedLines } : {}),
         destinationId: this.activeDestinationId,
         usedHookTitles: this.getUsedCaptionTitles(deckId),
       });
@@ -1552,6 +1566,34 @@ export class GuideService implements OnApplicationBootstrap {
         context.coverImageUrls,
         context.hinhNenImagePools,
       );
+      if (deckId === 'spotlight-v6-diary') {
+        // Only warm the selected ten images; never stall other templates on this pool.
+        context.itemsBySection = this.cloneJson(context.itemsBySection);
+        context.hinhNenImagePools = this.cloneJson(context.hinhNenImagePools);
+        for (;;) {
+          const ids = [...new Set(basePages.map(page => extractDriveFileIdFromProxyUrl(page.backgroundImage || '')).filter(Boolean))];
+          const missing = listUncachedDriveFileIds(ids);
+          if (missing.length) await warmDriveFileDiskCache(missing, {
+            runTask: task => this.runtimePerformance.runDriveTask(4, task), concurrency: 3,
+          });
+          const failed = new Set(ids.filter(id => !hasDriveFileDiskCache(id)));
+          if (!failed.size) break;
+          const allowed = (url: string) => !failed.has(extractDriveFileIdFromProxyUrl(url));
+          context.hinhNenImagePools.random = context.hinhNenImagePools.random.filter(allowed);
+          for (const key of ['quan_an', 'cafe'] as const) {
+            for (const item of context.itemsBySection[key] || []) {
+              const urls = [item.imageUrl, ...(item.candidateImageUrls || [])].filter(allowed);
+              item.imageUrl = urls[0] || '';
+              item.candidateImageUrls = urls;
+              if (item.diaryImageUrls) item.diaryImageUrls = item.diaryImageUrls.filter(allowed);
+            }
+          }
+          // Each retry removes at least one failing ID. Strict builder reports the shortage.
+          basePages = buildPagesForDeck(deckId, context.itemsBySection, context.imageUrls,
+            context.imageLibraryEntries, seed, deckUsage.itemIds, deckUsage.imageUrls,
+            context.coverImageUrls, context.hinhNenImagePools);
+        }
+      }
     } finally {
       clearSpotlightV3BuildContext();
     }
@@ -1563,6 +1605,7 @@ export class GuideService implements OnApplicationBootstrap {
       ? darkHookReservation.hook
       : persimmonHookReservation
       ? persimmonHookReservation.hook
+      : deckId === 'spotlight-v6-diary' ? basePages[0].title
       : isSectionedGoogleDocHookDeck(deckId)
       ? await this.resolveDeckHookCoverTitle(deckId, seed)
       : isLegacyGoogleDocHookDeck(deckId)
@@ -1579,12 +1622,12 @@ export class GuideService implements OnApplicationBootstrap {
     const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story' || deckId === 'budget-72h-summary'
       ? this.budget3N2DCoverCaption(safeCaption)
       : safeCaption;
-    let generatedPages = applyCaptionToPages(basePages, finalCaption);
+    let generatedPages = deckId === 'spotlight-v6-diary' ? basePages : applyCaptionToPages(basePages, finalCaption);
     if (deckId === 'pov-3-v2') {
       generatedPages = await this.enrichPov3V2StackTaglines(generatedPages);
     }
-    generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
-    const effectiveCoverTitle = deckId === 'itinerary-note-timed'
+    if (deckId !== 'spotlight-v6-diary') generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
+    const effectiveCoverTitle = deckId === 'spotlight-v6-diary' ? basePages[0].title : deckId === 'itinerary-note-timed'
       ? currentDeck.navTitle
       : (deckId === 'summary-note' || deckId === 'itinerary-note-2days')
       ? String((generatedPages.find((page) => page.type === 'list') as ListPage | undefined)?.title || '').trim()
@@ -1610,6 +1653,7 @@ export class GuideService implements OnApplicationBootstrap {
       generatedPages,
     );
     generatedList.coverTitle = effectiveCoverTitle;
+    if (deckId === 'spotlight-v6-diary') generatedList.canvasPreset = 'tiktok-3x4';
     if (deckId === 'spotlight-v5') generatedList.canvasPreset = 'tiktok-4x5';
     if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon') generatedList.canvasPreset = 'tiktok-9x16';
     if (deckId === 'spotlight-v6-maps') generatedList.canvasPreset = 'tiktok-3x4';
@@ -1636,6 +1680,12 @@ export class GuideService implements OnApplicationBootstrap {
       ? ['#dalat', '#reviewdalat', '#dalatreview', '#dalatdidau', '#dalattrip']
       : isTextNoteDeck(deckId) ? [] : finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
+    if (deckId === 'spotlight-v6-diary') {
+      if (generatedPages.length !== 10) throw new BadRequestException('Spotlight Nhật ký phải có đúng 10 trang.');
+      generatedList.postCaption = DIARY_CAPTION;
+      generatedList.captionBody = '';
+      generatedList.captionHashtags = ['#dalat', '#reviewdalat', '#dalatreview', '#dalatdidau', '#dalattrip'];
+    }
     if (request.automationRunId) generatedList.automationRunId = String(request.automationRunId).slice(0, 100);
     if (request.automationPosition) generatedList.automationPosition = String(request.automationPosition).slice(0, 100);
     if (festivalReservation) {
@@ -1668,11 +1718,30 @@ export class GuideService implements OnApplicationBootstrap {
     }
     const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList, deckId);
 
-    this.markUsedInDeck(sanitizedGeneratedList.pages);
-    this.persistInventory();
-
-    this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
-    this.persistGeneratedLists();
+    if (deckId === 'spotlight-v6-diary') {
+      const previousLines = this.diaryUsedLines;
+      const nextLines = this.cloneJson(previousLines);
+      for (const page of generatedPages) {
+        if (page.type !== 'list' || !page.items.length) continue;
+        const key = diaryIdentity(page.items[0].rawName || page.items[0].name);
+        const source = Object.values(context.itemsBySection).flat().find(item => item.id === page.items[0].id);
+        const choices = diaryDescriptionLines(source?.diaryDescriptionRaw || '');
+        const used = (nextLines[key] || []).filter(line => choices.includes(line));
+        nextLines[key] = [...(choices.every(line => used.includes(line)) ? [] : used), page.title];
+      }
+      this.diaryUsedLines = nextLines;
+      this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
+      try { this.persistGeneratedLists(); } catch (error) {
+        this.diaryUsedLines = previousLines;
+        this.generatedListsByDeckId.set(deckId, existing);
+        throw error;
+      }
+    } else {
+      this.markUsedInDeck(sanitizedGeneratedList.pages);
+      this.persistInventory();
+      this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
+      this.persistGeneratedLists();
+    }
     this.festivalHookSources.commit(festivalReservation);
     this.greenHookSource.commit(greenHookReservation);
     this.darkHookSource.commit(darkHookReservation);
@@ -1684,6 +1753,9 @@ export class GuideService implements OnApplicationBootstrap {
       this.greenHookSource.rollback(greenHookReservation);
       this.darkHookSource.rollback(darkHookReservation);
       this.persimmonHookSource.rollback(persimmonHookReservation);
+      if (deckId === 'spotlight-v6-diary' && error instanceof Error && error.message.startsWith('Spotlight Nhật ký')) {
+        throw new BadRequestException(error.message);
+      }
       throw error;
     }
   }
@@ -2240,8 +2312,10 @@ export class GuideService implements OnApplicationBootstrap {
         const ownOverride = listOverrides?.[String(pageIndex)];
         if (!ownOverride) return page;
         return { ...page, title: ownOverride.title, subtitle: ownOverride.subtitle,
+          ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
+          ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.diaryFontSize !== undefined ? { diaryFontSize: ownOverride.diaryFontSize } : {}),
           ...(page.layoutVariant === 'itinerary-note-timed-day' && ownOverride.chipText !== undefined ? { chipText: ownOverride.chipText } : {}),
-          ...(page.type === 'list' && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
+          ...(page.type === 'list' && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
             items: page.items.map((item, index) => ({ ...item, ...ownOverride.items?.[index] })),
           } : {}),
         };
@@ -2256,6 +2330,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   private applyMainTemplateFieldStructure(deck: GuideDeck, pages: DeckPage[]): DeckPage[] {
+    if (deck.id === 'spotlight-v6-diary') return pages;
     if (deck.id === 'spotlight-v5' || isTextNoteDeck(deck.id)) return pages;
     const mainList = deck.lists.find((list) => (
       /-main$/i.test(String(list.id || ''))
@@ -2304,6 +2379,7 @@ export class GuideService implements OnApplicationBootstrap {
     const recentListImageSets: Array<Set<string>> = [];
 
     return lists.map((list) => {
+      if (list.id.startsWith('spotlight-v6-diary-')) return list;
       const recentImageUrls = this.mergeRecentImageSets(recentListImageSets);
       const currentListVisualImageUrls = new Set<string>();
       const currentListItemImageUrls = new Set<string>();
@@ -2375,6 +2451,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   private templateVersionForDeck(deckId: string): number | undefined {
+    if (deckId === 'spotlight-v6-diary') return DIARY_TEMPLATE_VERSION;
     if (deckId === 'itinerary-3n2d') return ITINERARY_3N2D_TEMPLATE_VERSION;
     if (deckId === 'budget-3n2d') return BUDGET_3N2D_TEMPLATE_VERSION;
     if (deckId === 'budget-72h-summary') return BUDGET_72H_SUMMARY_TEMPLATE_VERSION;
@@ -2443,6 +2520,7 @@ export class GuideService implements OnApplicationBootstrap {
     deckId?: string,
   ): GuideDeckList {
     const cleanList = this.sanitizeGeneratedListText(list, deckId);
+    if (deckId === 'spotlight-v6-diary') return cleanList;
     if (!/caption-/i.test(cleanList.id)) return cleanList;
 
     const safeDescription = this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanList.description, cleanList.pages));
@@ -2468,6 +2546,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   private sanitizeBaseListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
+    if (list.id.startsWith('spotlight-v6-diary-')) return this.cloneJson(list);
     const pages = list.pages.map((page) => this.sanitizeBasePageForDisplay(page, list));
     const enrichedPages = tuneSpotlightV2Cover(pages, coverImageUrls, `${list.id}|cover-grid`);
     return {
@@ -2813,7 +2892,7 @@ export class GuideService implements OnApplicationBootstrap {
       const refreshedLists = lists.map((list, listIndex) => {
         // Spotlight V4/V5 lưu snapshot hook, ảnh và địa điểm; thay đổi mẫu chỉ
         // áp dụng cho list mới, không rebuild các list người dùng đã tạo.
-        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) return list;
+        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) return list;
         if (deckId === 'spotlight-partner') {
           const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
           if (!partnerItem) return list;
@@ -3092,7 +3171,7 @@ export class GuideService implements OnApplicationBootstrap {
       // Maps lưu snapshot theo cặp: item của trang Maps phải giữ file Anh_GG_maps.
       // Luồng refresh chung chỉ biết ảnh thật Link_drive và sẽ thay nhầm trang Maps
       // thành ảnh địa điểm sau lần reload/getDataset đầu tiên.
-      if (deckId === 'spotlight-partner' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
+      if (deckId === 'spotlight-partner' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
       const refreshedLists = lists.map((list) => ({
         ...list,
         pages: list.pages.map((page) => {
@@ -3199,11 +3278,14 @@ export class GuideService implements OnApplicationBootstrap {
     if (this.generatedListsLoaded) return;
     this.generatedListsLoaded = true;
     this.generatedListsByDeckId.clear();
+    this.diaryUsedLines = {};
     if (!fs.existsSync(this.resolveDestinationDataPath('generated-caption-lists'))) return;
 
     try {
       const raw = fs.readFileSync(this.resolveDestinationDataPath('generated-caption-lists'), 'utf-8');
       const parsed = JSON.parse(raw) as Partial<GeneratedListsStore>;
+      this.diaryUsedLines = Object.fromEntries(Object.entries(parsed.diaryUsedLines || {})
+        .filter(([, lines]) => Array.isArray(lines) && lines.every(line => typeof line === 'string')));
       const deckEntries = parsed.decks && typeof parsed.decks === 'object' ? parsed.decks : {};
       Object.entries(deckEntries).forEach(([deckId, lists]) => {
         if (!Array.isArray(lists)) return;
@@ -3225,7 +3307,7 @@ export class GuideService implements OnApplicationBootstrap {
       (carry, [deckId, lists]) => { carry[deckId] = this.cloneJson(lists); return carry; },
       {} as Record<string, GuideDeckList[]>,
     );
-    const payload: GeneratedListsStore = { version: 1, savedAt: new Date().toISOString(), decks };
+    const payload: GeneratedListsStore = { version: 1, savedAt: new Date().toISOString(), decks, diaryUsedLines: this.diaryUsedLines };
     this.ensureDataRoot();
     this.writeJsonFileSafe(this.getDestinationDataPath('generated-caption-lists'), payload);
     // Không đụng tới cache Sheet ở đây: list AI được merge trực tiếp từ generatedListsByDeckId
@@ -3273,7 +3355,7 @@ export class GuideService implements OnApplicationBootstrap {
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
+      if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
       const sanitizedLists = lists.map((list) => {
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
@@ -3666,6 +3748,8 @@ export class GuideService implements OnApplicationBootstrap {
       name, address,
       type: placeType || SECTION_CONFIG[sectionKey].title,
       openHours, style, highlight, theme,
+      diaryDescriptionRaw: String(row.mo_ta ?? row.mota ?? row.mo_ta_dia_diem ?? ''),
+      diaryImageUrls: [...sheetDriveCandidateUrls],
       partnerFlag: partner,
       isPartner: normalizeText(partner) === 'x',
       headPrice,
@@ -4334,6 +4418,8 @@ export class GuideService implements OnApplicationBootstrap {
 
   private sanitizeGeneratedListText(list: GuideDeckList, deckId?: string): GuideDeckList {
     const resolvedDeckId = deckId || resolveDeckIdFromListId(list.id);
+    // Diary text is an exact source snapshot, not marketing text to rewrite.
+    if (resolvedDeckId === 'spotlight-v6-diary') return this.cloneJson(list);
     const pages = Array.isArray(list.pages)
       ? list.pages.map((page) => this.sanitizeDeckPageText(page))
       : [];

@@ -35,6 +35,69 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   private runQueue: Promise<void> = Promise.resolve();
   private browser: any = null;
   private manualExportUntil = 0;
+  private manualActiveId = '';
+  private manualJobs = new Map<string, { id: string; requestId: string; status: string; destinationId: string; result?: unknown; error?: string }>();
+
+  submitManualGeneration(input: { kind: string; destinationId: string; requestId: string; request: any }) {
+    const existing = [...this.manualJobs.values()].find(job => job.requestId === input.requestId);
+    if (existing) return { ...existing };
+    if (!['caption', 'batch', 'partner'].includes(input.kind) || !input.requestId || !input.request?.deckId && input.kind !== 'partner') throw new BadRequestException('Yêu cầu tạo list không hợp lệ.');
+    if (!this.guideService.getDestinations().destinations.some(d => d.id === input.destinationId)) throw new BadRequestException('Destination không hợp lệ.');
+    if ([...this.manualJobs.values()].filter(j => ['queued', 'running'].includes(j.status)).length >= 30) throw new ConflictException('Hàng đợi đã đủ 30 yêu cầu.');
+    // Keep only bounded metadata/results in memory on long-running low-RAM machines.
+    for (const [id, saved] of this.manualJobs) {
+      if (this.manualJobs.size < 200) break;
+      if (!['queued', 'running'].includes(saved.status)) this.manualJobs.delete(id);
+    }
+    const request = structuredClone(input.request);
+    // Never let a manual request impersonate an automated run or consume its hook selection.
+    delete request.automationRunId;
+    const hook = request.hookSelection;
+    if (!hook || !['normal', 'festival'].includes(hook.mode) || hook.mode === 'festival' && !hook.sourceId) throw new BadRequestException('Cần chốt nguồn hook khi gửi yêu cầu.');
+    const job = { id: crypto.randomUUID(), requestId: input.requestId, status: 'queued', destinationId: input.destinationId } as { id: string; requestId: string; status: string; destinationId: string; result?: unknown; error?: string };
+    this.manualJobs.set(job.id, job);
+    // Share the same FIFO as complete scheduled runs, including render and ZIP.
+    this.runQueue = this.runQueue.then(async () => {
+      while (this.manualExportUntil > Date.now() && job.status === 'queued') await new Promise(resolve => setTimeout(resolve, 500));
+      if (job.status !== 'queued') return;
+      this.manualActiveId = job.id;
+      job.status = 'running';
+      const previousDestination = this.guideService.getDestinations().active.id;
+      const previousHook = this.guideService.getHookSources();
+      try {
+        job.result = await this.guideService.enqueueGeneration(async () => {
+          try {
+            if (previousDestination !== job.destinationId) await this.guideService.setActiveDestination({ id: job.destinationId });
+            if (input.kind === 'batch') return await this.guideService.generateBatchLists(request);
+            if (input.kind === 'caption') return await this.guideService.generateDeckFromCaption(request);
+            return await this.guideService.generatePartnerSpotlight(request);
+          } finally {
+            if (this.guideService.getDestinations().active.id !== previousDestination) await this.guideService.setActiveDestination({ id: previousDestination });
+            const currentHook = this.guideService.getHookSources();
+            if (previousDestination === 'dalat' && (currentHook.mode !== previousHook.mode || currentHook.activeSourceId !== previousHook.activeSourceId)) this.guideService.setHookMode({ mode: previousHook.mode, sourceId: previousHook.activeSourceId });
+          }
+        });
+        job.status = 'completed';
+      } catch (error) {
+        job.status = 'failed'; job.error = error instanceof Error ? error.message : String(error);
+      } finally { this.manualActiveId = ''; }
+    });
+    return { ...job };
+  }
+
+  getManualGeneration(id: string) {
+    const job = this.manualJobs.get(id);
+    if (!job) throw new BadRequestException('Không còn yêu cầu này trong phiên backend; có thể tool đã khởi động lại. Không tự tạo lại để tránh trùng list.');
+    return { ...job };
+  }
+
+  cancelManualGeneration(id: string) {
+    const job = this.manualJobs.get(id);
+    if (!job) return this.getManualGeneration(id);
+    if (job.status === 'running') throw new ConflictException('Yêu cầu đã bắt đầu; chỉ hủy được yêu cầu đang chờ.');
+    if (job.status === 'queued') job.status = 'cancelled';
+    return { ...job };
+  }
 
   constructor(private readonly guideService: GuideService) {
     this.state = this.load();
@@ -80,13 +143,14 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   }
 
   assertUserMutationAllowed(): void {
+    if (this.manualActiveId) throw new ConflictException('Đang xử lý yêu cầu tạo list trong hàng đợi.');
     if (!this.activeRunId) return;
     const run = this.requireRun(this.activeRunId);
     throw new ConflictException(`Lịch tự động "${run.scheduleName}" đang chạy. Vui lòng chờ hoàn tất hoặc hủy lượt.`);
   }
 
   setManualExportActive(active: boolean): AutomationStateResponse {
-    if (active && this.activeRunId) {
+    if (active && (this.activeRunId || this.manualActiveId || this.guideService.isGenerationBusy())) {
       throw new ConflictException('Đang chạy lịch tự động; chưa thể bắt đầu lượt xuất thủ công.');
     }
     this.manualExportUntil = active ? Date.now() + 2 * 60 * 60 * 1000 : 0;
@@ -163,6 +227,17 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     run.generated = [...previous.generated];
     run.listIds = [...previous.listIds];
     this.enqueue(run);
+    return this.getState();
+  }
+
+  deleteRunHistory(runId: string): AutomationStateResponse {
+    const run = this.requireRun(runId);
+    if (this.activeRunId === runId || ACTIVE_STATUSES.has(run.status)) {
+      throw new ConflictException('Không thể xóa lịch sử lượt đang chạy hoặc đang chờ. Hãy hủy và chờ lượt kết thúc.');
+    }
+    const previous = this.state.runs;
+    this.state.runs = previous.filter(entry => entry.id !== runId);
+    try { this.persist(); } catch (error) { this.state.runs = previous; throw error; }
     return this.getState();
   }
 

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { exportActiveList, exportBatch, exportSelectedPagePng } from '../lib/exportClient';
-import { getRuntimePerformance as ensureRuntimePerformanceForBalancedExport } from '../lib/runtimePerformance';
 import { apiFetch, fetchGuideDataset, formatApiError } from '../lib/apiClient';
 import {
   clearCachedDataset,
@@ -18,12 +17,15 @@ import { verifyRuntimeSession } from '../lib/runtimeSession';
 import { diagnoseUnconfirmedSheetSync } from '../lib/sheetSyncDiagnostic';
 import CaptionTools from './CaptionTools';
 import DataStatsPanel from './DataStatsPanel';
+import { queuedGeneration } from '../lib/manualGenerationQueue';
+import InspectorScrollArea from './InspectorScrollArea';
 import DeleteListsModal from './DeleteListsModal';
 import ExportModal from './ExportModal';
 import PageInspector from './PageInspector';
 import PreviewDashboardPanel from './PreviewDashboardPanel';
 import ProgressBar from './ProgressBar';
 import Sidebar from './Sidebar';
+import StudioListLibrary from './StudioListLibrary';
 import SettingsPanel from './SettingsPanel';
 import TemplateGalleryPanel from './TemplateGalleryPanel';
 import AutomationSchedulerPanel from './AutomationSchedulerPanel';
@@ -140,6 +142,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v6-dark',
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
+  'spotlight-v6-diary',
   'summary-note',
   'itinerary-note-2days',
   'itinerary-note-timed',
@@ -154,6 +157,7 @@ const DALAT_ONLY_CATALOG_DECK_IDS = new Set([
   'spotlight-v6-dark',
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
+  'spotlight-v6-diary',
   'itinerary-note-2days',
   'itinerary-note-timed',
   'one-way-story',
@@ -289,7 +293,26 @@ export default function DeckStudio({ initialDataset = null }) {
   const [status, setStatus] = useState(initialDataset?.source?.totalItems
     ? `Đã tải ${initialDataset.source.totalItems} địa điểm.`
     : 'Đang tải dữ liệu workbook...');
-  const [activeView, setActiveView] = useState('preview');
+  const [activeView, setActiveView] = useState('templates');
+  const [studioTheme, setStudioTheme] = useState(() => {
+    try { return localStorage.getItem('dalat-studio-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch { return 'dark'; }
+  });
+  const [editorSaveState, setEditorSaveState] = useState('saved');
+  const editorOriginalDataset = useRef(null);
+  useEffect(() => {
+    const warn = event => { if (editorOriginalDataset.current) { event.preventDefault(); event.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, []);
+  const [editorPane, setEditorPane] = useState('preview');
+  useEffect(() => {
+    try { setStudioTheme(localStorage.getItem('dalat-studio-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')); } catch {}
+  }, []);
+  const toggleStudioTheme = () => setStudioTheme(previous => {
+    const next = previous === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('dalat-studio-theme', next); } catch {}
+    return next;
+  });
   const [captionToolsVisible, setCaptionToolsVisible] = useState(false);
   const [captionTone, setCaptionTone] = useState('lich_trinh_huu_ich');
   const [caption, setCaption] = useState(emptyCaption);
@@ -319,6 +342,15 @@ export default function DeckStudio({ initialDataset = null }) {
   });
   const [runtimePerformance, setRuntimePerformance] = useState({ mode: 'checking', reason: 'Đang đánh giá khả năng xử lý của máy.' });
   const [automationState, setAutomationState] = useState({ locked: false, schedules: [], runs: [] });
+  const [manualJob, setManualJob] = useState(null);
+  const queueGenerationRequest = useCallback(async (url, options) => {
+    const kind = url.endsWith('generate-batch') ? 'batch' : url.endsWith('generate-partner-spotlight') ? 'partner' : 'caption';
+    try {
+      return await queuedGeneration(kind, JSON.parse(options.body), dataset?.source?.destinationId || 'dalat',
+        { mode: hookSourcesInfo?.mode || 'normal', sourceId: hookSourcesInfo?.activeSourceId || '' },
+        job => { setManualJob(job); setStatus(job.status === 'queued' ? 'Đã xếp hàng — chờ lượt hiện tại hoàn tất. Không chạy tác vụ nặng song song.' : 'Đang tạo list từ yêu cầu đã xếp hàng...'); });
+    } finally { setManualJob(null); }
+  }, [dataset?.source?.destinationId, hookSourcesInfo]);
   const [driveCacheReadyNotice, setDriveCacheReadyNotice] = useState(false);
   const [dismissedCacheDestinationId, setDismissedCacheDestinationId] = useState(null);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
@@ -1009,10 +1041,12 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
+                ...(updates.titlePlacement !== undefined && page.layoutVariant === 'spotlight-v6-diary-page' ? { titlePlacement: updates.titlePlacement } : {}),
+                ...(updates.diaryFontSize !== undefined && page.layoutVariant === 'spotlight-v6-diary-page' ? { diaryFontSize: updates.diaryFontSize } : {}),
               };
             });
             const editingCover = selectedPageIndex === 0 && pages[0]?.type === 'cover';
@@ -1034,6 +1068,8 @@ export default function DeckStudio({ initialDataset = null }) {
   }, [activeDeckId, activeListId, dataset, selectedPageIndex]);
 
   const handlePageTextChange = useCallback((updates) => {
+    if (!editorOriginalDataset.current) editorOriginalDataset.current = datasetRef.current;
+    setEditorSaveState('dirty');
     updateActivePageTextInDataset(updates);
   }, [updateActivePageTextInDataset]);
 
@@ -1046,7 +1082,9 @@ export default function DeckStudio({ initialDataset = null }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: activePage.title || '',
+          ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { diaryFontSize: activePage.diaryFontSize ?? 13 } : {}),
           subtitle: activePage.subtitle || '',
+          ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { titlePlacement: activePage.titlePlacement, items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { chipText: activePage.chipText || '' } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-day' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { items: activePage.items.map(({ name, metaPrimary, scheduleTime }) => ({ name, metaPrimary, scheduleTime })) } : {}),
@@ -1056,10 +1094,13 @@ export default function DeckStudio({ initialDataset = null }) {
       });
       const payload = await readApiPayload(response);
       if (!response.ok) throw new Error(apiErrorMessage(payload, `Lưu nội dung trang thất bại: HTTP ${response.status}`));
-      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle, ...(payload.chipText !== undefined ? { chipText: payload.chipText } : {}), ...(payload.items ? { items: payload.items } : {}) });
+      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle, ...(payload.titlePlacement ? { titlePlacement: payload.titlePlacement } : {}), ...(payload.chipText !== undefined ? { chipText: payload.chipText } : {}), ...(payload.items ? { items: payload.items } : {}) });
       if (result?.nextDataset) writeCachedDataset(result.nextDataset);
       setStatus(`Đã lưu nội dung trang ${selectedPageIndex + 1}.`);
+      setEditorSaveState('saved');
+      editorOriginalDataset.current = null;
     } catch (error) {
+      setEditorSaveState('failed');
       setStatus(error?.message || 'Không lưu được nội dung trang. Bản nháp vẫn được giữ.');
     } finally {
       setSavingPageText(false);
@@ -1122,7 +1163,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
     }
-    if (!driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed') {
+    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed') {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
@@ -1132,6 +1173,7 @@ export default function DeckStudio({ initialDataset = null }) {
       || activeDeck.id === 'spotlight-v6-dark'
       || activeDeck.id === 'spotlight-v6-persimmon'
       || activeDeck.id === 'spotlight-v6-maps'
+      || activeDeck.id === 'spotlight-v6-diary'
       || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-2days' || activeDeck.id === 'itinerary-note-timed');
     const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
       && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
@@ -1144,7 +1186,7 @@ export default function DeckStudio({ initialDataset = null }) {
     setBusy(true);
     setStatus('Đang kiểm tra sức máy trước khi tạo list...');
     try {
-      const runtime = await ensureRuntimePerformanceForBalancedExport();
+      const runtime = await (await apiFetch('/api/runtime-performance', { cache: 'no-store' })).json();
       setRuntimePerformance(runtime);
       setStatus(runtime.mode === 'legacy'
         ? `Tạo list ở chế độ tương thích: ${runtime.reason}`
@@ -1157,7 +1199,7 @@ export default function DeckStudio({ initialDataset = null }) {
       : `Đang tạo list AI mới trong deck "${activeDeck.navTitle}"...`);
     }
     try {
-      const response = await apiFetch('/api/decks/generate-from-caption', {
+      const response = await queueGenerationRequest('/api/decks/generate-from-caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1191,14 +1233,14 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally {
       setBusy(false);
     }
-  }, [activeDeck, activeListId, caption, captionSourceList, driveCacheStatus.ready, hookSourcesInfo, loadDataset, loadHookSources]);
+  }, [activeDeck, activeListId, caption, captionSourceList, driveCacheStatus.ready, hookSourcesInfo, loadDataset, loadHookSources, queueGenerationRequest, automationState.locked]);
 
   const createBatchLists = useCallback(async (count) => {
     if (!activeDeck) {
       setStatus('Chưa có deck để tạo batch list.');
       return;
     }
-    if (!driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed') {
+    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed') {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
@@ -1210,12 +1252,12 @@ export default function DeckStudio({ initialDataset = null }) {
     setBusy(true);
     setStatus('Đang kiểm tra sức máy trước khi tạo list...');
     try {
-      const runtime = await ensureRuntimePerformanceForBalancedExport();
+      const runtime = await (await apiFetch('/api/runtime-performance', { cache: 'no-store' })).json();
       setRuntimePerformance(runtime);
       setStatus(runtime.mode === 'legacy'
         ? `Đang tạo ${safeCount} list ở chế độ tương thích...`
         : `Đang tạo ${safeCount} list AI (xoay vòng tone)...`);
-      const response = await apiFetch('/api/decks/generate-batch', {
+      const response = await queueGenerationRequest('/api/decks/generate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deckId: activeDeck.id, count: safeCount, requestId }),
@@ -1241,10 +1283,10 @@ export default function DeckStudio({ initialDataset = null }) {
       creatingListsRef.current = false;
       setBusy(false);
     }
-  }, [activeDeck, activeListId, driveCacheStatus.ready, loadDataset, loadHookSources]);
+  }, [activeDeck, activeListId, driveCacheStatus.ready, loadDataset, loadHookSources, queueGenerationRequest, automationState.locked]);
 
   const createPartnerSpotlight = useCallback(async (partner) => {
-    if (!driveCacheStatus.ready) {
+    if (!automationState.locked && !driveCacheStatus.ready) {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo spotlight.');
       return;
     }
@@ -1255,12 +1297,12 @@ export default function DeckStudio({ initialDataset = null }) {
     setBusy(true);
     setStatus('Đang kiểm tra sức máy trước khi tạo spotlight...');
     try {
-      const runtime = await ensureRuntimePerformanceForBalancedExport();
+      const runtime = await (await apiFetch('/api/runtime-performance', { cache: 'no-store' })).json();
       setRuntimePerformance(runtime);
       setStatus(runtime.mode === 'legacy'
         ? `Đang tạo spotlight ở chế độ tương thích cho "${partner.name}"...`
         : `Đang tạo spotlight cho "${partner.name}"...`);
-      const response = await apiFetch('/api/decks/generate-partner-spotlight', {
+      const response = await queueGenerationRequest('/api/decks/generate-partner-spotlight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ partnerId: partner.id, partnerName: partner.name }),
@@ -1281,7 +1323,7 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally {
       setBusy(false);
     }
-  }, [driveCacheStatus.ready, loadDataset]);
+  }, [driveCacheStatus.ready, loadDataset, queueGenerationRequest, automationState.locked]);
 
   const deleteGeneratedList = useCallback(async (deckId, listId) => {
     const confirmed = window.confirm('Bạn có chắc chắn muốn xóa bộ ảnh AI này?');
@@ -1674,6 +1716,7 @@ export default function DeckStudio({ initialDataset = null }) {
   }[driveCacheStatus.destinationId] || studioShort;
   const cacheStatusDestinationId = driveCacheStatus.destinationId || activeDestinationId;
   const showCacheWarmOverlay = !driveCacheStatus.ready
+    && !automationState.locked
     && dismissedCacheDestinationId !== cacheStatusDestinationId;
 
   const resolveDestinationCount = (entry) => {
@@ -1684,7 +1727,16 @@ export default function DeckStudio({ initialDataset = null }) {
   };
 
   return (
-    <main className="app-shell">
+    <main className="app-shell studio-workflow" data-studio-theme={studioTheme} data-editor-pane={editorPane}
+      onClickCapture={event => {
+        const control = event.target.closest('button');
+        if (!editorOriginalDataset.current || !control || control.closest('.right-panel') || control.classList.contains('studio-theme-toggle') || control.closest('.studio-pane-switch')) return;
+        if (!window.confirm('Trang có thay đổi chưa lưu. Bỏ thay đổi để tiếp tục?')) { event.preventDefault(); event.stopPropagation(); return; }
+        datasetRef.current = editorOriginalDataset.current;
+        setDataset(editorOriginalDataset.current);
+        editorOriginalDataset.current = null;
+        setEditorSaveState('saved');
+      }}>
       {showCacheWarmOverlay ? (
         <div className="cache-warm-overlay" role="dialog" aria-modal="true" aria-labelledby="cacheWarmTitle">
           <section className="cache-warm-dialog">
@@ -1755,7 +1807,14 @@ export default function DeckStudio({ initialDataset = null }) {
         </div>
       ) : null}
 
-      {automationState.locked ? (
+      {manualJob?.status === 'queued' ? <div className="automation-lock-banner" role="status">
+        <span>Đã xếp hàng — chờ lượt hiện tại hoàn tất.</span>
+        <button type="button" onClick={async () => {
+          const response = await apiFetch(`/api/automation/manual-generation/${manualJob.id}/cancel`, { method: 'POST' });
+          if (!response.ok) setStatus('Yêu cầu đã bắt đầu hoặc không thể hủy.');
+        }}>Hủy yêu cầu đang chờ</button>
+      </div> : null}
+      {automationState.locked && manualJob?.status !== 'queued' ? (
         <div className="automation-lock-banner" role="status">
           <strong>Đang chạy lịch tự động</strong>
           <span>{automationState.runs?.find((run) => run.id === automationState.activeRunId)?.phase || 'Các thao tác thay đổi dữ liệu đang tạm khóa.'}</span>
@@ -1773,6 +1832,7 @@ export default function DeckStudio({ initialDataset = null }) {
         onOpenSettings={openSettingsView}
         onOpenScheduler={openSchedulerView}
         onOpenDelete={openDeleteView}
+        onOpenLists={() => { setActiveView('lists'); setCaptionToolsVisible(false); }}
       />
 
       <section className="studio-shell">
@@ -1781,13 +1841,13 @@ export default function DeckStudio({ initialDataset = null }) {
             <div className="studio-breadcrumb">
               <span>{studioTitle} Studio</span>
               <span className="breadcrumb-separator">/</span>
-              <span>{activeDeck?.navTitle || 'Đang tải'}</span>
+              <span>{({scheduler:'Hẹn giờ',settings:'Dữ liệu & Cài đặt',data:'Dữ liệu',lists:'List đã tạo',templates:'Chọn mẫu',caption:'Tạo list',preview:'Chỉnh sửa',export:'Xuất file',delete:'Xóa list'})[activeView]}</span>
             </div>
             <div className="studio-title-row">
               <span className="deck-avatar" aria-hidden="true">{studioShort}</span>
               <div>
-                <h2 id="deckTitle" className="section-title">{activeDeck?.title || 'Đang tải...'}</h2>
-                <p id="deckSubtitle" className="deck-subtitle">{activeDeck?.description || 'Tool đang đọc workbook và dựng các bộ ảnh mẫu.'}</p>
+                <h2 id="deckTitle" className="section-title">{({scheduler:'Hẹn giờ',settings:'Dữ liệu & Cài đặt',data:'Dữ liệu',lists:'List đã tạo',templates:'Tạo bài đăng',caption:'Tạo list',preview:'Chỉnh sửa',export:'Xuất file',delete:'Xóa list'})[activeView]}</h2>
+                <p id="deckSubtitle" className="deck-subtitle">{['preview','caption'].includes(activeView) ? activeDeck?.title : 'Chọn mẫu → Tạo list → Chỉnh sửa → Xuất file'}</p>
               </div>
             </div>
             <div className="studio-stat-row">
@@ -1797,6 +1857,7 @@ export default function DeckStudio({ initialDataset = null }) {
               <span>{activePartnerCount} đối tác</span>
             </div>
           </div>
+          <button type="button" className="toolbar-button studio-theme-toggle" onClick={toggleStudioTheme} aria-label="Đổi giao diện sáng tối">{studioTheme === 'dark' ? '☀ Sáng' : '☾ Tối'}</button>
         </header>
 
         <div className="status-strip">
@@ -1805,7 +1866,17 @@ export default function DeckStudio({ initialDataset = null }) {
         </div>
         <ProgressBar progress={progress} />
 
-        {activeView === 'templates' ? (
+        {['templates','caption','preview'].includes(activeView) && <nav className="studio-workflow-steps" aria-label="Quy trình làm bài">
+          {[[openTemplatesView,'templates','1 · Chọn mẫu'],[openCaptionView,'caption','2 · Tạo list'],[openPreviewView,'preview','3 · Chỉnh sửa'],[openExportView,'export','4 · Xuất file']].map(([action,id,label])=><button key={id} type="button" aria-current={activeView===id?'step':undefined} onClick={action}>{label}</button>)}
+        </nav>}
+        {['settings','data'].includes(activeView) && <nav className="studio-workflow-steps" aria-label="Dữ liệu và cài đặt"><button type="button" aria-current={activeView==='settings'?'page':undefined} onClick={openSettingsView}>Nguồn, hook & cache</button><button type="button" aria-current={activeView==='data'?'page':undefined} onClick={openDataView}>Thống kê dữ liệu</button></nav>}
+        {activeView === 'preview' && <nav className="studio-pane-switch" aria-label="Vùng chỉnh sửa"><button type="button" onClick={()=>setEditorPane('preview')}>Xem preview</button><button type="button" onClick={()=>setEditorPane('editor')}>Chỉnh sửa nội dung</button></nav>}
+
+        {activeView === 'lists' ? <StudioListLibrary dataset={dataset} selected={selectedListsForExport} setSelected={setSelectedListsForExport}
+          onEdit={(deck,list)=>{handleDeckSelect(deck);handleListSelect(list);openPreviewView();}}
+          onExport={()=>setExportModalOpen(true)}
+          onDelete={()=>{setSelectedListsForDelete(new Set(selectedListsForExport));setDeleteModalOpen(true);}}
+        /> : activeView === 'templates' ? (
           <div className={workspaceClasses}>
             <TemplateGalleryPanel
               dataset={dataset}
@@ -1877,7 +1948,7 @@ export default function DeckStudio({ initialDataset = null }) {
               caption={caption}
               setCaption={setCaption}
               busy={busy}
-              cacheReady={driveCacheStatus.ready}
+              cacheReady={driveCacheStatus.ready || automationState.locked}
               onDeckSelect={handleDeckSelect}
               onListSelect={handleListSelect}
               onGeneratedListSelect={previewGeneratedList}
@@ -1897,13 +1968,13 @@ export default function DeckStudio({ initialDataset = null }) {
                     <h3 className="panel-title">{captionInspectList?.navTitle || captionInspectList?.title || 'Chưa có list'}</h3>
                   </div>
                 </div>
-                <div id="pageInspector" className="page-inspector">
+                <InspectorScrollArea>
                   <PageInspector
                     deck={activeDeck}
                     list={captionInspectList}
                     selectedPageIndex={selectedPageIndex}
                   />
-                </div>
+                </InspectorScrollArea>
               </section>
             </aside>
           </div>
@@ -1929,9 +2000,10 @@ export default function DeckStudio({ initialDataset = null }) {
                   <div>
                     <p className="panel-kicker">Dữ liệu trang</p>
                     <h3 className="panel-title">Dữ liệu & ảnh</h3>
+                    <p role="status">{savingPageText ? 'Đang lưu…' : editorSaveState === 'dirty' ? '● Chưa lưu' : editorSaveState === 'failed' ? 'Lưu thất bại — bản nháp vẫn còn' : 'Đã lưu'}</p>
                   </div>
                 </div>
-                <div id="pageInspector" className="page-inspector">
+                <InspectorScrollArea>
                   <PageInspector
                     deck={activeDeck}
                     list={activeList}
@@ -1943,7 +2015,7 @@ export default function DeckStudio({ initialDataset = null }) {
                     onExportList={handleExportList}
                     busy={busy}
                   />
-                </div>
+                </InspectorScrollArea>
               </section>
 
             </aside>
