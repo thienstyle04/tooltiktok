@@ -741,6 +741,7 @@ const V2_LIST_VARIANTS = new Set([
   'spotlight-v6-page',
   'spotlight-v6-map-page',
   'spotlight-v6-map-place',
+  'spotlight-v6-diary-page',
   'summary-note-page',
   'itinerary-note-day',
   'itinerary-note-timed-day',
@@ -1910,6 +1911,18 @@ function renderSpotlightV6MapPage(page, index, listId) {
   `;
 }
 
+function renderSpotlightDiaryPage(page, index, listId) {
+  const item = page.items?.[0];
+  const image = page.backgroundImage || item?.imageUrl || '';
+  const placement = ['top-center', 'center', 'bottom-center'].includes(page.titlePlacement) ? page.titlePlacement : 'center';
+  const text = [page.title, item?.name, item?.metaPrimary].filter(value => String(value ?? '').trim());
+  const fontSize = Math.min(13, Math.max(9, Number(page.diaryFontSize) || 13));
+  return `<article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-diary-page diary-' + placement))}" data-diary-font-size="${fontSize}" style="--diary-font:${fontSize}px" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(item?.name || (index === 0 ? 'cover' : 'image'))}.png">
+    <div class="diary-bg">${image ? renderPreviewImage(image, item?.name || 'Đà Lạt') : ''}</div>
+    <div class="diary-safe"><div class="diary-copy">${text.map(line => `<p>${escapeHtml(line)}</p>`).join('')}</div></div>
+  </article>`;
+}
+
 function renderSpotlightV6MapPlace(page, index, listId) {
   const item = page.items?.[0] || {};
   // Giữ cùng nguyên tắc snapshot cho ảnh thật của nửa sau mỗi cặp.
@@ -2441,6 +2454,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   if (page.layoutVariant === 'spotlight-v6-map-page') {
     return renderSpotlightV6MapPage(page, index, listId);
   }
+  if (page.layoutVariant === 'spotlight-v6-diary-page') return renderSpotlightDiaryPage(page, index, listId);
   if (page.layoutVariant === 'spotlight-v6-map-place') {
     return renderSpotlightV6MapPlace(page, index, listId);
   }

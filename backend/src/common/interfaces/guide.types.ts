@@ -110,6 +110,10 @@ export interface GuideItem {
   openHours: string;
   style: string;
   highlight: string;
+  /** Original Mo_ta line boundaries for the diary template only. */
+  diaryDescriptionRaw?: string;
+  /** Own Link_drive candidates only, excluding name-matched library fallbacks. */
+  diaryImageUrls?: string[];
   /** Chủ đề nguyên bản từ cột Sheet `Chu_de` (ví dụ: Mảng xanh). */
   theme?: string;
   partnerFlag: string;
@@ -160,6 +164,7 @@ export type TitlePlacement =
 export type MutantContentStyle = 'strip' | 'center-card';
 
 export interface CoverPage {
+  diaryFontSize?: number;
   type: 'cover';
   title: string;
   subtitle: string;
@@ -172,6 +177,7 @@ export interface CoverPage {
 }
 
 export interface ListPage {
+  diaryFontSize?: number;
   type: 'list';
   chipText: string;
   chipTone: AccentTone;
@@ -179,7 +185,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
+  layoutVariant?: 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
   titlePlacement?: TitlePlacement;
   contentStyle?: MutantContentStyle;
   playlistLines?: string[];
@@ -401,6 +407,8 @@ export interface UpdateGeneratedListCoverResponse {
 }
 
 export interface UpdatePageTextRequest {
+  diaryFontSize?: number;
+  titlePlacement?: TitlePlacement;
   items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }>;
   chipText?: string;
   title?: string;
@@ -408,6 +416,8 @@ export interface UpdatePageTextRequest {
 }
 
 export interface UpdatePageTextResponse {
+  diaryFontSize?: number;
+  titlePlacement?: TitlePlacement;
   items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }>;
   chipText?: string;
   deckId: string;
@@ -420,7 +430,7 @@ export interface UpdatePageTextResponse {
 export interface PageTextOverrideStore {
   version: 1;
   savedAt: string;
-  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; chipText?: string; items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }> }>>>;
+  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }> }>>>;
 }
 
 export interface DatasetBuildContext {
@@ -468,6 +478,7 @@ export interface DeckBuildPools {
 }
 
 export interface GeneratedListsStore {
+  diaryUsedLines?: Record<string, string[]>;
   version: number;
   savedAt: string;
   decks: Record<string, GuideDeckList[]>;

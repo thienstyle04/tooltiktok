@@ -297,7 +297,7 @@ export default function SettingsPanel({
               <p className="panel-kicker">Nguồn Hook</p>
               <h3>Hook thường và Hook lễ</h3>
               <p className="settings-help">
-                Hook lễ chỉ thay tiêu đề cover của list mới trên bốn mẫu ảnh đơn tại Đà Lạt. List đã tạo luôn giữ nguyên.
+                Hook lễ áp dụng cho cover của các mẫu hỗ trợ tại Đà Lạt. Mẫu dùng hook chủ đề hoặc không dùng hook giữ quy tắc riêng. List đã tạo luôn giữ nguyên.
               </p>
             </div>
             <span className={`settings-destination-pill ${hookMode === 'festival' ? 'is-positive' : ''}`}>

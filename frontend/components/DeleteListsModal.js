@@ -1,6 +1,9 @@
 ﻿import { listIsMain } from '../lib/utils';
 
+import useStudioDialog from './useStudioDialog';
+
 export default function DeleteListsModal({ open, dataset, selectedIds, setSelectedIds, busy, onClose, onDelete }) {
+  const dialogRef = useStudioDialog(open, onClose);
   if (!open) return null;
   const groups = (dataset?.decks || [])
     .map((deck) => ({ deck, lists: deck.lists.filter((list) => !listIsMain(list)) }))
@@ -9,13 +12,13 @@ export default function DeleteListsModal({ open, dataset, selectedIds, setSelect
 
   return (
     <div id="deleteListsModal" className="modal-overlay" onClick={(event) => event.target.id === 'deleteListsModal' && onClose()}>
-      <div className="modal-card delete-modal-card">
+      <div className="modal-card delete-modal-card" ref={dialogRef} role="dialog" aria-modal="true" aria-label="Xóa list đã tạo">
         <div className="modal-head">
           <div>
-            <p className="panel-kicker">Xóa list AI</p>
-            <h3 className="modal-title">Chọn list AI cần xóa</h3>
+            <p className="panel-kicker">Xóa list đã tạo</p>
+            <h3 className="modal-title">Chọn list cần xóa</h3>
           </div>
-          <button id="closeDeleteListsModalBtn" className="modal-close-btn" onClick={onClose}>×</button>
+          <button id="closeDeleteListsModalBtn" type="button" aria-label="Đóng hộp thoại xóa list" className="modal-close-btn" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">
           <p className="modal-description">Có thể chọn list AI ở nhiều mẫu. List chính của các mẫu sẽ được giữ lại.</p>

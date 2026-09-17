@@ -11,16 +11,13 @@ export default function Sidebar({
   onOpenSettings,
   onOpenScheduler,
   onOpenDelete,
+  onOpenLists,
 }) {
   const menuItems = [
-    { id: 'templates', label: 'Mẫu deck', icon: 'templates', onClick: onOpenTemplates || onOpenPreview },
-    { id: 'preview', label: 'Preview', icon: 'preview', onClick: onOpenPreview },
-    { id: 'caption', label: 'Caption AI', icon: 'caption', onClick: onOpenCaption },
-    { id: 'export', label: 'Xuất file', icon: 'export', onClick: onOpenExport, buttonId: 'batchExportBtn' },
-    { id: 'data', label: 'Dữ liệu trang', icon: 'data', onClick: onOpenData },
-    { id: 'settings', label: 'Cài đặt', icon: 'settings', onClick: onOpenSettings },
+    { id: 'templates', label: 'Tạo bài đăng', icon: 'templates', onClick: onOpenTemplates || onOpenPreview },
+    { id: 'lists', label: 'List đã tạo', icon: 'preview', onClick: onOpenLists },
     { id: 'scheduler', label: 'Hẹn giờ', icon: 'scheduler', onClick: onOpenScheduler },
-    { id: 'delete', label: 'Xóa list', icon: 'delete', onClick: onOpenDelete, buttonId: 'deleteListsBtn' },
+    { id: 'settings', label: 'Dữ liệu & Cài đặt', icon: 'settings', onClick: onOpenSettings },
   ];
 
   return (
@@ -41,13 +38,14 @@ export default function Sidebar({
 
       <nav className="sidebar-menu" aria-label="Khu vực làm việc">
         {menuItems.map((item) => {
-          const active = activeView === item.id;
+          const active = activeView === item.id || (item.id === 'templates' && ['preview','caption'].includes(activeView)) || (item.id === 'lists' && ['export','delete'].includes(activeView)) || (item.id === 'settings' && activeView === 'data');
           return (
             <button
               key={item.id}
               id={item.buttonId}
               className={`sidebar-menu-item ${active ? 'active' : ''}`}
               type="button"
+              aria-current={active ? 'page' : undefined}
               onClick={item.onClick}
             >
               <span className={`side-icon ${item.icon}`} />

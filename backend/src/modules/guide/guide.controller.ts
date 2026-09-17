@@ -318,6 +318,21 @@ export class GuideController {
     return this.automationScheduler.getState();
   }
 
+  @Post('api/automation/manual-generation')
+  submitManualGeneration(@Body() request: { kind: string; destinationId: string; requestId: string; request: any }) {
+    return this.automationScheduler.submitManualGeneration(request);
+  }
+
+  @Get('api/automation/manual-generation/:id')
+  getManualGeneration(@Param('id') id: string) {
+    return this.automationScheduler.getManualGeneration(id);
+  }
+
+  @Post('api/automation/manual-generation/:id/cancel')
+  cancelManualGeneration(@Param('id') id: string) {
+    return this.automationScheduler.cancelManualGeneration(id);
+  }
+
   @Post('api/automation/schedules')
   createAutomationSchedule(@Body() request: AutomationScheduleInput) {
     return this.automationScheduler.create(request);
@@ -351,6 +366,11 @@ export class GuideController {
   @Post('api/automation/runs/:id/cancel')
   cancelAutomationRun(@Param('id') id: string) {
     return this.automationScheduler.cancel(id);
+  }
+
+  @Delete('api/automation/runs/:id')
+  deleteAutomationRunHistory(@Param('id') id: string) {
+    return this.automationScheduler.deleteRunHistory(id);
   }
 
   @Post('api/automation/choose-output-directory')

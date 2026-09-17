@@ -46,7 +46,7 @@ export default function PageInspector({
   const isSpotlightV4ImagePage = page.layoutVariant === 'spotlight-v4-image' || page.layoutVariant === 'spotlight-v6-map-page';
   const canEditPage = typeof onPageTextChange === 'function' && !isSpotlightV4ImagePage;
   const canSavePage = canEditPage && typeof onPageTextSave === 'function';
-  const titleLimit = page.layoutVariant === 'one-way-story-cover'
+  const titleLimit = page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
     ? 110
     : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
       ? 220
@@ -54,11 +54,11 @@ export default function PageInspector({
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
   const isTimedNote = page.layoutVariant === 'itinerary-note-timed-day';
-  const hideSubtitleEditor = deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days' || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const hideSubtitleEditor = deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days' || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
-      <div className="inspector-summary">
+      <div className={`inspector-summary${coverImage ? '' : ' inspector-summary-text-only'}`}>
         {coverImage ? <img className="inspector-thumb" src={coverImage} alt={page.title || list.title} loading="lazy" decoding="async" draggable="false" /> : null}
         <div className="inspector-copy">
           <p className="inspector-eyebrow">{deck.navTitle} · {list.navTitle || list.title}</p>
@@ -91,6 +91,23 @@ export default function PageInspector({
               <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
             </div>
           )) : null}
+          {page.layoutVariant === 'spotlight-v6-diary-page' ? <>
+            <label className="inspector-field"><span>Cỡ chữ · {page.diaryFontSize ?? 13}px</span>
+              <input aria-label="Cỡ chữ Nhật ký" type="range" min="9" max="13" step="0.5" value={page.diaryFontSize ?? 13} onChange={event => onPageTextChange({ diaryFontSize: Number(event.target.value) })}/>
+              <small>9–13px theo khung thiết kế. Áp dụng cho chữ trên trang đang chọn.</small>
+            </label>
+            <button type="button" className="toolbar-button" onClick={()=>onPageTextChange({ diaryFontSize: 13 })}>Cỡ chữ mặc định</button>
+            <label className="inspector-field"><span>Vị trí chữ</span>
+              <select value={page.titlePlacement || 'center'} onChange={event => onPageTextChange({ titlePlacement: event.target.value })}>
+                <option value="top-center">Trên</option><option value="center">Giữa</option><option value="bottom-center">Dưới</option>
+              </select>
+            </label>
+            {items.map((item, i) => <div className="inspector-field" key={item.id || i}>
+              <span>Tên và địa chỉ địa điểm</span>
+              <input aria-label="Tên địa điểm" value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              <textarea aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+            </div>)}
+          </> : null}
           {isTimedNote ? items.map((item, i) => (
             <div className="inspector-field" key={item.id || i}>
               <span>{item.fixedRow ? `Dòng cố định ${i + 1}` : `Hoạt động ${i + 1}`}</span>

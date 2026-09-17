@@ -39,8 +39,9 @@ export default function CaptionTools({
     || activeDeck?.id === 'spotlight-v6-dark'
     || activeDeck?.id === 'spotlight-v6-persimmon'
     || activeDeck?.id === 'spotlight-v6-maps'
+    || activeDeck?.id === 'spotlight-v6-diary'
     || (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id === 'itinerary-note-timed');
-  const nonAiTemplateName = activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'spotlight-v6-dark' ? 'Spotlight V6 Tone đen' : activeDeck?.id === 'spotlight-v6-persimmon' ? 'Spotlight Mùa hồng' : activeDeck?.id === 'spotlight-v6-maps' ? 'Spotlight V6 Google Maps' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : activeDeck?.id === 'itinerary-note-2days' ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
+  const nonAiTemplateName = activeDeck?.id === 'spotlight-v6-diary' ? 'Spotlight Nhật ký Đà Lạt' : activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'spotlight-v6-dark' ? 'Spotlight V6 Tone đen' : activeDeck?.id === 'spotlight-v6-persimmon' ? 'Spotlight Mùa hồng' : activeDeck?.id === 'spotlight-v6-maps' ? 'Spotlight V6 Google Maps' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : activeDeck?.id === 'itinerary-note-2days' ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
     ? 'Đường một chiều'
     : activeDeck?.id === 'summary-note'
       ? 'Tổng hợp địa điểm'
@@ -209,6 +210,8 @@ export default function CaptionTools({
             ? 'Cover dùng riêng Hook mùa hồng; ba trang ảnh lấy từ pool Mùa hồng và các trang sau chỉ hiển thị địa điểm đối tác. Mẫu này không gọi AI.'
             : activeDeck?.id === 'spotlight-v6-maps'
             ? 'Mỗi địa điểm gồm một trang Maps và một trang ảnh thật; mẫu không dùng cover, Hook hoặc AI.'
+            : activeDeck?.id === 'spotlight-v6-diary'
+            ? '10 trang 3:4: ba ảnh Random, bốn đối tác Quán ăn và ba đối tác Cafe. Cover theo Hook thường/Hook lễ; mỗi địa điểm dùng một dòng mô tả nguồn, không gọi AI.'
             : activeDeck?.id === 'one-way-story'
             ? 'Trang bìa luân phiên hook có sẵn; 11 trang còn lại lấy đúng ảnh Đà Lạt theo từng nhóm. Mẫu này không gọi AI.'
             : 'Trang bìa lấy hook từ Google Docs; 13 trang còn lại lấy trực tiếp từ Google Sheet đang chọn. Mẫu này không gọi AI.'}

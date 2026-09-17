@@ -7,6 +7,7 @@ import { generateExportZip } from './exportZip';
 import { ensureRuntimePerformanceForBalancedExport, getRuntimePerformance, markRuntimeResourceFailure } from './runtimePerformance';
 import { buildCaptionExportText } from './captionText';
 import { fitItineraryNote, fitItineraryNoteTimed } from './itineraryNote';
+import { fitSpotlightDiary } from './spotlightDiary';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
 import { verifyRuntimeSession } from './runtimeSession';
@@ -158,7 +159,7 @@ function exportQualityProfile(quality, deckId, runtimeMode = 'modern') {
       ? { ...profile, label: 'Cân bằng tương thích', compatibility: true, imagePrepareConcurrency: 1, renderChunkSize: 1, captureConcurrency: 1 }
       : profile;
   }
-  const isV6Family = deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
+  const isV6Family = deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
   return { ...profile, label: 'Cân bằng mới', losslessSource: true, fullResolutionV6: isV6Family,
     pixelRatio: isV6Family ? 1080 / 397 + 1e-9 : profile.pixelRatio,
     sourceImageMaxDimension: 0, sourceImageFormat: 'image/png', sourceImageQuality: 1 };
@@ -188,7 +189,7 @@ async function assertRuntimeResources(profile) {
 
 function prepareQualityLayout(nodes, profile) {
   for (const node of nodes) {
-    node.dataset.exportStrict = profile.id === 'original' ? 'false' : 'true';
+    node.dataset.exportStrict = node.classList.contains('spotlight-v6-diary-page') || profile.id !== 'original' ? 'true' : 'false';
     if (!profile.losslessSource) { delete node.dataset.exportLossless; continue; }
     node.dataset.exportLossless = 'true';
     // Only normalized portrait layouts need a different design height.
@@ -203,7 +204,7 @@ function prepareQualityLayout(nodes, profile) {
 }
 
 function isV6ExportPage(pageNode) {
-  return ['spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page', 'spotlight-v6-map-page', 'spotlight-v6-map-place']
+  return ['spotlight-v6-diary-page', 'spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page', 'spotlight-v6-map-page', 'spotlight-v6-map-place']
     .some((name) => pageNode?.classList?.contains(name));
 }
 
@@ -628,6 +629,11 @@ async function fetchImageBlob(src) {
       }
       if (response.headers?.get?.('x-drive-image-fallback') === '1') {
         if (timer) clearTimeout(timer);
+        await response.body?.cancel?.();
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 1000));
+          continue;
+        }
         return { blob: null, timedOut: false, fallback: true, reason: 'Backend trả ảnh placeholder' };
       }
       const blob = await response.blob();
@@ -883,6 +889,7 @@ async function waitForPageImagesSettled(node, timeoutMs = 20000) {
   await document.fonts.ready;
   fitItineraryNote(node, true);
   fitItineraryNoteTimed(node, true);
+  fitSpotlightDiary(node, true);
   const images = Array.from(node?.querySelectorAll?.('img') || []);
   if (!images.length) return;
   await Promise.all(images.map(async (img) => {
@@ -1626,7 +1633,7 @@ function isSpotlightV6PageNode(pageNode) {
 }
 
 function isSpotlightV6MapsPageNode(pageNode) {
-  return Boolean(pageNode?.classList?.contains('spotlight-v6-map-page') || pageNode?.classList?.contains('spotlight-v6-map-place'));
+  return Boolean(pageNode?.classList?.contains('spotlight-v6-diary-page') || pageNode?.classList?.contains('spotlight-v6-map-page') || pageNode?.classList?.contains('spotlight-v6-map-place'));
 }
 
 function normalizeSpotlightV6MapsCanvas(canvas, pageNode) {
@@ -1724,6 +1731,7 @@ function deckShortName(deckId) {
     'spotlight-v6-dark': 'spotlightv6-tone-den',
     'spotlight-v6-persimmon': 'spotlight-mua-hong',
     'spotlight-v6-maps': 'spotlightv6-google-maps',
+    'spotlight-v6-diary': 'spotlight-nhat-ky-da-lat',
     'summary-note': 'summary-note',
     'itinerary-note-2days': 'itinerary-note-2days',
     'itinerary-note-timed': 'itinerary-note-timed',
@@ -1810,11 +1818,17 @@ export async function renderPageBlob(pageNode, options = {}) {
   // V6 output is full-bleed: preview rounding must never enter the PNG.
   if (isV6ExportPage(pageNode)) pageNode.style.setProperty('border-radius', '0', 'important');
   const imagesReady = options.imagesReady === true;
-  const pixelRatio = balancedPixelRatio(pageNode, Number(options.pixelRatio || EXPORT_PIXEL_RATIO));
+  const diaryPage = pageNode.classList.contains('spotlight-v6-diary-page');
+  const diaryRect = diaryPage ? pageNode.getBoundingClientRect() : null;
+  // Fractional 3:4 CSS height otherwise rounds up in legacy html2canvas, leaving
+  // transparent rows at the bottom. Allocate and fill the exact diary canvas.
+  const pixelRatio = diaryPage
+    ? Math.max(1080 / diaryRect.width, 1440 / diaryRect.height) + 1e-9
+    : balancedPixelRatio(pageNode, Number(options.pixelRatio || EXPORT_PIXEL_RATIO));
   const fullResolutionV6 = usesFullResolutionV6(pageNode, options);
   const lossless = pageNode.dataset.exportLossless === 'true' || fullResolutionV6;
   const targetCanvas = () => {
-    if (!lossless) return undefined;
+    if (!lossless && !diaryPage) return undefined;
     const canvas = document.createElement('canvas');
     const rect = pageNode.getBoundingClientRect();
     const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode) || isSpotlightV6MapsPageNode(pageNode);
@@ -1862,13 +1876,20 @@ export async function renderPageBlob(pageNode, options = {}) {
       }
     }
   };
-  const finalizeBlob = (blob) => cornersAlreadyClipped ? blob : clipBlobToPageCorners(
-    blob,
-    pageNode,
-    imageFormat,
-    imageQuality,
-    backgroundColor,
-  );
+  const finalizeBlob = async (blob) => {
+    if (diaryPage) {
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080; canvas.height = 1440;
+      try {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Không tạo được canvas Nhật ký.');
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        return await canvasToBlob(canvas, imageFormat, imageQuality);
+      } finally { bitmap.close(); canvas.width = 0; canvas.height = 0; }
+    }
+    return cornersAlreadyClipped ? blob : clipBlobToPageCorners(blob, pageNode, imageFormat, imageQuality, backgroundColor);
+  };
   await ensureExportFontsReady(pageNode, { decodeImages: !imagesReady, embedFonts: shouldEmbedFonts });
   const blobUrls = imagesReady ? [] : await inlineImagesAsBlobs(pageNode, { waitForReady: options.waitForImageReady });
 

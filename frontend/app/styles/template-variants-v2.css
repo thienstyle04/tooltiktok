@@ -2660,6 +2660,16 @@
 .spotlight-v6-map-name,
 .spotlight-v6-map-address { margin:0; font-size:13px; line-height:1.15; }
 .spotlight-v6-map-address { font-weight:800; }
+
+.story-page.spotlight-v6-diary-page { position:relative; display:block; width:397px; height:529.333px; aspect-ratio:3 / 4; padding:0; overflow:hidden; border-radius:0; background:#000; isolation:isolate; }
+.diary-bg { position:absolute; inset:0; z-index:0; }
+.diary-bg img { display:block; width:100%; height:100%; object-fit:cover; object-position:center; }
+.diary-safe { position:absolute; z-index:1; inset:10% 8%; display:flex; align-items:center; justify-content:center; }
+.diary-top-center .diary-safe { top:20%; bottom:35%; align-items:flex-start; }
+.diary-bottom-center .diary-safe { top:35%; bottom:12%; align-items:flex-end; }
+.diary-copy { width:100%; min-width:0; color:white; text-align:center; font-size:var(--diary-font,13px); line-height:1.25; font-weight:600; overflow-wrap:anywhere; -webkit-text-stroke:.6px #171717; paint-order:stroke fill; text-shadow:0 1px 1px #111; }
+.diary-copy p { font:inherit; margin:0; padding:0; }
+.diary-copy p + p { margin-top:3px; }
 @media (max-width:700px) {
  .story-page.spotlight-v6-cover,
  .story-page.spotlight-v6-image,

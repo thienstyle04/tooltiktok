@@ -1,99 +1,21 @@
-import PreviewPanel from './PreviewPanel';
+import SlideCard from './SlideCard';
+import FittedStudioPreview from './FittedStudioPreview';
 
-export default function PreviewDashboardPanel({
-  dataset,
-  activeDeck,
-  activeList,
-  activeDeckId,
-  activeListId,
-  selectedPageIndex,
-  onDeckSelect,
-  onListSelect,
-  onPageSelect,
-  onDeleteList,
-  loading,
-}) {
-  const V2_DECK_IDS = new Set([
-    'grid-6-quaytung',
-    'grid-8-feed',
-    'grid-8-quaytung',
-    'spotlight-v2',
-    'spotlight-v3',
-    'spotlight-v4',
-  'spotlight-v5',
-  'spotlight-v6',
-  'spotlight-v6-green',
-  'spotlight-v6-dark',
-  'spotlight-v6-persimmon',
-  'spotlight-v6-maps',
-  'summary-note',
-  'itinerary-note-2days',
-  'itinerary-note-timed',
-    'carousel-mau-1',
-    'one-way-story',
-    'pov-3-v2',
-    'itinerary-4n3d-stack',
-    'itinerary-timeline',
-  ]);
+export default function PreviewDashboardPanel({dataset, activeDeck, activeList, activeDeckId, activeListId, selectedPageIndex, onDeckSelect, onListSelect, onPageSelect, loading}) {
   const decks = dataset?.decks || [];
   const lists = activeDeck?.lists || [];
-
-  return (
-    <div className="preview-dashboard">
-      <section className="preview-selector-panel">
-        <div className="panel-head compact">
-          <div>
-            <p className="panel-kicker">Preview</p>
-            <h3 className="panel-title">Chọn mẫu để xem deck</h3>
-          </div>
-          <div className="panel-head-actions">
-            <p className="panel-note">{activeDeck?.navTitle || 'Đang tải'} · {activeList?.pages?.length || 0} trang</p>
-          </div>
-        </div>
-
-        <div className="preview-selector-body">
-          <div className="preview-deck-strip">
-            {decks.map((deck) => (
-              <button
-                key={deck.id}
-                className={`preview-deck-card ${deck.id === activeDeckId ? 'active' : ''}`}
-                type="button"
-                onClick={() => onDeckSelect(deck)}
-              >
-                <span>
-                  {deck.navTitle}
-                  {V2_DECK_IDS.has(deck.id) ? <em className="preview-deck-v2-tag">V2</em> : null}
-                </span>
-                <small>{deck.lists.length} list</small>
-              </button>
-            ))}
-          </div>
-
-          <div className="preview-list-strip">
-            {lists.map((list) => (
-              <button
-                key={list.id}
-                className={`preview-list-tab ${list.id === activeListId ? 'active' : ''}`}
-                type="button"
-                onClick={() => onListSelect(list)}
-              >
-                <span>{list.navTitle || list.title}</span>
-                <small>{list.pages.length} trang</small>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <PreviewPanel
-        deck={activeDeck}
-        list={activeList}
-        selectedPageIndex={selectedPageIndex}
-        onPageSelect={onPageSelect}
-        onDeleteList={onDeleteList}
-        loading={loading}
-        coverImageUrls={dataset?.source?.coverImageUrls || []}
-      />
-    </div>
-  );
+  const pages = activeList?.pages || [];
+  const index = Math.min(Math.max(0, selectedPageIndex || 0), Math.max(0, pages.length - 1));
+  return <div className="studio-editor-preview">
+    <section className="studio-page-picker">
+      <h3>Trang trong list</h3>
+      <label>Mẫu<select value={activeDeckId || ''} onChange={e=>{const deck=decks.find(d=>d.id===e.target.value);if(deck)onDeckSelect(deck);}}>{decks.map(deck=><option key={deck.id} value={deck.id}>{deck.navTitle}</option>)}</select></label>
+      <label>List<select value={activeListId || ''} onChange={e=>{const list=lists.find(l=>l.id===e.target.value);if(list)onListSelect(list);}}>{lists.map(list=><option key={list.id} value={list.id}>{list.navTitle || list.title}</option>)}</select></label>
+      <nav className="studio-page-picker-list" aria-label="Trang trong list">{pages.map((page,i)=><button key={i} type="button" aria-current={i===index?'page':undefined} onClick={()=>onPageSelect(activeList.id,i)}><b>{String(i+1).padStart(2,'0')}</b><span>{page.chipText || page.title || `Trang ${i+1}`}</span></button>)}</nav>
+    </section>
+    <section className="studio-selected-preview" aria-label="Preview trang đang chọn">
+      <header><h3>Trang {index+1}/{pages.length}</h3><span>{pages[index]?.chipText || pages[index]?.title}</span></header>
+      {pages[index] ? <FittedStudioPreview key={`${activeList.id}-${index}`}><SlideCard list={activeList} page={pages[index]} index={index} selected onSelect={onPageSelect} coverImageUrls={dataset?.source?.coverImageUrls || []}/></FittedStudioPreview> : <p>{loading?'Đang tải dữ liệu…':'Mẫu chưa có trang. Chọn Tạo list để bắt đầu.'}</p>}
+    </section>
+  </div>;
 }

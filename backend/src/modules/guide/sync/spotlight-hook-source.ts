@@ -187,6 +187,7 @@ export function setCachedSpotlightV3Hooks(hooks: string[], docId = DEFAULT_DOC_I
 }
 
 export type SpotlightV3BuildContext = {
+  diaryUsedLines?: Record<string, string[]>;
   hooks?: string[];
   usedHookTitles?: string[];
   destinationId?: string;
