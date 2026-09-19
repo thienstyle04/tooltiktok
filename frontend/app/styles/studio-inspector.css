@@ -230,6 +230,24 @@
   text-transform: uppercase;
 }
 
+/* Scoped management controls: never affect text in rendered/exported pages. */
+.font-size-control { min-width:0; margin:0 0 12px; padding:12px; border:1px solid var(--studio-line); border-radius:12px; background:var(--studio-surface, #fff); color:var(--studio-ink); }
+.font-size-control-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+.font-size-control-heading label { font-size:14px; font-weight:700; }
+.font-size-control button { font:inherit; color:var(--studio-ink); background:var(--studio-surface-2, #f5f5f0); border:1px solid var(--studio-line); border-radius:8px; cursor:pointer; }
+.font-size-control .font-size-reset { padding:6px 10px; font-size:12px; min-height:32px; }
+.font-size-stepper { display:grid; grid-template-columns:40px minmax(0,1fr) 40px; gap:8px; max-width:300px; }
+.font-size-stepper > button { height:40px; padding:0; font-size:22px; line-height:1; }
+.font-size-value { display:flex; align-items:center; min-width:0; height:40px; border:1px solid var(--studio-line); border-radius:8px; overflow:hidden; background:var(--studio-bg, #fff); }
+.font-size-control .font-size-value input { box-sizing:border-box; min-width:0; width:100%; height:100%; margin:0; padding:6px 4px 6px 10px; border:0; border-radius:0; background:transparent; color:var(--studio-ink); font:inherit; font-size:16px; text-align:center; appearance:textfield; }
+.font-size-value input::-webkit-inner-spin-button,.font-size-value input::-webkit-outer-spin-button { appearance:none; margin:0; }
+.font-size-value > span { padding-right:10px; font-size:12px; color:var(--studio-muted); }
+.font-size-control input::placeholder { color:var(--studio-muted); font-size:13px; }
+.font-size-control button:disabled { opacity:.45; cursor:not-allowed; }
+.font-size-control button:focus-visible,.font-size-value:focus-within { outline:2px solid var(--studio-clay); outline-offset:2px; }
+.font-size-control .font-size-help,.font-size-control .font-size-error { margin:8px 0 0; font-size:12px; line-height:1.5; overflow-wrap:anywhere; color:var(--studio-muted); }
+.font-size-control .font-size-error:empty { display:none; }
+
 .inspector-field .inspector-field-head {
   display: flex;
   align-items: center;

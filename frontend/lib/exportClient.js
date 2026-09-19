@@ -8,6 +8,7 @@ import { ensureRuntimePerformanceForBalancedExport, getRuntimePerformance, markR
 import { buildCaptionExportText } from './captionText';
 import { fitItineraryNote, fitItineraryNoteTimed } from './itineraryNote';
 import { fitSpotlightDiary } from './spotlightDiary';
+import { applyPageTextScale, resetPageTextScale } from './pageTextScale';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
 import { verifyRuntimeSession } from './runtimeSession';
@@ -887,6 +888,11 @@ async function waitForImageReady(img) {
 /** Cho batch export: đợi ảnh trong trang load xong trước khi inline/fetch. */
 async function waitForPageImagesSettled(node, timeoutMs = 20000) {
   await document.fonts.ready;
+  resetPageTextScale(node);
+  fitItineraryNote(node);
+  fitItineraryNoteTimed(node);
+  fitSpotlightDiary(node);
+  applyPageTextScale(node);
   fitItineraryNote(node, true);
   fitItineraryNoteTimed(node, true);
   fitSpotlightDiary(node, true);
@@ -2055,13 +2061,33 @@ function assertBudget72HExportReady(deck, list) {
   }
 }
 
-function assertMau1PrefetchReady(deckOrItems, summary) {
-  const hasMau1 = Array.isArray(deckOrItems)
-    ? deckOrItems.some((item) => item?.deck?.id === 'carousel-mau-1')
-    : deckOrItems?.id === 'carousel-mau-1';
-  if (hasMau1 && Number(summary?.fail || 0) > 0) {
-    throw new Error(`Mẫu 1 còn ${summary.fail} ảnh chưa tải được. File chưa được xuất để tránh trang trắng; hãy kiểm tra quyền ảnh rồi thử lại.`);
+async function assertExportImagesReady(entries, callbacks) {
+  const refs = [];
+  for (const { deck, list, onlyPageIndex } of entries) {
+    for (const [index, page] of (list.pages || []).entries()) {
+      if (onlyPageIndex !== undefined && index !== onlyPageIndex) continue;
+      // Inspect the rendered selection, not every unused candidate in the snapshot.
+      const markup = renderPageMarkupForExport(list, page, index)
+        .replace(/\sdata-candidate-srcs="[^"]*"/g, '');
+      for (const match of markup.matchAll(/\/assets\/drive-file\?(?:[^"'<>\s]*?&(?:amp;)?)?id=([a-zA-Z0-9_-]{10,})/g)) {
+        const owner = page.items?.find(item => JSON.stringify(item).includes(match[1]));
+        refs.push({ id: match[1], label: `${deck.navTitle || deck.id} / ${list.navTitle || list.id} / trang ${index + 1} (${owner?.name || page.title || 'ảnh nền'})` });
+      }
+    }
   }
+  const fileIds = [...new Set(refs.map(ref => ref.id))];
+  if (!fileIds.length) return;
+  await prefetchDriveFilesForExport(fileIds, callbacks);
+  const response = await fetch('/api/drive-files/cache-status', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileIds }), signal: AbortSignal.timeout(60000),
+  });
+  if (!response.ok) throw new Error(`Không xác minh được ảnh trước xuất (HTTP ${response.status}); chưa bắt đầu render.`);
+  const status = await response.json();
+  if (!Array.isArray(status.missing)) throw new Error('Phản hồi kiểm tra ảnh không hợp lệ; chưa bắt đầu render.');
+  const missing = new Set(status.missing);
+  const failures = refs.filter(ref => missing.has(ref.id));
+  if (failures.length) throw new Error(`Chưa xuất: ${missing.size} ảnh nguồn chưa tải được. ${failures.slice(0, 8).map(ref => `${ref.label}: ${ref.id}`).join('; ')}`);
 }
 
 let exportQueue = Promise.resolve();
@@ -2071,6 +2097,13 @@ async function runAdaptiveExport(attempt, context, callbacks) {
   let release;
   exportQueue = new Promise(resolve => { release = resolve; });
   await previous;
+  const leaseId = `export-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const updateLease = (active) => fetch('/api/night-sync/export-lease', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: leaseId, active }), signal: AbortSignal.timeout(10000),
+  }).catch(() => null);
+  await updateLease(true);
+  const leaseTimer = setInterval(() => { void updateLease(true); }, 30000);
   try {
     const cb = exportCallbacks(callbacks);
     try {
@@ -2092,6 +2125,8 @@ async function runAdaptiveExport(attempt, context, callbacks) {
       return await attempt({ ...context, _compatRetry: true }, callbacks);
     }
   } finally {
+    clearInterval(leaseTimer);
+    await updateLease(false);
     release();
   }
 }
@@ -2142,8 +2177,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
-    const prefetchSummary = await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
-    assertMau1PrefetchReady(deck, prefetchSummary);
+    await assertExportImagesReady([{ deck, list: exportList, onlyPageIndex: selectedPageIndex }], cb);
     const visiblePageNode = findVisibleSelectedPageNode(list, selectedPageIndex);
     const preferFreshRender = qualityProfile.losslessSource || page?.layoutVariant === 'budget-3n2d-table'
       || page?.layoutVariant === 'budget-3n2d'
@@ -2292,8 +2326,7 @@ async function exportActiveListAttempt(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
-    const prefetchSummary = await prefetchDriveFilesForExport(collectDriveFileIdsFromLists([{ list: exportList }]), cb);
-    assertMau1PrefetchReady(deck, prefetchSummary);
+    await assertExportImagesReady([{ deck, list: exportList }], cb);
     const pageNodes = renderPagesForExport(exportList);
     await waitForExportLayout();
     cb.updateProgress(8, `Đang dựng layout ${pageNodes.length} trang...`);
@@ -2385,11 +2418,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
-    const driveFileIds = collectDriveFileIdsFromLists(orderedLists);
-    if (driveFileIds.length) {
-      const prefetchSummary = await prefetchDriveFilesForExport(driveFileIds, cb);
-      assertMau1PrefetchReady(orderedLists, prefetchSummary);
-    }
+    await assertExportImagesReady(orderedLists, cb);
 
     const mainZip = new JSZip();
     await requestExportWakeLock();

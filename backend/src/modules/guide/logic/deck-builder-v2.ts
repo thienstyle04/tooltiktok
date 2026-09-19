@@ -75,7 +75,7 @@ export const SPOTLIGHT_V6_TEMPLATE_VERSION = 2;
 export const SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V6_DARK_TEMPLATE_VERSION = 1;
 export const SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION = 1;
-export const SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION = 1;
+export const SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION = 2;
 export const SUMMARY_NOTE_TEMPLATE_VERSION = 1;
 export const CAROUSEL_MAU_1_TEMPLATE_VERSION = 1;
 export const POV_3_V2_TEMPLATE_VERSION = 13;
@@ -1350,8 +1350,15 @@ export function buildSpotlightV6MapsPages(common: DeckBuildCommon, seedPrefix: s
     );
   }
 
+  const foodPool = pool.filter((item) => item.sectionKey === 'quan_an');
+  const otherPool = pool.filter((item) => item.sectionKey !== 'quan_an');
+  if (foodPool.length < 4 || otherPool.length < 3) {
+    throw new Error(`Spotlight Google Maps cần xen kẽ 4 Quán ăn và 3 địa điểm nhóm khác có cả ảnh Maps và ảnh thật; hiện có ${foodPool.length}/4 Quán ăn, ${otherPool.length}/3 địa điểm nhóm khác.`);
+  }
   const pick = createListPicker(common.globalUsedItemIds);
-  const venues = pick(pool, SPOTLIGHT_V6_MAPS_VENUE_COUNT, `${seedPrefix}:maps-venues`);
+  const food = pick(foodPool, 4, `${seedPrefix}:maps-food`);
+  const others = pick(otherPool, 3, `${seedPrefix}:maps-other`);
+  const venues = food.flatMap((item, index) => others[index] ? [item, others[index]] : [item]);
   if (venues.length < SPOTLIGHT_V6_MAPS_VENUE_COUNT) {
     throw new Error(`Mẫu Spotlight V6 Google Maps không chọn đủ 7 địa điểm không trùng (${venues.length}/7).`);
   }
@@ -2145,7 +2152,7 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
   'spotlight-v6-maps': {
     nav: 'Spotlight V6 Google Maps',
     title: 'Spotlight V6 Google Maps',
-    description: 'Đà Lạt 14 trang theo 7 cặp: ảnh Google Maps đã thiết kế và ảnh thật đúng địa điểm.',
+    description: 'Đà Lạt 14 trang: 4 Quán ăn xen kẽ 3 địa điểm nhóm khác; mỗi địa điểm gồm ảnh Maps và ảnh thật.',
     listName: 'List Spotlight V6 Google Maps',
   },
   'spotlight-v6-diary': {
@@ -2390,7 +2397,6 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   const v6GreenMissingSections = spotlightV6GreenMissingSections(common.itemsBySection);
   const v6DarkVenueCount = spotlightV6DarkVenuePool(common.itemsBySection).length;
   const v6PersimmonPartnerCount = spotlightV6PersimmonPartnerPool(common.itemsBySection).length;
-  const v6MapsVenueCount = spotlightV6MapsVenuePool(common.itemsBySection).length;
   const summaryNoteCafeCount = dedupeItems(common.itemsBySection.cafe || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   const summaryNoteQuanAnCount = dedupeItems(common.itemsBySection.quan_an || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   return V2_DECK_IDS
@@ -2439,7 +2445,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       && v6PersimmonPartnerCount >= SPOTLIGHT_V6_PERSIMMON_MIN_VENUE_COUNT
     ))
     .filter((deckId) => deckId !== 'spotlight-v6-maps' || (
-      activeDestinationId === 'dalat' && v6MapsVenueCount >= SPOTLIGHT_V6_MAPS_VENUE_COUNT
+      activeDestinationId === 'dalat'
     ))
     .filter((deckId) => deckId !== 'summary-note' || ((activeDestinationId === 'dalat' || activeDestinationId === 'greenland') && summaryNoteCafeCount >= 4 && summaryNoteQuanAnCount >= 4))
     .filter((deckId) => deckId !== 'one-way-story' || activeDestinationId === 'dalat')
@@ -2448,8 +2454,8 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
     let mainList: GuideDeckList | null = null;
     let previewError = '';
     try { mainList = buildV2MainList(deckId, common); } catch (error) {
-      if (deckId !== 'spotlight-v6-diary' && deckId !== 'itinerary-note-2days' && deckId !== 'itinerary-note-timed') throw error;
-      if (deckId === 'spotlight-v6-diary') previewError = error instanceof Error ? error.message : String(error);
+      if (deckId !== 'spotlight-v6-maps' && deckId !== 'spotlight-v6-diary' && deckId !== 'itinerary-note-2days' && deckId !== 'itinerary-note-timed') throw error;
+      if (deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps') previewError = error instanceof Error ? error.message : String(error);
     }
     return {
       id: deckId,

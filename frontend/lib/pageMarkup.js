@@ -2506,7 +2506,18 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   return '';
 }
 
-export function renderCoverPage(page, index, total, listId, hashtags = [], list = null, coverImageUrls = []) {
+export function renderCoverPage(page, ...args) {
+  return withPageTextScale(renderCoverPageContent(page, ...args), page);
+}
+
+function withPageTextScale(html, page) {
+  const scale = Math.max(50, Math.min(100, Number(page.textScale) || 100));
+  const size = Number(page.textFontSize);
+  const font = Number.isFinite(size) && size >= 8 && size <= 72 ? ` data-text-font-size="${size}"` : '';
+  return html.replace('<article ', `<article data-text-scale="${scale}"${font} `);
+}
+
+function renderCoverPageContent(page, index, total, listId, hashtags = [], list = null, coverImageUrls = []) {
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
   const coverTitle = polishShortVietnameseCopy(page.title);
   const backgroundImage = coverBackgroundImage(page, list);
@@ -3498,7 +3509,11 @@ function journey4N3DTitle(chipText, title) {
   return `${chip} - ${cleanTitle}`;
 }
 
-export function renderListPage(page, index, total, listId, hashtags = [], list = null) {
+export function renderListPage(page, ...args) {
+  return withPageTextScale(renderListPageContent(page, ...args), page);
+}
+
+function renderListPageContent(page, index, total, listId, hashtags = [], list = null) {
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
   if (page.layoutVariant === 'grid-5') {
     return renderGrid5Page(page, index, listId, pageSubtitle, list);

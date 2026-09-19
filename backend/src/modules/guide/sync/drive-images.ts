@@ -2,6 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as zlib from 'node:zlib';
+import { hasSyncPermit, syncFetch } from './night-sync-policy';
 
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -737,7 +738,7 @@ export async function filterAccessibleDriveEntries(entries: DriveFolderEntry[]):
 
 async function fetchText(url: string): Promise<string> {
   const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
-  const response = await fetch(url, {
+  const response = await syncFetch(url, {
     headers: {
       Referer: 'https://drive.google.com/',
       'User-Agent': 'Codex Drive Folder Reader',
@@ -759,7 +760,7 @@ async function fetchTextWithRetry(url: string): Promise<string> {
 
     try {
       const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
-      const response = await fetch(url, {
+      const response = await syncFetch(url, {
         headers: createDriveHeaders(),
         redirect: 'follow',
         signal: timeout.signal,
@@ -783,7 +784,7 @@ async function fetchDriveResponseWithRetry(url: string): Promise<Response | null
     let response: Response;
     try {
       const timeout = createTimeoutSignal(DRIVE_FETCH_TIMEOUT_MS);
-      response = await fetch(url, {
+      response = await syncFetch(url, {
         headers: createDriveHeaders(),
         redirect: 'follow',
         signal: timeout.signal,
@@ -940,6 +941,7 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
   try {
     const cached = readCachedDriveFileAsset(normalizedFileId);
     if (cached) return cached;
+    if (!hasSyncPermit()) return createDriveFallbackAsset(normalizedFileId);
 
     const inFlight = driveFileInFlight.get(normalizedFileId);
     if (inFlight) return inFlight;

@@ -566,8 +566,13 @@ export async function buildSheetDriveManifest(
     }
   }
 
-  await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY, options.onProgress);
-  await runLimited(mapTasks, DRIVE_MANIFEST_CONCURRENCY);
+  const firstPhaseTotal = coverTasks.length + itemTasks.length;
+  const allTasksTotal = firstPhaseTotal + mapTasks.length;
+  options.onProgress?.(0, allTasksTotal);
+  await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY,
+    completed => options.onProgress?.(completed, allTasksTotal));
+  await runLimited(mapTasks, DRIVE_MANIFEST_CONCURRENCY,
+    completed => options.onProgress?.(firstPhaseTotal + completed, allTasksTotal));
 
   console.log(
     `[sync] Drive manifest: resolved=${syncStats.resolved}`

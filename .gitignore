@@ -27,3 +27,5 @@ backend/data/*-hooks.json
 backend/data/premade-hooks.json
 backend/data/hook-sources.*.json
 backend/data/automation-*.json
+backend/data/night-sync*.json
+backend/data/night-sync*.tmp

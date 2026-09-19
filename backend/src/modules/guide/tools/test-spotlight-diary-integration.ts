@@ -74,6 +74,10 @@ async function main() {
       }
     }
     s.updatePageText(deck.id, first.id, 3, { title: '', subtitle: '', diaryFontSize: 10.5, titlePlacement: 'bottom-center', items: [{ name: '', metaPrimary: '' }] });
+    s.updatePageText(deck.id, first.id, 3, { textFontSize: 12.5, textScale: 75, title: '', subtitle: '', items: [{ name: '', metaPrimary: '' }] });
+    assert.throws(() => s.updatePageText(deck.id, first.id, 3, { textFontSize: 7 }), /Cỡ chữ/);
+    assert.throws(() => s.updatePageText(deck.id, first.id, 3, { textScale: 45 }), /Cỡ chữ/);
+    assert.throws(() => s.updatePageText(deck.id, first.id, 3, { textScale: 77 }), /Cỡ chữ/);
     assert.throws(() => s.updatePageText(deck.id, first.id, 3, { diaryFontSize: 8 }), /Cỡ chữ/);
     const restarted = service();
     restarted.ensureGeneratedListsLoaded();
@@ -83,6 +87,8 @@ async function main() {
     assert.equal(restored.title, ''); assert.equal(restored.items[0].name, ''); assert.equal(restored.items[0].metaPrimary, '');
     assert.equal(restored.titlePlacement, 'bottom-center');
     assert.equal(restored.diaryFontSize, 10.5, 'Font size persists across restart');
+    assert.equal(restored.textScale, 75, 'Shared text scale persists across restart');
+    assert.equal(restored.textFontSize, 12.5, 'Absolute size persists across restart');
     const shown = restarted.mergeGeneratedLists([deck])[0].lists.find((list: any) => list.id === first.id);
     assert.deepEqual(shown.pages[3], restored, 'Full display merge must preserve blank text and position');
     assert.deepEqual(shown.pages[1], first.pages[1], 'Blank opening page must not gain fallback text');

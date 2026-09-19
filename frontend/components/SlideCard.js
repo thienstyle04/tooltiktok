@@ -1,6 +1,7 @@
 import { fitItineraryNote, fitItineraryNoteTimed } from '../lib/itineraryNote';
 import { fitSpotlightDiary } from '../lib/spotlightDiary';
-import { useEffect, useRef } from 'react';
+import { applyPageTextScale, resetPageTextScale } from '../lib/pageTextScale';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { renderCoverPage, renderListPage } from '../lib/pageMarkup';
 
 // Xem giải thích ở pageMarkup.js: chỉ bắt dấu hiệu mojibake thật, không bắt
@@ -91,6 +92,19 @@ function renderSlideHtml(list, page, index, coverImageUrls = []) {
 function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] }) {
   const contentRef = useRef(null);
   const html = renderSlideHtml(list, page, index, coverImageUrls);
+  const slideMarkup = useMemo(() => ({ __html: html }), [html]);
+
+  // Saving can re-render the same HTML string. Reapply measured typography
+  // after every React commit, not only when the source markup changes.
+  useLayoutEffect(() => {
+    const root = contentRef.current;
+    if (!root) return;
+    resetPageTextScale(root);
+    fitItineraryNote(root);
+    fitItineraryNoteTimed(root);
+    fitSpotlightDiary(root);
+    applyPageTextScale(root);
+  });
 
   useEffect(() => {
     const root = contentRef.current;
@@ -102,7 +116,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
-    const fitNotes = () => { fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); };
+    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); };
     fitNotes();
     const noteFitFrame = window.requestAnimationFrame(fitNotes);
     const noteFitTimer = window.setTimeout(fitNotes, 120);
@@ -223,7 +237,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
       }}
     >
       <span className="slide-card-number">{String(index + 1).padStart(2, '0')}</span>
-      <div ref={contentRef} className="slide-card-content" dangerouslySetInnerHTML={{ __html: html }} />
+      <div ref={contentRef} className="slide-card-content" dangerouslySetInnerHTML={slideMarkup} />
     </div>
   );
 }

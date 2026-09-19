@@ -1,9 +1,13 @@
 // ─── GuideService: orchestration, caching, AI captions ───────────────────────
 import 'dotenv/config';
+import { inheritPageTypography } from './logic/inherit-page-typography';
 import { BadRequestException, Injectable, NotFoundException, OnApplicationBootstrap, ServiceUnavailableException } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as XLSX from 'xlsx';
+import { enableNightSyncPolicy, hasSyncPermit } from './sync/night-sync-policy';
+import { NightSyncCoordinator } from './sync/night-sync-coordinator';
+import { syncNightSource } from './sync/night-sync-source';
 
 import {
   CaptionBlocks,
@@ -156,6 +160,7 @@ interface WorkbookDerivedContext {
 }
 
 export interface DriveCacheWarmStatus {
+  localInventory?: { total: number; cached: number; missing: number; checkedAt: string };
   phase: 'checking' | 'warming' | 'ready' | 'error';
   ready: boolean;
   destinationId: string;
@@ -302,11 +307,55 @@ export class GuideService implements OnApplicationBootstrap {
   // tải Google Sheet + build dataset lần đầu ở đây, thay vì để request đầu tiên của người dùng
   // phải gánh 12-25s đó (và dễ gặp lỗi 500/503 nếu trùng lúc backend chưa sẵn sàng).
   onApplicationBootstrap(): void {
+    enableNightSyncPolicy();
     // prepareWorkbookForDataset sẽ đồng bộ manifest trước, rồi refreshSheetDriveManifest
     // mới khởi động lượt warm ảnh. Không đánh dấu cache sẵn sàng từ manifest rỗng ở đây:
     // nếu không, màn hình chặn tải sẽ biến mất trước khi Hinh_nen được đọc xong.
-    void this.warmUpDatasetCache();
+    void this.warmUpDatasetCache().finally(() => this.getNightSync().start());
   }
+
+  private nightSync?: NightSyncCoordinator;
+  private syncBusyProbe: () => boolean = () => false;
+  private exportLeases = new Map<string, number>();
+  setSyncBusyProbe(probe: () => boolean): void { this.syncBusyProbe = probe; }
+  updateExportLease(id: string, active: boolean): void {
+    if (!/^[\w-]{1,100}$/.test(id)) throw new BadRequestException('Mã tác vụ xuất không hợp lệ.');
+    if (active) this.exportLeases.set(id, Date.now() + 90000); else this.exportLeases.delete(id);
+  }
+  private syncMustWait(): boolean {
+    for (const [id, expires] of this.exportLeases) if (expires <= Date.now()) this.exportLeases.delete(id);
+    return this.isGenerationBusy() || this.syncBusyProbe() || this.exportLeases.size > 0 || this.destinationDataLoading;
+  }
+  private getNightSync(): NightSyncCoordinator {
+    return this.nightSync ||= new NightSyncCoordinator({
+      file: path.join(this.dataRoot, 'night-sync.json'),
+      sources: () => getDestinationList().filter(s => s.sheetUrl && s.exportUrl),
+      initialized: id => Object.keys(readSheetDriveManifest(this.dataRoot, id).items).length > 0,
+      busy: () => this.syncMustWait(),
+      run: (id, done, mark, progress) => syncNightSource(getDestinationConfig(id), done, mark, {
+        progress,
+        dataRoot: this.dataRoot,
+        load: () => this.loadPreferredWorkbookSource(id),
+        validate: source => this.validateWorkbookData(source),
+        save: source => this.saveWorkbookSnapshot(source, true),
+        publish: async (source, manifest) => {
+          while (this.syncMustWait()) await new Promise(resolve => setTimeout(resolve, 250));
+          if (!hasSyncPermit()) throw new Error('Đã hết khung giờ cập nhật.');
+          writeSheetDriveManifest(this.dataRoot, manifest, id);
+          this.workbookSourceByDestination.set(id, source);
+          this.workbookDerivedCacheByDestination.delete(id);
+          if (id === this.activeDestinationId) {
+            this.workbookSource = source;
+            this.workbookDerivedCache = null;
+            this.invalidateDatasetCache({ immediate: true });
+          }
+        },
+      }),
+    });
+  }
+  getNightSyncStatus() { return this.getNightSync().status(); }
+  acknowledgeNightSync(): void { this.getNightSync().acknowledge(); }
+  onModuleDestroy(): void { this.nightSync?.stop(); }
 
   private async warmUpDatasetCache(): Promise<void> {
     this.destinationDataLoading = true;
@@ -383,6 +432,11 @@ export class GuideService implements OnApplicationBootstrap {
 
   /** Máy mới: tự tải ảnh Drive còn thiếu vào backend/data/drive-file-cache (chạy nền). */
   private scheduleWarmDriveFileDiskCache(options: { retryKnownFailures?: boolean } = {}): void {
+    if (!hasSyncPermit()) {
+      this.driveCacheWarmStatus = { ...this.driveCacheWarmStatus, phase: 'ready', ready: true,
+        message: 'Đang dùng cache cục bộ. Cập nhật thủ công hoặc chờ 23:00–06:00.' };
+      return;
+    }
     if (!this.AUTO_WARM_DRIVE_CACHE) {
       this.driveCacheWarmStatus = {
         ...this.driveCacheWarmStatus,
@@ -539,7 +593,28 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
+  private localInventoryMemo?: { destinationId: string; time: number; value: NonNullable<DriveCacheWarmStatus['localInventory']> };
+
+  private getLocalImageInventory(): DriveCacheWarmStatus['localInventory'] {
+    if (this.localInventoryMemo?.destinationId === this.activeDestinationId && Date.now() - this.localInventoryMemo.time < 30000) return this.localInventoryMemo.value;
+    try {
+      const ids = new Set<string>();
+      const visit = (value: any) => {
+        if (!value || typeof value !== 'object') return;
+        if (typeof value.fileId === 'string' && value.fileId.trim()) ids.add(value.fileId.trim());
+        if (typeof value.mapFileId === 'string' && value.mapFileId.trim()) ids.add(value.mapFileId.trim());
+        Object.values(value).forEach(visit);
+      };
+      visit(this.loadSheetDriveManifest());
+      const cached = [...ids].filter(id => hasDriveFileDiskCache(id)).length;
+      const value = { total: ids.size, cached, missing: ids.size - cached, checkedAt: new Date().toISOString() };
+      this.localInventoryMemo = { destinationId: this.activeDestinationId, time: Date.now(), value };
+      return value;
+    } catch { return undefined; }
+  }
+
   getDriveCacheWarmStatus(): DriveCacheWarmStatus {
+    const localInventory = this.getLocalImageInventory();
     // Trên máy mới có thể xảy ra race: cache ảnh đã đủ 100% nhưng bước build dataset
     // nền chưa kịp hạ cờ loading. Khi nguồn Sheet đã có, request guide-data có thể tự
     // build context; vì vậy không được tiếp tục khóa overlay chỉ vì cờ loading này.
@@ -576,6 +651,7 @@ export class GuideService implements OnApplicationBootstrap {
         ready: true,
         destinationId: this.activeDestinationId,
         percent: 100,
+        localInventory,
         message: this.driveCacheWarmStatus.failed > 0
           ? `Đã hoàn tất cache ảnh; ${this.driveCacheWarmStatus.failed} ảnh Drive không tải được đã bị loại khỏi pool tạo list.`
           : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
@@ -962,42 +1038,13 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
-  async refreshDestinationFromSheet(idValue: string): Promise<SetDestinationResponse> {
-    const id = String(idValue || '').trim();
-    if (!isDestinationId(id)) {
-      throw new NotFoundException('Nguồn dữ liệu không tồn tại.');
-    }
-    const config = getDestinationConfig(id);
-    if (!config.sheetUrl || !config.exportUrl) {
-      throw new BadRequestException('Nguồn này chưa có link Google Sheet dự phòng.');
-    }
-
-    let downloaded: SheetWorkbookSource;
+  async refreshDestinationFromSheet(idValue: string): Promise<SetDestinationResponse & { sync: ReturnType<NightSyncCoordinator['status']> }> {
     try {
-      downloaded = await fetchWorkbookFromSheet(config);
-      this.validateWorkbookData(downloaded);
+      await this.getNightSync().manual(String(idValue || '').trim());
     } catch (error) {
-      throw new BadRequestException(
-        `Không thể cập nhật từ Google Sheet; dữ liệu XLSX cũ vẫn được giữ nguyên. ${error instanceof Error ? error.message : String(error)}`,
-      );
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
     }
-
-    const source: SheetWorkbookSource = {
-      ...downloaded,
-      workbookName: config.workbookFileName || config.workbookName,
-      sourceType: 'runtime-xlsx',
-    };
-    this.saveWorkbookSnapshot(source, true);
-    this.workbookSourceByDestination.set(id, source);
-    this.workbookDerivedCacheByDestination.delete(id);
-    if (this.activeDestinationId !== id) {
-      return this.setActiveDestination({ id });
-    }
-    await this.activateWorkbookSource(source, { retryKnownFailures: true });
-    return {
-      active: this.getActiveDestinationSummary(),
-      dataset: await this.getDataset(),
-    };
+    return { active: this.getActiveDestinationSummary(), dataset: await this.getDataset(), sync: this.getNightSyncStatus() };
   }
 
   async setActiveDestination(request: SetDestinationRequest): Promise<SetDestinationResponse> {
@@ -1373,16 +1420,20 @@ export class GuideService implements OnApplicationBootstrap {
       ? request.titlePlacement ?? store.decks[deckId][listId][String(pageIndex)]?.titlePlacement ?? page.titlePlacement
       : undefined;
     if (titlePlacement && !['top-center', 'center', 'bottom-center'].includes(titlePlacement)) throw new BadRequestException('Vị trí chữ Nhật ký phải là trên, giữa hoặc dưới.');
+    const textScale = request.textScale ?? store.decks[deckId][listId][String(pageIndex)]?.textScale ?? page.textScale ?? 100;
+    const textFontSize = request.textFontSize !== undefined ? request.textFontSize : store.decks[deckId][listId][String(pageIndex)]?.textFontSize ?? page.textFontSize ?? null;
+    if (textFontSize !== null && (typeof textFontSize !== 'number' || !Number.isFinite(textFontSize) || textFontSize < 8 || textFontSize > 72 || textFontSize * 2 !== Math.round(textFontSize * 2))) throw new BadRequestException('Cỡ chữ phải từ 8 đến 72px, bước 0.5px.');
+    if (typeof textScale !== 'number' || !Number.isFinite(textScale) || textScale < 50 || textScale > 100 || textScale % 5 !== 0) throw new BadRequestException('Cỡ chữ phải từ 50 đến 100%, bước 5%.');
     const diaryFontSize = page.layoutVariant === 'spotlight-v6-diary-page'
       ? request.diaryFontSize ?? store.decks[deckId][listId][String(pageIndex)]?.diaryFontSize ?? page.diaryFontSize ?? 13
       : undefined;
     if (diaryFontSize !== undefined && (typeof diaryFontSize !== 'number' || !Number.isFinite(diaryFontSize) || diaryFontSize < 9 || diaryFontSize > 13 || diaryFontSize * 2 !== Math.round(diaryFontSize * 2))) throw new BadRequestException('Cỡ chữ Nhật ký phải từ 9 đến 13px, bước 0.5px.');
-    store.decks[deckId][listId][String(pageIndex)] = { title, subtitle, ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
+    store.decks[deckId][listId][String(pageIndex)] = { title, subtitle, textScale, textFontSize, ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
     store.savedAt = new Date().toISOString();
     this.ensureDataRoot();
     this.writeJsonFileSafe(this.getDestinationDataPath('page-text-overrides'), store);
 
-    return { deckId, listId, pageIndex, title, subtitle, ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
+    return { deckId, listId, pageIndex, title, subtitle, textScale, textFontSize, ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
@@ -1627,6 +1678,7 @@ export class GuideService implements OnApplicationBootstrap {
       generatedPages = await this.enrichPov3V2StackTaglines(generatedPages);
     }
     if (deckId !== 'spotlight-v6-diary') generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
+    generatedPages = inheritPageTypography(currentDeck, generatedPages, this.loadPageTextOverrides());
     const effectiveCoverTitle = deckId === 'spotlight-v6-diary' ? basePages[0].title : deckId === 'itinerary-note-timed'
       ? currentDeck.navTitle
       : (deckId === 'summary-note' || deckId === 'itinerary-note-2days')
@@ -2055,6 +2107,8 @@ export class GuideService implements OnApplicationBootstrap {
     generatedList.description = '';
     generatedList.captionHashtags = buildCaptionHashtags([], 'lich_trinh_huu_ich', this.activeDestinationId, 'spotlight-partner');
     generatedList.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
+    const parentDeck = this.ensureWorkbookDerivedContext().baseDecks.find(deck => deck.id === deckId);
+    if (parentDeck) generatedList.pages = inheritPageTypography(parentDeck, generatedList.pages, this.loadPageTextOverrides());
 
     this.generatedListsByDeckId.set(deckId, [...existing, generatedList]);
     this.persistGeneratedLists();
@@ -2152,7 +2206,7 @@ export class GuideService implements OnApplicationBootstrap {
     const hinhNenImagePools = this.loadHinhNenImagePools(sheetDriveManifest);
     const coverImageUrls = hinhNenImagePools.default;
     const itemsBySection = this.loadWorkbookItems(workbookSource.workbook, imageUrls, imageMapping, imageLibraryEntries, sheetDriveManifest);
-    this.refreshGeneratedListImages(itemsBySection);
+    // Saved lists are snapshots; refreshing source data must not rewrite them.
     this.ensureInventoryLoaded();
     const renderUsage = this.createUsageScope();
     setActiveDestinationLocalize(this.activeDestinationId);
@@ -2209,7 +2263,7 @@ export class GuideService implements OnApplicationBootstrap {
     // Generated lists are destination-scoped and may be loaded after a warm workbook
     // context is restored from memory. Re-attach current Sheet/Drive images here as
     // well, otherwise old fallback items stay blank until the workbook is rebuilt.
-    this.refreshGeneratedListImages(derived.itemsBySection);
+    // Keep saved-list images and text unchanged when the source is refreshed.
     // Danh sách AI (tạo/xoá/sửa cover) luôn đọc trực tiếp từ generatedListsByDeckId (bộ nhớ, luôn mới
     // nhất) nên bước merge này luôn nhanh (không đụng tới Sheet/ảnh) và không cần cache riêng.
     const referenceSets = this.buildReferenceSets();
@@ -2312,6 +2366,8 @@ export class GuideService implements OnApplicationBootstrap {
         const ownOverride = listOverrides?.[String(pageIndex)];
         if (!ownOverride) return page;
         return { ...page, title: ownOverride.title, subtitle: ownOverride.subtitle,
+          ...(ownOverride.textScale !== undefined ? { textScale: ownOverride.textScale } : {}),
+          ...(ownOverride.textFontSize !== undefined ? { textFontSize: ownOverride.textFontSize } : {}),
           ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
           ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.diaryFontSize !== undefined ? { diaryFontSize: ownOverride.diaryFontSize } : {}),
           ...(page.layoutVariant === 'itinerary-note-timed-day' && ownOverride.chipText !== undefined ? { chipText: ownOverride.chipText } : {}),
@@ -2330,6 +2386,9 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   private applyMainTemplateFieldStructure(deck: GuideDeck, pages: DeckPage[]): DeckPage[] {
+    // Maps titles identify the newly selected place, not reusable template copy.
+    // Typography is inherited separately when the child snapshot is created.
+    if (deck.id === 'spotlight-v6-maps') return pages;
     if (deck.id === 'spotlight-v6-diary') return pages;
     if (deck.id === 'spotlight-v5' || isTextNoteDeck(deck.id)) return pages;
     const mainList = deck.lists.find((list) => (
@@ -4877,6 +4936,7 @@ export class GuideService implements OnApplicationBootstrap {
     scheduleWarmAfterSync = true,
     revalidateUncached = false,
   ): Promise<void> {
+    if (!hasSyncPermit()) { this.scheduleWarmDriveFileDiskCache(); return; }
     const sourceKey = `${source.fetchedAt}:${source.bytes}:${source.workbookName}:${retryKnownFailures ? 1 : 0}:${revalidateUncached ? 1 : 0}`;
     const existing = this.manifestSyncByDestination.get(source.destinationId);
     if (existing) {

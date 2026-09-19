@@ -1,4 +1,7 @@
 import { currentPageLabel, imageSourceClass, sourceLabel } from '../lib/utils';
+import FontSizeControl from './FontSizeControl';
+import { useEffect, useState } from 'react';
+import { renderedTextSizes } from '../lib/pageTextScale';
 
 function isPortableImageUrl(value) {
   const url = String(value || '').trim();
@@ -29,6 +32,18 @@ export default function PageInspector({
   busy = false,
 }) {
   const page = list?.pages?.[selectedPageIndex];
+  const [actualSizes, setActualSizes] = useState([]);
+  useEffect(() => {
+    const read = () => {
+      const article = [...document.querySelectorAll('.slide-card-content article')].find(node => node.dataset.listId === list?.id && Number(node.dataset.pageIndex) === selectedPageIndex);
+      const next = renderedTextSizes(article);
+      setActualSizes(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
+    };
+    setActualSizes([]);
+    const frame = requestAnimationFrame(read);
+    document.addEventListener('page-typography-ready', read);
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('page-typography-ready', read); };
+  }, [deck?.id, list?.id, selectedPageIndex, page]);
   if (!deck || !list || !page) {
     return <p className="empty-inspector">Chọn một trang trong preview để xem dữ liệu và ảnh đang dùng.</p>;
   }
@@ -67,6 +82,12 @@ export default function PageInspector({
         </div>
       </div>
 
+      {typeof onPageTextChange === 'function' ? <div>
+        <FontSizeControl key={`${deck.id}/${list.id}/${selectedPageIndex}`} value={page.textFontSize} actualSizes={actualSizes} disabled={savingPageText}
+          onChange={value => onPageTextChange({ textFontSize: value })}
+          onReset={() => onPageTextChange({ textFontSize: null, textScale: 100, ...(page.layoutVariant === 'spotlight-v6-diary-page' ? { diaryFontSize: 13 } : {}) })} />
+        {!canEditPage ? <button type="button" className="toolbar-button" disabled={savingPageText} onClick={onPageTextSave}>Lưu thay đổi</button> : null}
+      </div> : null}
       {canEditPage ? (
         <div className="inspector-cover-editor inspector-page-editor">
           {!isTimedNote ? <label className="inspector-field">
@@ -92,11 +113,6 @@ export default function PageInspector({
             </div>
           )) : null}
           {page.layoutVariant === 'spotlight-v6-diary-page' ? <>
-            <label className="inspector-field"><span>Cỡ chữ · {page.diaryFontSize ?? 13}px</span>
-              <input aria-label="Cỡ chữ Nhật ký" type="range" min="9" max="13" step="0.5" value={page.diaryFontSize ?? 13} onChange={event => onPageTextChange({ diaryFontSize: Number(event.target.value) })}/>
-              <small>9–13px theo khung thiết kế. Áp dụng cho chữ trên trang đang chọn.</small>
-            </label>
-            <button type="button" className="toolbar-button" onClick={()=>onPageTextChange({ diaryFontSize: 13 })}>Cỡ chữ mặc định</button>
             <label className="inspector-field"><span>Vị trí chữ</span>
               <select value={page.titlePlacement || 'center'} onChange={event => onPageTextChange({ titlePlacement: event.target.value })}>
                 <option value="top-center">Trên</option><option value="center">Giữa</option><option value="bottom-center">Dưới</option>
