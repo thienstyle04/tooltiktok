@@ -47,26 +47,13 @@ async function verifyExportRoutes(assetFileId = '') {
       body: JSON.stringify({ fileIds: [] }),
       cache: 'no-store',
     })],
-    ['chuẩn bị file cache', () => fetch('/api/drive-files/prefetch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileIds: [] }),
-      cache: 'no-store',
-    })],
   ];
   for (const [label, request] of checks) {
     const response = await request();
     if (!response.ok) throw runtimeError(`${label} trả HTTP ${response.status}. Frontend/backend không đồng bộ; hãy chạy lại start.bat.`);
   }
-  if (assetFileId) {
-    const response = await fetch(`/assets/drive-file?id=${encodeURIComponent(assetFileId)}`, {
-      method: 'GET',
-      cache: 'no-store',
-    });
-    if (!response.ok) {
-      throw runtimeError(`API ảnh Drive trả HTTP ${response.status}. Frontend/backend không đồng bộ; hãy chạy lại start.bat.`);
-    }
-  }
+  // Image availability belongs to per-list preflight, not the runtime version check.
+  // Missing source images must not prevent exporting other complete lists.
 }
 
 function readStoredSession() {

@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as zlib from 'node:zlib';
 import { hasSyncPermit, syncFetch } from './night-sync-policy';
+import { cachedValidation, decodeRealImage, validateLocalImages, recordImageDownloadFailure } from './local-image-validation';
 
 const DRIVE_FOLDER_CACHE_TTL_MS = 30 * 60 * 1000;
 const DRIVE_FILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -22,7 +23,7 @@ const DRIVE_BROWSER_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
 const folderEntriesCache = new Map<string, { expiresAt: number; entries: DriveFolderEntry[] }>();
-const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFileAsset }>();
+const driveFileAssetCache = new Map<string, { expiresAt: number; asset: DriveFileAsset; signature?: string }>();
 const driveFileAccessibilityCache = new Map<string, { accessible: boolean; expiresAt: number }>();
 const driveFileInFlight = new Map<string, Promise<DriveFileAsset>>();
 let activeDriveNetworkFetches = 0;
@@ -329,13 +330,16 @@ function writeDriveFileDiskCache(fileId: string, asset: DriveFileAsset): void {
     fs.mkdirSync(dir, { recursive: true });
     const { binPath, metaPath } = diskCachePaths(fileId);
     driveFileVisualFingerprintCache.delete(fileId);
-    fs.writeFileSync(binPath, asset.body);
-    fs.writeFileSync(metaPath, JSON.stringify({
+    const suffix = `.${process.pid}.${Date.now()}.partial`;
+    fs.writeFileSync(`${binPath}${suffix}`, asset.body);
+    fs.writeFileSync(`${metaPath}${suffix}`, JSON.stringify({
       fileId,
       contentType: asset.contentType,
       contentLength: asset.body.byteLength,
       savedAt: Date.now(),
     }), 'utf8');
+    fs.renameSync(`${binPath}${suffix}`, binPath);
+    fs.renameSync(`${metaPath}${suffix}`, metaPath);
     const failedIds = loadKnownFailedDriveFileIds();
     if (failedIds.delete(fileId)) persistKnownFailedDriveFileIds();
   } catch (error) {
@@ -357,10 +361,15 @@ export function hasDriveFileDiskCache(fileId: string): boolean {
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')) as { contentType?: string };
     const contentType = String(meta.contentType || '').trim().toLowerCase();
     if (!contentType.startsWith('image/') || contentType.includes('svg')) return false;
-    return fs.statSync(binPath).size > 0;
+    const validation = cachedValidation(resolveDriveFileDiskCacheDir(), fileId);
+    return validation?.status !== 'corrupt' && fs.statSync(binPath).size > 0;
   } catch {
     return false;
   }
+}
+
+export function verifyDriveFileCache(fileIds: string[]) {
+  return validateLocalImages(resolveDriveFileDiskCacheDir(), fileIds);
 }
 
 /** Lọc fileId chưa có trên disk — chỉ check metadata, không tải mạng. */
@@ -400,6 +409,7 @@ export async function warmDriveFileDiskCache(
     cancelled: false,
   };
   if (!uniqueIds.length) return result;
+  await verifyDriveFileCache(uniqueIds);
 
   const pending: string[] = [];
   const failedIds = loadKnownFailedDriveFileIds();
@@ -917,9 +927,11 @@ function releaseDriveNetworkSlot(): void {
 }
 
 function readCachedDriveFileAsset(fileId: string): DriveFileAsset | null {
+  if (!hasDriveFileDiskCache(fileId)) { driveFileAssetCache.delete(fileId); return null; }
   const cached = driveFileAssetCache.get(fileId);
   const now = Date.now();
-  if (cached && cached.expiresAt > now) {
+  const signature = cachedValidation(resolveDriveFileDiskCacheDir(), fileId)?.signature;
+  if (signature && cached && cached.expiresAt > now && cached.signature === signature) {
     return cached.asset;
   }
 
@@ -928,6 +940,7 @@ function readCachedDriveFileAsset(fileId: string): DriveFileAsset | null {
 
   setCachedDriveFileAccessibility(fileId, true);
   driveFileAssetCache.set(fileId, {
+    signature,
     expiresAt: now + DRIVE_FILE_CACHE_TTL_MS,
     asset: diskCached,
   });
@@ -939,6 +952,7 @@ export async function fetchDriveFileAsset(fileId: string): Promise<DriveFileAsse
   if (!normalizedFileId) return createDriveFallbackAsset(fileId);
 
   try {
+    await verifyDriveFileCache([normalizedFileId]);
     const cached = readCachedDriveFileAsset(normalizedFileId);
     if (cached) return cached;
     if (!hasSyncPermit()) return createDriveFallbackAsset(normalizedFileId);
@@ -1006,6 +1020,7 @@ async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset
         contentType,
         isFallback: false,
       };
+      try { await decodeRealImage(body); } catch { continue; }
       setCachedDriveFileAccessibility(fileId, true);
       driveFileAssetCache.set(fileId, {
         expiresAt: Date.now() + DRIVE_FILE_CACHE_TTL_MS,
@@ -1016,6 +1031,7 @@ async function fetchDriveFileAssetUnsafe(fileId: string): Promise<DriveFileAsset
     }
 
     const fallbackAsset = createDriveFallbackAsset(fileId);
+    recordImageDownloadFailure(resolveDriveFileDiskCacheDir(), fileId, 'Không tải được ảnh từ các nguồn Drive sau khi thử lại; kiểm tra quyền, link và quota.');
     setCachedDriveFileAccessibility(fileId, false);
     // Only successful bytes belong in the asset cache. In-flight deduplication
     // still coalesces simultaneous requests; a later export may retry immediately.

@@ -8,6 +8,7 @@ import { ensureRuntimePerformanceForBalancedExport, getRuntimePerformance, markR
 import { buildCaptionExportText } from './captionText';
 import { fitItineraryNote, fitItineraryNoteTimed } from './itineraryNote';
 import { fitSpotlightDiary } from './spotlightDiary';
+import { ExportImageError, inspectExportImages, lateImageListFailure } from './exportImageValidation';
 import { applyPageTextScale, resetPageTextScale } from './pageTextScale';
 import { renderCoverPage, renderListPage } from './pageMarkup';
 import { readCachedDataset } from './datasetCache';
@@ -190,7 +191,7 @@ async function assertRuntimeResources(profile) {
 
 function prepareQualityLayout(nodes, profile) {
   for (const node of nodes) {
-    node.dataset.exportStrict = node.classList.contains('spotlight-v6-diary-page') || profile.id !== 'original' ? 'true' : 'false';
+    node.dataset.exportStrict = 'true';
     if (!profile.losslessSource) { delete node.dataset.exportLossless; continue; }
     node.dataset.exportLossless = 'true';
     // Only normalized portrait layouts need a different design height.
@@ -304,94 +305,6 @@ function collectDriveFileIdsFromLists(lists) {
   return [...ids];
 }
 
-/**
- * Trước khi xuất: chỉ tải ảnh Drive còn thiếu trên disk.
- * Máy đã có cache → check nhanh rồi bỏ qua (không chờ prefetch từng lô).
- */
-async function prefetchDriveFilesForExport(fileIds, cb = {}) {
-  const uniqueIds = [...new Set((fileIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
-  if (!uniqueIds.length) return null;
-  const setStatus = cb.setStatus || noop;
-  const updateProgress = cb.updateProgress || noop;
-  const summary = { total: uniqueIds.length, skipped: 0, ok: 0, fail: 0, cancelled: false, chunks: 0, missing: 0 };
-
-  let missingIds = uniqueIds;
-  try {
-    setStatus(`Đang kiểm tra cache ảnh Drive (${uniqueIds.length})...`);
-    updateProgress(2, `Đang kiểm tra cache ảnh ${uniqueIds.length}...`);
-    const statusResponse = await fetch('/api/drive-files/cache-status', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileIds: uniqueIds }),
-      signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
-        ? AbortSignal.timeout(60 * 1000)
-        : undefined,
-    });
-    if (statusResponse.status === 404) {
-      const error = new Error('API kiểm tra cache ảnh trả 404. Frontend/backend không đồng bộ; hãy chạy lại start.bat.');
-      error.runtimeSessionError = true;
-      throw error;
-    }
-    if (statusResponse.ok) {
-      const status = await statusResponse.json();
-      missingIds = Array.isArray(status?.missing) ? status.missing.map((id) => String(id || '').trim()).filter(Boolean) : uniqueIds;
-      summary.skipped = Number(status?.cached || Math.max(0, uniqueIds.length - missingIds.length));
-      summary.missing = missingIds.length;
-      if (!missingIds.length) {
-        console.log(`[export] Prefetch bỏ qua — đủ cache disk (${summary.skipped}/${summary.total}).`);
-        setStatus(`Cache ảnh sẵn sàng (${summary.skipped}/${summary.total}).`);
-        return summary;
-      }
-    }
-  } catch (error) {
-    if (error?.runtimeSessionError) throw error;
-    console.warn(`[export] Cache-status lỗi, fallback prefetch đầy đủ: ${error?.message || error}`);
-    missingIds = uniqueIds;
-  }
-
-  const CHUNK = 48;
-  setStatus(`Đang tải ${missingIds.length}/${uniqueIds.length} ảnh Drive còn thiếu...`);
-  for (let offset = 0; offset < missingIds.length; offset += CHUNK) {
-    const chunk = missingIds.slice(offset, offset + CHUNK);
-    const done = Math.min(offset + chunk.length, missingIds.length);
-    setStatus(`Đang tải trước ảnh Drive còn thiếu ${done}/${missingIds.length}...`);
-    updateProgress(2 + (done / missingIds.length) * 4, `Đang tải ảnh còn thiếu ${done}/${missingIds.length}...`);
-    try {
-      const response = await fetch('/api/drive-files/prefetch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileIds: chunk }),
-        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
-          ? AbortSignal.timeout(4 * 60 * 1000)
-          : undefined,
-      });
-      if (!response.ok) {
-        if (response.status === 404) {
-          const error = new Error('API tải trước ảnh trả 404. Frontend/backend không đồng bộ; hãy chạy lại start.bat.');
-          error.runtimeSessionError = true;
-          throw error;
-        }
-        console.warn(`[export] Prefetch Drive chunk HTTP ${response.status} (${done}/${missingIds.length})`);
-        summary.fail += chunk.length;
-        continue;
-      }
-      const result = await response.json();
-      summary.skipped += Number(result.skipped || 0);
-      summary.ok += Number(result.ok || 0);
-      summary.fail += Number(result.fail || 0);
-      summary.chunks += 1;
-    } catch (error) {
-      if (error?.runtimeSessionError) throw error;
-      console.warn(`[export] Prefetch Drive chunk lỗi (${done}/${missingIds.length}): ${error?.message || error}`);
-      summary.fail += chunk.length;
-    }
-  }
-
-  console.log(
-    `[export] Prefetch Drive xong: total=${summary.total} missing=${summary.missing || missingIds.length} skipped=${summary.skipped} ok=${summary.ok} fail=${summary.fail} chunks=${summary.chunks}`,
-  );
-  return summary;
-}
 
 async function requestExportWakeLock() {
   if (activeWakeLock || typeof navigator === 'undefined' || !navigator.wakeLock?.request) return null;
@@ -840,6 +753,15 @@ async function getCachedImageBlobUrl(src, options = {}) {
     if (localDriveImageUrl(src) && (!result.blob.size || !/^image\//i.test(result.blob.type))) {
       return { blob: null, reason: `Nội dung không phải ảnh (${result.blob.type || 'thiếu Content-Type'})` };
     }
+    if (localDriveImageUrl(src)) {
+      try {
+        const decoded = await createImageBitmap(result.blob);
+        decoded.close();
+      } catch (error) {
+        if (error?.name !== 'InvalidStateError') throw error;
+        return { blob: null, reason: 'Ảnh nguồn không giải mã được' };
+      }
+    }
     return {
       ...result,
       blob: await resizeImageBlobForExport(result.blob, options),
@@ -1167,7 +1089,7 @@ async function prepareImageTarget(target, options = {}) {
 
   if (target.kind === 'img') {
     const { img, originalSrc } = target;
-    const sources = candidateSourcesForTarget(target);
+    const sources = strict ? [originalSrc] : candidateSourcesForTarget(target);
     // Ảnh địa điểm: không dùng lại URL đã gán cho ô khác trên cùng trang
     // (lúc tạo list URL chính khác nhau, nhưng candidate fallback lúc xuất dễ trùng).
     const fallbackSources = allowCrossImageFallback
@@ -1182,8 +1104,8 @@ async function prepareImageTarget(target, options = {}) {
     let selectedSource = '';
     let ownedObjectUrl = null;
     let sourceFailure = '';
-    const reservePlaceImage = !allowCrossImageFallback && Boolean(claimedSources);
-    if (!isSourceClaimed(claimedSources, domCurrentSrc)) {
+    const reservePlaceImage = !strict && !allowCrossImageFallback && Boolean(claimedSources);
+    if (!strict && !isSourceClaimed(claimedSources, domCurrentSrc)) {
       selectedBlob = await captureDomImageBlob(img);
       selectedBlobUrl = selectedBlob ? URL.createObjectURL(selectedBlob) : null;
       selectedSource = selectedBlob ? (domCurrentSrc || originalSrc || 'dom-capture') : '';
@@ -1219,7 +1141,7 @@ async function prepareImageTarget(target, options = {}) {
 
     // 3) Fetch fail nhưng DOM vẫn còn ảnh đã paint — thử chụp lại trước khi ra xám
     if (!selectedBlob || !selectedBlobUrl) {
-      if (!isSourceClaimed(claimedSources, domCurrentSrc)) {
+      if (!strict && !isSourceClaimed(claimedSources, domCurrentSrc)) {
         selectedBlob = await captureDomImageBlob(img);
         if (selectedBlob) {
           selectedBlobUrl = URL.createObjectURL(selectedBlob);
@@ -1247,7 +1169,7 @@ async function prepareImageTarget(target, options = {}) {
       ownedObjectUrl = null;
     }
     if (!preparedBlobUrl) {
-      if (strict) throw new Error(`Không tải được ảnh nguồn ở trang ${Number(target.root?.dataset?.pageIndex || 0) + 1}: ${originalSrc}. ${sourceFailure || 'Không còn nguồn ảnh hợp lệ cho trang này'}`);
+      if (strict) throw new ExportImageError(`Không tải được ảnh nguồn ở trang ${Number(target.root?.dataset?.pageIndex || 0) + 1}: ${originalSrc}. ${sourceFailure || 'Không còn nguồn ảnh hợp lệ cho trang này'}`);
       img.dataset.originalSrc = originalSrc;
       img.dataset.exportFallbackSrc = 'neutral-placeholder';
       img.src = neutralImageDataUrl(target);
@@ -1274,7 +1196,7 @@ async function prepareImageTarget(target, options = {}) {
   }
 
   const { element, originalBackgroundImage, originalSrc } = target;
-  const sources = candidateSourcesForTarget(target);
+  const sources = strict ? [originalSrc] : candidateSourcesForTarget(target);
   const fallbackSources = allowCrossImageFallback
     ? fallbackSourcesForTarget(target, options.fallbackContext, sources)
     : [];
@@ -1288,7 +1210,7 @@ async function prepareImageTarget(target, options = {}) {
   if (blob && source) claimExportSource(claimedSources, source);
   const preparedBlobUrl = shouldUseUniqueObjectUrl && blob ? URL.createObjectURL(blob) : blobUrl;
   if (!preparedBlobUrl) {
-    if (strict) throw new Error('Không tải được ảnh nền; hãy kiểm tra mạng và quyền Drive rồi xuất lại.');
+    if (strict) throw new ExportImageError(`Không tải được ảnh nền ${originalSrc}; hãy cập nhật dữ liệu rồi xuất lại.`);
     const neutralUrl = neutralImageDataUrl(target, 'background');
     element.dataset.originalBackgroundImage = originalBackgroundImage;
     element.style.backgroundImage = originalBackgroundImage.replace(/url\((['"]?)(.*?)\1\)/i, `url("${neutralUrl}")`);
@@ -2062,32 +1984,8 @@ function assertBudget72HExportReady(deck, list) {
 }
 
 async function assertExportImagesReady(entries, callbacks) {
-  const refs = [];
-  for (const { deck, list, onlyPageIndex } of entries) {
-    for (const [index, page] of (list.pages || []).entries()) {
-      if (onlyPageIndex !== undefined && index !== onlyPageIndex) continue;
-      // Inspect the rendered selection, not every unused candidate in the snapshot.
-      const markup = renderPageMarkupForExport(list, page, index)
-        .replace(/\sdata-candidate-srcs="[^"]*"/g, '');
-      for (const match of markup.matchAll(/\/assets\/drive-file\?(?:[^"'<>\s]*?&(?:amp;)?)?id=([a-zA-Z0-9_-]{10,})/g)) {
-        const owner = page.items?.find(item => JSON.stringify(item).includes(match[1]));
-        refs.push({ id: match[1], label: `${deck.navTitle || deck.id} / ${list.navTitle || list.id} / trang ${index + 1} (${owner?.name || page.title || 'ảnh nền'})` });
-      }
-    }
-  }
-  const fileIds = [...new Set(refs.map(ref => ref.id))];
-  if (!fileIds.length) return;
-  await prefetchDriveFilesForExport(fileIds, callbacks);
-  const response = await fetch('/api/drive-files/cache-status', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fileIds }), signal: AbortSignal.timeout(60000),
-  });
-  if (!response.ok) throw new Error(`Không xác minh được ảnh trước xuất (HTTP ${response.status}); chưa bắt đầu render.`);
-  const status = await response.json();
-  if (!Array.isArray(status.missing)) throw new Error('Phản hồi kiểm tra ảnh không hợp lệ; chưa bắt đầu render.');
-  const missing = new Set(status.missing);
-  const failures = refs.filter(ref => missing.has(ref.id));
-  if (failures.length) throw new Error(`Chưa xuất: ${missing.size} ảnh nguồn chưa tải được. ${failures.slice(0, 8).map(ref => `${ref.label}: ${ref.id}`).join('; ')}`);
+  const result = await inspectExportImages(entries, renderPageMarkupForExport);
+  if (result.skippedLists.length) throw new ExportImageError(`Chưa xuất: ${result.skippedLists.flatMap(list => list.errors).map(ref => `${ref.label} (${ref.place}): ${ref.id} — ${ref.reason}`).join('; ')}`);
 }
 
 let exportQueue = Promise.resolve();
@@ -2405,7 +2303,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
     return { success: false, exportedLists: [] };
   }
 
-  const orderedLists = orderListsForBatchExport(allLists, dataset).map((item) => ({
+  let orderedLists = orderListsForBatchExport(structuredClone(allLists), dataset).map((item) => ({
     ...item,
     list: resolveExportList(item.deck, item.list, dataset),
   }));
@@ -2417,8 +2315,23 @@ async function exportBatchAttempt(context, callbacks = {}) {
   cb.showProgress(`Chuẩn bị xuất ${orderedLists.length} list (${qualityProfile.label})...`, 2);
   resetBatchImageCache();
 
+  const skippedLists = [];
   try {
-    await assertExportImagesReady(orderedLists, cb);
+    const inspection = await inspectExportImages(orderedLists, renderPageMarkupForExport);
+    if (inspection.skippedLists.length) {
+      skippedLists.push(...inspection.skippedLists);
+      const accepted = context.skipImageErrors === true || await context.confirmSkipImages?.(inspection);
+      if (!inspection.validEntries.length) {
+        await context.onExportOutcome?.({ exportedLists: [], skippedLists });
+        throw new ExportImageError('Tất cả list đều thiếu ảnh hợp lệ. Hãy cập nhật dữ liệu trước khi xuất.');
+      }
+      if (!accepted) {
+        cb.setStatus('Đã hủy xuất. Các list được giữ nguyên.');
+        cb.completeProgress('Đã hủy xuất.');
+        return { success: false, cancelled: true, exportedLists: [], skippedLists: inspection.skippedLists };
+      }
+      orderedLists = inspection.validEntries;
+    }
 
     const mainZip = new JSZip();
     await requestExportWakeLock();
@@ -2457,14 +2370,15 @@ async function exportBatchAttempt(context, callbacks = {}) {
     let pagesSinceLastTrim = 0;
     for (let i = 0; i < pageTasks.length; i += concurrencyLimit) {
       await assertRuntimeResources(qualityProfile);
-      const chunk = pageTasks.slice(i, i + concurrencyLimit);
+      const chunk = pageTasks.slice(i, i + concurrencyLimit).filter(task => !skippedLists.some(skip => skip.listId === task.list.id));
+      if (!chunk.length) continue;
       const chunkStart = i + 1;
       const chunkEnd = i + chunk.length;
       cb.setStatus(`Đang chuẩn bị ảnh ${qualityProfile.label} ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
       cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang chuẩn bị ảnh ${qualityProfile.label} ${chunkStart}-${chunkEnd}/${pageTasks.length} trang...`);
       const renderedChunk = renderBatchTaskPages(chunk);
       await waitForExportLayout();
-      const validChunk = renderedChunk.filter((task) => task.pageNode);
+      let validChunk = renderedChunk.filter((task) => task.pageNode);
       validChunk.forEach((task) => prepareQualityLayout([task.pageNode], task.qualityProfile));
       if (validChunk.length !== chunk.length) {
         throw new Error('Thiếu trang khi dựng layout; đã dừng xuất để tránh ZIP không đầy đủ.');
@@ -2474,15 +2388,10 @@ async function exportBatchAttempt(context, callbacks = {}) {
       const preparedImages = [];
       try {
       // Keep image caches/profile selection isolated in mixed-template batches.
-      const profileGroups = new Map();
       for (const task of validChunk) {
-        const key = task.qualityProfile.fullResolutionV6 ? 'v6' : 'standard';
-        if (!profileGroups.has(key)) profileGroups.set(key, []);
-        profileGroups.get(key).push(task);
-      }
-      for (const tasks of profileGroups.values()) {
-        const qualityProfile = tasks[0].qualityProfile;
-        preparedImages.push(...await inlineImagesForNodes(tasks.map((task) => task.pageNode), {
+        const qualityProfile = task.qualityProfile;
+        try {
+        preparedImages.push(...await inlineImagesForNodes([task.pageNode], {
         waitForReady: true,
         concurrency: qualityProfile.imagePrepareConcurrency,
         maxImageDimension: qualityProfile.sourceImageMaxDimension,
@@ -2492,8 +2401,15 @@ async function exportBatchAttempt(context, callbacks = {}) {
         fitPixelRatio: qualityProfile.pixelRatio,
         uniqueObjectUrl: true,
       }));
+        } catch (error) {
+          if (error?.code !== 'EXPORT_IMAGE_UNAVAILABLE') throw error;
+          const entry = orderedLists[task.listIndex];
+          if (!skippedLists.some(skip => skip.listId === task.list.id)) skippedLists.push(lateImageListFailure(entry, task, error));
+        }
       }
+      validChunk = validChunk.filter(task => !skippedLists.some(skip => skip.listId === task.list.id));
         await mapExportWithSequentialRetry(validChunk, batchCaptureConcurrencyForProfile(qualityProfile), async (task, chunkIdx) => {
+          try {
           const qualityProfile = task.qualityProfile;
           const globalIdx = i + chunkIdx;
           const blob = await renderPageBlobWithRetry(task.pageNode, {
@@ -2515,6 +2431,11 @@ async function exportBatchAttempt(context, callbacks = {}) {
           });
           renderedPages += 1;
           cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang render ${qualityProfile.label} ${renderedPages}/${totalPages} trang...`);
+          } catch (error) {
+            if (error?.code !== 'EXPORT_IMAGE_UNAVAILABLE') throw error;
+            const entry = orderedLists[task.listIndex];
+            if (!skippedLists.some(skip => skip.listId === task.list.id)) skippedLists.push(lateImageListFailure(entry, task, error));
+          }
         }, (task) => Boolean(task.qualityProfile.losslessSource));
       } finally {
         restoreImagesFromBlobs(preparedImages);
@@ -2528,6 +2449,22 @@ async function exportBatchAttempt(context, callbacks = {}) {
       }
     }
 
+    const successful = orderedLists.filter(({ list }) => !skippedLists.some(skip => skip.listId === list.id));
+    for (let index = 0; index < orderedLists.length; index++) if (skippedLists.some(skip => skip.listId === orderedLists[index].list.id)) mainZip.remove(folders[index].root);
+    if (!successful.length) {
+      await context.onExportOutcome?.({ exportedLists: [], skippedLists });
+      throw new ExportImageError('Không có list nào đủ ảnh để xuất; không tạo ZIP rỗng.');
+    }
+    if (skippedLists.some(skip => skip.late) && context.skipImageErrors !== true) {
+      const accepted = await context.confirmSkipImages?.({ validEntries: successful, validPages: successful.reduce((n, entry) => n + entry.list.pages.length, 0), skippedLists });
+      if (!accepted) {
+        cb.setStatus('Đã hủy xuất. Các list được giữ nguyên.');
+        cb.completeProgress('Đã hủy xuất.');
+        return { success: false, cancelled: true, exportedLists: [], skippedLists };
+      }
+    }
+    if (skippedLists.length) mainZip.file('BAO-CAO-LIST-BO-QUA.json', JSON.stringify({ skippedLists }, null, 2));
+    const outcome = { success: true, exportedLists: successful.map(({ deck, list }) => ({ deckId: deck.id, listId: list.id })), skippedLists };
     cb.updateProgress(90, 'Đang đóng file ZIP hàng loạt...');
     const archive = await generateExportZip(mainZip, (metadata) => {
       const zipPercent = Number(metadata?.percent || 0);
@@ -2543,22 +2480,16 @@ async function exportBatchAttempt(context, callbacks = {}) {
     await new Promise((resolve) => setTimeout(resolve, 100));
     const archiveName = `${todayDateTag()}.zip`;
     if (typeof context.onArchive === 'function') {
-      await context.onArchive(archive, archiveName);
+      await context.onArchive(archive, archiveName, outcome);
     } else {
       const downloadStarted = downloadBlobFile(archive, archiveName);
       if (!downloadStarted) {
         throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
       }
     }
-    cb.completeProgress(`Đã xuất xong ${orderedLists.length} list.`);
-    cb.setStatus(`Đã xuất xong ${orderedLists.length} list.`);
-    return {
-      success: true,
-      exportedLists: orderedLists.map(({ deck, list }) => ({
-        deckId: deck.id,
-        listId: list.id,
-      })),
-    };
+    cb.completeProgress(`Đã xuất ${successful.length} list; bỏ qua ${skippedLists.length} list lỗi ảnh.`);
+    cb.setStatus(`Đã xuất ${successful.length} list; bỏ qua ${skippedLists.length} list lỗi ảnh.`);
+    return outcome;
   } catch (error) {
     if (!_compatRetry && quality === 'optimized' && runtime.mode === 'modern' && isResourceExportError(error)) {
       error.retryCompatibleExport = true;
@@ -2568,7 +2499,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
     console.warn(`Batch export failed: ${message}`);
     cb.failProgress(`Xuất hàng loạt thất bại: ${message}`);
     cb.setStatus(`Lỗi: ${message}`);
-    return { success: false, exportedLists: [], error: message };
+    return { success: false, exportedLists: [], skippedLists, error: message };
   } finally {
     await releaseExportWakeLock();
     cb.setBusy(false);

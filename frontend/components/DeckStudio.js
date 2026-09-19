@@ -20,6 +20,7 @@ import DataStatsPanel from './DataStatsPanel';
 import { queuedGeneration } from '../lib/manualGenerationQueue';
 import InspectorScrollArea from './InspectorScrollArea';
 import DeleteListsModal from './DeleteListsModal';
+import ExportImageErrorsModal from './ExportImageErrorsModal';
 import ExportModal from './ExportModal';
 import PageInspector from './PageInspector';
 import PreviewDashboardPanel from './PreviewDashboardPanel';
@@ -286,6 +287,14 @@ export default function DeckStudio({ initialDataset = null }) {
   const initialDeck = initialDataset?.decks?.[0] || null;
   const initialList = initialDeck?.lists?.[0] || null;
   const [dataset, setDataset] = useState(initialDataset);
+  const [exportImageInspection, setExportImageInspection] = useState(null);
+  const exportImageAnswer = useRef(null);
+  const answerExportImages = useCallback((accepted) => {
+    exportImageAnswer.current?.(accepted);
+    exportImageAnswer.current = null;
+    setExportImageInspection(null);
+  }, []);
+  useEffect(() => () => { exportImageAnswer.current?.(false); }, []);
   const [activeDeckId, setActiveDeckId] = useState(initialDeck?.id || null);
   const [activeListId, setActiveListId] = useState(initialList?.id || null);
   const [selectedPageIndex, setSelectedPageIndex] = useState(0);
@@ -1583,18 +1592,24 @@ export default function DeckStudio({ initialDataset = null }) {
     let result;
     try {
       await setManualExportActive(true); claimed = true;
-      result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality }, exportCb);
+      result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality,
+        confirmSkipImages: (inspection) => new Promise(resolve => {
+          exportImageAnswer.current = resolve;
+          setExportImageInspection(inspection);
+        }),
+      }, exportCb);
     } catch (error) {
       setStatus(error?.message || 'Chưa thể xuất hàng loạt.');
     } finally {
       if (claimed) await setManualExportActive(false).catch(() => undefined);
     }
     await loadRuntimePerformance().catch(() => undefined);
-    setSelectedListsForExport(new Set());
+    if (result?.success) setSelectedListsForExport(new Set((result.skippedLists || []).map(list => list.listId)));
     if (result?.success && shouldDelete) {
       setBusy(true);
       try {
         await removeExportedGeneratedLists(result.exportedLists);
+        setStatus(`Đã xuất và xóa ${result.exportedLists.length} list; giữ lại ${result.skippedLists?.length || 0} list lỗi ảnh.`);
       } catch (error) {
         setStatus(error?.message || 'Đã xuất file nhưng chưa xóa được list AI đã xuất.');
       } finally {
@@ -2100,6 +2115,7 @@ export default function DeckStudio({ initialDataset = null }) {
         }}
         onExport={handleExportBatch}
       />
+      <ExportImageErrorsModal inspection={exportImageInspection} onAnswer={answerExportImages} />
       <DeleteListsModal
         open={deleteModalOpen}
         dataset={dataset}

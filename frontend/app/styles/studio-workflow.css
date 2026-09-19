@@ -1,4 +1,10 @@
 /* Management-only shell. Never target rendered slide markup. */
+.modal-card.export-image-errors {width:min(760px,calc(100vw - 32px));max-height:90dvh;display:flex;flex-direction:column;}
+.export-image-errors .modal-body {overflow:auto;min-height:0;padding:20px;}
+.export-image-errors .modal-body section {border-top:1px solid var(--studio-line,#344238);padding-top:12px;margin-top:12px;}
+.export-image-errors .modal-head,.export-image-errors .modal-foot {padding:16px 20px;flex-shrink:0;}
+.export-image-errors .modal-foot {flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center;}
+.export-image-errors .modal-foot .toolbar-button {width:auto;}
 .studio-workflow {
   --studio-bg:#111815; --studio-sidebar:#18211c; --studio-surface:#1c2720;
   --studio-surface-2:#233027; --studio-surface-3:#2c3a30;

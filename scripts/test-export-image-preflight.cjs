@@ -15,6 +15,8 @@ const context = vm.createContext({
   },
 });
 vm.runInContext(source.slice(start, end), context);
+const validationSource = fs.readFileSync(require('node:path').join(__dirname, '../frontend/lib/exportImageValidation.js'), 'utf8');
+vm.runInContext(validationSource.replace(/^export /gm, ''), context);
 const entry = {
   deck: { id: 'spotlight-v5', navTitle: 'Spotlight V5' },
   list: { id: 'test-list', pages: [
@@ -40,5 +42,13 @@ const entry = {
   await context.assertExportImagesReady(batch);
   assert.deepEqual(requested, ['valid_image_001', 'missing_image_002']);
   assert.equal(JSON.stringify(batch), snapshot, 'Preflight must not modify snapshots');
+  reply = { missing: ['missing_image_002'] };
+  const allBad = await context.inspectExportImages(batch, (_list, page) => page.markup);
+  assert.equal(allBad.skippedLists.length, 25);
+  assert.equal(allBad.validEntries.length, 0);
+  const mixed = await context.inspectExportImages([...batch, { ...entry, list: { id: 'good', pages: [entry.list.pages[0]] } }], (_list, page) => page.markup);
+  assert.equal(mixed.validEntries.length, 1);
+  assert.equal(mixed.validPages, 1);
+  assert.equal(mixed.skippedLists.length, 25);
   console.log('PASS: required images, unused candidates, V5 failure context, selected page, invalid response, backend failure, 25-list deduplication and unchanged snapshots');
 })().catch(error => { console.error(error); process.exitCode = 1; });

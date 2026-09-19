@@ -4,6 +4,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isLocalDataOnly } from './night-sync-policy';
 import { BUNDLED_SECTION_HOOKS, BUNDLED_SPOTLIGHT_HOOKS } from './hook-fallbacks';
 
 const DEFAULT_DOC_ID = '1NGgDbpoUGDormMJKlMdYJoYWAt-nmVq_neDSH3PyueE';
@@ -131,6 +132,7 @@ export async function loadSpotlightV3Hooks(options: {
   }
 
   try {
+    if (isLocalDataOnly()) throw new Error('Tạo list không cập nhật hook qua mạng');
     const text = await (options.fetchDocument || fetchHookDocument)(docId);
     const hooks = sectionKey
       ? parseHookDocumentSection(text, options.sectionHeadingIncludes || [])
