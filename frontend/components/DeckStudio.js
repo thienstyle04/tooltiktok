@@ -754,11 +754,11 @@ export default function DeckStudio({ initialDataset = null }) {
     setManualSyncVisible(true);
     setStatus('Đang tải mới từ Google Sheet...');
     try {
-      const response = await apiFetch(`/api/destinations/${encodeURIComponent(destinationId)}/refresh-from-sheet`, {
+      const response = await apiFetch(`/api/destinations/${encodeURIComponent(destinationId)}/refresh-from-sheet?background=1`, {
         method: 'POST',
         cache: 'no-store',
       }).catch(async () => { throw new Error(await diagnoseUnconfirmedSheetSync()); });
-      const payload = await readApiPayload(response);
+      let payload = await readApiPayload(response);
       if (!response.ok) {
         if (payload?.code === 'BACKEND_TIMEOUT' || payload?.code === 'BACKEND_TRANSPORT_ERROR') {
           setStatus('Đang kiểm tra phản hồi backend sau khi đồng bộ bị ngắt...');
@@ -766,14 +766,37 @@ export default function DeckStudio({ initialDataset = null }) {
         }
         throw new Error(apiErrorMessage(payload, `Không tải mới được từ Google Sheet: HTTP ${response.status}`));
       }
+      if (payload?.accepted) {
+        for (;;) {
+          const statusResponse = await apiFetch('/api/night-sync/status', { cache: 'no-store' });
+          if (!statusResponse.ok) throw new Error('Không đọc được tiến độ cập nhật. Xem Đồng bộ dữ liệu trước khi thử lại.');
+          const sync = await statusResponse.json();
+          const source = sync.sources?.find(entry => entry.id === destinationId);
+          const pending = sync.running === destinationId || sync.queued?.includes(destinationId);
+          setManualSyncProgress({ destinationId, phase: pending ? 'warming' : source?.phase,
+            message: source?.error || source?.progress?.stage || 'Đang chờ cập nhật...',
+            total: source?.progress?.total || 0, completed: source?.progress?.completed || 0 });
+          if (!pending) {
+            if (source?.phase !== 'complete' && source?.phase !== 'partial') {
+              throw new Error(source?.error || 'Lượt cập nhật chưa hoàn tất; chưa thể tạo list.');
+            }
+            const datasetResponse = await apiFetch('/api/guide-data', { cache: 'no-store' });
+            const dataset = await readApiPayload(datasetResponse);
+            if (!datasetResponse.ok) throw new Error(apiErrorMessage(dataset, 'Không đọc được dữ liệu sau cập nhật.'));
+            payload = { dataset, active: { id: dataset.source?.destinationId, label: dataset.source?.destinationLabel }, sync };
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
       if (payload?.active?.id !== destinationId) {
         throw new Error(`Đã chặn kết quả sai nguồn: yêu cầu “${destinationId}” nhưng backend trả về “${payload?.active?.id || 'không xác định'}”.`);
       }
       const updatedActive = await applyDestinationMutation(payload);
       const label = updatedActive?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
       const syncResult = payload.sync?.sources?.find(source => source.id === destinationId)?.result;
-      setManualSyncProgress(previous => ({ ...previous, phase: 'complete', total: 0,
-        message: syncResult?.failed ? `Đã cập nhật dữ liệu; còn ${syncResult.failed} ảnh tải lỗi.` : 'Đã cập nhật dữ liệu thành công.' }));
+      setManualSyncProgress(previous => ({ ...previous, phase: syncResult?.failed ? 'error' : 'complete', total: 0,
+        message: syncResult?.failed ? `Chưa hoàn tất: còn ${syncResult.failed} ảnh tải lỗi. Tạo list vẫn bị khóa; vui lòng cập nhật lại.` : 'Đã cập nhật dữ liệu thành công.' }));
       setStatus(`Đã cập nhật ${label} từ Google Sheet (${payload.dataset?.source?.totalItems || 0} địa điểm).${syncResult?.failed ? ` Còn ${syncResult.failed} ảnh tải lỗi; xem Đồng bộ dữ liệu để biết chi tiết.` : ''}`);
       return updatedActive;
     } catch (error) {

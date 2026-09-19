@@ -615,6 +615,17 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   getDriveCacheWarmStatus(): DriveCacheWarmStatus {
+    const sync = this.getNightSyncStatus();
+    const sourceSync = sync.sources.find(source => source.id === this.activeDestinationId);
+    if (sync.running === this.activeDestinationId || sync.queued.includes(this.activeDestinationId)
+      || sourceSync?.phase === 'error' || sourceSync?.phase === 'partial') {
+      return { ...this.driveCacheWarmStatus, ready: false, destinationId: this.activeDestinationId,
+        phase: sourceSync?.phase === 'error' || sourceSync?.phase === 'partial' ? 'error' : 'warming',
+        message: sourceSync?.error || (sourceSync?.phase === 'partial'
+          ? 'Cập nhật chưa hoàn tất: còn ảnh lỗi. Vui lòng cập nhật lại trước khi tạo list.'
+          : sourceSync?.progress?.stage || 'Đang chờ cập nhật dữ liệu.'),
+      };
+    }
     const localInventory = this.getLocalImageInventory();
     // Trên máy mới có thể xảy ra race: cache ảnh đã đủ 100% nhưng bước build dataset
     // nền chưa kịp hạ cờ loading. Khi nguồn Sheet đã có, request guide-data có thể tự
@@ -1045,6 +1056,14 @@ export class GuideService implements OnApplicationBootstrap {
       throw new BadRequestException(error instanceof Error ? error.message : String(error));
     }
     return { active: this.getActiveDestinationSummary(), dataset: await this.getDataset(), sync: this.getNightSyncStatus() };
+  }
+
+  startDestinationSync(id: string) {
+    if (!getDestinationList().some(source => source.id === id && source.sheetUrl && source.exportUrl)) {
+      throw new BadRequestException('Nguồn không có Google Sheet hợp lệ.');
+    }
+    void this.getNightSync().manual(id).catch(error => console.error('[manual-sync]', id, error));
+    return { accepted: true, destinationId: id, sync: this.getNightSyncStatus() };
   }
 
   async setActiveDestination(request: SetDestinationRequest): Promise<SetDestinationResponse> {
