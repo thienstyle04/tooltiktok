@@ -19,3 +19,13 @@ assert.equal(service.getDriveCacheWarmStatus().ready, false);
 service.getNightSyncStatus = () => ({ running: null, queued: [], sources: [{ id: 'dalat', phase: 'complete' }] });
 assert.equal(service.getDriveCacheWarmStatus().ready, true);
 console.log('PASS: queued/running/paused/partial/error block generation despite old ready cache; complete unlocks.');
+service.driveCacheWarmStatus = { ready: false, phase: 'waiting' };
+service.getNightSyncStatus = () => ({ running: null, queued: [], sources: [{
+  id: 'dalat', phase: 'partial', initialized: true,
+  result: { downloaded: 709, failed: 6, added: 413, changed: 3 },
+}] });
+assert.equal(service.getDriveCacheWarmStatus().ready, true);
+service.assertDriveCacheReady();
+service.workbookSource = null;
+assert.equal(service.getDriveCacheWarmStatus().ready, false);
+console.log('PASS: published 709 images + 6 failures unlocks despite old waiting status; missing workbook stays blocked.');

@@ -618,7 +618,7 @@ export class GuideService implements OnApplicationBootstrap {
     const sync = this.getNightSyncStatus();
     const sourceSync = sync.sources.find(source => source.id === this.activeDestinationId);
     if (sync.running === this.activeDestinationId || sync.queued.includes(this.activeDestinationId)
-      || sourceSync?.phase === 'error' || sourceSync?.phase === 'partial') {
+      || sourceSync?.phase === 'error' || (sourceSync?.phase === 'partial' && !sourceSync.result)) {
       return { ...this.driveCacheWarmStatus, ready: false, destinationId: this.activeDestinationId,
         phase: sourceSync?.phase === 'error' || sourceSync?.phase === 'partial' ? 'error' : 'warming',
         message: sourceSync?.error || (sourceSync?.phase === 'partial'
@@ -631,8 +631,12 @@ export class GuideService implements OnApplicationBootstrap {
     // nền chưa kịp hạ cờ loading. Khi nguồn Sheet đã có, request guide-data có thể tự
     // build context; vì vậy không được tiếp tục khóa overlay chỉ vì cờ loading này.
     const sourceIsReady = Boolean(this.workbookSource);
-    const cacheIsReady = this.driveCacheWarmStatus.ready
-      && this.driveCacheWarmStatus.phase === 'ready';
+    // A completed sync publishes a validated dataset even when some images failed.
+    // Generation independently filters every candidate against valid local cache.
+    const syncPublished = sourceSync?.initialized && Boolean(sourceSync.result)
+      && (sourceSync.phase === 'complete' || sourceSync.phase === 'partial');
+    const cacheIsReady = syncPublished || (this.driveCacheWarmStatus.ready
+      && this.driveCacheWarmStatus.phase === 'ready');
     if (this.destinationDataLoading && !(sourceIsReady && cacheIsReady)) {
       return {
         ...this.driveCacheWarmStatus,
