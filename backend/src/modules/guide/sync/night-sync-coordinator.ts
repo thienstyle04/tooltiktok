@@ -76,9 +76,9 @@ export class NightSyncCoordinator {
       await this.runOne(id, true);
       const state = this.source(id);
       if (state.phase === 'error') throw new Error(state.error);
-    });
+    }).finally(() => { this.manualJobs.delete(id); });
     this.manualJobs.set(id, job);
-    this.manualTail = job.catch(() => undefined).finally(() => { this.manualJobs.delete(id); });
+    this.manualTail = job.catch(() => undefined);
     return job;
   }
   async tick(): Promise<void> {

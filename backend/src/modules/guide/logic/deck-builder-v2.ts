@@ -2454,8 +2454,9 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
     let mainList: GuideDeckList | null = null;
     let previewError = '';
     try { mainList = buildV2MainList(deckId, common); } catch (error) {
-      if (deckId !== 'spotlight-v6-maps' && deckId !== 'spotlight-v6-diary' && deckId !== 'itinerary-note-2days' && deckId !== 'itinerary-note-timed') throw error;
-      if (deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps') previewError = error instanceof Error ? error.message : String(error);
+      // Catalog loading must not prevent opening a source to repair its data.
+      // Generation still uses the strict builder and rejects missing requirements.
+      previewError = error instanceof Error ? error.message : String(error);
     }
     return {
       id: deckId,

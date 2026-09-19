@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
-import { buildOneWayStoryPages } from '../logic/deck-builder-v2';
+import { buildOneWayStoryPages, getV2DeckDefinitions } from '../logic/deck-builder-v2';
 import { BUNDLED_ONE_WAY_HOOKS } from '../sync/hook-fallbacks';
 import { getPremadeHookPoolKey } from '../sync/premade-hook-source';
 
@@ -126,3 +126,15 @@ assert.throws(() => buildOneWayStoryPages({
 }, 'one-way-story-main'), /cafe đối tác/);
 
 console.log('PASS one-way-story: 4 list, 12 trang/list, đúng vòng homestay, đúng nhóm đối tác, không lặp/sai ảnh và lỗi rõ khi thiếu dữ liệu.');
+
+const missingLagom = dataset();
+missingLagom.homestay = missingLagom.homestay.filter(entry => entry.name !== 'Lagom Homestay');
+const incomplete = { itemsBySection: missingLagom, imageUrls: [], libraryEntries: [], coverImageUrls };
+assert.throws(() => buildOneWayStoryPages(incomplete, 'one-way-story-main'), /lagom homestay/);
+const catalog = getV2DeckDefinitions(incomplete);
+const unavailable = catalog.find(deck => deck.id === 'one-way-story');
+assert.ok(unavailable);
+assert.equal(unavailable.lists.length, 0);
+assert.match(unavailable.description, /lagom homestay/);
+assert.ok(catalog.length > 1);
+console.log('PASS: missing Lagom leaves catalog available; strict creation still rejects missing data.');

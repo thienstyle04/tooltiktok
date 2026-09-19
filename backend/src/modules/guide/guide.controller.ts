@@ -178,7 +178,8 @@ export class GuideController {
   }
 
   @Post('api/destinations/:id/refresh-from-sheet')
-  refreshDestinationFromSheet(@Param('id') id: string): Promise<SetDestinationResponse> {
+  refreshDestinationFromSheet(@Param('id') id: string, @Query('background') background?: string) {
+    if (background === '1') return this.guideService.startDestinationSync(id);
     return this.guideService.refreshDestinationFromSheet(id);
   }
 
