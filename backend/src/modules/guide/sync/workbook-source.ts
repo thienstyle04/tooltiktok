@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { syncFetch } from './night-sync-policy';
 
 import { DestinationConfig, getDestinationConfig, DEFAULT_DESTINATION_ID, DestinationId } from './destination-config';
 
@@ -97,7 +98,7 @@ async function fetchWorkbookOnce(destination: DestinationConfig): Promise<SheetW
     throw new Error(`Nguồn ${destination.label} chưa có link Google Sheet dự phòng.`);
   }
   const timeout = createTimeoutSignal(SHEET_FETCH_TIMEOUT_MS);
-  const response = await fetch(destination.exportUrl, {
+  const response = await syncFetch(destination.exportUrl, {
     headers: {
       Referer: destination.sheetUrl,
       'User-Agent': 'Dalat Carousel Google Sheet Reader',

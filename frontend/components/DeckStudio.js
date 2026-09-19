@@ -352,6 +352,35 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally { setManualJob(null); }
   }, [dataset?.source?.destinationId, hookSourcesInfo]);
   const [driveCacheReadyNotice, setDriveCacheReadyNotice] = useState(false);
+  const [manualSyncProgress, setManualSyncProgress] = useState(null);
+  const [manualSyncVisible, setManualSyncVisible] = useState(false);
+  const manualSyncDestination = manualSyncProgress?.destinationId;
+  const manualSyncTerminal = ['complete', 'error'].includes(manualSyncProgress?.phase);
+  useEffect(() => {
+    if (!manualSyncDestination || manualSyncTerminal) return;
+    let disposed = false;
+    const poll = async () => {
+      try {
+        const response = await apiFetch('/api/night-sync/status', { cache: 'no-store' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (disposed) return;
+        const source = payload.sources?.find(s => s.id === manualSyncDestination);
+        const queued = payload.queued?.includes(manualSyncDestination);
+        if (!source || (!queued && payload.running !== manualSyncDestination)) return;
+        setManualSyncProgress(previous => {
+          if (['complete', 'error'].includes(previous?.phase)) return previous;
+          return { ...previous, phase: source.phase, total: source.progress?.total || 0,
+            completed: source.progress?.completed || 0,
+            message: source.phase === 'paused' ? 'Đang chờ tác vụ tạo/xuất hoàn tất…'
+              : payload.running !== manualSyncDestination ? 'Đang chờ nguồn khác cập nhật…'
+              : source.progress?.stage || 'Đang chuẩn bị cập nhật…' };
+        });
+      } catch { /* The update request reports connection errors. */ }
+    };
+    void poll(); const timer = setInterval(poll, 1200);
+    return () => { disposed = true; clearInterval(timer); };
+  }, [manualSyncDestination, manualSyncTerminal]);
   const [dismissedCacheDestinationId, setDismissedCacheDestinationId] = useState(null);
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const v2CatalogRefreshAttemptedRef = useRef(false);
@@ -712,6 +741,8 @@ export default function DeckStudio({ initialDataset = null }) {
     if (!destinationId || switchingDestination) return null;
     setSwitchingDestination(true);
     setRefreshing(true);
+    setManualSyncProgress({ destinationId, phase: 'waiting', message: 'Đang gửi yêu cầu cập nhật...', total: 0, completed: 0 });
+    setManualSyncVisible(true);
     setStatus('Đang tải mới từ Google Sheet...');
     try {
       const response = await apiFetch(`/api/destinations/${encodeURIComponent(destinationId)}/refresh-from-sheet`, {
@@ -731,8 +762,14 @@ export default function DeckStudio({ initialDataset = null }) {
       }
       const updatedActive = await applyDestinationMutation(payload);
       const label = updatedActive?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
-      setStatus(`Đã tải mới ${label} từ Google Sheet (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
+      const syncResult = payload.sync?.sources?.find(source => source.id === destinationId)?.result;
+      setManualSyncProgress(previous => ({ ...previous, phase: 'complete', total: 0,
+        message: syncResult?.failed ? `Đã cập nhật dữ liệu; còn ${syncResult.failed} ảnh tải lỗi.` : 'Đã cập nhật dữ liệu thành công.' }));
+      setStatus(`Đã cập nhật ${label} từ Google Sheet (${payload.dataset?.source?.totalItems || 0} địa điểm).${syncResult?.failed ? ` Còn ${syncResult.failed} ảnh tải lỗi; xem Đồng bộ dữ liệu để biết chi tiết.` : ''}`);
       return updatedActive;
+    } catch (error) {
+      setManualSyncProgress(previous => ({ ...previous, phase: 'error', total: 0, message: error.message || 'Cập nhật thất bại.' }));
+      throw error;
     } finally {
       setSwitchingDestination(false);
       setRefreshing(false);
@@ -1046,6 +1083,8 @@ export default function DeckStudio({ initialDataset = null }) {
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
                 ...(updates.titlePlacement !== undefined && page.layoutVariant === 'spotlight-v6-diary-page' ? { titlePlacement: updates.titlePlacement } : {}),
+                ...(updates.textScale !== undefined ? { textScale: updates.textScale } : {}),
+                ...(updates.textFontSize !== undefined ? { textFontSize: updates.textFontSize } : {}),
                 ...(updates.diaryFontSize !== undefined && page.layoutVariant === 'spotlight-v6-diary-page' ? { diaryFontSize: updates.diaryFontSize } : {}),
               };
             });
@@ -1075,6 +1114,9 @@ export default function DeckStudio({ initialDataset = null }) {
 
   const savePageText = useCallback(async () => {
     if (!activeDeck || !activeList || !activePage) return;
+    // Blur commits the number input before the save click. Read the synchronous
+    // draft ref so this request cannot capture the previous render's value.
+    const pageToSave = datasetRef.current?.decks?.find(deck => deck.id === activeDeck.id)?.lists?.find(list => list.id === activeList.id)?.pages?.[selectedPageIndex] ?? activePage;
     setSavingPageText(true);
     try {
       const response = await apiFetch(`/api/decks/${encodeURIComponent(activeDeck.id)}/lists/${encodeURIComponent(activeList.id)}/pages/${selectedPageIndex}/text`, {
@@ -1082,6 +1124,8 @@ export default function DeckStudio({ initialDataset = null }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: activePage.title || '',
+          textScale: activePage.textScale ?? 100,
+          textFontSize: pageToSave.textFontSize ?? null,
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { diaryFontSize: activePage.diaryFontSize ?? 13 } : {}),
           subtitle: activePage.subtitle || '',
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { titlePlacement: activePage.titlePlacement, items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
@@ -1094,7 +1138,7 @@ export default function DeckStudio({ initialDataset = null }) {
       });
       const payload = await readApiPayload(response);
       if (!response.ok) throw new Error(apiErrorMessage(payload, `Lưu nội dung trang thất bại: HTTP ${response.status}`));
-      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle, ...(payload.titlePlacement ? { titlePlacement: payload.titlePlacement } : {}), ...(payload.chipText !== undefined ? { chipText: payload.chipText } : {}), ...(payload.items ? { items: payload.items } : {}) });
+      const result = updateActivePageTextInDataset({ title: payload.title, subtitle: payload.subtitle, ...(payload.textFontSize !== undefined ? { textFontSize: payload.textFontSize } : {}), ...(payload.textScale !== undefined ? { textScale: payload.textScale } : {}), ...(payload.diaryFontSize !== undefined ? { diaryFontSize: payload.diaryFontSize } : {}), ...(payload.titlePlacement ? { titlePlacement: payload.titlePlacement } : {}), ...(payload.chipText !== undefined ? { chipText: payload.chipText } : {}), ...(payload.items ? { items: payload.items } : {}) });
       if (result?.nextDataset) writeCachedDataset(result.nextDataset);
       setStatus(`Đã lưu nội dung trang ${selectedPageIndex + 1}.`);
       setEditorSaveState('saved');
@@ -1737,7 +1781,25 @@ export default function DeckStudio({ initialDataset = null }) {
         editorOriginalDataset.current = null;
         setEditorSaveState('saved');
       }}>
-      {showCacheWarmOverlay ? (
+      {manualSyncVisible && manualSyncProgress ? (
+        <div className="cache-warm-overlay" role="dialog" aria-modal="true" aria-labelledby="manualSyncTitle">
+          <section className="cache-warm-dialog">
+            <div className="cache-warm-icon" aria-hidden="true">↻</div>
+            <p className="panel-kicker">Cập nhật dữ liệu</p>
+            <h2 id="manualSyncTitle">{manualSyncProgress.phase === 'error' ? 'Cập nhật chưa hoàn tất' : manualSyncProgress.phase === 'complete' ? 'Đã cập nhật' : 'Đang cập nhật dữ liệu'}</h2>
+            <p className="cache-warm-message" role="status">{manualSyncProgress.message}</p>
+            {manualSyncProgress.total > 0 && <>
+              <div className="cache-warm-progress" role="progressbar" aria-label="Tiến độ bước hiện tại" aria-valuemin={0} aria-valuemax={manualSyncProgress.total} aria-valuenow={manualSyncProgress.completed}>
+                <span style={{ width: `${Math.min(100, manualSyncProgress.completed / manualSyncProgress.total * 100)}%` }} />
+              </div>
+              <p className="cache-warm-stats">{manualSyncProgress.completed}/{manualSyncProgress.total} mục trong bước hiện tại</p>
+            </>}
+            <p className="cache-warm-note">{manualSyncTerminal ? 'List đã lưu không bị thay đổi.' : 'Giữ tool mở đến khi cập nhật hoàn tất. Đóng bảng này không hủy tác vụ.'}</p>
+            <button type="button" className="toolbar-button primary" onClick={() => setManualSyncVisible(false)}>Đóng bảng tiến độ</button>
+          </section>
+        </div>
+      ) : null}
+      {showCacheWarmOverlay && !manualSyncVisible ? (
         <div className="cache-warm-overlay" role="dialog" aria-modal="true" aria-labelledby="cacheWarmTitle">
           <section className="cache-warm-dialog">
             <div className="cache-warm-icon" aria-hidden="true">{cacheDestinationShortLabel}</div>

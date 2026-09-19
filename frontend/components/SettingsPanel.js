@@ -56,6 +56,18 @@ export default function SettingsPanel({
   const [replacing, setReplacing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [sheetRefreshing, setSheetRefreshing] = useState(false);
+  const [nightSync, setNightSync] = useState(null);
+  useEffect(() => {
+    let disposed = false;
+    const refresh = async () => {
+      try {
+        const response = await fetch('/api/night-sync/status', { cache: 'no-store' });
+        if (response.ok) { const data = await response.json(); if (!disposed) setNightSync(data); }
+      } catch { /* keep last known status */ }
+    };
+    void refresh(); const timer = setInterval(refresh, 5000);
+    return () => { disposed = true; clearInterval(timer); };
+  }, []);
   const [newHookName, setNewHookName] = useState('');
   const [newHookUrl, setNewHookUrl] = useState('');
   const [newHookFile, setNewHookFile] = useState(null);
@@ -70,6 +82,8 @@ export default function SettingsPanel({
   const cacheTotal = Number(cacheStatus?.total || 0);
   const cacheCompleted = Number(cacheStatus?.completed || 0);
   const cacheFailed = Number(cacheStatus?.failed || 0);
+  const inventory = cacheStatus?.localInventory;
+  const inventoryPercent = inventory?.total > 0 ? Math.round(inventory.cached / inventory.total * 100) : null;
   const activeHasSheetFallback = Boolean(activeDestination?.hasSheetFallback ?? activeDestination?.sheetUrl);
   const activeSheetUrl = String(activeDestination?.sheetUrl || '').trim();
   const hookAvailable = activeDestinationId === 'dalat';
@@ -173,7 +187,7 @@ export default function SettingsPanel({
           <p className="panel-kicker">Quản trị hệ thống</p>
           <h2 id="settingsTitle" className="section-title">Cài đặt dữ liệu</h2>
           <p className="settings-description">
-            XLSX cục bộ là nguồn chính. Google Sheet chỉ dùng làm link dự phòng để tải mới khi bạn chủ động yêu cầu.
+            Ưu tiên Google Sheet mới cập nhật thành công. Tự động cập nhật 23:00–06:00 giờ Việt Nam; bạn có thể cập nhật thủ công bất kỳ lúc nào.
           </p>
         </div>
         <span className={`settings-health ${cacheReady ? 'is-ready' : 'is-busy'}`}>
@@ -183,6 +197,26 @@ export default function SettingsPanel({
       </header>
 
       <div className="settings-grid">
+        <article className="settings-card settings-night-sync-card">
+          <h3>Đồng bộ dữ liệu</h3>
+          <p>Các nguồn được cập nhật lần lượt. Tạo và xuất list sử dụng cache cục bộ; đồng bộ chờ khi có tác vụ đang chạy.</p>
+          {nightSync ? <>
+            <p>{nightSync.running ? `Đang xử lý: ${nightSync.sources?.find(s => s.id === nightSync.running)?.label || nightSync.running}` : nightSync.allowed ? 'Trong khung cập nhật tự động' : 'Tự động chờ 23:00 giờ Việt Nam'}</p>
+            {nightSync.queued?.length > 0 && <p>Yêu cầu thủ công đang chờ/xử lý: {nightSync.queued.join(', ')}</p>}
+            <div className="settings-night-sources">{nightSync.sources?.map(source => <p key={source.id}>
+              <strong>{source.label}</strong>: {({ waiting: 'Chờ cập nhật', running: 'Đang cập nhật', paused: 'Đang chờ tác vụ tạo/xuất', complete: 'Hoàn tất', partial: 'Chưa đủ ảnh', error: 'Cập nhật thất bại' })[source.phase] || 'Chưa cập nhật'}
+              {source.result && ` · ${source.result.downloaded} ảnh tải mới · ${source.result.failed} ảnh lỗi · ${source.result.added} địa điểm mới · ${source.result.changed} mục thay đổi`}
+              {source.error && ` · ${source.error}`}
+            </p>)}</div>
+            {nightSync.report && !nightSync.report.read && <div className="settings-night-report" role="status">
+              <p>{nightSync.report.message}</p>
+              <button type="button" className="toolbar-button" onClick={async () => {
+                const response = await fetch('/api/night-sync/read', { method: 'POST' });
+                if (response.ok) setNightSync(previous => ({ ...previous, report: { ...previous.report, read: true } }));
+              }}>Đã đọc báo cáo</button>
+            </div>}
+          </> : <p>Đang lấy trạng thái đồng bộ…</p>}
+        </article>
         <article className="settings-card settings-add-source-card">
           <div>
             <p className="panel-kicker">Thêm nguồn mới</p>
@@ -452,7 +486,7 @@ export default function SettingsPanel({
               <p className="panel-kicker">Bộ nhớ ảnh</p>
               <h3>Cache Google Drive</h3>
             </div>
-            <strong className="settings-cache-percent">{cacheStatus?.percent || 0}%</strong>
+            <strong className="settings-cache-percent">{inventoryPercent === null ? '—' : `${inventoryPercent}%`}</strong>
           </div>
 
           <div
@@ -460,26 +494,25 @@ export default function SettingsPanel({
             role="progressbar"
             aria-valuemin="0"
             aria-valuemax="100"
-            aria-valuenow={cacheStatus?.percent || 0}
+            aria-valuenow={inventoryPercent ?? undefined}
+            aria-label="Tỷ lệ ảnh nguồn hiện có trong cache"
           >
-            <span style={{ width: `${Math.max(0, Math.min(100, cacheStatus?.percent || 0))}%` }} />
+            <span style={{ width: `${inventoryPercent ?? 0}%` }} />
           </div>
 
           <dl className="settings-cache-stats">
             <div>
-              <dt>Đã kiểm tra</dt>
-              <dd>{cacheTotal ? `${cacheCompleted}/${cacheTotal}` : '—'}</dd>
+              <dt>Ảnh đã có trên máy / ảnh trong nguồn</dt>
+              <dd>{inventory ? `${inventory.cached}/${inventory.total}` : 'Chưa có thống kê'}</dd>
             </div>
             <div>
-              <dt>Ảnh chưa tải được</dt>
-              <dd className={cacheFailed ? 'has-warning' : ''}>{cacheFailed}</dd>
+              <dt>Ảnh chưa có cache hợp lệ</dt>
+              <dd className={inventory?.missing ? 'has-warning' : ''}>{inventory?.missing ?? '—'}</dd>
             </div>
           </dl>
 
           <p className="settings-help">
-            {cacheFailed
-              ? `${cacheFailed} ảnh sẽ dùng ảnh dự phòng; hệ thống vẫn có thể tạo và xuất list.`
-              : 'Ảnh đã được lưu trên máy để những lần mở sau nhanh hơn.'}
+            Thống kê ảnh của nguồn đang chọn từ chỉ mục và cache trên máy, không phải tiến độ cập nhật. Ảnh thiếu cần được tải qua đồng bộ; không tự thay ảnh của list đã lưu.
           </p>
         </article>
 
@@ -534,13 +567,14 @@ export default function SettingsPanel({
             <button
               type="button"
               className="toolbar-button primary settings-refresh-button"
-              disabled={busy || sheetRefreshing || !activeDestination || !activeHasSheetFallback}
+              disabled={sheetRefreshing || !activeDestination || !activeHasSheetFallback}
               onClick={refreshFromSheet}
             >
               {sheetRefreshing || refreshing
-                ? `Đang tải ${activeDestination?.label || ''} từ Sheet...`
-                : `Tải mới ${activeDestination?.label || ''} từ Google Sheet`}
+                ? `Đang chờ/cập nhật ${activeDestination?.label || ''}...`
+                : `Cập nhật dữ liệu ngay — ${activeDestination?.label || ''}`}
             </button>
+            <p className="settings-form-note">Cho phép cập nhật thủ công cả ngoài 23:00–06:00. Không thay nội dung list đã lưu.</p>
 
             {!activeHasSheetFallback && activeDestination ? (
               <p className="settings-form-note">

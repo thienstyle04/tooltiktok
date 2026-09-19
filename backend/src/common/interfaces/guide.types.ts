@@ -164,6 +164,8 @@ export type TitlePlacement =
 export type MutantContentStyle = 'strip' | 'center-card';
 
 export interface CoverPage {
+  textFontSize?: number | null;
+  textScale?: number;
   diaryFontSize?: number;
   type: 'cover';
   title: string;
@@ -177,6 +179,8 @@ export interface CoverPage {
 }
 
 export interface ListPage {
+  textFontSize?: number | null;
+  textScale?: number;
   diaryFontSize?: number;
   type: 'list';
   chipText: string;
@@ -407,6 +411,8 @@ export interface UpdateGeneratedListCoverResponse {
 }
 
 export interface UpdatePageTextRequest {
+  textFontSize?: number | null;
+  textScale?: number;
   diaryFontSize?: number;
   titlePlacement?: TitlePlacement;
   items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }>;
@@ -416,6 +422,8 @@ export interface UpdatePageTextRequest {
 }
 
 export interface UpdatePageTextResponse {
+  textFontSize?: number | null;
+  textScale?: number;
   diaryFontSize?: number;
   titlePlacement?: TitlePlacement;
   items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }>;
@@ -430,7 +438,7 @@ export interface UpdatePageTextResponse {
 export interface PageTextOverrideStore {
   version: 1;
   savedAt: string;
-  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }> }>>>;
+  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; textFontSize?: number | null; textScale?: number; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; scheduleTime?: string }> }>>>;
 }
 
 export interface DatasetBuildContext {

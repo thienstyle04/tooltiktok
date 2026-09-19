@@ -149,6 +149,10 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     throw new ConflictException(`Lịch tự động "${run.scheduleName}" đang chạy. Vui lòng chờ hoàn tất hoặc hủy lượt.`);
   }
 
+  isDataSyncBusy(): boolean {
+    return Boolean(this.manualActiveId || this.activeRunId || this.manualExportUntil > Date.now());
+  }
+
   setManualExportActive(active: boolean): AutomationStateResponse {
     if (active && (this.activeRunId || this.manualActiveId || this.guideService.isGenerationBusy())) {
       throw new ConflictException('Đang chạy lịch tự động; chưa thể bắt đầu lượt xuất thủ công.');

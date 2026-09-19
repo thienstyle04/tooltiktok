@@ -58,6 +58,7 @@
 
 .settings-grid {
   display: grid;
+  align-items: start;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
@@ -73,8 +74,44 @@
 }
 
 .settings-source-card {
-  grid-row: span 2;
+  grid-column: 1 / -1;
 }
+
+.settings-source-card .settings-destination-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 10px;
+}
+
+.settings-night-sync-card {
+  grid-column: 1 / -1;
+  gap: 10px;
+  padding: 16px 18px;
+}
+.settings-night-sync-card p { margin: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.settings-night-sync-card h3 { margin: 0; }
+.settings-night-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.settings-night-sources > p {
+  padding: 10px 12px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-surface-2, transparent);
+}
+.settings-night-report {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--studio-line);
+}
+.settings-night-report p { flex: 1 1 300px; }
+.settings-night-report button { flex: 0 0 auto; max-width: 100%; white-space: normal; }
 
 .settings-add-source-card {
   grid-column: 1 / -1;

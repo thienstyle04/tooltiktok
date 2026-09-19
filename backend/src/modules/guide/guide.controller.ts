@@ -57,7 +57,9 @@ export class GuideController {
     private readonly guideService: GuideService,
     private readonly runtimePerformance: RuntimePerformanceService,
     private readonly automationScheduler: AutomationSchedulerService,
-  ) {}
+  ) {
+    this.guideService.setSyncBusyProbe(() => this.automationScheduler.isDataSyncBusy());
+  }
 
   private sendBinaryAsset(response: any, body: Buffer, contentType: string, cacheControl: string): void {
     response.setHeader('Content-Type', contentType);
@@ -177,8 +179,18 @@ export class GuideController {
 
   @Post('api/destinations/:id/refresh-from-sheet')
   refreshDestinationFromSheet(@Param('id') id: string): Promise<SetDestinationResponse> {
-    this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.refreshDestinationFromSheet(id);
+  }
+
+  @Get('api/night-sync/status')
+  getNightSyncStatus() { return this.guideService.getNightSyncStatus(); }
+
+  @Post('api/night-sync/read')
+  acknowledgeNightSync() { this.guideService.acknowledgeNightSync(); return { ok: true }; }
+
+  @Post('api/night-sync/export-lease')
+  setExportLease(@Body() body: { id: string; active: boolean }) {
+    this.guideService.updateExportLease(body.id, body.active === true); return { ok: true };
   }
 
   @Get('api/hook-sources')
