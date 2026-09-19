@@ -1,6 +1,7 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isLocalDataOnly } from './night-sync-policy';
 
 import { parseFestivalHookText } from './festival-hook-source';
 
@@ -82,6 +83,10 @@ export class ThemedHookSourceStore {
   }
 
   async ensureReady(docUrl: string, forceRefresh = false): Promise<void> {
+    if (isLocalDataOnly()) {
+      if (!this.getCachedHooks().length) throw new Error('Chưa có cache hook. Hãy cập nhật dữ liệu trước khi tạo list.');
+      return;
+    }
     const normalizedUrl = String(docUrl || '').trim();
     const docId = docIdFromUrl(normalizedUrl, this.options);
     const isFresh = this.state?.docId === docId

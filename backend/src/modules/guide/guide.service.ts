@@ -1,11 +1,12 @@
 // ─── GuideService: orchestration, caching, AI captions ───────────────────────
 import 'dotenv/config';
+import { verifyDriveFileCache } from './sync/drive-images';
 import { inheritPageTypography } from './logic/inherit-page-typography';
 import { BadRequestException, Injectable, NotFoundException, OnApplicationBootstrap, ServiceUnavailableException } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as XLSX from 'xlsx';
-import { enableNightSyncPolicy, hasSyncPermit } from './sync/night-sync-policy';
+import { enableNightSyncPolicy, hasSyncPermit, withLocalDataOnly } from './sync/night-sync-policy';
 import { NightSyncCoordinator } from './sync/night-sync-coordinator';
 import { syncNightSource } from './sync/night-sync-source';
 
@@ -287,7 +288,7 @@ export class GuideService implements OnApplicationBootstrap {
     this.generationQueue = new Promise<void>((resolve) => { release = resolve; });
     await previous;
     try {
-      return await this.runtimePerformance.runGenerationTask(task);
+      return await this.runtimePerformance.runGenerationTask(() => withLocalDataOnly(task));
     } finally {
       this.generationQueueDepth = Math.max(0, this.generationQueueDepth - 1);
       release();
@@ -783,23 +784,21 @@ export class GuideService implements OnApplicationBootstrap {
     if (!normalizedFileId) {
       throw new NotFoundException('Drive file id is required.');
     }
-    return fetchDriveFileAsset(normalizedFileId);
+    return withLocalDataOnly(() => fetchDriveFileAsset(normalizedFileId));
   }
 
   /**
    * Kiểm tra nhanh disk cache (không tải mạng) — FE dùng để bỏ prefetch khi đã đủ ảnh.
    */
-  getDriveFilesCacheStatus(fileIds: string[]): {
-    total: number;
-    cached: number;
-    missing: string[];
-  } {
+  async getDriveFilesCacheStatus(fileIds: string[]) {
     const ids = [...new Set((fileIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
-    const missing = listUncachedDriveFileIds(ids);
+    const images = await verifyDriveFileCache(ids);
+    const missing = images.filter(image => image.status !== 'valid').map(image => image.id);
     return {
       total: ids.length,
       cached: ids.length - missing.length,
       missing,
+      images,
     };
   }
 
@@ -818,6 +817,7 @@ export class GuideService implements OnApplicationBootstrap {
     if (!ids.length) {
       return { total: 0, skipped: 0, ok: 0, fail: 0, cancelled: false };
     }
+    await verifyDriveFileCache(ids);
     const missing = listUncachedDriveFileIds(ids);
     if (!missing.length) {
       console.log(`[drive-cache] Prefetch bỏ qua — đủ cache disk (${ids.length}/${ids.length}).`);
@@ -1479,7 +1479,7 @@ export class GuideService implements OnApplicationBootstrap {
     const mapsReadyImageIds = deckId === 'spotlight-v6-maps'
       ? await this.prepareSpotlightV6MapsResources()
       : null;
-    const context = this.buildDatasetContext();
+    const context = await this.buildLocallyVerifiedGenerationContext(!isTextNoteDeck(deckId));
     if (greenReadyImageIds) {
       context.hinhNenImagePools = {
         ...context.hinhNenImagePools,
@@ -1624,7 +1624,7 @@ export class GuideService implements OnApplicationBootstrap {
         for (;;) {
           const ids = [...new Set(basePages.map(page => extractDriveFileIdFromProxyUrl(page.backgroundImage || '')).filter(Boolean))];
           const missing = listUncachedDriveFileIds(ids);
-          if (missing.length) await warmDriveFileDiskCache(missing, {
+          if (missing.length && hasSyncPermit()) await warmDriveFileDiskCache(missing, {
             runTask: task => this.runtimePerformance.runDriveTask(4, task), concurrency: 3,
           });
           const failed = new Set(ids.filter(id => !hasDriveFileDiskCache(id)));
@@ -1769,6 +1769,7 @@ export class GuideService implements OnApplicationBootstrap {
       };
     }
     const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList, deckId);
+    await this.assertGeneratedImageCache(sanitizedGeneratedList.pages, deckId);
 
     if (deckId === 'spotlight-v6-diary') {
       const previousLines = this.diaryUsedLines;
@@ -1789,10 +1790,13 @@ export class GuideService implements OnApplicationBootstrap {
         throw error;
       }
     } else {
+      this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
+      try { this.persistGeneratedLists(); } catch (error) {
+        this.generatedListsByDeckId.set(deckId, existing);
+        throw error;
+      }
       this.markUsedInDeck(sanitizedGeneratedList.pages);
       this.persistInventory();
-      this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
-      this.persistGeneratedLists();
     }
     this.festivalHookSources.commit(festivalReservation);
     this.greenHookSource.commit(greenHookReservation);
@@ -2044,7 +2048,7 @@ export class GuideService implements OnApplicationBootstrap {
     }
 
     await this.prepareWorkbookForDataset(false);
-    const context = this.buildDatasetContext();
+    const context = await this.buildLocallyVerifiedGenerationContext();
 
     // Find the partner item
     const allItems = Object.values(context.itemsBySection).flat();
@@ -2109,9 +2113,13 @@ export class GuideService implements OnApplicationBootstrap {
     generatedList.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
     const parentDeck = this.ensureWorkbookDerivedContext().baseDecks.find(deck => deck.id === deckId);
     if (parentDeck) generatedList.pages = inheritPageTypography(parentDeck, generatedList.pages, this.loadPageTextOverrides());
+    await this.assertGeneratedImageCache(generatedList.pages, deckId);
 
     this.generatedListsByDeckId.set(deckId, [...existing, generatedList]);
-    this.persistGeneratedLists();
+    try { this.persistGeneratedLists(); } catch (error) {
+      this.generatedListsByDeckId.set(deckId, existing);
+      throw error;
+    }
     this.markUsedInDeck(pages);
     this.persistInventory();
 
@@ -2254,6 +2262,50 @@ export class GuideService implements OnApplicationBootstrap {
     this.workbookDerivedCacheFresh = true;
     this.writeDestinationStats(this.activeDestinationId, totalItems);
     console.log(`[cache] Dữ liệu Sheet được build lại trong ${Date.now() - t0}ms`);
+    return context;
+  }
+
+  private async assertGeneratedImageCache(pages: DeckPage[], deckId: string): Promise<void> {
+    const refs = pages.flatMap((page, index) => [
+      { url: page.backgroundImage, page: index + 1, place: page.title },
+      ...(page.type === 'cover' ? (page.coverImages || []).map(url => ({ url, page: index + 1, place: page.title })) : []),
+      ...(page.type === 'list' ? page.items.map(item => ({ url: item.imageUrl, page: index + 1, place: item.name })) : []),
+    ]).map(ref => ({ ...ref, id: extractDriveFileIdFromProxyUrl(ref.url || '') })).filter(ref => ref.id);
+    const invalid = new Set((await verifyDriveFileCache(refs.map(ref => ref.id))).filter(image => image.status !== 'valid').map(image => image.id));
+    const errors = refs.filter(ref => invalid.has(ref.id));
+    if (errors.length) throw new BadRequestException(`Chưa lưu list ${deckId}: ảnh cache thiếu/hỏng: ${errors.map(ref => `trang ${ref.page}, ${ref.place}, ${ref.id}`).join('; ')}. Hãy cập nhật dữ liệu.`);
+  }
+
+  private async buildLocallyVerifiedGenerationContext(requirePlaceImages = true): Promise<DatasetBuildContext> {
+    // Clone before filtering: saved snapshots and the currently visible dataset must not change.
+    const context = this.cloneJson(this.buildDatasetContext());
+    const pool = { items: context.itemsBySection, images: context.imageUrls, covers: context.coverImageUrls, backgrounds: context.hinhNenImagePools, library: context.imageLibraryEntries };
+    const ids = [...new Set(Array.from(JSON.stringify(pool).matchAll(/\/assets\/drive-file\?id=([a-zA-Z0-9_-]+)/g), match => match[1]))];
+    const valid = new Set((await verifyDriveFileCache(ids)).filter(image => image.status === 'valid').map(image => image.id));
+    const filter = (value: any): any => {
+      if (typeof value === 'string') {
+        const id = extractDriveFileIdFromProxyUrl(value);
+        return id && !valid.has(id) ? '' : value;
+      }
+      if (Array.isArray(value)) return value.map(filter).filter(item => item !== '');
+      if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, filter(item)]));
+      return value;
+    };
+    const filtered = filter(pool);
+    context.itemsBySection = filtered.items;
+    context.imageUrls = filtered.images;
+    context.coverImageUrls = filtered.covers;
+    context.hinhNenImagePools = filtered.backgrounds;
+    context.imageLibraryEntries = filtered.library;
+    for (const items of Object.values(context.itemsBySection)) for (const item of items) {
+      if (!item.imageUrl) item.imageUrl = item.candidateImageUrls?.[0] || '';
+      if (!item.mapImageUrl) item.mapImageUrl = item.mapCandidateImageUrls?.[0] || '';
+    }
+    if (requirePlaceImages) {
+      for (const key of Object.keys(context.itemsBySection) as Array<keyof WorkbookItemsBySection>) {
+        context.itemsBySection[key] = context.itemsBySection[key].filter(item => Boolean(item.imageUrl) && item.imageSource !== 'fallback');
+      }
+    }
     return context;
   }
 
@@ -3637,9 +3689,10 @@ export class GuideService implements OnApplicationBootstrap {
       entry.candidateImages?.length ? entry.candidateImages.map((candidate) => candidate.fileId) : [entry.fileId || '']
     )).filter(Boolean))];
     const allIds = [...new Set([...mapIds, ...realIds])];
+    await verifyDriveFileCache(allIds);
     if (allIds.length) {
       const missing = listUncachedDriveFileIds(allIds);
-      if (missing.length) {
+      if (missing.length && hasSyncPermit()) {
         const concurrency = this.driveCacheConcurrency(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 3), 5);
         await warmDriveFileDiskCache(missing, {
           concurrency,

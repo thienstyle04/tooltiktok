@@ -51,11 +51,21 @@ export default function AutomationExportRunner({ runId, token }) {
         const available = new Set((dataset.decks || []).flatMap((deck) => (deck.lists || []).map((list) => list.id)));
         const selectedListIds = new Set((context.listIds || []).filter((id) => available.has(id)));
         if (selectedListIds.size !== context.listIds.length) throw new Error(`Thiếu ${context.listIds.length - selectedListIds.size} list trong snapshot render.`);
+        const recordOutcome = async (outcome) => {
+          const recorded = await fetch(endpoint('/progress'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ progress: 99, phase: 'Đang lưu kết quả xuất...', outcome }),
+          });
+          if (!recorded.ok) throw new Error(await readError(recorded, 'Không lưu được báo cáo list bỏ qua.'));
+        };
         const result = await exportBatch({
           dataset,
           selectedListIds,
           quality: 'optimized',
-          onArchive: async (archive) => {
+          skipImageErrors: true,
+          onExportOutcome: recordOutcome,
+          onArchive: async (archive, name, outcome) => {
+            await recordOutcome(outcome);
             await report(99, 'Đang chuyển ZIP về thư mục đã chọn...');
             const upload = await fetch(endpoint('/archive'), {
               method: 'POST',

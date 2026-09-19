@@ -1,6 +1,6 @@
 {
   "name": "dalat-tiktok-carousel-tool",
-  "version": "0.6.08",
+  "version": "0.6.09",
   "private": true,
   "description": "NestJS tool for generating Da Lat TikTok carousel previews from the local workbook and image sets.",
   "engines": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",
-    "bundle": "tsc -p tsconfig.build.json && esbuild build/dist/main.js --bundle --platform=node --format=cjs --target=node24 --external:@nestjs/microservices --external:@nestjs/microservices/* --external:@nestjs/websockets --external:@nestjs/websockets/* --external:class-validator --external:class-transformer --outfile=build/dalat_tiktok_carousel_tool_standalone.cjs",
+    "bundle": "tsc -p tsconfig.build.json && esbuild build/dist/main.js --bundle --platform=node --format=cjs --target=node24 --external:sharp --external:@nestjs/microservices --external:@nestjs/microservices/* --external:@nestjs/websockets --external:@nestjs/websockets/* --external:class-validator --external:class-transformer --outfile=build/dalat_tiktok_carousel_tool_standalone.cjs",
     "sync:sheet": "ts-node src/modules/guide/sync/sync-sheet.ts",
     "start": "node build/dalat_tiktok_carousel_tool_standalone.cjs",
     "start:dev": "ts-node src/main.ts"
@@ -22,6 +22,7 @@
     "puppeteer-core": "^25.10.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "sharp": "^0.34.5",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

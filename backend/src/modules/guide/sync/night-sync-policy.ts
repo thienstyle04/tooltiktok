@@ -13,9 +13,13 @@ export function vietnamSyncWindow(now = Date.now()): { allowed: boolean; night: 
 
 type Permit = { initial?: boolean; manual?: boolean; signal: AbortSignal; waitForIdle: () => Promise<void> };
 const permits = new AsyncLocalStorage<Permit>();
+const localOnly = new AsyncLocalStorage<boolean>();
+export function isLocalDataOnly(): boolean { return Boolean(localOnly.getStore()); }
+export function withLocalDataOnly<T>(task: () => Promise<T>): Promise<T> { return localOnly.run(true, task); }
 let enforced = false;
 export function enableNightSyncPolicy(): void { enforced = true; }
 export function hasSyncPermit(): boolean {
+  if (localOnly.getStore()) return false;
   const permit = permits.getStore();
   return !enforced || Boolean(permit && !permit.signal.aborted && (permit.manual || permit.initial || vietnamSyncWindow().allowed));
 }
@@ -25,6 +29,7 @@ export function withSyncPermit<T>(permit: Permit, task: () => Promise<T>): Promi
 
 /** Complete the response body inside the permit lifetime, not just HTTP headers. */
 export async function syncFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  if (localOnly.getStore()) throw new Error('Tạo list chỉ dùng dữ liệu cục bộ. Hãy cập nhật dữ liệu trước.');
   if (!enforced) return fetch(input, init);
   const permit = permits.getStore();
   if (!permit || !hasSyncPermit()) throw new Error('Chỉ cập nhật dữ liệu trong 23:00–06:00 giờ Việt Nam.');

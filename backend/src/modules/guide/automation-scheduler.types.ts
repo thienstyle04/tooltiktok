@@ -73,6 +73,8 @@ export interface AutomationRun {
   outputFileName?: string;
   listIds: string[];
   generated: Array<{ deckId: string; listId: string }>;
+  exportedLists?: Array<{ deckId: string; listId: string }>;
+  skippedLists?: Array<{ deckId: string; listId: string; label?: string; errors: Array<{ page?: number; id?: string; reason: string }> }>;
   errors: AutomationRunError[];
   createdAt: string;
   updatedAt: string;

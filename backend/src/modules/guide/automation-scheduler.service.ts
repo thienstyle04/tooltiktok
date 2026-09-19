@@ -262,9 +262,16 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     return { runId: run.id, listIds: [...run.listIds], quality: 'optimized' };
   }
 
-  reportProgress(runId: string, token: string, progress: number, phase: string): void {
+  reportProgress(runId: string, token: string, progress: number, phase: string, outcome?: Pick<AutomationRun, 'exportedLists' | 'skippedLists'>): void {
     const run = this.authorizeExport(runId, token);
     if (!ACTIVE_STATUSES.has(run.status)) return;
+    if (outcome) {
+      const exported = outcome.exportedLists || [], skipped = outcome.skippedLists || [];
+      const all = [...exported, ...skipped];
+      if (all.length !== run.listIds.length || new Set(all.map(item => item.listId)).size !== all.length || all.some(item => !run.generated.some(source => source.listId === item.listId && source.deckId === item.deckId))) throw new ConflictException('Kết quả xuất không khớp các list của lượt chạy.');
+      run.exportedLists = exported;
+      run.skippedLists = skipped;
+    }
     run.status = 'exporting';
     run.progress = Math.min(98, Math.max(70, Number(progress) || 70));
     run.phase = String(phase || 'Đang xuất file...').slice(0, 240);
@@ -275,6 +282,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   async acceptArchive(runId: string, token: string, request: any): Promise<{ outputPath: string; bytes: number }> {
     const run = this.authorizeExport(runId, token);
     if (run.cancelRequested) throw new ConflictException('Lượt đã bị hủy.');
+    if (run.exportedLists && !run.exportedLists.length) throw new ConflictException('Không có list xuất thành công; không nhận ZIP rỗng.');
     const stamp = this.fileStamp(run.startedAt || run.createdAt);
     const runDir = path.join(run.outputDir, `${stamp}-${this.safeName(run.scheduleName)}-${run.id.slice(-8)}`);
     fs.mkdirSync(runDir, { recursive: true });
@@ -298,8 +306,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       fs.renameSync(temporaryPath, finalPath);
       run.outputPath = finalPath;
       run.progress = 100;
-      run.status = run.errors.length ? 'partial' : 'completed';
-      run.phase = run.errors.length ? 'Đã xuất phần tạo thành công; một số mẫu có lỗi.' : 'Đã tạo list và lưu ZIP thành công.';
+      run.status = run.errors.length || run.skippedLists?.length ? 'partial' : 'completed';
+      run.phase = run.exportedLists ? `Đã xuất ${run.exportedLists.length} list; bỏ qua ${run.skippedLists?.length || 0} list lỗi ảnh.` : (run.errors.length ? 'Đã xuất phần tạo thành công; một số mẫu có lỗi.' : 'Đã tạo list và lưu ZIP thành công.');
       run.completedAt = new Date().toISOString();
       run.updatedAt = run.completedAt;
       delete run.exportToken;

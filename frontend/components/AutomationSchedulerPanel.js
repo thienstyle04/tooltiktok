@@ -270,7 +270,13 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       <div className="automation-list automation-history" hidden={section!=='history'}>
         <h3>Lịch sử chạy</h3>
         {state.runs.length ? state.runs.map((run) => <article key={run.id}>
-          <div><strong>{run.scheduleName} — {STATUS_LABELS[run.status] || run.status}</strong><small>{new Date(run.scheduledFor).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {run.listIds.length} list</small><small>{run.phase}</small>{run.outputPath ? <small className="automation-path">{run.outputPath}</small> : null}</div>
+          <div><strong>{run.scheduleName} — {STATUS_LABELS[run.status] || run.status}</strong><small>{new Date(run.scheduledFor).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {run.listIds.length} list</small><small>{run.phase}</small>{run.outputPath ? <small className="automation-path">{run.outputPath}</small> : null}
+            {run.skippedLists?.length > 0 && <details><summary>{run.skippedLists.length} list bị bỏ qua do lỗi ảnh</summary>
+              {run.skippedLists.map(list => <div key={`${list.deckId}/${list.listId}`}><strong>{list.label || list.listId}</strong>
+                {list.errors.map((error, index) => <small key={index} style={{ overflowWrap: 'anywhere' }}>Trang {error.page} · {error.id || ''}: {error.reason}</small>)}
+              </div>)}
+            </details>}
+          </div>
           <div className="automation-run-progress"><span style={{ width: `${run.progress || 0}%` }} /></div>
           {!['queued','refreshing','warming','generating','awaiting-export','exporting'].includes(run.status) ? (
             <div className="automation-row-actions"><button type="button" disabled={busy || state.activeRunId === run.id} onClick={() => {

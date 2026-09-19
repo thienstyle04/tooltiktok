@@ -2,6 +2,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { NotFoundException } from '@nestjs/common';
+import { isLocalDataOnly } from '../sync/night-sync-policy';
 import {
   GuideItem,
   ImageLibraryFolderEntry,
@@ -730,6 +731,16 @@ export function createListImageResolver(
         : (item.imageUrl ? [item.imageUrl] : []),
     );
     const common = { candidateImageUrls: readyItemCandidates };
+    if (isLocalDataOnly()) {
+      const own = [item.imageUrl, ...readyItemCandidates].filter(Boolean).filter(url => {
+        const id = extractDriveFileIdFromProxyUrl(url);
+        return !id || hasDriveFileDiskCache(id);
+      });
+      if (item.imageSource === 'fallback' || !own.length) throw new Error(`Nhóm ${item.sectionKey}: thiếu 1 địa điểm có ảnh cache đúng chủ sở hữu (${item.name}). Hãy cập nhật dữ liệu.`);
+      const sorted = [...new Set(own)].sort((a, b) => stableHash(`${seed}:${item.id}:${a}`) - stableHash(`${seed}:${item.id}:${b}`));
+      const imageUrl = pickUnused(sorted) || rememberPicked(sorted[0]);
+      return { ...common, imageUrl, imageMapped: true, imageSource: item.imageSource, imageNote: 'Ảnh cache của đúng địa điểm' };
+    }
 
     if (!options?.forceFallback && item.imageSource === 'manual') {
       const manualCandidates = preferImageUrlsForResolverOptions(

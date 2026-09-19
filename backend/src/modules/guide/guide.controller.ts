@@ -274,11 +274,7 @@ export class GuideController {
 
   @Post('api/drive-files/cache-status')
   @HttpCode(200)
-  driveFilesCacheStatus(@Body() body: { fileIds?: string[] }): {
-    total: number;
-    cached: number;
-    missing: string[];
-  } {
+  driveFilesCacheStatus(@Body() body: { fileIds?: string[] }) {
     return this.guideService.getDriveFilesCacheStatus(Array.isArray(body?.fileIds) ? body.fileIds : []);
   }
 
@@ -405,9 +401,9 @@ export class GuideController {
   reportAutomationProgress(
     @Param('id') id: string,
     @Query('token') token: string,
-    @Body() request: { progress?: number; phase?: string },
+    @Body() request: { progress?: number; phase?: string; outcome?: any },
   ): void {
-    this.automationScheduler.reportProgress(id, token, Number(request?.progress), String(request?.phase || ''));
+    this.automationScheduler.reportProgress(id, token, Number(request?.progress), String(request?.phase || ''), request?.outcome);
   }
 
   @Post('api/automation/runs/:id/archive')
