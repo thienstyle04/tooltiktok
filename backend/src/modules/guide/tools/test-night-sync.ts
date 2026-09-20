@@ -84,6 +84,21 @@ async function main() {
     assert.equal(started, false);
     assert.equal(queued.status().sources[0].phase, 'paused');
     busy = false; await queuedJob; assert.equal(started, true);
+    let retryCalls = 0;
+    now = Date.parse('2026-09-19T16:00:00Z');
+    const partialRetry = new NightSyncCoordinator({ ...options, file: path.join(dir, 'partial-retry.json'),
+      sources: () => [{ id: 'dalat', label: 'Đà Lạt' }],
+      run: async () => { retryCalls++; return { downloaded: 709, failed: retryCalls === 2 ? 6 : 0, added: 413, changed: 3 }; },
+    });
+    await partialRetry.manual('dalat');
+    await partialRetry.manual('dalat');
+    assert.equal(partialRetry.status().sources[0].phase, 'partial');
+    assert.equal(partialRetry.status().sources[0].completedNight, undefined);
+    await partialRetry.tick(); assert.equal(retryCalls, 2);
+    now += 31 * 60000;
+    await partialRetry.tick(); assert.equal(retryCalls, 3);
+    assert.equal(partialRetry.status().sources[0].phase, 'complete');
+    console.log('PASS: partial manual update retries at night after backoff even after an earlier successful run.');
     console.log('PASS: Vietnam boundaries, no network without permit, explicit initial permit, cancellation, sequential sources, retry, no repeated successful sheet, report persistence');
   } finally { global.fetch = originalFetch; fs.rmSync(dir, { recursive: true, force: true }); }
 }

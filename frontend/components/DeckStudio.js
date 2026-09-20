@@ -795,8 +795,8 @@ export default function DeckStudio({ initialDataset = null }) {
       const updatedActive = await applyDestinationMutation(payload);
       const label = updatedActive?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
       const syncResult = payload.sync?.sources?.find(source => source.id === destinationId)?.result;
-      setManualSyncProgress(previous => ({ ...previous, phase: syncResult?.failed ? 'error' : 'complete', total: 0,
-        message: syncResult?.failed ? `Chưa hoàn tất: còn ${syncResult.failed} ảnh tải lỗi. Tạo list vẫn bị khóa; vui lòng cập nhật lại.` : 'Đã cập nhật dữ liệu thành công.' }));
+      setManualSyncProgress(previous => ({ ...previous, phase: 'complete', total: 0,
+        message: syncResult?.failed ? `Đã hoàn tất. Có thể tạo list bằng ảnh hợp lệ; ${syncResult.failed} ảnh lỗi bị loại và sẽ được thử lại trong lịch đêm 23:00–06:00 khi tool đang chạy.` : 'Đã cập nhật dữ liệu thành công.' }));
       setStatus(`Đã cập nhật ${label} từ Google Sheet (${payload.dataset?.source?.totalItems || 0} địa điểm).${syncResult?.failed ? ` Còn ${syncResult.failed} ảnh tải lỗi; xem Đồng bộ dữ liệu để biết chi tiết.` : ''}`);
       return updatedActive;
     } catch (error) {

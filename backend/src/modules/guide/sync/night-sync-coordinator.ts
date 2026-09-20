@@ -110,7 +110,7 @@ export class NightSyncCoordinator {
     this.running = id;
     this.controller = new AbortController();
     const signal = this.controller.signal;
-    state.phase = 'running'; state.progress = { stage: 'Đang chuẩn bị cập nhật' }; state.error = undefined; this.save();
+    state.phase = 'running'; state.result = undefined; state.progress = { stage: 'Đang chuẩn bị cập nhật' }; state.error = undefined; this.save();
     const waitForIdle = async () => {
       while (this.options.busy()) {
         state.phase = 'paused';
@@ -131,6 +131,7 @@ export class NightSyncCoordinator {
       }, progress => { state.progress = progress; }));
       state.initialized = true;
       state.phase = state.result.failed ? 'partial' : 'complete';
+      if (state.result.failed) state.completedNight = undefined;
       state.retryAt = state.result.failed ? this.now() + 30 * 60000 : undefined;
       if (!state.result.failed) {
         if (!initial || vietnamSyncWindow(this.now()).allowed) state.completedNight = night;
