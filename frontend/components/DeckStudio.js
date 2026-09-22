@@ -795,6 +795,12 @@ export default function DeckStudio({ initialDataset = null }) {
       const updatedActive = await applyDestinationMutation(payload);
       const label = updatedActive?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
       const syncResult = payload.sync?.sources?.find(source => source.id === destinationId)?.result;
+      if (syncResult?.hookErrors?.length) {
+        setManualSyncProgress(previous => ({ ...previous, phase: 'complete', total: 0,
+          message: `Đã cập nhật dữ liệu và ảnh; còn lỗi hook: ${syncResult.hookErrors.join(' · ')}. Mẫu thiếu hook chưa thể tạo; các mẫu đủ dữ liệu vẫn dùng được.` }));
+        setStatus('Cập nhật dữ liệu hoàn tất nhưng còn lỗi hook; xem chi tiết trong Dữ liệu & Cài đặt.');
+        return updatedActive;
+      }
       setManualSyncProgress(previous => ({ ...previous, phase: 'complete', total: 0,
         message: syncResult?.failed ? `Đã hoàn tất. Có thể tạo list bằng ảnh hợp lệ; ${syncResult.failed} ảnh lỗi bị loại và sẽ được thử lại trong lịch đêm 23:00–06:00 khi tool đang chạy.` : 'Đã cập nhật dữ liệu thành công.' }));
       setStatus(`Đã cập nhật ${label} từ Google Sheet (${payload.dataset?.source?.totalItems || 0} địa điểm).${syncResult?.failed ? ` Còn ${syncResult.failed} ảnh tải lỗi; xem Đồng bộ dữ liệu để biết chi tiết.` : ''}`);

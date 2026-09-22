@@ -128,7 +128,7 @@ const isGoogleDocHookDeck = (deckId: string): boolean =>
   deckId === 'spotlight-v6-diary' || isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
 import { ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './logic/itinerary-note';
-import { DIARY_TEMPLATE_VERSION, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
+import { DIARY_TEMPLATE_VERSION, DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
 import { ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
 const isTextNoteDeck = (deckId: string): boolean => deckId === 'summary-note' || deckId === 'itinerary-note-2days' || deckId === 'itinerary-note-timed';
 const isNonAiDeck = (deckId: string): boolean => deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
@@ -339,6 +339,23 @@ export class GuideService implements OnApplicationBootstrap {
         load: () => this.loadPreferredWorkbookSource(id),
         validate: source => this.validateWorkbookData(source),
         save: source => this.saveWorkbookSnapshot(source, true),
+        syncHooks: async manifest => {
+          if (id !== 'dalat') return [];
+          const errors: string[] = [];
+          for (const [key, label, store] of [
+            ['green', 'Hook Mảng xanh', this.greenHookSource],
+            ['dark', 'Hook Tone đen', this.darkHookSource],
+            ['persimmon', 'Hook Mùa hồng', this.persimmonHookSource],
+          ] as const) {
+            try {
+              const url = manifest.hookSourceGroups?.[key];
+              if (!url) throw new Error('Thiếu link Google Docs trong Sheet Hinh_nen.');
+              await store.ensureReady(url, true);
+              if (store.getLastError()) errors.push(`${label}: ${store.getLastError()} (giữ cache hợp lệ trước đó).`);
+            } catch (error) { errors.push(`${label}: ${error instanceof Error ? error.message : String(error)}`); }
+          }
+          return errors;
+        },
         publish: async (source, manifest) => {
           while (this.syncMustWait()) await new Promise(resolve => setTimeout(resolve, 250));
           if (!hasSyncPermit()) throw new Error('Đã hết khung giờ cập nhật.');
@@ -1641,7 +1658,7 @@ export class GuideService implements OnApplicationBootstrap {
         context.hinhNenImagePools,
       );
       if (deckId === 'spotlight-v6-diary') {
-        // Only warm the selected ten images; never stall other templates on this pool.
+        // Only warm selected images; never stall other templates on this pool.
         context.itemsBySection = this.cloneJson(context.itemsBySection);
         context.hinhNenImagePools = this.cloneJson(context.hinhNenImagePools);
         for (;;) {
@@ -1756,7 +1773,7 @@ export class GuideService implements OnApplicationBootstrap {
       : isTextNoteDeck(deckId) ? [] : finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
     if (deckId === 'spotlight-v6-diary') {
-      if (generatedPages.length !== 10) throw new BadRequestException('Spotlight Nhật ký phải có đúng 10 trang.');
+      if (generatedPages.length !== DIARY_PAGE_COUNT) throw new BadRequestException(`Spotlight Nhật ký phải có đúng ${DIARY_PAGE_COUNT} trang.`);
       generatedList.postCaption = DIARY_CAPTION;
       generatedList.captionBody = '';
       generatedList.captionHashtags = ['#dalat', '#reviewdalat', '#dalatreview', '#dalatdidau', '#dalattrip'];
@@ -1865,6 +1882,24 @@ export class GuideService implements OnApplicationBootstrap {
     throw new Error('DeepSeek fetch thất bại.');
   }
 
+  private async prepareV4CaptionDeck(): Promise<GuideDeck> {
+    await this.prepareWorkbookForDataset(false);
+    const context = await this.buildLocallyVerifiedGenerationContext();
+    const deck = context.decks.find(entry => entry.id === 'spotlight-v4');
+    try {
+      // Rebuild from verified local candidates, never from a stale/empty preview.
+      // Fresh sets keep this preflight from consuming the user's rotation.
+      const pages = await withLocalDataOnly(async () => buildPagesForDeck(
+        'spotlight-v4', context.itemsBySection, context.imageUrls, context.imageLibraryEntries,
+        'spotlight-v4-preflight', new Set(), new Set(), context.coverImageUrls, context.hinhNenImagePools,
+      ));
+      const list = buildDeckList('spotlight-v4', 'preflight', 'Kiểm tra V4', 'Spotlight V4', '', pages);
+      return { ...(deck || { id: 'spotlight-v4', navTitle: 'Spotlight V4', title: 'Spotlight V4', description: '' }), lists: [list] };
+    } catch (error) {
+      throw new BadRequestException(`Không thể tạo Spotlight V4: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   async generateBatchLists(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
     const requestId = String(request.requestId || '').trim().slice(0, 100);
     if (requestId) {
@@ -1897,6 +1932,11 @@ export class GuideService implements OnApplicationBootstrap {
       : 5;
 
     if (isNonAiDeck(deckId)) {
+      // Check themed hook availability once before attempting the entire batch.
+      const themedHook = deckId === 'spotlight-v6-green' ? this.greenHookSource
+        : deckId === 'spotlight-v6-dark' ? this.darkHookSource
+        : deckId === 'spotlight-v6-persimmon' ? this.persimmonHookSource : null;
+      if (themedHook) await withLocalDataOnly(() => themedHook.ensureReady(''));
       const results: Array<{ listId: string; navTitle: string; tone: string }> = [];
       let failCount = 0;
       const errors: Array<{ index: number; tone: string; message: string }> = [];
@@ -1928,6 +1968,7 @@ export class GuideService implements OnApplicationBootstrap {
       );
     }
 
+    const v4CaptionDeck = deckId === 'spotlight-v4' ? await this.prepareV4CaptionDeck() : null;
     const toneRotation: DeepSeekCaptionResponse['tone'][] = [
       'gen_z',
       'tinh_te',
@@ -1948,8 +1989,7 @@ export class GuideService implements OnApplicationBootstrap {
     for (let i = 0; i < count; i++) {
       const tone = toneRotation[(startToneIndex + i) % toneRotation.length];
       try {
-        const dataset = await this.getDataset();
-        const deck = dataset.decks.find((d) => d.id === deckId);
+        const deck = v4CaptionDeck || (await this.getDataset()).decks.find((d) => d.id === deckId);
         if (!deck) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
 
         const deckList = deck.lists[0];
@@ -2303,11 +2343,25 @@ export class GuideService implements OnApplicationBootstrap {
     // Clone before filtering: saved snapshots and the currently visible dataset must not change.
     const context = this.cloneJson(this.buildDatasetContext());
     const pool = { items: context.itemsBySection, images: context.imageUrls, covers: context.coverImageUrls, backgrounds: context.hinhNenImagePools, library: context.imageLibraryEntries };
-    const ids = [...new Set(Array.from(JSON.stringify(pool).matchAll(/\/assets\/drive-file\?id=([a-zA-Z0-9_-]+)/g), match => match[1]))];
+    const proxyId = (value: string): string => {
+      let parsed: URL;
+      try { parsed = new URL(value, 'http://localhost'); } catch { return ''; }
+      return parsed.pathname === '/assets/drive-file' ? extractDriveFileIdFromProxyUrl(value) : '';
+    };
+    const collected = new Set<string>();
+    const collect = (value: any): void => {
+      if (typeof value === 'string') { const id = proxyId(value); if (id) collected.add(id); }
+      else if (value && typeof value === 'object') Object.values(value).forEach(collect);
+    };
+    collect(pool);
+    const ids = [...collected];
     const valid = new Set((await verifyDriveFileCache(ids)).filter(image => image.status === 'valid').map(image => image.id));
     const filter = (value: any): any => {
       if (typeof value === 'string') {
-        const id = extractDriveFileIdFromProxyUrl(value);
+        // This traversal includes IDs and copy, not only image fields. The generic
+        // Drive extractor also accepts bare identifiers such as "quan_an-123".
+        // Only local proxy URLs belong to the cache-filtering contract here.
+        const id = proxyId(value);
         return id && !valid.has(id) ? '' : value;
       }
       if (Array.isArray(value)) return value.map(filter).filter(item => item !== '');

@@ -15,6 +15,10 @@ async function main() {
   fs.writeFileSync(path.join(dir, 'good_image_id.json'), JSON.stringify({ contentType: 'image/png', contentLength: body.length }));
   const good = '/assets/drive-file?id=good_image_id', bad = '/assets/drive-file?id=bad_image_id';
   const context: any = { itemsBySection: { quan_an: [{ id: 'owner-a', imageUrl: bad, candidateImageUrls: [bad, good], mapImageUrl: bad, mapCandidateImageUrls: [bad] }] }, imageUrls: [bad, good], coverImageUrls: [bad], hinhNenImagePools: { random: [bad, good] }, imageLibraryEntries: [], decks: [{ lists: [{ pages: [{ backgroundImage: bad }] }] }] };
+  context.itemsBySection.quan_an[0].id = 'quan_an-123';
+  context.itemsBySection.quan_an[0].name = 'GreenLand';
+  context.itemsBySection.quan_an[0].sectionKey = 'quan_an';
+  context.itemsBySection.quan_an[0].diaryDescriptionRaw = 'Wonderful';
   const service: any = Object.create(GuideService.prototype);
   service.buildDatasetContext = () => context;
   service.cloneJson = (value: any) => JSON.parse(JSON.stringify(value));
@@ -23,9 +27,21 @@ async function main() {
   assert.equal(JSON.stringify(context), original);
   assert.deepEqual(filtered.imageUrls, [good]);
   assert.equal(filtered.itemsBySection.quan_an[0].imageUrl, good);
-  assert.equal(filtered.itemsBySection.quan_an[0].id, 'owner-a');
+  assert.equal(filtered.itemsBySection.quan_an[0].id, 'quan_an-123');
+  assert.equal(filtered.itemsBySection.quan_an[0].name, 'GreenLand');
+  assert.equal(filtered.itemsBySection.quan_an[0].sectionKey, 'quan_an');
+  assert.equal(filtered.itemsBySection.quan_an[0].diaryDescriptionRaw, 'Wonderful');
   assert.equal(filtered.itemsBySection.quan_an[0].mapImageUrl, '');
   assert.equal(filtered.decks[0].lists[0].pages[0].backgroundImage, bad, 'Saved list must remain unchanged');
+  const reordered = '/assets/drive-file?preview=1&id=good_image_id';
+  const reorderedContext = structuredClone(context);
+  reorderedContext.itemsBySection.quan_an[0].imageUrl = reordered;
+  reorderedContext.itemsBySection.quan_an[0].candidateImageUrls = [reordered];
+  reorderedContext.imageUrls = [reordered];
+  reorderedContext.hinhNenImagePools.random = [reordered];
+  service.buildDatasetContext = () => reorderedContext;
+  const reorderedFiltered = await service.buildLocallyVerifiedGenerationContext();
+  assert.equal(reorderedFiltered.itemsBySection.quan_an[0]?.imageUrl, reordered, 'Query order must not discard a valid cached image');
   await withSyncPermit({ manual: true, signal: new AbortController().signal, waitForIdle: async () => {} }, () => withLocalDataOnly(async () => {
     assert.equal(hasSyncPermit(), false);
     await assert.rejects(syncFetch('https://example.invalid'), /cục bộ/);

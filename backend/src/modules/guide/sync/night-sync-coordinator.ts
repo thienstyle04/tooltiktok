@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { vietnamSyncWindow, withSyncPermit } from './night-sync-policy';
 
-export interface NightSourceResult { downloaded: number; failed: number; added: number; changed: number; }
+export interface NightSourceResult { downloaded: number; failed: number; added: number; changed: number; hookErrors?: string[]; }
 export interface SyncProgress { stage: string; completed?: number; total?: number; failed?: number; }
 interface SourceState {
   progress?: SyncProgress;
@@ -130,10 +130,11 @@ export class NightSyncCoordinator {
         this.save();
       }, progress => { state.progress = progress; }));
       state.initialized = true;
-      state.phase = state.result.failed ? 'partial' : 'complete';
-      if (state.result.failed) state.completedNight = undefined;
-      state.retryAt = state.result.failed ? this.now() + 30 * 60000 : undefined;
-      if (!state.result.failed) {
+      const incomplete = state.result.failed || state.result.hookErrors?.length;
+      state.phase = incomplete ? 'partial' : 'complete';
+      if (incomplete) state.completedNight = undefined;
+      state.retryAt = incomplete ? this.now() + 30 * 60000 : undefined;
+      if (!incomplete) {
         if (!initial || vietnamSyncWindow(this.now()).allowed) state.completedNight = night;
         state.lastSuccess = new Date(this.now()).toISOString();
       }

@@ -4,7 +4,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { isLocalDataOnly } from './night-sync-policy';
+import { isLocalDataOnly, syncFetch } from './night-sync-policy';
 import { BUNDLED_SECTION_HOOKS, BUNDLED_SPOTLIGHT_HOOKS } from './hook-fallbacks';
 
 const DEFAULT_DOC_ID = '1NGgDbpoUGDormMJKlMdYJoYWAt-nmVq_neDSH3PyueE';
@@ -97,7 +97,7 @@ function writeDiskCache(dataRoot: string, cache: SpotlightHookCache, cacheFileNa
 
 async function fetchHookDocument(docId: string): Promise<string> {
   const url = `https://docs.google.com/document/d/${encodeURIComponent(docId)}/export?format=txt`;
-  const response = await fetch(url, {
+  const response = await syncFetch(url, {
     headers: { 'User-Agent': USER_AGENT },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     redirect: 'follow',

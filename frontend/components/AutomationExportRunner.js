@@ -5,11 +5,6 @@ import { exportBatch } from '../lib/exportClient';
 import { fetchGuideDataset } from '../lib/apiClient';
 import { sanitizeDataset } from '../lib/utils';
 
-function backendUrl(path) {
-  const host = window.location.hostname || '127.0.0.1';
-  return `http://${host}:3000${path}`;
-}
-
 async function readError(response, fallback) {
   try {
     const payload = await response.json();
@@ -26,7 +21,8 @@ export default function AutomationExportRunner({ runId, token }) {
   useEffect(() => {
     let stopped = false;
     let lastReportAt = 0;
-    const endpoint = (suffix) => backendUrl(`/api/automation/runs/${encodeURIComponent(runId)}${suffix}?token=${encodeURIComponent(token)}`);
+    // Use the configured server-side proxy, not a hard-coded backend port.
+    const endpoint = (suffix) => `/api/automation/runs/${encodeURIComponent(runId)}${suffix}?token=${encodeURIComponent(token)}`;
     const report = async (value, phase) => {
       if (stopped) return;
       setProgress(Math.max(0, Math.min(100, Number(value) || 0)));

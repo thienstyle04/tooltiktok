@@ -88,19 +88,19 @@ try {
   assert.equal(merged[0].lists[0].coverTitle, 'Cover gốc');
   assert.equal(merged[0].lists[0].pages[0].subtitle, '');
   const generatedAfterCoverRule = merged[0].lists.find((list: GuideDeckList) => list.id === generated.id);
-  assert.equal(generatedAfterCoverRule.pages[0].title, 'Cover gốc');
-  assert.equal(generatedAfterCoverRule.pages[0].subtitle, '');
+  assert.equal(generatedAfterCoverRule.pages[0].title, 'Cover AI riêng');
+  assert.equal(generatedAfterCoverRule.pages[0].subtitle, 'Mô tả cover AI riêng');
   structuredPages = service.applyMainTemplateFieldStructure(deck, generated.pages);
-  assert.equal(structuredPages[0].title, 'Cover gốc');
-  assert.equal(structuredPages[0].subtitle, '');
+  assert.equal(structuredPages[0].title, 'Cover AI riêng');
+  assert.equal(structuredPages[0].subtitle, 'Mô tả cover AI riêng');
 
   const blankCoverMain = baseList('blank-cover-main', 'List chính');
   blankCoverMain.pages[0].title = '';
   blankCoverMain.pages[0].subtitle = '';
   const blankCoverDeck = { ...deck, id: 'blank-cover-deck', lists: [blankCoverMain] };
   const blankCoverChildPages = service.applyMainTemplateFieldStructure(blankCoverDeck, generated.pages);
-  assert.equal(blankCoverChildPages[0].title, '');
-  assert.equal(blankCoverChildPages[0].subtitle, '');
+  assert.equal(blankCoverChildPages[0].title, 'Cover AI riêng');
+  assert.equal(blankCoverChildPages[0].subtitle, 'Mô tả cover AI riêng');
 
   service.activeDestinationId = 'greenland';
   merged = service.mergeGeneratedLists([deck]);

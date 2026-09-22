@@ -1,7 +1,7 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { isLocalDataOnly } from './night-sync-policy';
+import { isLocalDataOnly, syncFetch } from './night-sync-policy';
 
 import { parseFestivalHookText } from './festival-hook-source';
 
@@ -48,7 +48,7 @@ function docIdFromUrl(value: unknown, options: ThemedHookSourceOptions): string 
 }
 
 async function fetchHookDocument(docId: string, options: ThemedHookSourceOptions): Promise<string> {
-  const response = await fetch(
+  const response = await syncFetch(
     `https://docs.google.com/document/d/${encodeURIComponent(docId)}/export?format=txt`,
     {
       headers: { 'User-Agent': options.userAgent },
@@ -84,7 +84,7 @@ export class ThemedHookSourceStore {
 
   async ensureReady(docUrl: string, forceRefresh = false): Promise<void> {
     if (isLocalDataOnly()) {
-      if (!this.getCachedHooks().length) throw new Error('Chưa có cache hook. Hãy cập nhật dữ liệu trước khi tạo list.');
+      if (!this.getCachedHooks().length) throw new Error(`Chưa có cache ${this.options.label}. Hãy cập nhật dữ liệu trước khi tạo list.`);
       return;
     }
     const normalizedUrl = String(docUrl || '').trim();
@@ -174,6 +174,8 @@ export class ThemedHookSourceStore {
   rollback(reservation: ThemedHookReservation | null): void {
     if (reservation) this.reservations.delete(reservation.token);
   }
+
+  getLastError(): string | undefined { return this.state?.lastError; }
 
   getCachedHooks(): string[] {
     return this.state?.hooks ? [...this.state.hooks] : [];
