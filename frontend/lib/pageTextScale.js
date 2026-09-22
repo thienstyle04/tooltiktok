@@ -7,12 +7,12 @@ export function resetPageTextScale(root) {
   }
 }
 
-export function renderedTextSizes(page) {
+export function renderedTextSizes(page, { hiddenPreview = false } = {}) {
   if (!page) return [];
   return [...new Set([page, ...page.querySelectorAll('*')].filter(node =>
     !['STYLE', 'SCRIPT', 'SVG', 'PATH'].includes(node.tagName) &&
     [...node.childNodes].some(child => child.nodeType === 3 && child.textContent.trim()) &&
-    node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden'
+    node.getClientRects().length && (hiddenPreview || getComputedStyle(node).visibility !== 'hidden')
   ).map(node => Math.round(parseFloat(getComputedStyle(node).fontSize) * 100) / 100).filter(Number.isFinite))].sort((a, b) => a - b);
 }
 

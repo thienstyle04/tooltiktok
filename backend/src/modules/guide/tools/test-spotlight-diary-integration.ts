@@ -62,12 +62,13 @@ async function main() {
     await s.generateDeckFromCaption(request);
     const lists = s.generatedListsByDeckId.get(deck.id);
     for (const list of lists) {
-      assert.equal(list.pages.length, 10);
-      assert.equal(new Set(list.pages.map((p: any) => diaryImageId(p.backgroundImage))).size, 10);
+      assert.equal(list.pages.length, 12);
+      assert.equal(new Set(list.pages.map((p: any) => diaryImageId(p.backgroundImage))).size, 12);
       assert.deepEqual(list.pages.slice(3).map((p: any) => p.items[0].sourceSectionKey), DIARY_ORDER);
       assert.ok(getCachedSpotlightV3Hooks().includes(list.pages[0].title));
       for (const p of list.pages.slice(3)) {
         const item = items[p.items[0].sourceSectionKey].find((i: any) => i.id === p.items[0].id);
+        assert.ok(item, `Snapshot source missing: ${JSON.stringify(p.items[0])}; available IDs: ${items[p.items[0].sourceSectionKey].map((i: any) => i.id).join(',')}`);
         assert.ok(item.isPartner);
         assert.ok(diaryDescriptionLines(item.diaryDescriptionRaw).includes(p.title));
         assert.equal(p.items[0].metaPrimary, item.address);

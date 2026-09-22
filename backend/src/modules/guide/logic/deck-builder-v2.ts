@@ -1300,6 +1300,8 @@ export function buildSpotlightV6DarkPages(
 }
 
 const SPOTLIGHT_V6_MAPS_VENUE_COUNT = 7;
+const mapsVenueKey = (item: GuideItem): string =>
+  `${normalizeText(item.name)}|${normalizeText(item.address)}`;
 
 /** Các dòng có cả ảnh Maps riêng và ảnh thật của chính địa điểm. */
 export function spotlightV6MapsVenuePool(itemsBySection: WorkbookItemsBySection): GuideItem[] {
@@ -1310,7 +1312,7 @@ export function spotlightV6MapsVenuePool(itemsBySection: WorkbookItemsBySection)
     .filter((item) => hasOwnImage(item))
     .filter((item) => Boolean(String(item.mapImageUrl || '').trim()) || Boolean((item.mapCandidateImageUrls || []).some(Boolean)))
     .filter((item) => {
-      const key = `${normalizeText(item.name)}|${normalizeText(item.address)}`;
+      const key = mapsVenueKey(item);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -1344,28 +1346,36 @@ export function buildSpotlightV6MapsPages(common: DeckBuildCommon, seedPrefix: s
     const missingReal = withMaps.filter((item) => !hasOwnImage(item)).map((item) => item.name).slice(0, 8);
     const missingMaps = declaredMaps.filter((item) => !item.mapImageUrl && !item.mapCandidateImageUrls?.length).map((item) => item.name).slice(0, 8);
     throw new Error(
-      `Mẫu Spotlight V6 Google Maps cần 7 địa điểm hợp lệ; hiện có ${withMaps.length}/${declaredMaps.length || withMaps.length} địa điểm tải được Maps và ${pool.length} địa điểm có cả ảnh thật.`
+      `Mẫu Spotlight V6 Google Maps cần 4 đối tác + 3 Check-in; hiện có ${pool.filter(item => item.isPartner).length}/4 đối tác, ${pool.filter(item => item.sectionKey === 'check_in' && !item.isPartner).length}/3 Check-in có cả ảnh Maps và ảnh thật.`
       + (missingMaps.length ? ` Thiếu/không truy cập được Maps: ${missingMaps.join(', ')}.` : '')
       + (missingReal.length ? ` Thiếu ảnh thật: ${missingReal.join(', ')}.` : ''),
     );
   }
 
-  const foodPool = pool.filter((item) => item.sectionKey === 'quan_an');
-  const otherPool = pool.filter((item) => item.sectionKey !== 'quan_an');
+  const foodPool = pool.filter((item) => item.isPartner);
+  const otherPool = pool.filter((item) => item.sectionKey === 'check_in' && !item.isPartner);
   if (foodPool.length < 4 || otherPool.length < 3) {
-    throw new Error(`Spotlight Google Maps cần xen kẽ 4 Quán ăn và 3 địa điểm nhóm khác có cả ảnh Maps và ảnh thật; hiện có ${foodPool.length}/4 Quán ăn, ${otherPool.length}/3 địa điểm nhóm khác.`);
+    throw new Error(`Spotlight Google Maps cần xen kẽ 4 đối tác và 3 Check-in không thuộc nhóm đối tác có cả ảnh Maps và ảnh thật; hiện có ${foodPool.length}/4 đối tác, ${otherPool.length}/3 Check-in.`);
   }
-  const pick = createListPicker(common.globalUsedItemIds);
-  const food = pick(foodPool, 4, `${seedPrefix}:maps-food`);
-  const others = pick(otherPool, 3, `${seedPrefix}:maps-other`);
+  // Row IDs/mapping IDs may collide across sheets. The pool has already
+  // deduplicated physical venues by name + address; use that same identity here.
+  const usedVenues = common.globalUsedItemIds || new Set<string>();
+  const pick = (items: GuideItem[], count: number, seed: string) => [...items].sort((a, b) => {
+    const wasUsed = (item: GuideItem) => usedVenues.has('maps:' + mapsVenueKey(item))
+      || usedVenues.has(itemUsageKey(item)) || usedVenues.has(normalizeText(item.name));
+    return Number(wasUsed(a)) - Number(wasUsed(b))
+      || stableHash(seed + mapsVenueKey(a)) - stableHash(seed + mapsVenueKey(b));
+  }).slice(0, count);
+  const food = pick(foodPool, 4, `${seedPrefix}:maps-partner`);
+  const others = pick(otherPool, 3, `${seedPrefix}:maps-checkin`);
   const venues = food.flatMap((item, index) => others[index] ? [item, others[index]] : [item]);
   if (venues.length < SPOTLIGHT_V6_MAPS_VENUE_COUNT) {
     throw new Error(`Mẫu Spotlight V6 Google Maps không chọn đủ 7 địa điểm không trùng (${venues.length}/7).`);
   }
 
   const listUsedImages = new Set<string>();
-  const globalUsedImages = common.globalUsedImageUrls || new Set<string>();
-  return venues.flatMap((item, index): DeckPage[] => {
+  const globalUsedImages = new Set(common.globalUsedImageUrls);
+  const pages = venues.flatMap((item, index): DeckPage[] => {
     const mapImage = pickMapsImage(
       [item.mapImageUrl || '', ...(item.mapCandidateImageUrls || [])],
       `${seedPrefix}:map:${index}`,
@@ -1413,6 +1423,12 @@ export function buildSpotlightV6MapsPages(common: DeckBuildCommon, seedPrefix: s
     };
     return [mapPage, placePage];
   });
+  venues.forEach(item => {
+    common.globalUsedItemIds?.add('maps:' + mapsVenueKey(item));
+    common.globalUsedItemIds?.add(itemUsageKey(item));
+  });
+  listUsedImages.forEach(url => common.globalUsedImageUrls?.add(url));
+  return pages;
 }
 const SPOTLIGHT_V5_HOOK = 'có nhạc rồi đi Đà Lạt thoiiii';
 const SPOTLIGHT_V5_PLAYLIST = [
@@ -2152,12 +2168,12 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
   'spotlight-v6-maps': {
     nav: 'Spotlight V6 Google Maps',
     title: 'Spotlight V6 Google Maps',
-    description: 'Đà Lạt 14 trang: 4 Quán ăn xen kẽ 3 địa điểm nhóm khác; mỗi địa điểm gồm ảnh Maps và ảnh thật.',
+    description: 'Đà Lạt 14 trang: 4 đối tác từ mọi nhóm xen kẽ 3 Check-in; mỗi địa điểm gồm ảnh Maps và ảnh thật.',
     listName: 'List Spotlight V6 Google Maps',
   },
   'spotlight-v6-diary': {
     nav: 'Spotlight Nhật ký Đà Lạt', title: 'Spotlight Nhật ký Đà Lạt — Thử nghiệm',
-    description: '10 trang khổ 3:4: 3 ảnh Random, 4 đối tác Quán ăn và 3 đối tác Cafe; mỗi địa điểm một câu mô tả nguồn.',
+    description: '12 trang khổ 3:4: 3 ảnh Random, 5 đối tác Quán ăn và 4 đối tác Cafe; mỗi địa điểm một câu mô tả nguồn.',
     listName: 'Spotlight Nhật ký Đà Lạt',
   },
   'itinerary-note-2days': { nav: 'Lịch trình Note 2 ngày', title: 'Lịch trình Note 2 ngày', description: 'Hai trang ghi chú, mỗi trang một ngày với 7 hoạt động đa dạng.', listName: 'Lịch trình Note 2 ngày' },

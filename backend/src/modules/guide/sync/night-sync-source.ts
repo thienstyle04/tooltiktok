@@ -11,6 +11,7 @@ interface SourceHooks {
   load: () => SheetWorkbookSource | null;
   validate: (source: SheetWorkbookSource) => void;
   save: (source: SheetWorkbookSource) => void;
+  syncHooks?: (manifest: SheetDriveImageManifest) => Promise<string[]>;
   publish: (source: SheetWorkbookSource, manifest: SheetDriveImageManifest) => Promise<void>;
 }
 
@@ -46,10 +47,12 @@ export async function syncNightSource(config: DestinationConfig, sheetDone: bool
       completed: value.skipped + value.ok + value.fail, failed: value.fail }),
   });
   if (!hasSyncPermit()) throw new Error('Đã hết khung giờ; ảnh hoàn chỉnh được giữ cho lượt sau.');
+  hooks.progress?.({ stage: 'Đang cập nhật hook theo chủ đề' });
+  const hookErrors = await hooks.syncHooks?.(manifest) || [];
   hooks.progress?.({ stage: 'Đang công bố dữ liệu mới' });
   await hooks.publish(source, manifest);
   return {
-    downloaded: warmed.ok, failed: warmed.fail,
+    downloaded: warmed.ok, failed: warmed.fail, hookErrors,
     added: Object.keys(manifest.items).filter(key => !previous.items[key]).length,
     changed: Object.entries(manifest.items).filter(([key, value]) => previous.items[key] && JSON.stringify(previous.items[key]) !== JSON.stringify(value)).length,
   };

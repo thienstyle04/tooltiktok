@@ -134,7 +134,10 @@
   .studio-workflow .status-strip{margin-inline:16px;}
   .studio-workflow .studio-pane-switch{display:flex;padding:8px 16px;}
   .studio-workflow .workspace-grid.preview-mode,.studio-workflow .workspace-grid.caption-mode{display:block;}
-  .studio-workflow[data-editor-pane="preview"] .preview-mode>.right-panel,.studio-workflow[data-editor-pane="editor"] .preview-mode>.studio-editor-preview{display:none;}
+  .studio-workflow[data-editor-pane="preview"] .preview-mode>.right-panel{display:none;}
+  /* Keep the page laid out for typography measurement while editing. Hidden
+     controls cannot receive keyboard focus and do not occupy the editor area. */
+  .studio-workflow[data-editor-pane="editor"] .preview-mode>.studio-editor-preview{position:fixed;left:-10000px;top:0;width:calc(100vw - 32px);visibility:hidden;pointer-events:none;}
   .studio-workflow .right-panel{position:static;}
   .studio-workflow .studio-library{margin:16px;}
   .studio-workflow .studio-library-filters{grid-template-columns:1fr;}

@@ -9,6 +9,7 @@ async function main() {
   let destination = 'dalat', running = 0, peak = 0;
   const calls: any[] = [];
   s.guideService = {
+    getNightSyncStatus: () => ({ running: null, queued: [] }),
     getDestinations: () => ({ active: { id: destination }, destinations: [{ id: 'dalat' }, { id: 'greenland' }] }),
     getHookSources: () => ({ mode: 'normal', activeSourceId: '' }),
     setActiveDestination: async ({ id }: any) => { destination = id; },

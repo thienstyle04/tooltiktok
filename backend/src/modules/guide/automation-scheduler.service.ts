@@ -60,6 +60,13 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     this.runQueue = this.runQueue.then(async () => {
       while (this.manualExportUntil > Date.now() && job.status === 'queued') await new Promise(resolve => setTimeout(resolve, 500));
       if (job.status !== 'queued') return;
+      try {
+        await this.waitForExistingSync(() => job.status !== 'queued');
+      } catch (error) {
+        job.status = 'failed'; job.error = error instanceof Error ? error.message : String(error);
+        return;
+      }
+      if (job.status !== 'queued') return;
       this.manualActiveId = job.id;
       job.status = 'running';
       const previousDestination = this.guideService.getDestinations().active.id;
@@ -429,6 +436,14 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       this.touch(run, false);
       await new Promise((resolve) => setTimeout(resolve, 1_000));
     }
+    // Do not mark generation busy while waiting for an existing sync: the
+    // coordinator checks that flag before downloading/publishing each source.
+    try {
+      await this.waitForExistingSync(() => Boolean(run.cancelRequested));
+    } catch (error) {
+      this.failRun(run, error instanceof Error ? error.message : String(error));
+      return;
+    }
     this.activeRunId = run.id;
     run.startedAt = new Date().toISOString();
     let previousDestination = '';
@@ -439,8 +454,12 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       this.assertHookSelectionReady(run);
       await this.assertFrontendReady();
       previousDestination = this.guideService.getDestinations().active.id;
-      run.status = 'refreshing'; run.progress = 3; run.phase = 'Đang tải Google Sheet mới nhất...'; this.touch(run);
-      await this.guideService.refreshDestinationFromSheet(run.destinationId);
+      run.status = 'refreshing'; run.progress = 3; run.phase = 'Đang mở dữ liệu cục bộ của nguồn...'; this.touch(run);
+      // A scheduled generation is not an explicit manual sync. Refreshing here
+      // also deadlocks: the sync coordinator yields while this run is active.
+      if (previousDestination !== run.destinationId) {
+        await this.guideService.setActiveDestination({ id: run.destinationId });
+      }
       this.assertNotCancelled(run);
       run.status = 'warming'; run.progress = 12; run.phase = 'Đang chuẩn bị cache ảnh...'; this.touch(run);
       await this.waitForDriveCache(run);
@@ -497,6 +516,16 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       }
       this.activeRunId = '';
       this.persist();
+    }
+  }
+
+  private async waitForExistingSync(cancelled: () => boolean): Promise<void> {
+    const deadline = Date.now() + 15 * 60 * 1000;
+    while (!cancelled()) {
+      const sync = this.guideService.getNightSyncStatus();
+      if (!sync.running && !sync.queued.length) return;
+      if (Date.now() >= deadline) throw new Error('Cập nhật dữ liệu chưa hoàn tất sau 15 phút. Hãy chờ cập nhật xong rồi tạo lại.');
+      await new Promise(resolve => setTimeout(resolve, 250));
     }
   }
 

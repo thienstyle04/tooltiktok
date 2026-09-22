@@ -13,7 +13,10 @@ function item(sectionKey: SectionKey, index: number): GuideItem {
   const id = `${sectionKey}-${index}`;
   const fileId = `all-decks-${id}`;
   const imageUrl = `/assets/drive-file?id=${fileId}`;
+  const mapId = `all-decks-map-${id}`;
+  const mapImageUrl = `/assets/drive-file?id=${mapId}`;
   allFileIds.push(fileId);
+  allFileIds.push(mapId);
   const type = sectionKey === 'quan_an'
     ? (index % 3 === 0 ? 'An sang' : index % 3 === 1 ? 'An trua' : 'An toi lau nuong')
     : sectionKey === 'check_in'
@@ -44,6 +47,9 @@ function item(sectionKey: SectionKey, index: number): GuideItem {
     imageMappingKey: id,
     imageSource: 'manual',
     candidateImageUrls: [imageUrl],
+    mapImageUrl,
+    mapCandidateImageUrls: [mapImageUrl],
+    diaryDescriptionRaw: 'View Đà Lạt đẹp\nQuán xinh',
   };
 }
 
@@ -79,6 +85,9 @@ function deckSignatures() {
       '/assets/drive-file?id=all-decks-cover-1',
       '/assets/drive-file?id=all-decks-cover-2',
     ],
+    undefined,
+    undefined,
+    { default: [], green: [], dark: [], random: [1, 2, 3].map(i => `/assets/drive-file?id=all-decks-random-${i}`) },
   );
   return Object.fromEntries(decks.map((deck) => {
     const main = deck.lists.find((list) => list.id === `${deck.id}-main`) || deck.lists[0];
@@ -86,6 +95,18 @@ function deckSignatures() {
     assert.ok(main.pages.length > 0, `${deck.id}: list mau khong co trang`);
     main.pages.forEach((page, index) => {
       if (page.type !== 'list' || page.layoutVariant === 'one-way-story-road') return;
+      // V5 page two is an intentional full-photo playlist, not a venue list.
+      if (page.layoutVariant === 'spotlight-v5-playlist') {
+        assert.equal(page.items.length, 0);
+        assert.ok(page.backgroundImage, 'Playlist still requires its selected image');
+        return;
+      }
+      // Diary's first three full-photo opening pages intentionally have no venues.
+      if (deck.id === 'spotlight-v6-diary' && index < 3) {
+        assert.equal(page.items.length, 0);
+        assert.ok(page.backgroundImage);
+        return;
+      }
       assert.ok(page.items.length > 0, `${deck.id} trang ${index + 1}: khong duoc mat toan bo item`);
     });
     return [deck.id, main.pages.map(pageSignature)];

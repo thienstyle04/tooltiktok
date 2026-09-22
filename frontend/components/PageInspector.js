@@ -36,7 +36,7 @@ export default function PageInspector({
   useEffect(() => {
     const read = () => {
       const article = [...document.querySelectorAll('.slide-card-content article')].find(node => node.dataset.listId === list?.id && Number(node.dataset.pageIndex) === selectedPageIndex);
-      const next = renderedTextSizes(article);
+      const next = renderedTextSizes(article, { hiddenPreview: !!article?.closest('.studio-editor-preview') });
       setActualSizes(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
     };
     setActualSizes([]);

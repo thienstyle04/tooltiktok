@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { syncStatusLabel } from '../lib/syncStatusLabel.mjs';
 
 function formatCount(count) {
   return typeof count === 'number' && Number.isFinite(count)
@@ -204,9 +205,10 @@ export default function SettingsPanel({
             <p>{nightSync.running ? `Đang xử lý: ${nightSync.sources?.find(s => s.id === nightSync.running)?.label || nightSync.running}` : nightSync.allowed ? 'Trong khung cập nhật tự động' : 'Tự động chờ 23:00 giờ Việt Nam'}</p>
             {nightSync.queued?.length > 0 && <p>Yêu cầu thủ công đang chờ/xử lý: {nightSync.queued.join(', ')}</p>}
             <div className="settings-night-sources">{nightSync.sources?.map(source => <p key={source.id}>
-              <strong>{source.label}</strong>: {({ waiting: 'Chờ cập nhật', running: 'Đang cập nhật', paused: 'Đang chờ tác vụ tạo/xuất', complete: 'Hoàn tất', partial: source.result ? 'Hoàn tất, còn ảnh lỗi — chỉ dùng ảnh hợp lệ' : 'Lượt cập nhật bị ngắt', error: 'Cập nhật thất bại' })[source.phase] || 'Chưa cập nhật'}
+              <strong>{source.label}</strong>: {syncStatusLabel(source)}
               {source.result && ` · ${source.result.downloaded} ảnh tải mới · ${source.result.failed} ảnh lỗi · ${source.result.added} địa điểm mới · ${source.result.changed} mục thay đổi`}
               {source.error && ` · ${source.error}`}
+              {source.result?.hookErrors?.length > 0 && <span role="status"> · Hook cần cập nhật: {source.result.hookErrors.join(' · ')}</span>}
             </p>)}</div>
             {nightSync.report && !nightSync.report.read && <div className="settings-night-report" role="status">
               <p>{nightSync.report.message}</p>

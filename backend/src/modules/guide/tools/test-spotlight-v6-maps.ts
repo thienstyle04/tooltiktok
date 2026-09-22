@@ -18,7 +18,7 @@ const makeItem = (sectionKey: SectionKey, index: number, withMap = true, withRea
   return {
     id: `${sectionKey}-${index}`, sectionKey, sectionTitle: sectionKey,
     name: `Địa điểm ${sectionKey} ${index}`, address: index === 1 ? '' : `${index} Địa chỉ`,
-    type: sectionKey, openHours: '', style: '', highlight: '', partnerFlag: '', isPartner: index % 2 === 0,
+    type: sectionKey, openHours: '', style: '', highlight: '', partnerFlag: '', isPartner: sectionKey === 'quan_an',
     headPrice: '', hasHeadPriceColumn: false, price: '', phone: '', imageUrl: real,
     imageMapped: withReal, imageMappingKey: `${sectionKey}-${index}`, imageSource: withReal ? 'manual' : 'fallback',
     candidateImageUrls: real ? [real, `${real}-alt`] : [], mapImageUrl: map, mapCandidateImageUrls: map ? [map] : [],
@@ -39,6 +39,31 @@ for (let index = 2; index <= 6; index++) itemsBySection.quan_an.push(makeItem('q
 
 setActiveDestinationLocalize('dalat');
 const common = { itemsBySection, imageUrls: [], libraryEntries: [], coverImageUrls: [] };
+// Reproduce a row-ID collision across sheets without changing any source/list data.
+const collidingRows = structuredClone(itemsBySection);
+for (const item of collidingRows.quan_an) item.id = 'shared-row-id';
+for (const item of collidingRows.check_in) item.id = 'shared-row-id';
+assert.equal(spotlightV6MapsVenuePool(collidingRows).filter(item => item.isPartner).length, 5);
+assert.equal(spotlightV6MapsVenuePool(collidingRows).filter(item => item.sectionKey === 'check_in').length, 4);
+const collisionPages = buildSpotlightV6MapsPages({ ...common, itemsBySection: collidingRows }, 'row-id-collision');
+assert.equal(collisionPages.length, 14);
+assert.equal(new Set(collisionPages.filter((_, i) => i % 2).map(p => p.type === 'list' && p.items[0].sourceKey)).size, 7);
+console.log('PASS regression 4/7: colliding row IDs still select 7 distinct venues / 14 pages.');
+const rotationItems = new Set<string>(), rotationImages = new Set<string>();
+for (let i = 0; i < 2; i++) {
+  assert.equal(buildSpotlightV6MapsPages({ ...common, itemsBySection: collidingRows,
+    globalUsedItemIds: rotationItems, globalUsedImageUrls: rotationImages }, 'collision-' + i).length, 14);
+}
+const badPairs = structuredClone(collidingRows);
+Object.values(badPairs).flat().forEach(item => { item.mapImageUrl = '/assets/drive-file?id=shared-map'; item.mapCandidateImageUrls = []; });
+const beforeItems = [...rotationItems], beforeImages = [...rotationImages];
+assert.throws(() => buildSpotlightV6MapsPages({ ...common, itemsBySection: badPairs,
+  globalUsedItemIds: rotationItems, globalUsedImageUrls: rotationImages }, 'bad-pairs'), /ảnh Google Maps riêng/);
+assert.deepEqual([...rotationItems], beforeItems);
+assert.deepEqual([...rotationImages], beforeImages);
+const duplicates = structuredClone(collidingRows);
+duplicates.check_in = duplicates.check_in.map(item => ({ ...item, name: 'Same check-in', address: 'Same address' }));
+assert.throws(() => buildSpotlightV6MapsPages({ ...common, itemsBySection: duplicates }, 'real-duplicates'), /1\/3 Check-in/);
 const missingFoodCommon = { ...common, coverImageUrls: ['/assets/drive-file?id=test-cover-a', '/assets/drive-file?id=test-cover-b'], itemsBySection: { ...itemsBySection, quan_an: [] } };
 // Isolate Maps catalog regression from unrelated strict one-way-story fixture requirements.
 const catalogIds = V2_DECK_IDS as unknown as string[];
@@ -50,7 +75,7 @@ finally { catalogIds.splice(oneWayIndex, 0, 'one-way-story'); }
 const unavailableMaps = missingFoodCatalog.find(deck => deck.id === 'spotlight-v6-maps');
 assert.ok(unavailableMaps, 'Maps remains discoverable when its data is incomplete');
 assert.equal(unavailableMaps.lists.length, 0);
-assert.match(unavailableMaps.description, /0\/4 Quán ăn/);
+assert.match(unavailableMaps.description, /0\/4 đối tác/);
 assert.ok(missingFoodCatalog.some(deck => deck.id !== 'spotlight-v6-maps' && deck.lists.length), 'Other templates still load');
 const preview = buildV2MainList('spotlight-v6-maps', common);
 assert.equal(preview?.pages.length, 14);
@@ -65,8 +90,12 @@ assert.deepEqual(pages.map((page) => page.layoutVariant), Array.from({ length: 7
 const selectedKeys = pages.filter((_, index) => index % 2 === 1).map((page) => page.type === 'list' ? page.items[0]?.sourceKey : '');
 assert.equal(new Set(selectedKeys).size, 7);
 assert.deepEqual(pages.filter((_, index) => index % 2 === 1).map(page => page.type === 'list' && page.items[0].sourceSectionKey === 'quan_an'), [true, false, true, false, true, false, true]);
-assert.throws(() => buildSpotlightV6MapsPages({ ...common, itemsBySection: { ...itemsBySection, quan_an: [] } }, 'no-food'), /0\/4 Quán ăn/);
-assert.throws(() => buildSpotlightV6MapsPages({ ...common, itemsBySection: { ...itemsBySection, check_in: itemsBySection.check_in.slice(0, 1), hoat_dong: itemsBySection.hoat_dong.slice(0, 1) } }, 'no-other'), /2\/3 địa điểm nhóm khác/);
+assert.throws(() => buildSpotlightV6MapsPages({ ...common, itemsBySection: { ...itemsBySection, quan_an: [] } }, 'no-food'), /0\/4 đối tác/);
+assert.throws(() => buildSpotlightV6MapsPages({ ...common, itemsBySection: { ...itemsBySection, check_in: itemsBySection.check_in.slice(0, 1) } }, 'no-other'), /1\/3 Check-in/);
+const futurePool = { ...itemsBySection, quan_an: [], cafe: Array.from({ length: 4 }, (_, i) => ({ ...makeItem('cafe', i + 10), isPartner: true })) };
+const futurePages = buildSpotlightV6MapsPages({ ...common, itemsBySection: futurePool }, 'future-cafe-partners');
+assert.deepEqual(futurePages.filter((_, i) => i % 2 === 1).map(p => p.type === 'list' && p.items[0].isPartner), [true, false, true, false, true, false, true]);
+assert.deepEqual(futurePages.filter((_, i) => i % 4 === 3).map(p => p.type === 'list' && p.items[0].sourceSectionKey), ['check_in', 'check_in', 'check_in']);
 for (let pair = 0; pair < 7; pair += 1) {
   const mapPage = pages[pair * 2];
   const placePage = pages[pair * 2 + 1];
@@ -80,7 +109,7 @@ for (let pair = 0; pair < 7; pair += 1) {
   }
 }
 assert.equal(new Set(pages.map((page) => page.backgroundImage)).size, 14);
-assert.throws(() => buildSpotlightV6MapsPages({ ...common, itemsBySection: { ...itemsBySection, quan_an: [], check_in: itemsBySection.check_in.slice(0, 3), hoat_dong: itemsBySection.hoat_dong.slice(0, 3) } }, 'short'), /6 địa điểm có cả ảnh thật/);
+assert.throws(() => buildSpotlightV6MapsPages({ ...common, itemsBySection: { ...itemsBySection, quan_an: [], check_in: itemsBySection.check_in.slice(0, 3), hoat_dong: itemsBySection.hoat_dong.slice(0, 3) } }, 'short'), /0\/4 đối tác, 3\/3 Check-in/);
 setActiveDestinationLocalize('greenland');
 assert.throws(() => buildSpotlightV6MapsPages(common, 'greenland'), /chỉ áp dụng cho Đà Lạt/);
 setActiveDestinationLocalize('dalat');

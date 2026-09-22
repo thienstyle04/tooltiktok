@@ -5,7 +5,8 @@ import { hasItemKey, itemUsageKey } from './data-allocator';
 export const DIARY_TEMPLATE_VERSION = 1;
 export const DIARY_CAPTION = 'Một vài gợi ý quán ăn và cà phê ở Đà Lạt để mọi người lưu lại.';
 export const DIARY_INTRO = 'Gợi ý vài địa điểm ở Đà Lạt cho mọi người nè';
-export const DIARY_ORDER = ['quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an'] as const;
+export const DIARY_ORDER = ['quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an'] as const;
+export const DIARY_PAGE_COUNT = 3 + DIARY_ORDER.length;
 
 // A newline is the source author's boundary, not an uppercase letter in a name.
 export function diaryDescriptionLines(raw: string): string[] {
@@ -50,7 +51,7 @@ export function buildDiaryPages(input: DiaryInput): DeckPage[] {
     (input.itemsBySection[section as 'quan_an' | 'cafe'] || []).filter(item => item.isPartner && item.name.trim() && item.imageSource !== 'fallback' && images(item).length && diaryDescriptionLines(item.diaryDescriptionRaw || '').length)
       .sort((a, b) => Number(hasItemKey(input.usedPlaces || new Set(), a)) - Number(hasItemKey(input.usedPlaces || new Set(), b)) || rank(a.id) - rank(b.id)),
   ])) as Record<'quan_an' | 'cafe', GuideItem[]>;
-  for (const [group, required] of [['quan_an', 4], ['cafe', 3]] as const) {
+  for (const [group, required] of [['quan_an', 5], ['cafe', 4]] as const) {
     const count = new Set(pools[group].map(identity)).size;
     if (count < required) throw new Error(`Spotlight Nhật ký thiếu đối tác ${group === 'cafe' ? 'Cafe' : 'Quán ăn'} có ảnh và một dòng mô tả phù hợp (${count}/${required}).`);
   }
@@ -81,7 +82,7 @@ export function buildDiaryPages(input: DiaryInput): DeckPage[] {
     deadEnds.add(state);
     return false;
   };
-  if (!choose(0)) throw new Error('Spotlight Nhật ký không đủ 4 Quán ăn + 3 Cafe có địa điểm và ảnh không trùng.');
+  if (!choose(0)) throw new Error('Spotlight Nhật ký không đủ 5 Quán ăn + 4 Cafe có địa điểm và ảnh không trùng.');
   const backgrounds = randomPool.filter(url => !imageIds.has(diaryImageId(url))).slice(0, 3);
   const page = (image: string, title: string, items: ListPage['items'] = []): ListPage => ({
     type: 'list', title, subtitle: '', chipText: '', chipTone: 'slate', items, backgroundImage: image,

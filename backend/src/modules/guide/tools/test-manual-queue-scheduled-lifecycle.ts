@@ -21,10 +21,11 @@ async function scenario(outcome: 'completed' | 'failed' | 'cancelled') {
     try { return await task(); } finally { active--; }
   };
   s.guideService = {
+    getNightSyncStatus: () => ({ running: null, queued: [] }),
     isGenerationBusy: () => false,
     getDestinations: () => ({ active: { id: destination }, destinations: [{id:'dalat'}, {id:'greenland'}] }),
     getHookSources: () => ({mode:'normal',activeSourceId:''}),
-    refreshDestinationFromSheet: async (id: string) => { destination = id; events.push('refresh-' + id); },
+    refreshDestinationFromSheet: async () => { throw new Error('Scheduled generation must not invoke manual network sync'); },
     setActiveDestination: async ({id}: any) => { destination=id; events.push('destination-' + id); },
     enqueueGeneration: async (task: any) => task(),
     generateBatchLists: async (request: any) => heavy(request.automationRunId ? 'scheduled-generate' : 'manual-generate', async () => {
