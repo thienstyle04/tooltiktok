@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { canReadPublishedDataset, canApplyPublishedDataset } from '../lib/publishedDataset.mjs';
 import { exportActiveList, exportBatch, exportSelectedPagePng } from '../lib/exportClient';
 import { apiFetch, fetchGuideDataset, formatApiError } from '../lib/apiClient';
 import {
@@ -512,6 +513,52 @@ export default function DeckStudio({ initialDataset = null }) {
     setDestinationInfo(payload);
     return payload;
   }, []);
+
+  // Night sync publishes locally without reloading this browser. Never replace
+  // an editing session or apply a response after the user switches destinations.
+  const publishedDatasetVersions = useRef(new Map());
+  const backgroundDatasetContext = useRef(null);
+  backgroundDatasetContext.current = {
+    dataset, destinationId: destinationInfo?.active?.id || dataset?.source?.destinationId,
+    blocked: busy || refreshing || switchingDestination || savingPageText || automationState.locked
+      || Boolean(manualJob) || exportModalOpen || deleteModalOpen
+      || activeView === 'preview' || activeView === 'caption'
+      || editorSaveState !== 'saved',
+  };
+  useEffect(() => {
+    let disposed = false;
+    let timer;
+    const guards = () => ({ draft: Boolean(editorOriginalDataset.current), loading: Boolean(datasetLoadPromiseRef.current) });
+    const safe = context => canReadPublishedDataset(context, guards());
+    const poll = async () => {
+      try {
+        const response = await apiFetch('/api/night-sync/status', { cache: 'no-store' });
+        if (!response.ok || disposed) return;
+        const sync = await response.json();
+        const context = backgroundDatasetContext.current;
+        const source = sync.sources?.find(entry => entry.id === context?.destinationId);
+        const revision = source?.lastPublishedAt;
+        if (!revision || publishedDatasetVersions.current.get(source.id) === revision
+          || sync.running === source.id || !safe(context)) return;
+        const result = await apiFetch('/api/guide-data', { cache: 'no-store' });
+        if (!result.ok || disposed) return;
+        const next = await result.json();
+        const latest = backgroundDatasetContext.current;
+        if (disposed || !canApplyPublishedDataset(context, latest, source.id, next, guards())) return;
+        applyDataset(next, currentSelectionRef.current);
+        writeCachedDataset(next);
+        markCatalogRevisionStored();
+        publishedDatasetVersions.current.set(source.id, revision);
+        setStatus('Đã nạp dữ liệu sau đồng bộ. Chỉ dùng ảnh hợp lệ; list đã lưu được giữ nguyên.');
+      } catch (error) {
+        console.warn('[night-sync] Chưa nạp được dữ liệu đã công bố:', error.message);
+      } finally {
+        if (!disposed) timer = window.setTimeout(poll, 5000);
+      }
+    };
+    poll();
+    return () => { disposed = true; window.clearTimeout(timer); };
+  }, [applyDataset]);
 
   const loadRuntimePerformance = useCallback(async () => {
     const response = await apiFetch('/api/runtime-performance', { cache: 'no-store' });
