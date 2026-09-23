@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { canReadPublishedDataset, canApplyPublishedDataset } from './publishedDataset.mjs';
+const dataset = {};
+const before = { dataset, destinationId: 'dalat', blocked: false };
+const next = { source: { destinationId: 'dalat' } };
+assert.equal(canReadPublishedDataset(before), true);
+assert.equal(canReadPublishedDataset({ ...before, dataset: null }), false);
+assert.equal(canReadPublishedDataset({ ...before, blocked: true }), false);
+assert.equal(canApplyPublishedDataset(before, before, 'dalat', next, {}), true);
+assert.equal(canApplyPublishedDataset(before, before, 'dalat', next, { draft: true }), false);
+assert.equal(canApplyPublishedDataset(before, before, 'dalat', next, { loading: true }), false);
+assert.equal(canApplyPublishedDataset(before, { ...before, dataset: {} }, 'dalat', next), false);
+assert.equal(canApplyPublishedDataset(before, { ...before, destinationId: 'greenland' }, 'dalat', next), false);
+assert.equal(canApplyPublishedDataset(before, before, 'dalat', { source: { destinationId: 'greenland' } }), false);
+console.log('PASS: published dataset guards preserve drafts, in-flight edits, loading and destination selection');

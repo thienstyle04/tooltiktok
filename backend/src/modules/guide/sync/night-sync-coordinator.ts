@@ -5,13 +5,18 @@ import { vietnamSyncWindow, withSyncPermit } from './night-sync-policy';
 export interface NightSourceResult { downloaded: number; failed: number; added: number; changed: number; hookErrors?: string[]; }
 export interface SyncProgress { stage: string; completed?: number; total?: number; failed?: number; }
 interface SourceState {
+  startedAt?: string; finishedAt?: string; lastPublishedAt?: string;
   progress?: SyncProgress;
   initialized: boolean; sheetNight?: string; completedNight?: string;
   lastSuccess?: string; retryAt?: number; error?: string;
   phase?: 'waiting' | 'running' | 'paused' | 'complete' | 'partial' | 'error';
   result?: NightSourceResult;
 }
-interface State { sources: Record<string, SourceState>; report?: { night: string; read: boolean; message: string }; }
+interface State {
+  sources: Record<string, SourceState>;
+  nights?: Record<string, Record<string, SourceState>>;
+  report?: { night: string; read: boolean; message: string; sources?: Record<string, SourceState> };
+}
 interface Options {
   file: string;
   sources: () => Array<{ id: string; label: string }>;
@@ -36,7 +41,10 @@ export class NightSyncCoordinator {
     try { this.state = JSON.parse(fs.readFileSync(options.file, 'utf8')); } catch { /* first run */ }
     this.state.sources ||= {};
     for (const entry of Object.values(this.state.sources)) {
-      if (entry.phase === 'running' || entry.phase === 'paused') entry.phase = 'partial';
+      if (entry.phase === 'running' || entry.phase === 'paused') {
+        entry.phase = 'partial';
+        entry.progress = { stage: 'Lượt cập nhật bị ngắt; chờ thử lại' };
+      }
     }
   }
   private source(id: string): SourceState {
@@ -90,8 +98,22 @@ export class NightSyncCoordinator {
     const window = vietnamSyncWindow(this.now());
     if (!window.allowed) {
       const previousNight = new Date(this.now() + 7 * 3600000 - 86400000).toISOString().slice(0, 10);
-      if (this.state.report?.night !== previousNight) {
-        this.state.report = { night: previousNight, read: false, message: 'Kết quả cập nhật đêm: xem từng nguồn. Nguồn chưa hoàn tất có thể do tool tắt, tác vụ đang bận hoặc tải thất bại.' };
+      if (this.state.report?.night !== previousNight || !this.state.report.sources) {
+        const sources = JSON.parse(JSON.stringify(this.state.nights?.[previousNight] || {})) as Record<string, SourceState>;
+        for (const source of Object.values(sources)) {
+          if (source.phase === 'running' || source.phase === 'paused') {
+            source.phase = 'partial'; source.result = undefined;
+            source.progress = { stage: 'Lượt cập nhật chưa hoàn tất' };
+          }
+        }
+        const completed = Object.values(sources).filter(s => s.phase === 'complete').length;
+        const partial = Object.values(sources).filter(s => s.phase === 'partial').length;
+        const failed = Object.values(sources).filter(s => s.phase === 'error').length;
+        const missing = this.options.sources().filter(s => !sources[s.id]).length;
+        this.state.report = { night: previousNight, read: false, sources,
+          message: Object.keys(sources).length
+            ? `Đêm ${previousNight}: ${completed} nguồn hoàn tất, ${partial} nguồn hoàn tất một phần hoặc bị ngắt, ${failed} nguồn thất bại, ${missing} nguồn không có bản ghi. Xem kết quả từng nguồn bên dưới.`
+            : `Đêm ${previousNight}: không có bản ghi lượt đồng bộ. Chưa thể xác nhận đã cập nhật; không dùng kết quả cũ làm báo cáo đêm này.` };
         this.save();
       }
       return;
@@ -107,10 +129,20 @@ export class NightSyncCoordinator {
   }
   private async runOne(id: string, initial: boolean): Promise<void> {
     const state = this.source(id), night = vietnamSyncWindow(this.now()).night;
+    const reportNight = !initial || vietnamSyncWindow(this.now()).allowed ? night : undefined;
+    const recordNight = () => {
+      if (!reportNight) return;
+      this.state.nights ||= {};
+      this.state.nights[reportNight] ||= {};
+      this.state.nights[reportNight][id] = JSON.parse(JSON.stringify(state));
+      for (const key of Object.keys(this.state.nights).sort().slice(0, -14)) delete this.state.nights[key];
+    };
     this.running = id;
     this.controller = new AbortController();
     const signal = this.controller.signal;
-    state.phase = 'running'; state.result = undefined; state.progress = { stage: 'Đang chuẩn bị cập nhật' }; state.error = undefined; this.save();
+    state.startedAt = new Date(this.now()).toISOString(); state.finishedAt = undefined;
+    state.phase = 'running'; state.result = undefined; state.progress = { stage: 'Đang chuẩn bị cập nhật' }; state.error = undefined;
+    recordNight(); this.save();
     const waitForIdle = async () => {
       while (this.options.busy()) {
         state.phase = 'paused';
@@ -130,8 +162,10 @@ export class NightSyncCoordinator {
         this.save();
       }, progress => { state.progress = progress; }));
       state.initialized = true;
+      state.lastPublishedAt = new Date(this.now()).toISOString();
       const incomplete = state.result.failed || state.result.hookErrors?.length;
       state.phase = incomplete ? 'partial' : 'complete';
+      state.progress = { stage: incomplete ? 'Đã công bố dữ liệu hợp lệ; còn lỗi cần thử lại' : 'Đã công bố dữ liệu mới' };
       if (incomplete) state.completedNight = undefined;
       state.retryAt = incomplete ? this.now() + 30 * 60000 : undefined;
       if (!incomplete) {
@@ -140,9 +174,12 @@ export class NightSyncCoordinator {
       }
     } catch (error) {
       state.phase = 'error'; state.error = error instanceof Error ? error.message : String(error);
+      state.progress = { stage: 'Cập nhật chưa hoàn tất: ' + state.error };
       state.retryAt = this.now() + 30 * 60000;
     } finally {
       clearInterval(cutoff);
+      state.finishedAt = new Date(this.now()).toISOString();
+      recordNight();
       this.running = undefined; this.controller = undefined; this.save();
     }
   }

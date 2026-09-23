@@ -208,10 +208,16 @@ export default function SettingsPanel({
               <strong>{source.label}</strong>: {syncStatusLabel(source)}
               {source.result && ` · ${source.result.downloaded} ảnh tải mới · ${source.result.failed} ảnh lỗi · ${source.result.added} địa điểm mới · ${source.result.changed} mục thay đổi`}
               {source.error && ` · ${source.error}`}
+              {source.lastPublishedAt && <span> · Dữ liệu hợp lệ được công bố: {new Date(source.lastPublishedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} (giờ Việt Nam)</span>}
               {source.result?.hookErrors?.length > 0 && <span role="status"> · Hook cần cập nhật: {source.result.hookErrors.join(' · ')}</span>}
             </p>)}</div>
             {nightSync.report && !nightSync.report.read && <div className="settings-night-report" role="status">
               <p>{nightSync.report.message}</p>
+              {Object.entries(nightSync.report.sources || {}).map(([id, source]) => <p key={id}>
+                <strong>{nightSync.sources?.find(entry => entry.id === id)?.label || id}</strong>: {syncStatusLabel(source)}
+                {source.result && ` · ${source.result.downloaded} ảnh tải mới · ${source.result.failed} ảnh lỗi`}
+                {source.error && ` · ${source.error}`}
+              </p>)}
               <button type="button" className="toolbar-button" onClick={async () => {
                 const response = await fetch('/api/night-sync/read', { method: 'POST' });
                 if (response.ok) setNightSync(previous => ({ ...previous, report: { ...previous.report, read: true } }));
