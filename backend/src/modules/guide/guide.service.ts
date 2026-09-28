@@ -373,6 +373,10 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
             this.workbookSource = source;
             this.workbookDerivedCache = null;
             this.invalidateDatasetCache({ immediate: true });
+            // A cold machine can fail its startup warmup before the user starts
+            // a manual sync. Publication supersedes that old startup error.
+            this.destinationDataError = '';
+            this.destinationDataLoading = false;
           }
         },
       }),
@@ -672,7 +676,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           : `Đang đọc dữ liệu XLSX (${getDestinationConfig(this.activeDestinationId).label})...`,
       };
     }
-    if (this.destinationDataError) {
+    if (this.destinationDataError && !(sourceIsReady && syncPublished)) {
       return {
         ...this.driveCacheWarmStatus,
         phase: 'error',
@@ -1139,7 +1143,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     this.destinationDataError = '';
     try {
       if (needsFirstLoad) {
-        await this.syncWorkbookNow(switchingDestination ? 'tai diem den lan dau' : 'tai du lieu lan dau');
+        // Selecting a source is not consent to fetch its Sheet. The manual
+        // update action can initialize an inactive source, then switch here.
+        throw new BadRequestException(`Nguồn ${getDestinationConfig(nextId).label} chưa có workbook cục bộ. Hãy chọn “Tải dữ liệu & chuyển” để cập nhật thủ công trước.`);
       } else if (needsLocalManifestRefresh && this.workbookSource) {
         await this.refreshSheetDriveManifest(this.workbookSource, false);
       } else if (switchingDestination) {

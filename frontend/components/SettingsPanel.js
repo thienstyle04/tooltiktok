@@ -134,12 +134,13 @@ export default function SettingsPanel({
     }
   };
 
-  const refreshFromSheet = async () => {
-    if (!activeDestination?.id || !activeHasSheetFallback) return;
+  const refreshFromSheetFor = async (destinationId) => {
+    const target = destinations.find((entry) => entry.id === destinationId);
+    if (!target || !(target.hasSheetFallback ?? target.sheetUrl)) return;
     setRefreshError('');
     setSheetRefreshing(true);
     try {
-      await onRefreshFromSheet(activeDestination.id);
+      await onRefreshFromSheet(destinationId);
     } catch (error) {
       setRefreshError(error?.message || 'Không thể tải mới từ Google Sheet.');
     } finally {
@@ -298,6 +299,7 @@ export default function SettingsPanel({
             {destinations.map((entry) => {
               const active = entry.id === activeDestinationId;
               const hasFallback = Boolean(entry.hasSheetFallback ?? entry.sheetUrl);
+              const needsFirstSync = !active && !entry.hasLocalWorkbook && hasFallback;
               return (
                 <article
                   key={entry.id}
@@ -309,15 +311,15 @@ export default function SettingsPanel({
                     role="option"
                     aria-selected={active}
                     className="settings-destination-main"
-                    disabled={busy}
-                    onClick={() => onDestinationChange(entry.id)}
+                    disabled={busy || sheetRefreshing}
+                    onClick={() => needsFirstSync ? refreshFromSheetFor(entry.id) : onDestinationChange(entry.id)}
                   >
                     <span className="settings-destination-badge">{entry.shortLabel || entry.label.slice(0, 2)}</span>
                     <span className="settings-destination-copy">
                       <strong>{entry.label}</strong>
                       <small>{formatCount(entry.totalItems)}</small>
                     </span>
-                    <span className="settings-destination-state">{active ? 'Đang dùng' : 'Chuyển'}</span>
+                    <span className="settings-destination-state">{active ? 'Đang dùng' : needsFirstSync ? 'Tải dữ liệu & chuyển' : 'Chuyển'}</span>
                   </button>
 
                   <div className="settings-destination-meta">
@@ -578,7 +580,7 @@ export default function SettingsPanel({
               type="button"
               className="toolbar-button primary settings-refresh-button"
               disabled={sheetRefreshing || !activeDestination || !activeHasSheetFallback}
-              onClick={refreshFromSheet}
+              onClick={() => refreshFromSheetFor(activeDestination.id)}
             >
               {sheetRefreshing || refreshing
                 ? `Đang chờ/cập nhật ${activeDestination?.label || ''}...`

@@ -829,10 +829,25 @@ export default function DeckStudio({ initialDataset = null }) {
             if (source?.phase !== 'complete' && source?.phase !== 'partial') {
               throw new Error(source?.error || 'Lượt cập nhật chưa hoàn tất; chưa thể tạo list.');
             }
-            const datasetResponse = await apiFetch('/api/guide-data', { cache: 'no-store' });
-            const dataset = await readApiPayload(datasetResponse);
-            if (!datasetResponse.ok) throw new Error(apiErrorMessage(dataset, 'Không đọc được dữ liệu sau cập nhật.'));
-            payload = { dataset, active: { id: dataset.source?.destinationId, label: dataset.source?.destinationLabel }, sync };
+            const currentDestinationId = destinationInfo?.active?.id || datasetRef.current?.source?.destinationId;
+            if (destinationId !== currentDestinationId) {
+              // A fresh machine must sync an inactive source before it can switch.
+              // This POST only reads the workbook just saved by the manual job.
+              const switchResponse = await apiFetch('/api/destination', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: destinationId }),
+                cache: 'no-store',
+              });
+              const switched = await readApiPayload(switchResponse);
+              if (!switchResponse.ok) throw new Error(apiErrorMessage(switched, 'Đã tải dữ liệu nhưng chưa chuyển được nguồn.'));
+              payload = { ...switched, sync };
+            } else {
+              const datasetResponse = await apiFetch('/api/guide-data', { cache: 'no-store' });
+              const dataset = await readApiPayload(datasetResponse);
+              if (!datasetResponse.ok) throw new Error(apiErrorMessage(dataset, 'Không đọc được dữ liệu sau cập nhật.'));
+              payload = { dataset, active: { id: dataset.source?.destinationId, label: dataset.source?.destinationLabel }, sync };
+            }
             break;
           }
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -861,7 +876,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setSwitchingDestination(false);
       setRefreshing(false);
     }
-  }, [applyDestinationMutation, switchingDestination]);
+  }, [applyDestinationMutation, destinationInfo?.active?.id, switchingDestination]);
 
   useEffect(() => {
     const stored = readStoredSelection();
