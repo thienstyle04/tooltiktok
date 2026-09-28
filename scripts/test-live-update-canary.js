@@ -76,10 +76,18 @@ async function main() {
   const oldRoot = path.join(root, 'releases', oldRelease);
   fs.mkdirSync(oldRoot, { recursive: true });
   execFileSync('tar', ['-xf', oldZip, '-C', oldRoot], { timeout: 120000 });
+  // Older candidate archives predate CRLF normalization; normalize only this
+  // isolated fixture, then separately assert the new release already has CRLF.
+  const oldBatch = path.join(oldRoot, 'start.bat');
+  fs.writeFileSync(oldBatch, fs.readFileSync(oldBatch, 'utf8').replace(/\r?\n/g, '\r\n'));
+  const candidateBatch = execFileSync('tar', ['-xOf', newZip, 'start.bat']);
+  assert.match(candidateBatch.toString('utf8'), /\r\n/);
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
   fs.mkdirSync(path.join(root, 'shared', 'data'), { recursive: true });
   fs.mkdirSync(profile, { recursive: true });
-  fs.copyFileSync(path.join(oldRoot, 'start.bat'), path.join(root, 'start.bat'));
+  // The one-time bootstrap installs the latest stable root launcher even when
+  // the previous release's own start.bat predates a launcher fix.
+  fs.copyFileSync(path.join(__dirname, '..', 'start.bat'), path.join(root, 'start.bat'));
   fs.copyFileSync(path.join(oldRoot, 'scripts', 'launch-current.ps1'), path.join(root, 'scripts', 'launch-current.ps1'));
   fs.writeFileSync(path.join(root, 'shared', 'current.json'), JSON.stringify({ release: oldRelease, version: oldVersion }));
   fs.writeFileSync(path.join(root, 'shared', 'data', 'canary-keep.json'), '{"data":"unchanged"}');

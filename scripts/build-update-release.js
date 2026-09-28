@@ -35,7 +35,14 @@ async function main() {
   const files = git('ls-tree', '-r', '--name-only', 'HEAD').toString('utf8').split(/\r?\n/).filter(included);
   if (!files.includes('scripts/update-client.js') || !files.includes('scripts/update-protocol.js')) throw Error('Commit chưa có trình cập nhật.');
   const zip = new JSZip();
-  for (const file of files) zip.file(file, git('show', `HEAD:${file}`), { binary: true });
+  for (const file of files) {
+    const source = git('show', `HEAD:${file}`);
+    // cmd.exe needs CRLF in a batch extracted from a Git LF-normalized blob.
+    const packaged = file.endsWith('.bat')
+      ? Buffer.from(source.toString('utf8').replace(/\r?\n/g, '\r\n'))
+      : source;
+    zip.file(file, packaged, { binary: true });
+  }
   zip.file('build-manifest.json', JSON.stringify({ version, commit, userDataIncluded: false }));
   const archive = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
   const archiveName = `dalat-studio-${version}-${commit.slice(0, 8)}.zip`;
