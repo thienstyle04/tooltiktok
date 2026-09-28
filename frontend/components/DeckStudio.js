@@ -146,7 +146,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v6-maps',
   'spotlight-v6-diary',
   'summary-note',
-  'itinerary-note-2days',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-2days',
   'itinerary-note-timed',
   'one-way-story',
   'itinerary-4n3d-stack',
@@ -160,7 +160,7 @@ const DALAT_ONLY_CATALOG_DECK_IDS = new Set([
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
   'spotlight-v6-diary',
-  'itinerary-note-2days',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-2days',
   'itinerary-note-timed',
   'one-way-story',
 ]);
@@ -330,6 +330,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedListsForExport, setSelectedListsForExport] = useState(new Set());
   const [exportQuality, setExportQuality] = useState('optimized');
+  const [exportFormat, setExportFormat] = useState('png');
   const [selectedListsForDelete, setSelectedListsForDelete] = useState(new Set());
   const [progress, setProgress] = useState({ visible: false, failed: false, value: 0, label: 'Đang chuẩn bị xuất file...' });
   const [partners, setPartners] = useState([]);
@@ -1163,7 +1164,7 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
@@ -1215,7 +1216,7 @@ export default function DeckStudio({ initialDataset = null }) {
           subtitle: activePage.subtitle || '',
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { titlePlacement: activePage.titlePlacement, items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { chipText: activePage.chipText || '' } : {}),
-          ...(activePage.layoutVariant === 'itinerary-note-day' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
+          ...((activePage.layoutVariant === 'itinerary-note-day' || activePage.layoutVariant === 'itinerary-note-threads-day') ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { items: activePage.items.map(({ name, metaPrimary, scheduleTime }) => ({ name, metaPrimary, scheduleTime })) } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-map-place' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activeDeck.id === 'spotlight-v6-persimmon' && activePage.layoutVariant === 'spotlight-v6-page' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
@@ -1245,7 +1246,7 @@ export default function DeckStudio({ initialDataset = null }) {
     setBusy(true);
     setStatus(`Đang gọi DeepSeek cho list "${captionSourceList.title}"...`);
     try {
-      const response = await apiFetch('/api/ai/deepseek/caption', {
+      const response = await apiFetch('/api/ai/caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1292,7 +1293,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
     }
-    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed') {
+    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
@@ -1303,7 +1304,7 @@ export default function DeckStudio({ initialDataset = null }) {
       || activeDeck.id === 'spotlight-v6-persimmon'
       || activeDeck.id === 'spotlight-v6-maps'
       || activeDeck.id === 'spotlight-v6-diary'
-      || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-2days' || activeDeck.id === 'itinerary-note-timed');
+      || (activeDeck.id === 'summary-note' || (activeDeck.id === 'itinerary-note-2days' || activeDeck.id.startsWith('itinerary-note-threads-')) || activeDeck.id === 'itinerary-note-timed');
     const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
       && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
     const coverTitle = (caption.coverTitle || '').trim();
@@ -1369,7 +1370,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo batch list.');
       return;
     }
-    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed') {
+    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
@@ -1638,27 +1639,27 @@ export default function DeckStudio({ initialDataset = null }) {
     let claimed = false;
     try {
       await setManualExportActive(true); claimed = true;
-      await exportSelectedPagePng({ deck: activeDeck, list: activeList, dataset, selectedPageIndex, quality: exportQuality }, exportCb);
+      await exportSelectedPagePng({ deck: activeDeck, list: activeList, dataset, selectedPageIndex, format: exportFormat, quality: exportQuality }, exportCb);
       await loadRuntimePerformance().catch(() => undefined);
     } catch (error) {
       setStatus(error?.message || 'Chưa thể xuất trang.');
     } finally {
       if (claimed) await setManualExportActive(false).catch(() => undefined);
     }
-  }, [activeDeck, activeList, dataset, exportCb, exportQuality, loadRuntimePerformance, selectedPageIndex, setManualExportActive]);
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, exportFormat, loadRuntimePerformance, selectedPageIndex, setManualExportActive]);
 
   const handleExportList = useCallback(async () => {
     let claimed = false;
     try {
       await setManualExportActive(true); claimed = true;
-      await exportActiveList({ deck: activeDeck, list: activeList, dataset, quality: exportQuality }, exportCb);
+      await exportActiveList({ deck: activeDeck, list: activeList, dataset, format: exportFormat, quality: exportQuality }, exportCb);
       await loadRuntimePerformance().catch(() => undefined);
     } catch (error) {
       setStatus(error?.message || 'Chưa thể xuất list.');
     } finally {
       if (claimed) await setManualExportActive(false).catch(() => undefined);
     }
-  }, [activeDeck, activeList, dataset, exportCb, exportQuality, loadRuntimePerformance, setManualExportActive]);
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, exportFormat, loadRuntimePerformance, setManualExportActive]);
 
   const handleExportBatch = useCallback(async (options = {}) => {
     const shouldDelete = options.deleteAfterExport !== false;
@@ -1668,7 +1669,7 @@ export default function DeckStudio({ initialDataset = null }) {
     let result;
     try {
       await setManualExportActive(true); claimed = true;
-      result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, quality: exportQuality,
+      result = await exportBatch({ dataset, selectedListIds: selectedListsForExport, format: exportFormat, quality: exportQuality,
         confirmSkipImages: (inspection) => new Promise(resolve => {
           exportImageAnswer.current = resolve;
           setExportImageInspection(inspection);
@@ -1692,7 +1693,7 @@ export default function DeckStudio({ initialDataset = null }) {
         setBusy(false);
       }
     }
-  }, [dataset, exportCb, exportQuality, loadRuntimePerformance, removeExportedGeneratedLists, selectedListsForExport, setManualExportActive]);
+  }, [dataset, exportCb, exportQuality, exportFormat, loadRuntimePerformance, removeExportedGeneratedLists, selectedListsForExport, setManualExportActive]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -2164,6 +2165,8 @@ export default function DeckStudio({ initialDataset = null }) {
                     onPageTextChange={handlePageTextChange}
                     onPageTextSave={savePageText}
                     savingPageText={savingPageText}
+                    exportFormat={exportFormat}
+                    setExportFormat={setExportFormat}
                     onExportPage={handleExportPage}
                     onExportList={handleExportList}
                     busy={busy}
@@ -2181,6 +2184,8 @@ export default function DeckStudio({ initialDataset = null }) {
         dataset={dataset}
         selectedIds={selectedListsForExport}
         setSelectedIds={setSelectedListsForExport}
+        format={exportFormat}
+        setFormat={setExportFormat}
         quality={exportQuality}
         setQuality={setExportQuality}
         runtimePerformance={runtimePerformance}

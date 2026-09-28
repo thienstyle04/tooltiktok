@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import * as crypto from 'node:crypto';
+import { aiProvider } from './ai-provider';
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -223,6 +224,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       onceAt: new Date(Date.now() + 60_000).toISOString(),
       outputDir: previous.outputDir,
       outputFileName: previous.outputFileName,
+      format: previous.format || 'png',
       enabled: false,
       templates: previous.templates,
       hook: previous.hook,
@@ -263,10 +265,10 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     return this.getState();
   }
 
-  getExportContext(runId: string, token: string): { runId: string; listIds: string[]; quality: 'optimized' } {
+  getExportContext(runId: string, token: string): { runId: string; listIds: string[]; quality: 'optimized'; format: 'png' | 'jpg' } {
     const run = this.authorizeExport(runId, token);
     if (!['awaiting-export', 'exporting'].includes(run.status)) throw new ConflictException('Lượt chưa sẵn sàng để xuất.');
-    return { runId: run.id, listIds: [...run.listIds], quality: 'optimized' };
+    return { runId: run.id, listIds: [...run.listIds], quality: 'optimized', format: run.format || 'png' };
   }
 
   reportProgress(runId: string, token: string, progress: number, phase: string, outcome?: Pick<AutomationRun, 'exportedLists' | 'skippedLists'>): void {
@@ -429,6 +431,10 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   }
 
   private async execute(run: AutomationRun): Promise<void> {
+    return aiProvider.run(() => this.executeWithAi(run));
+  }
+
+  private async executeWithAi(run: AutomationRun): Promise<void> {
     while ((this.manualExportUntil > Date.now() || this.guideService.isGenerationBusy()) && !run.cancelRequested) {
       run.phase = this.manualExportUntil > Date.now()
         ? 'Đang chờ lượt xuất thủ công hoàn tất...'
@@ -446,6 +452,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     }
     this.activeRunId = run.id;
     run.startedAt = new Date().toISOString();
+    run.ai = aiProvider.current();
     let previousDestination = '';
     try {
       this.assertNotCancelled(run);
@@ -581,6 +588,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     this.assertOutputDirectory(outputDir);
     const outputFileName = this.validateOutputFileName(String(input.outputFileName ?? previous?.outputFileName ?? '').trim() || undefined);
     if (!this.findBrowser()) throw new BadRequestException('Không tìm thấy Chrome hoặc Edge để xuất tự động.');
+    const format = input.format ?? previous?.format ?? 'png';
+    if (format !== 'png' && format !== 'jpg') throw new BadRequestException('Định dạng ảnh phải là PNG hoặc JPG.');
     const hookMode = input.hook?.mode ?? previous?.hook.mode ?? 'normal';
     const sourceId = String(input.hook?.sourceId ?? previous?.hook.sourceId ?? '').trim();
     if (hookMode === 'festival') {
@@ -601,6 +610,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       ...(frequency === 'once' ? { onceAt: new Date(onceAt).toISOString() } : { dailyTime }),
       outputDir,
       ...(outputFileName ? { outputFileName } : {}),
+      format,
       enabled: input.enabled ?? previous?.enabled ?? true,
       templates,
       hook: { mode: hookMode, ...(hookMode === 'festival' ? { sourceId } : {}) },
@@ -685,6 +695,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       status: 'queued', phase: 'Đang chờ lượt tự động trước hoàn tất...', progress: 0,
       templates: templates.map((entry) => ({ ...entry })), hook: { ...schedule.hook }, outputDir: schedule.outputDir,
       ...(schedule.outputFileName ? { outputFileName: schedule.outputFileName } : {}),
+      format: schedule.format || 'png',
       listIds: [], generated: [], errors: [], createdAt: now, updatedAt: now,
       ...(retryOf ? { retryOf } : {}),
     };

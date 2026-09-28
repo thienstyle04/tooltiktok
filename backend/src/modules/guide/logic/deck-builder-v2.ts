@@ -44,6 +44,7 @@ import type { TitlePlacement } from '../../../common/interfaces/guide.types';
 import { BUNDLED_ONE_WAY_HOOKS, BUNDLED_SPOTLIGHT_HOOKS } from '../sync/hook-fallbacks';
 import { buildDiaryPages, DIARY_TEMPLATE_VERSION, DIARY_CAPTION } from './spotlight-diary';
 import { getActiveDestinationLocalize } from '../sync/destination-localize';
+import { buildThreadsNotePages, buildThreadsNoteExample, isThreadsNote } from './itinerary-note-threads';
 
 import { buildItineraryNotePages, ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './itinerary-note';
 import { buildItineraryNoteTimedPages, ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './itinerary-note-timed';
@@ -100,6 +101,8 @@ export const V2_DECK_IDS = [
   'spotlight-v6-diary',
   'summary-note',
   'itinerary-note-2days',
+  'itinerary-note-threads-3n2d',
+  'itinerary-note-threads-2n1d',
   'itinerary-note-timed',
   'carousel-mau-1',
   'pov-3-v2',
@@ -2090,6 +2093,8 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'spotlight-v6-diary': DIARY_TEMPLATE_VERSION,
   'summary-note': SUMMARY_NOTE_TEMPLATE_VERSION,
   'itinerary-note-2days': ITINERARY_NOTE_TEMPLATE_VERSION,
+  'itinerary-note-threads-3n2d': 3,
+  'itinerary-note-threads-2n1d': 3,
   'itinerary-note-timed': ITINERARY_NOTE_TIMED_TEMPLATE_VERSION,
   'carousel-mau-1': CAROUSEL_MAU_1_TEMPLATE_VERSION,
   'pov-3-v2': POV_3_V2_TEMPLATE_VERSION,
@@ -2177,6 +2182,8 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     listName: 'Spotlight Nhật ký Đà Lạt',
   },
   'itinerary-note-2days': { nav: 'Lịch trình Note 2 ngày', title: 'Lịch trình Note 2 ngày', description: 'Hai trang ghi chú, mỗi trang một ngày với 7 hoạt động đa dạng.', listName: 'Lịch trình Note 2 ngày' },
+  'itinerary-note-threads-3n2d': { nav: 'Note Threads 3N2Đ', title: 'Note Threads 3N2Đ', description: '1 trang bảng, 26 địa điểm không trùng, đối tác phân bổ linh hoạt. Không cần ảnh.', listName: 'Note Threads 3N2Đ' },
+  'itinerary-note-threads-2n1d': { nav: 'Note Threads 2N1Đ', title: 'Note Threads 2N1Đ', description: '1 trang bảng, 22 địa điểm không trùng, đối tác phân bổ linh hoạt. Không cần ảnh.', listName: 'Note Threads 2N1Đ' },
   'itinerary-note-timed': { nav: 'Lịch trình Note theo giờ', title: 'Lịch trình Note theo giờ', description: 'Hai trang Ghi chú iPhone: lịch trình Đà Lạt theo giờ với đúng 4 đối tác ngày 1 và 3 đối tác ngày 2.', listName: 'Lịch trình Note theo giờ' },
   'summary-note': {
     nav: 'Tổng hợp địa điểm',
@@ -2301,6 +2308,9 @@ export function buildPagesForDeckV2(
     }
     case 'itinerary-note-2days':
       return buildItineraryNotePages(common, seedPrefix);
+    case 'itinerary-note-threads-3n2d':
+    case 'itinerary-note-threads-2n1d':
+      return buildThreadsNotePages(common, deckId, seedPrefix, getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt');
     case 'itinerary-note-timed':
       return buildItineraryNoteTimedPages(common, seedPrefix);
     case 'summary-note':
@@ -2473,6 +2483,13 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       // Catalog loading must not prevent opening a source to repair its data.
       // Generation still uses the strict builder and rejects missing requirements.
       previewError = error instanceof Error ? error.message : String(error);
+      if (isThreadsNote(deckId)) {
+        mainList = buildDeckList(deckId, 'main', 'Mẫu minh họa', meta.listName,
+          `Dữ liệu minh họa, không phải list đã tạo. ${previewError}`,
+          buildThreadsNoteExample(deckId, activeDestinationId === 'greenland' ? 'Green Land' : 'Đà Lạt'));
+        mainList.templateVersion = V2_TEMPLATE_VERSIONS[deckId];
+        mainList.canvasPreset = 'tiktok-9x16';
+      }
     }
     return {
       id: deckId,

@@ -6,7 +6,7 @@ import { listIsMain } from '../lib/utils';
 
 const DALAT_ONLY_DECKS = new Set([
   'spotlight-v6-diary', 'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
-  'itinerary-note-2days', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-2days', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
 ]);
 const DALAT_EXTRA_DECKS = [
   { id: 'spotlight-v5', navTitle: 'Spotlight V5' },
@@ -16,6 +16,8 @@ const DALAT_EXTRA_DECKS = [
   { id: 'spotlight-v6-maps', navTitle: 'Spotlight V6 Google Maps' },
   { id: 'spotlight-v6-diary', navTitle: 'Spotlight Nhật ký Đà Lạt' },
   { id: 'summary-note', navTitle: 'Tổng hợp địa điểm' },
+  { id: 'itinerary-note-threads-3n2d', navTitle: 'Note Threads 3N2Đ' },
+  { id: 'itinerary-note-threads-2n1d', navTitle: 'Note Threads 2N1Đ' },
   { id: 'itinerary-note-2days', navTitle: 'Lịch trình Note 2 ngày' },
   { id: 'itinerary-note-timed', navTitle: 'Lịch trình Note theo giờ' },
   { id: 'carousel-mau-1', navTitle: 'Carousel mẫu 1' },
@@ -39,7 +41,7 @@ function localDateTimeValue(date = new Date(Date.now() + 10 * 60 * 1000)) {
 }
 
 function blankForm(destinationId = 'dalat') {
-  return { name: '', destinationId, frequency: 'once', onceAt: localDateTimeValue(), dailyTime: '09:00', outputDir: '', outputFileName: '', outputPath: '', hookMode: 'normal', sourceId: '', templates: [] };
+  return { format: 'png', name: '', destinationId, frequency: 'once', onceAt: localDateTimeValue(), dailyTime: '09:00', outputDir: '', outputFileName: '', outputPath: '', hookMode: 'normal', sourceId: '', templates: [] };
 }
 
 function loadDraftForm(destinationId) {
@@ -51,6 +53,7 @@ function loadDraftForm(destinationId) {
     const outputFileName = String(saved.outputFileName || '').trim();
     return {
       ...empty,
+      format: saved.format === 'jpg' ? 'jpg' : 'png',
       name: String(saved.name || '').slice(0, 80),
       destinationId: String(saved.destinationId || destinationId),
       frequency: saved.frequency === 'daily' ? 'daily' : 'once',
@@ -186,7 +189,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     const body = {
       name: form.name, destinationId: form.destinationId, frequency: form.frequency,
       ...(form.frequency === 'once' ? { onceAt: new Date(`${form.onceAt}:00+07:00`).toISOString() } : { dailyTime: form.dailyTime }),
-      outputDir: form.outputDir, outputFileName: form.outputFileName, templates: form.templates,
+      format: form.format, outputDir: form.outputDir, outputFileName: form.outputFileName, templates: form.templates,
       hook: { mode: form.hookMode, ...(form.hookMode === 'festival' ? { sourceId: form.sourceId } : {}) },
       enabled: true,
     };
@@ -210,6 +213,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       name: schedule.name, destinationId: schedule.destinationId, frequency: schedule.frequency,
       onceAt: schedule.onceAt ? localDateTimeValue(new Date(schedule.onceAt)) : localDateTimeValue(),
       dailyTime: schedule.dailyTime || '09:00', outputDir: schedule.outputDir,
+      format: schedule.format || 'png',
       outputFileName: schedule.outputFileName || '',
       outputPath: schedule.outputFileName ? `${schedule.outputDir}\\${schedule.outputFileName}` : schedule.outputDir,
       hookMode: schedule.hook?.mode || 'normal', sourceId: schedule.hook?.sourceId || '',
@@ -245,6 +249,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
         <label><span>Kiểu lịch</span><select value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })}><option value="once">Chạy một lần</option><option value="daily">Lặp hằng ngày</option></select></label>
         {form.frequency === 'once' ? <label><span>Ngày giờ bắt đầu</span><input required type="datetime-local" value={form.onceAt} onChange={(e) => setForm({ ...form, onceAt: e.target.value })} /></label> : <label><span>Giờ bắt đầu mỗi ngày</span><input required type="time" value={form.dailyTime} onChange={(e) => setForm({ ...form, dailyTime: e.target.value })} /></label>}
         <label className="automation-output"><span>File ZIP sẽ lưu</span><div><output title={form.outputPath}>{form.outputPath || 'Chưa chọn file ZIP'}</output><button type="button" onClick={chooseDirectory} disabled={busy || !outputPickerReady}>{outputPickerReady ? 'Chọn file ZIP' : 'Cần chạy lại start.bat'}</button></div><small>{outputPickerReady ? 'Windows sẽ mở hộp thoại để chọn thư mục và tên file. Mỗi lượt được đặt trong thư mục riêng nên không ghi đè lượt cũ.' : 'Frontend đang nối với backend cũ. Hãy đóng tool và chạy lại start.bat; tải lại trang không đủ để cập nhật backend.'}</small></label>
+        <label><span>Định dạng ảnh</span><select value={form.format} onChange={e => setForm({ ...form, format: e.target.value })}><option value="png">PNG</option><option value="jpg">JPG</option></select></label>
         <label><span>Hook của lịch</span><select value={form.hookMode} onChange={(e) => setForm({ ...form, hookMode: e.target.value, sourceId: '' })}><option value="normal">Hook thường</option>{form.destinationId === 'dalat' ? <option value="festival">Hook lễ đã lưu</option> : null}</select></label>
         {form.hookMode === 'festival' ? <label><span>Nguồn Hook lễ</span><select required value={form.sourceId} onChange={(e) => setForm({ ...form, sourceId: e.target.value })}><option value="">Chọn nguồn</option>{festivalSources.map((source) => <option key={source.id} value={source.id}>{source.name} ({source.hookCount})</option>)}</select></label> : null}
 
@@ -270,7 +275,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       <div className="automation-list automation-history" hidden={section!=='history'}>
         <h3>Lịch sử chạy</h3>
         {state.runs.length ? state.runs.map((run) => <article key={run.id}>
-          <div><strong>{run.scheduleName} — {STATUS_LABELS[run.status] || run.status}</strong><small>{new Date(run.scheduledFor).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {run.listIds.length} list</small><small>{run.phase}</small>{run.outputPath ? <small className="automation-path">{run.outputPath}</small> : null}
+          <div><strong>{run.scheduleName} — {STATUS_LABELS[run.status] || run.status}</strong><small>{new Date(run.scheduledFor).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {run.listIds.length} list</small><small>{run.phase}</small>{run.ai ? <small>AI: {run.ai.provider} · {run.ai.model}</small> : null}{run.outputPath ? <small className="automation-path">{run.outputPath}</small> : null}
             {run.skippedLists?.length > 0 && <details><summary>{run.skippedLists.length} list bị bỏ qua do lỗi ảnh</summary>
               {run.skippedLists.map(list => <div key={`${list.deckId}/${list.listId}`}><strong>{list.label || list.listId}</strong>
                 {list.errors.map((error, index) => <small key={index} style={{ overflowWrap: 'anywhere' }}>Trang {error.page} · {error.id || ''}: {error.reason}</small>)}

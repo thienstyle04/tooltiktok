@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import AiSettingsPanel from './AiSettingsPanel';
 import { syncStatusLabel } from '../lib/syncStatusLabel.mjs';
 
 function formatCount(count) {
@@ -196,6 +197,7 @@ export default function SettingsPanel({
           {cacheReady ? 'Hệ thống sẵn sàng' : 'Đang đồng bộ'}
         </span>
       </header>
+      <AiSettingsPanel />
 
       <div className="settings-grid">
         <article className="settings-card settings-night-sync-card">

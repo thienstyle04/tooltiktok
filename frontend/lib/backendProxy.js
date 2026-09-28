@@ -14,8 +14,29 @@ const HOP_BY_HOP_HEADERS = [
 
 const BODYLESS_RESPONSE_STATUSES = new Set([101, 204, 205, 304]);
 
+// Next may construct request.url from its bind address (0.0.0.0), not the
+// browser's address. Validate the actual Host, never a forwarded-host header.
+function aiSettingsOrigin(request) {
+  try {
+    const internal = new URL(request.url);
+    const host = request.headers.get('host') || internal.host;
+    const publicUrl = new URL(`${internal.protocol}//${host}`);
+    if (!['localhost','127.0.0.1','[::1]'].includes(publicUrl.hostname) || publicUrl.username || publicUrl.password || publicUrl.host !== host) return null;
+    const origin = request.headers.get('origin');
+    if (origin && origin !== publicUrl.origin) return null;
+    if (request.headers.get('sec-fetch-site') === 'cross-site') return null;
+    if (request.headers.get('x-dalat-ai-settings') !== '1') return null;
+    return publicUrl.origin;
+  } catch { return null; }
+}
+
 export async function proxyBackendRequest(request, options = {}) {
   const requestUrl = new URL(request.url);
+  if (requestUrl.pathname.startsWith('/api/ai/settings')) {
+    if (!aiSettingsOrigin(request)) {
+      return Response.json({message:'Cấu hình AI chỉ dùng từ giao diện cục bộ.'}, {status:403});
+    }
+  }
   const backendOrigins = getBackendOrigins(requestUrl);
   const method = request.method.toUpperCase();
   const requestBody = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();
@@ -98,6 +119,7 @@ function isInfrastructureRoute(pathname) {
 
 function getForwardHeaders(request) {
   const headers = new Headers(request.headers);
+  if (new URL(request.url).pathname.startsWith('/api/ai/settings')) headers.set('origin', aiSettingsOrigin(request));
   for (const header of HOP_BY_HOP_HEADERS) headers.delete(header);
   return headers;
 }

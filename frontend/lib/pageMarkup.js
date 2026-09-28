@@ -744,6 +744,7 @@ const V2_LIST_VARIANTS = new Set([
   'spotlight-v6-diary-page',
   'summary-note-page',
   'itinerary-note-day',
+  'itinerary-note-threads-day',
   'itinerary-note-timed-day',
   'carousel-mau-1-page',
   'one-way-story-road',
@@ -2443,7 +2444,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   if (page.layoutVariant === 'spotlight-v4-image') {
     return renderSpotlightV4ImagePage(page, index, listId);
   }
-  if (page.layoutVariant === 'itinerary-note-day') return renderItineraryNotePage(page, index, listId);
+  if (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') return renderItineraryNotePage(page, index, listId);
   if (page.layoutVariant === 'itinerary-note-timed-day') return renderItineraryNoteTimedPage(page, index, listId);
   if (page.layoutVariant === 'summary-note-page') {
     return renderSummaryNotePage(page, index, listId);

@@ -27,6 +27,8 @@ export default function PageInspector({
   onPageTextChange,
   onPageTextSave,
   savingPageText = false,
+  exportFormat = 'png',
+  setExportFormat,
   onExportPage,
   onExportList,
   busy = false,
@@ -69,7 +71,7 @@ export default function PageInspector({
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
   const isTimedNote = page.layoutVariant === 'itinerary-note-timed-day';
-  const hideSubtitleEditor = deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-2days' || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const hideSubtitleEditor = deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || (deck.id === 'itinerary-note-2days' || deck.id.startsWith('itinerary-note-threads-')) || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -105,7 +107,7 @@ export default function PageInspector({
               <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
             </label>
           ) : null}
-          {page.layoutVariant === 'itinerary-note-day' ? items.map((item, i) => (
+          {(page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') ? items.map((item, i) => (
             <div className="inspector-field" key={i}>
               <span>Hoạt động {i + 1}</span>
               <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
@@ -193,8 +195,9 @@ export default function PageInspector({
       {typeof onExportPage === 'function' || typeof onExportList === 'function' ? (
         <div className="inspector-export-actions">
           <p className="inspector-export-kicker">Xuất ảnh</p>
+          <label>Định dạng <select value={exportFormat} disabled={busy} onChange={e => setExportFormat?.(e.target.value)}><option value="png">PNG</option><option value="jpg">JPG</option></select></label>
           <div className="inspector-export-buttons">
-            {typeof onExportPage === 'function' ? <button className="toolbar-button secondary" type="button" disabled={busy} onClick={onExportPage}>Xuất trang PNG</button> : null}
+            {typeof onExportPage === 'function' ? <button className="toolbar-button secondary" type="button" disabled={busy} onClick={onExportPage}>Xuất trang {exportFormat.toUpperCase()}</button> : null}
             {typeof onExportList === 'function' ? <button className="toolbar-button" type="button" disabled={busy} onClick={onExportList}>Xuất list ZIP</button> : null}
           </div>
           <p className="inspector-export-hint">Phím tắt: Ctrl+S xuất trang · ← → đổi trang</p>

@@ -154,7 +154,8 @@ function exportCallbacks(callbacks = {}) {
   };
 }
 
-function exportQualityProfile(quality, deckId, runtimeMode = 'modern') {
+function exportQualityProfile(quality, deckId, runtimeMode = 'modern', format = 'png') {
+  if (format === 'jpg') return { ...exportQualityProfile(quality, deckId, runtimeMode), imageFormat: 'image/jpeg', imageExtension: 'jpg', imageQuality: 0.95, backgroundColor: '#ffffff' };
   const profile = EXPORT_QUALITY_PROFILES[quality] || EXPORT_QUALITY_PROFILES.optimized;
   if (profile.id !== 'optimized' || runtimeMode === 'legacy') {
     return runtimeMode === 'legacy' && profile.id === 'optimized'
@@ -2061,7 +2062,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
   const { deck, list, selectedPageIndex, quality = 'optimized', dataset = null, _compatRetry = false } = context;
   if (!deck || !list) return;
   const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
-  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode);
+  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode, context.format);
 
   const exportList = resolveExportList(deck, list, dataset);
   const page = exportList.pages?.[selectedPageIndex];
@@ -2070,7 +2071,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
   }
 
   cb.setBusy(true);
-  cb.setStatus(`Đang xuất PNG cho trang ${selectedPageIndex + 1}/${list.pages.length}...`);
+  cb.setStatus(`Đang xuất ${qualityProfile.imageExtension.toUpperCase()} cho trang ${selectedPageIndex + 1}/${list.pages.length}...`);
   cb.showProgress(`Chuẩn bị xuất trang ${selectedPageIndex + 1}/${list.pages.length}...`, 5);
   resetBatchImageCache();
 
@@ -2102,7 +2103,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
     let blob;
     try {
       await assertRuntimeResources(qualityProfile);
-      cb.updateProgress(66, 'Đang render PNG...');
+      cb.updateProgress(66, `Đang render ${qualityProfile.imageExtension.toUpperCase()}...`);
       blob = await renderPageBlobWithRetry(pageNode, {
         imagesReady: true,
         pixelRatio: qualityProfile.pixelRatio,
@@ -2115,13 +2116,13 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
     } finally {
       restoreImagesFromBlobs(preparedImages);
     }
-    cb.updateProgress(92, 'Đang lưu file PNG...');
+    cb.updateProgress(92, 'Đang lưu file ảnh...');
     await assertRuntimeResources(qualityProfile);
-    if (!downloadBlobFile(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${pageNode.dataset.exportName}`)) {
-      throw new Error('Trình duyệt chặn bước tải PNG. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    if (!downloadBlobFile(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${exportNameWithExtension(pageNode, selectedPageIndex, qualityProfile.imageExtension)}`)) {
+      throw new Error('Trình duyệt chặn bước tải ảnh. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
     }
-    cb.completeProgress('Đã xuất xong PNG.');
-    cb.setStatus('Đã xuất PNG.');
+    cb.completeProgress(`Đã xuất xong ${qualityProfile.imageExtension.toUpperCase()}.`);
+    cb.setStatus(`Đã xuất ${qualityProfile.imageExtension.toUpperCase()}.`);
   } catch (error) {
     if (!_compatRetry && quality === 'optimized' && runtime.mode === 'modern' && isResourceExportError(error)) {
       error.retryCompatibleExport = true;
@@ -2129,7 +2130,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
     }
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`Page PNG export failed: ${message}`);
-    cb.failProgress(`Xuất PNG thất bại: ${message}`);
+    cb.failProgress(`Xuất ảnh thất bại: ${message}`);
     cb.setStatus(`Lỗi: ${message}`);
   } finally {
     clearBatchExportRoot();
@@ -2213,7 +2214,7 @@ async function exportActiveListAttempt(context, callbacks = {}) {
   const { deck, list, quality = 'optimized', dataset = null, _compatRetry = false } = context;
   if (!deck || !list) return;
   const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
-  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode);
+  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode, context.format);
 
   const exportList = resolveExportList(deck, list, dataset);
   assertBudget72HExportReady(deck, exportList);
@@ -2287,7 +2288,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
   const { dataset, selectedListIds, quality = 'optimized', _compatRetry = false } = context;
   if (!dataset || selectedListIds.size === 0) return;
   const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
-  const qualityProfile = exportQualityProfile(quality, undefined, runtime.mode);
+  const qualityProfile = exportQualityProfile(quality, undefined, runtime.mode, context.format);
 
   const listIds = Array.from(selectedListIds);
   const allLists = [];
@@ -2354,7 +2355,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
       }
       pages.forEach((page, pageIndex) => {
         pageTasks.push({
-          qualityProfile: exportQualityProfile(quality, item.deck.id, runtime.mode),
+          qualityProfile: exportQualityProfile(quality, item.deck.id, runtime.mode, context.format),
           list: item.list,
           listIndex,
           page,
