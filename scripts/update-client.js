@@ -91,7 +91,10 @@ async function waitForHealth(version, timeoutMs) {
       ]);
       if (backend.ok && frontend.ok) {
         const a = await backend.json(), b = await frontend.json();
-        if (a.appVersion === version && b.appVersion === version && b.sessionId === a.sessionId) return true;
+        const frontendVersion = frontend.headers.get('x-dalat-frontend-version');
+        const frontendSession = frontend.headers.get('x-dalat-frontend-session');
+        if (a.appVersion === version && b.appVersion === version && b.sessionId === a.sessionId
+          && frontendVersion === version && frontendSession === a.sessionId) return true;
       }
     } catch {}
     await new Promise(resolve => setTimeout(resolve, 2000));
