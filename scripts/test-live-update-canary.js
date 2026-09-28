@@ -12,6 +12,7 @@ const { execFileSync, spawn } = require('node:child_process');
 const oldZip = path.resolve(process.argv[2] || '');
 const newZip = path.resolve(process.argv[3] || '');
 const manifestFile = path.resolve(process.argv[4] || '');
+const expectRollback = process.argv.includes('--expect-rollback');
 if (process.platform !== 'win32') throw Error('Canary requires Windows.');
 for (const file of [oldZip, newZip, manifestFile]) if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) throw Error(`Missing ${file}`);
 
@@ -117,6 +118,7 @@ async function main() {
     ...process.env, LOCALAPPDATA: profile,
     DALAT_UPDATE_BASE_URL: `http://127.0.0.1:${server.address().port}/`,
     DALAT_UPDATE_ALLOW_HTTP_FOR_TEST: '1',
+    DALAT_UPDATE_TEST_HEALTH_FAIL: expectRollback ? '1' : '0',
   };
   const fd = fs.openSync(log, 'a');
   try {
@@ -138,10 +140,18 @@ async function main() {
     let state;
     while (Date.now() < until) {
       try { state = JSON.parse(fs.readFileSync(path.join(root, 'shared', 'update-process.json'), 'utf8')); } catch {}
-      if (state?.phase === 'complete') break;
-      if (state?.phase === 'error') throw Error(`Update failed: ${state.message}; log: ${log}`);
+      if (state?.phase === 'complete' || state?.phase === 'error') break;
       await pause(3000);
     }
+    if (expectRollback) {
+      assert.equal(state?.phase, 'error', `Rollback did not finish; state ${JSON.stringify(state)}; log: ${log}`);
+      await waitHealth(oldVersion, 30_000, log);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'shared', 'current.json'))).version, oldVersion);
+      assert.equal(fs.readFileSync(path.join(root, 'shared', 'data', 'canary-keep.json'), 'utf8'), '{"data":"unchanged"}');
+      console.log(`PASS real Windows rollback ${info.version} -> ${oldVersion}; data unchanged; log: ${log}`);
+      return;
+    }
+    if (state?.phase === 'error') throw Error(`Update failed: ${state.message}; log: ${log}`);
     assert.equal(state?.phase, 'complete', `Update timed out; last state ${JSON.stringify(state)}; log: ${log}`);
     await waitHealth(info.version, 30_000, log);
     assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'shared', 'current.json'))).version, info.version);
