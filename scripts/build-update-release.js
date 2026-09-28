@@ -16,7 +16,7 @@ function git(...args) { return execFileSync('git', args, { cwd: root, maxBuffer:
 function included(file) {
   if (/^(?:backend\/data\/|backend\/node_modules\/|backend\/reports\/|backend\/test\/|frontend\/node_modules\/|frontend\/\.next\/|frontend\/tools\/|\.githooks\/|\.cursor\/|docs\/)/.test(file)) return false;
   if (/\/(?:\.env|\.env\..+)$/.test(file) && !file.endsWith('.env.example')) return false;
-  return /^(?:backend\/(?:src\/|resources\/|\.env\.example$|package(?:-lock)?\.json$|tsconfig(?:\.build)?\.json$)|frontend\/(?:app\/|components\/|lib\/|public\/|next\.config\.js$|package(?:-lock)?\.json$)|scripts\/|start\.bat$|VERSION$|package(?:-lock)?\.json$|README\.md$)/.test(file);
+  return /^(?:backend\/(?:src\/|\.env\.example$|package(?:-lock)?\.json$|tsconfig(?:\.build)?\.json$)|frontend\/(?:app\/|components\/|lib\/|public\/|next\.config\.js$|package(?:-lock)?\.json$)|scripts\/|start\.bat$|VERSION$|package(?:-lock)?\.json$|README\.md$)/.test(file);
 }
 
 async function main() {

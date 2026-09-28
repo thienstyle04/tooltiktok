@@ -52,7 +52,7 @@ def safe_zip(file, expected_version):
             parts = item.filename.replace('\\', '/').split('/')
             if item.filename.startswith('/') or ':' in item.filename or '..' in parts or (item.external_attr >> 16) & 0o170000 == 0o120000:
                 raise ValueError('Unsafe ZIP entry')
-            if 'node_modules' in parts or 'drive-file-cache' in parts or 'shared' in parts or item.filename.startswith('backend/data/') or parts[-1] == '.env':
+            if 'node_modules' in parts or 'drive-file-cache' in parts or 'shared' in parts or item.filename.startswith('backend/data/') or item.filename.startswith('backend/resources/workbooks/') or parts[-1] == '.env':
                 raise ValueError('Release contains machine data')
         raw_version = archive.read('VERSION').decode().strip()
         normalized = '.'.join(str(int(value)) for value in raw_version.split('.')[:2]) + '.' + str(int(raw_version.split('.')[2])).zfill(2)
