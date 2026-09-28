@@ -2,6 +2,12 @@
 title Khoi dong Dalat TikTok Carousel Tool
 cd /d "%~dp0"
 
+rem Stable install root: dispatch to one complete backend/frontend release.
+if exist "%~dp0shared\current.json" (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\launch-current.ps1" -InstallRoot "%~dp0"
+  exit /b %errorlevel%
+)
+
 echo ==============================================================
 echo KHOI DONG DALAT TIKTOK CAROUSEL TOOL
 echo ==============================================================

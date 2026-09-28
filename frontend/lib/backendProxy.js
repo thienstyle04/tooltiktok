@@ -16,7 +16,7 @@ const BODYLESS_RESPONSE_STATUSES = new Set([101, 204, 205, 304]);
 
 // Next may construct request.url from its bind address (0.0.0.0), not the
 // browser's address. Validate the actual Host, never a forwarded-host header.
-function aiSettingsOrigin(request) {
+function localSettingsOrigin(request, headerName) {
   try {
     const internal = new URL(request.url);
     const host = request.headers.get('host') || internal.host;
@@ -25,7 +25,7 @@ function aiSettingsOrigin(request) {
     const origin = request.headers.get('origin');
     if (origin && origin !== publicUrl.origin) return null;
     if (request.headers.get('sec-fetch-site') === 'cross-site') return null;
-    if (request.headers.get('x-dalat-ai-settings') !== '1') return null;
+    if (request.headers.get(headerName) !== '1') return null;
     return publicUrl.origin;
   } catch { return null; }
 }
@@ -33,9 +33,12 @@ function aiSettingsOrigin(request) {
 export async function proxyBackendRequest(request, options = {}) {
   const requestUrl = new URL(request.url);
   if (requestUrl.pathname.startsWith('/api/ai/settings')) {
-    if (!aiSettingsOrigin(request)) {
+    if (!localSettingsOrigin(request, 'x-dalat-ai-settings')) {
       return Response.json({message:'Cấu hình AI chỉ dùng từ giao diện cục bộ.'}, {status:403});
     }
+  }
+  if (requestUrl.pathname.startsWith('/api/app-update') && !localSettingsOrigin(request, 'x-dalat-update')) {
+    return Response.json({message:'Cập nhật chỉ dùng từ giao diện cục bộ.'}, {status:403});
   }
   const backendOrigins = getBackendOrigins(requestUrl);
   const method = request.method.toUpperCase();
@@ -119,7 +122,9 @@ function isInfrastructureRoute(pathname) {
 
 function getForwardHeaders(request) {
   const headers = new Headers(request.headers);
-  if (new URL(request.url).pathname.startsWith('/api/ai/settings')) headers.set('origin', aiSettingsOrigin(request));
+  const pathname = new URL(request.url).pathname;
+  if (pathname.startsWith('/api/ai/settings')) headers.set('origin', localSettingsOrigin(request, 'x-dalat-ai-settings'));
+  if (pathname.startsWith('/api/app-update')) headers.set('origin', localSettingsOrigin(request, 'x-dalat-update'));
   for (const header of HOP_BY_HOP_HEADERS) headers.delete(header);
   return headers;
 }

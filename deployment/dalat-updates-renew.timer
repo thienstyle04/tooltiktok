@@ -1,0 +1,13 @@
+[Unit]
+Description=Check Dalat Studio IP certificate renewal three times daily
+
+[Timer]
+OnCalendar=*-*-* 00:15:00
+OnCalendar=*-*-* 08:15:00
+OnCalendar=*-*-* 16:15:00
+Persistent=true
+RandomizedDelaySec=15m
+Unit=dalat-updates-renew.service
+
+[Install]
+WantedBy=timers.target

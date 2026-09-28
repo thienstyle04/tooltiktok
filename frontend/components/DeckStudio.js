@@ -29,6 +29,7 @@ import ProgressBar from './ProgressBar';
 import Sidebar from './Sidebar';
 import StudioListLibrary from './StudioListLibrary';
 import SettingsPanel from './SettingsPanel';
+import UpdateNotice from './UpdateNotice';
 import TemplateGalleryPanel from './TemplateGalleryPanel';
 import AutomationSchedulerPanel from './AutomationSchedulerPanel';
 
@@ -2019,6 +2020,7 @@ export default function DeckStudio({ initialDataset = null }) {
           <p id="statusText" className="status-text">{status}</p>
         </div>
         <ProgressBar progress={progress} />
+        <UpdateNotice />
 
         {['templates','caption','preview'].includes(activeView) && <nav className="studio-workflow-steps" aria-label="Quy trình làm bài">
           {[[openTemplatesView,'templates','1 · Chọn mẫu'],[openCaptionView,'caption','2 · Tạo list'],[openPreviewView,'preview','3 · Chỉnh sửa'],[openExportView,'export','4 · Xuất file']].map(([action,id,label])=><button key={id} type="button" aria-current={activeView===id?'step':undefined} onClick={action}>{label}</button>)}

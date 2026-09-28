@@ -6,6 +6,7 @@ import { inheritPageTypography } from './logic/inherit-page-typography';
 import { BadRequestException, Injectable, NotFoundException, OnApplicationBootstrap, ServiceUnavailableException } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isUpdateLocked } from '../../runtime-update-lock';
 import * as XLSX from 'xlsx';
 import { enableNightSyncPolicy, hasSyncPermit, withLocalDataOnly } from './sync/night-sync-policy';
 import { NightSyncCoordinator } from './sync/night-sync-coordinator';
@@ -300,6 +301,11 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     return this.generationQueueDepth > 0;
   }
 
+  isUserOperationBusy(): boolean {
+    for (const [id, expires] of this.exportLeases) if (expires <= Date.now()) this.exportLeases.delete(id);
+    return this.isGenerationBusy() || this.exportLeases.size > 0 || this.destinationDataLoading;
+  }
+
   private driveCacheConcurrency(configured: number, max: number): number {
     const normal = Math.min(Math.max(configured, 1), max);
     return this.runtimePerformance.getStatus().mode === 'modern' ? normal : 1;
@@ -326,7 +332,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
   private syncMustWait(): boolean {
     for (const [id, expires] of this.exportLeases) if (expires <= Date.now()) this.exportLeases.delete(id);
-    return this.isGenerationBusy() || this.syncBusyProbe() || this.exportLeases.size > 0 || this.destinationDataLoading;
+    return this.isUserOperationBusy() || this.syncBusyProbe() || isUpdateLocked();
   }
   private getNightSync(): NightSyncCoordinator {
     return this.nightSync ||= new NightSyncCoordinator({
