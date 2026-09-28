@@ -136,6 +136,7 @@ async function apply(rootArgument) {
   if (!isolatedTest) {
     phase('waiting', 'Đang chờ tác vụ hiện tại hoàn tất.', { version: info.version });
     await waitForIdle(2 * 60 * 60_000);
+    await new Promise(resolve => setTimeout(resolve, 1500));
   }
   phase('restarting', 'Đang đóng tool và chuyển sang phiên bản mới.', { version: info.version });
   if (!isolatedTest) stopPreviousInstance({ sessionId: `updater-${process.pid}` });

@@ -105,20 +105,27 @@ export class UpdateService implements OnApplicationBootstrap, OnApplicationShutd
     if (!this.latest || this.protocol.compareVersions(this.latest.version, getRuntimeSession().appVersion) <= 0) await this.check();
     if (!this.latest || this.protocol.compareVersions(this.latest.version, getRuntimeSession().appVersion) <= 0) throw new ConflictException('Chưa có phiên bản mới đã ký để cài.');
     const script = path.join(resolveWorkspaceRoot(resolveBackendRoot(__dirname)), 'scripts', 'update-client.js');
-    if (!fs.existsSync(script)) throw new ConflictException('Thiếu trình cập nhật trên máy này.');
+    const helper = path.join(resolveWorkspaceRoot(resolveBackendRoot(__dirname)), 'scripts', 'launch-update-helper.ps1');
+    if (!fs.existsSync(script) || !fs.existsSync(helper)) throw new ConflictException('Thiếu trình cập nhật trên máy này.');
     fs.writeFileSync(path.join(this.installRoot, 'shared', 'update-process.json'), JSON.stringify({ phase: 'queued', message: 'Đang khởi chạy trình cập nhật.', updatedAt: new Date().toISOString() }));
     this.applying = true;
-    const child = spawn(process.execPath, [script, 'apply', this.installRoot], {
-      detached: true, windowsHide: true, stdio: 'ignore',
+    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helper,
+      '-NodePath', process.execPath, '-ClientScript', script, '-InstallRoot', this.installRoot], {
+      windowsHide: true, stdio: 'ignore',
       env: { ...process.env, DALAT_UPDATE_REQUESTED_VERSION: this.latest.version },
     });
-    child.on('error', error => {
-      this.error = error.message;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        child.once('error', reject);
+        child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Không khởi chạy được trình cập nhật độc lập (mã ${code}).`)));
+      });
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : String(error);
       this.applying = false;
       setUpdateLocked(false);
-      fs.writeFileSync(path.join(this.installRoot, 'shared', 'update-process.json'), JSON.stringify({ phase: 'error', message: error.message, updatedAt: new Date().toISOString() }));
-    });
-    child.unref();
+      fs.writeFileSync(path.join(this.installRoot, 'shared', 'update-process.json'), JSON.stringify({ phase: 'error', message: this.error, updatedAt: new Date().toISOString() }));
+      throw new ConflictException(this.error);
+    }
     return this.status();
   }
 

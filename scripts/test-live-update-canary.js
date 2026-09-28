@@ -80,6 +80,16 @@ async function main() {
   // isolated fixture, then separately assert the new release already has CRLF.
   const oldBatch = path.join(oldRoot, 'start.bat');
   fs.writeFileSync(oldBatch, fs.readFileSync(oldBatch, 'utf8').replace(/\r?\n/g, '\r\n'));
+  fs.copyFileSync(path.join(__dirname, 'ensure-portable-runtime.ps1'), path.join(oldRoot, 'scripts', 'ensure-portable-runtime.ps1'));
+  // Exercise the candidate installer against the previous release's dataset/UI.
+  // These installer files are promoted to the isolated previous code because
+  // unreleased candidates did not yet contain the independent helper.
+  for (const relative of ['scripts/update-client.js', 'scripts/launch-update-helper.ps1', 'backend/src/modules/guide/update.service.ts']) {
+    const from = path.join(__dirname, '..', relative);
+    const to = path.join(oldRoot, relative);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(from, to);
+  }
   const candidateBatch = execFileSync('tar', ['-xOf', newZip, 'start.bat']);
   assert.match(candidateBatch.toString('utf8'), /\r\n/);
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
