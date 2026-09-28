@@ -23,12 +23,23 @@ $runtimeRoot = if ($projectDriveRoot.Equals($localAppDriveRoot, [StringCompariso
 }
 $dependencyRoot = Join-Path $runtimeRoot 'dependencies'
 
+function Get-FileSha256([string]$filePath) {
+    $stream = [IO.File]::OpenRead($filePath)
+    $hash = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($hash.ComputeHash($stream))).Replace('-', '')
+    } finally {
+        $hash.Dispose()
+        $stream.Dispose()
+    }
+}
+
 function Get-DependencySignature {
     $dependencySpecs = foreach ($name in @('backend', 'frontend')) {
         $package = Get-Content -LiteralPath (Join-Path $projectRoot "$name\package.json") -Raw | ConvertFrom-Json
         # Windows PowerShell 5.1 không ConvertFrom-Json được package-lock có
         # property tên rỗng (packages[""]). Băm trực tiếp lockfile để tương thích.
-        $lockHash = (Get-FileHash -LiteralPath (Join-Path $projectRoot "$name\package-lock.json") -Algorithm SHA256).Hash
+        $lockHash = Get-FileSha256 (Join-Path $projectRoot "$name\package-lock.json")
         [ordered]@{
             name = $name
             dependencies = $package.dependencies
