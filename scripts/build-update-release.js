@@ -27,7 +27,9 @@ async function main() {
   const parts = rawVersion.match(/^(\d+)\.(\d+)\.(\d+)$/);
   if (!parts) throw Error('VERSION trong commit không hợp lệ.');
   const version = `${Number(parts[1])}.${Number(parts[2])}.${String(Number(parts[3])).padStart(2, '0')}`;
-  const changedCode = git('status', '--porcelain', '--untracked-files=all').toString('utf8').split(/\r?\n/).filter(Boolean)
+  // The package is assembled strictly from HEAD. Untracked local scripts are
+  // never packaged, so they must not force users to stage or delete their work.
+  const changedCode = git('status', '--porcelain', '--untracked-files=no').toString('utf8').split(/\r?\n/).filter(Boolean)
     .map(line => line.slice(3).replace(/\\/g, '/')).filter(included);
   if (changedCode.length) throw Error(`Chưa commit code của bản phát hành: ${changedCode.slice(0, 8).join(', ')}`);
   const files = git('ls-tree', '-r', '--name-only', 'HEAD').toString('utf8').split(/\r?\n/).filter(included);
