@@ -39,10 +39,11 @@ async function health(version) {
     && frontend.headers.get('x-dalat-frontend-version') === version
     && frontend.headers.get('x-dalat-frontend-session') === a.sessionId;
 }
-async function waitHealth(version, maxMs, log) {
+async function waitHealth(version, maxMs, log, launchExited = () => false) {
   const until = Date.now() + maxMs;
   while (Date.now() < until) {
     try { if (await health(version)) return; } catch {}
+    if (launchExited()) throw Error(`Launcher stopped before health ${version}; log: ${log}`);
     await pause(5000);
   }
   throw Error(`Health did not reach ${version}; log: ${log}`);
@@ -101,9 +102,12 @@ async function main() {
   };
   const fd = fs.openSync(log, 'a');
   try {
-    spawn('cmd.exe', ['/d', '/c', path.join(root, 'start.bat')], { cwd: root, env, detached: true, windowsHide: true, stdio: ['ignore', fd, fd] }).unref();
+    let launchExited = false;
+    const launcher = spawn('cmd.exe', ['/d', '/c', path.join(root, 'start.bat')], { cwd: root, env, detached: true, windowsHide: true, stdio: ['ignore', fd, fd] });
+    launcher.on('exit', () => { launchExited = true; });
+    launcher.unref();
     console.log(`Canary root: ${root}`);
-    await waitHealth(oldVersion, 12 * 60_000, log);
+    await waitHealth(oldVersion, 12 * 60_000, log, () => launchExited);
     console.log(`Old release healthy: ${oldVersion}`);
     const checked = await updateCall('check');
     assert.equal(checked.availableVersion, info.version);
