@@ -14,6 +14,7 @@ export interface AutomationScheduleInput {
   dailyTime?: string;
   outputDir?: string;
   outputFileName?: string;
+  format?: 'png' | 'jpg';
   enabled?: boolean;
   templates?: AutomationTemplateRequest[];
   hook?: { mode?: AutomationHookMode; sourceId?: string };
@@ -28,6 +29,7 @@ export interface AutomationSchedule {
   dailyTime?: string;
   outputDir: string;
   outputFileName?: string;
+  format?: 'png' | 'jpg';
   enabled: boolean;
   templates: AutomationTemplateRequest[];
   hook: { mode: AutomationHookMode; sourceId?: string };
@@ -59,6 +61,7 @@ export interface AutomationRunError {
 }
 
 export interface AutomationRun {
+  ai?: { provider: 'deepseek' | 'gemini'; model: string };
   id: string;
   scheduleId: string;
   scheduleName: string;
@@ -71,6 +74,7 @@ export interface AutomationRun {
   hook: { mode: AutomationHookMode; sourceId?: string };
   outputDir: string;
   outputFileName?: string;
+  format?: 'png' | 'jpg';
   listIds: string[];
   generated: Array<{ deckId: string; listId: string }>;
   exportedLists?: Array<{ deckId: string; listId: string }>;

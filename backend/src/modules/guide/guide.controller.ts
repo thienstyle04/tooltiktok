@@ -248,6 +248,11 @@ export class GuideController {
     return this.guideService.generateDeepSeekCaption(request);
   }
 
+  @Post('api/ai/caption')
+  generateAiCaption(@Body() request: DeepSeekCaptionRequest): Promise<DeepSeekCaptionResponse> {
+    return this.guideService.generateDeepSeekCaption(request);
+  }
+
   @Post('api/decks/generate-from-caption')
   generateDeckFromCaption(@Body() request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     this.automationScheduler.assertUserMutationAllowed();

@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { getAppConfig } from './config';
+import { isUpdateLocked } from './runtime-update-lock';
 
 export async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -22,6 +23,10 @@ export async function bootstrap(): Promise<void> {
   
   app.use((request: any, response: any, next: () => void) => {
     const requestPath = String(request.path || request.url || '');
+    if (isUpdateLocked() && !['GET', 'HEAD', 'OPTIONS'].includes(String(request.method || 'GET').toUpperCase()) && !requestPath.startsWith('/api/app-update/')) {
+      response.status(423).json({ message: 'Đang chuẩn bị cập nhật; vui lòng chờ tool khởi động lại.' });
+      return;
+    }
     const cacheableAsset = requestPath.startsWith('/assets/') || requestPath.startsWith('/fonts/');
     if (!cacheableAsset) {
       response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

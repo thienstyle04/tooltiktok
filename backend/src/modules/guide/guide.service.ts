@@ -1,10 +1,12 @@
 // ─── GuideService: orchestration, caching, AI captions ───────────────────────
 import 'dotenv/config';
+import { aiProvider, AiError } from './ai-provider';
 import { verifyDriveFileCache } from './sync/drive-images';
 import { inheritPageTypography } from './logic/inherit-page-typography';
 import { BadRequestException, Injectable, NotFoundException, OnApplicationBootstrap, ServiceUnavailableException } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isUpdateLocked } from '../../runtime-update-lock';
 import * as XLSX from 'xlsx';
 import { enableNightSyncPolicy, hasSyncPermit, withLocalDataOnly } from './sync/night-sync-policy';
 import { NightSyncCoordinator } from './sync/night-sync-coordinator';
@@ -130,7 +132,9 @@ const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(dec
 import { ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './logic/itinerary-note';
 import { DIARY_TEMPLATE_VERSION, DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
 import { ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
-const isTextNoteDeck = (deckId: string): boolean => deckId === 'summary-note' || deckId === 'itinerary-note-2days' || deckId === 'itinerary-note-timed';
+import { threadsNoteCaption } from './logic/itinerary-note-threads';
+import { THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION, threadsBudgetCaption } from './logic/itinerary-note-threads-budget';
+const isTextNoteDeck = (deckId: string): boolean => deckId === 'summary-note' || (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) || deckId === 'itinerary-note-timed';
 const isNonAiDeck = (deckId: string): boolean => deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
@@ -288,7 +292,7 @@ export class GuideService implements OnApplicationBootstrap {
     this.generationQueue = new Promise<void>((resolve) => { release = resolve; });
     await previous;
     try {
-      return await this.runtimePerformance.runGenerationTask(() => withLocalDataOnly(task));
+return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() => withLocalDataOnly(task)));
     } finally {
       this.generationQueueDepth = Math.max(0, this.generationQueueDepth - 1);
       release();
@@ -297,6 +301,11 @@ export class GuideService implements OnApplicationBootstrap {
 
   isGenerationBusy(): boolean {
     return this.generationQueueDepth > 0;
+  }
+
+  isUserOperationBusy(): boolean {
+    for (const [id, expires] of this.exportLeases) if (expires <= Date.now()) this.exportLeases.delete(id);
+    return this.isGenerationBusy() || this.exportLeases.size > 0 || this.destinationDataLoading;
   }
 
   private driveCacheConcurrency(configured: number, max: number): number {
@@ -325,7 +334,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
   private syncMustWait(): boolean {
     for (const [id, expires] of this.exportLeases) if (expires <= Date.now()) this.exportLeases.delete(id);
-    return this.isGenerationBusy() || this.syncBusyProbe() || this.exportLeases.size > 0 || this.destinationDataLoading;
+    return this.isUserOperationBusy() || this.syncBusyProbe() || isUpdateLocked();
   }
   private getNightSync(): NightSyncCoordinator {
     return this.nightSync ||= new NightSyncCoordinator({
@@ -366,6 +375,10 @@ export class GuideService implements OnApplicationBootstrap {
             this.workbookSource = source;
             this.workbookDerivedCache = null;
             this.invalidateDatasetCache({ immediate: true });
+            // A cold machine can fail its startup warmup before the user starts
+            // a manual sync. Publication supersedes that old startup error.
+            this.destinationDataError = '';
+            this.destinationDataLoading = false;
           }
         },
       }),
@@ -665,7 +678,7 @@ export class GuideService implements OnApplicationBootstrap {
           : `Đang đọc dữ liệu XLSX (${getDestinationConfig(this.activeDestinationId).label})...`,
       };
     }
-    if (this.destinationDataError) {
+    if (this.destinationDataError && !(sourceIsReady && syncPublished)) {
       return {
         ...this.driveCacheWarmStatus,
         phase: 'error',
@@ -1132,7 +1145,9 @@ export class GuideService implements OnApplicationBootstrap {
     this.destinationDataError = '';
     try {
       if (needsFirstLoad) {
-        await this.syncWorkbookNow(switchingDestination ? 'tai diem den lan dau' : 'tai du lieu lan dau');
+        // Selecting a source is not consent to fetch its Sheet. The manual
+        // update action can initialize an inactive source, then switch here.
+        throw new BadRequestException(`Nguồn ${getDestinationConfig(nextId).label} chưa có workbook cục bộ. Hãy chọn “Tải dữ liệu & chuyển” để cập nhật thủ công trước.`);
       } else if (needsLocalManifestRefresh && this.workbookSource) {
         await this.refreshSheetDriveManifest(this.workbookSource, false);
       } else if (switchingDestination) {
@@ -1261,8 +1276,12 @@ export class GuideService implements OnApplicationBootstrap {
   // ─── AI caption ───────────────────────────────────────────────────────────
 
   async generateDeepSeekCaption(request: DeepSeekCaptionRequest): Promise<DeepSeekCaptionResponse> {
+    return aiProvider.run(() => this.generateDeepSeekCaptionWithAi(request));
+  }
+
+  private async generateDeepSeekCaptionWithAi(request: DeepSeekCaptionRequest): Promise<DeepSeekCaptionResponse> {
     const deckId = String(request.deckId ?? '').trim();
-    if (!deckId) throw new BadRequestException('Thiếu deckId để gửi sang DeepSeek.');
+    if (!deckId) throw new BadRequestException('Thiếu deckId để gửi sang AI.');
 
     const dataset = await this.getDataset();
     const deck = dataset.decks.find((d) => d.id === deckId);
@@ -1283,12 +1302,7 @@ export class GuideService implements OnApplicationBootstrap {
         : [],
     };
 
-    const apiKey = String(process.env.DEEPSEEK_API_KEY ?? '').trim();
-    if (!apiKey) {
-      throw new BadRequestException(
-        'Thiếu DEEPSEEK_API_KEY trên server. Hãy chạy: $env:DEEPSEEK_API_KEY="sk-..." rồi npm run start:dev',
-      );
-    }
+    const apiKey = ''; // Credentials are resolved only by the AI adapter.
 
     const prompt = this.buildDeepSeekPrompt(deck, deckList, tone, target, current, this.getUsedCaptionTitles(deck.id));
     let response: Response;
@@ -1304,21 +1318,22 @@ export class GuideService implements OnApplicationBootstrap {
         stream: false,
       });
     } catch (fetchError: any) {
+      if (fetchError instanceof AiError) throw fetchError;
       if (fetchError?.name === 'AbortError') {
-        throw new BadRequestException('DeepSeek API không phản hồi sau 30 giây. Vui lòng thử lại.');
+        throw new BadRequestException('AI API không phản hồi sau 30 giây. Vui lòng thử lại.');
       }
       const cause = fetchError?.cause ? (fetchError.cause.code || fetchError.cause.message || String(fetchError.cause)) : '';
-      throw new BadRequestException(`Không kết nối được DeepSeek: ${fetchError?.message || fetchError}${cause ? ` (${cause})` : ''}`);
+      throw new BadRequestException(`Không kết nối được AI: ${fetchError?.message || fetchError}${cause ? ` (${cause})` : ''}`);
     }
 
     const responseText = await response.text();
-    if (!response.ok) throw new BadRequestException(`DeepSeek API lỗi HTTP ${response.status}: ${responseText}`);
+    if (!response.ok) throw new BadRequestException(`AI API lỗi HTTP ${response.status}: ${responseText}`);
 
     let payload: any;
-    try { payload = JSON.parse(responseText); } catch { throw new BadRequestException('Không đọc được phản hồi JSON từ DeepSeek.'); }
+    try { payload = JSON.parse(responseText); } catch { throw new BadRequestException('Không đọc được phản hồi JSON từ AI.'); }
 
     const content = String(payload?.choices?.[0]?.message?.content ?? '').trim();
-    if (!content) throw new BadRequestException('DeepSeek không trả về nội dung caption.');
+    if (!content) throw new BadRequestException('AI không trả về nội dung caption.');
 
     const parsed = this.parseDeepSeekJson(content);
     const normalizedCaption = this.normalizeCaptionPayload(parsed, current, target, tone, deckId, this.collectCaptionForbiddenNames(deckList));
@@ -1440,7 +1455,7 @@ export class GuideService implements OnApplicationBootstrap {
     store.decks[deckId][listId] ||= {};
     const previousItems = store.decks[deckId][listId][String(pageIndex)]?.items;
     let items = previousItems;
-    const isEditableNoteRows = page.layoutVariant === 'itinerary-note-day'
+    const isEditableNoteRows = (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget')
       || page.layoutVariant === 'itinerary-note-timed-day'
       || page.layoutVariant === 'spotlight-v6-map-place'
       || page.layoutVariant === 'spotlight-v6-diary-page'
@@ -1450,6 +1465,7 @@ export class GuideService implements OnApplicationBootstrap {
       items = request.items.map(item => ({
         name: this.normalizeEditablePageText(item.name ?? ''),
         metaPrimary: this.normalizeEditablePageText(item.metaPrimary ?? ''),
+        ...(page.layoutVariant === 'itinerary-note-threads-budget' ? { metaSecondary: this.normalizeEditablePageText(item.metaSecondary ?? '').slice(0, 80) } : {}),
         ...(page.layoutVariant === 'itinerary-note-timed-day' ? { scheduleTime: this.normalizeEditablePageText(item.scheduleTime ?? '').slice(0, 24) } : {}),
       }));
     }
@@ -1477,9 +1493,13 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
+    return aiProvider.run(() => this.generateDeckFromCaptionWithAi(request));
+  }
+
+  private async generateDeckFromCaptionWithAi(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     this.ensureGeneratedListsLoaded();
     const deckId = String(request.deckId ?? '').trim();
-    if (deckId !== 'itinerary-note-timed') {
+    if (deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
       this.assertDriveCacheReady();
     }
     if (deckId === 'spotlight-partner') {
@@ -1599,12 +1619,12 @@ export class GuideService implements OnApplicationBootstrap {
     const deckUsage = this.createUsageScope();
     currentDeck.lists.forEach((list) => {
       const isPreviewList = /-main$/i.test(String(list.id || '')) || String(list.id || '').toLowerCase() === 'main';
-      if ((deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary') && isPreviewList) return;
+      if ((deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID) && isPreviewList) return;
       this.markUsedInDeck(list.pages, deckUsage);
     });
     // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
     for (const prevList of existing) {
-      if (deckId === 'spotlight-v6-diary') this.markUsedInDeck(prevList.pages, deckUsage);
+      if (deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID) this.markUsedInDeck(prevList.pages, deckUsage);
       for (const page of prevList.pages) {
         if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
         if (page.type !== 'list') continue;
@@ -1721,7 +1741,7 @@ export class GuideService implements OnApplicationBootstrap {
     generatedPages = inheritPageTypography(currentDeck, generatedPages, this.loadPageTextOverrides());
     const effectiveCoverTitle = deckId === 'spotlight-v6-diary' ? basePages[0].title : deckId === 'itinerary-note-timed'
       ? currentDeck.navTitle
-      : (deckId === 'summary-note' || deckId === 'itinerary-note-2days')
+      : (deckId === 'summary-note' || (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')))
       ? String((generatedPages.find((page) => page.type === 'list') as ListPage | undefined)?.title || '').trim()
       : deckId === 'spotlight-v6-maps'
       ? currentDeck.navTitle
@@ -1729,7 +1749,7 @@ export class GuideService implements OnApplicationBootstrap {
       ? String((generatedPages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
       : finalCaption.coverTitle;
 
-    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' || deckId === 'spotlight-v6-maps' ? 14 : deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' ? 11 : isTextNoteDeck(deckId) ? (deckId === 'summary-note' ? 1 : 2) : 0;
+    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' || deckId === 'spotlight-v6-maps' ? 14 : deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' ? 11 : isTextNoteDeck(deckId) ? (deckId === 'summary-note' ? 1 : deckId.startsWith('itinerary-note-threads-') ? 1 : 2) : 0;
     if (expectedNonAiPageCount && generatedPages.length !== expectedNonAiPageCount) {
       throw new BadRequestException(`Mẫu ${currentDeck.navTitle} phải có đúng ${expectedNonAiPageCount} trang, hiện có ${generatedPages.length}.`);
     }
@@ -1749,14 +1769,20 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'spotlight-v5') generatedList.canvasPreset = 'tiktok-4x5';
     if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon') generatedList.canvasPreset = 'tiktok-9x16';
     if (deckId === 'spotlight-v6-maps') generatedList.canvasPreset = 'tiktok-3x4';
-    if (isTextNoteDeck(deckId)) generatedList.canvasPreset = 'tiktok-9x16';
+    if (isTextNoteDeck(deckId)) generatedList.canvasPreset = deckId.startsWith('itinerary-note-threads-') ? 'tiktok-3x4' : 'tiktok-9x16';
     generatedList.postCaption = deckId === 'spotlight-v6-persimmon'
       ? 'Đà Lạt mùa hồng 🍂\nLưu lại những địa điểm trong list để tham khảo cho chuyến đi nhé.'
       : deckId === 'spotlight-v6-maps'
       ? 'tới Đà Lạt vì'
       : isTextNoteDeck(deckId)
-      ? (deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_CAPTION : deckId === 'itinerary-note-2days' ? ITINERARY_NOTE_CAPTION : summaryNoteDefaultCaption())
+      ? (deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_CAPTION : (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) ? ITINERARY_NOTE_CAPTION : summaryNoteDefaultCaption())
       : finalCaption.headline;
+    if (deckId === 'itinerary-note-threads-3n2d' || deckId === 'itinerary-note-threads-2n1d') {
+      generatedList.postCaption = threadsNoteCaption(deckId, generatedNumber - 1);
+    }
+    if (deckId === THREADS_BUDGET_ID) {
+      generatedList.postCaption = threadsBudgetCaption(generatedNumber - 1);
+    }
     // Không dùng chung `description`: trường đó có thể bị làm rỗng để list con
     // bám đúng cấu trúc chữ của mẫu mẹ, còn caption xuất file vẫn phải giữ mô tả.
     generatedList.captionBody = deckId === 'spotlight-v6-persimmon'
@@ -1859,27 +1885,8 @@ export class GuideService implements OnApplicationBootstrap {
   // ─── Batch list generation ────────────────────────────────────────────────
 
   /** Gọi DeepSeek chat completions với 1 lần retry nếu fetch lỗi mạng (không retry khi timeout/abort). */
-  private async fetchDeepSeekChat(apiKey: string, body: Record<string, unknown>, timeoutMs = 30_000): Promise<Response> {
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        return await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-      } catch (error: any) {
-        if (error?.name === 'AbortError' || attempt === 2) throw error;
-        const cause = error?.cause ? (error.cause.code || error.cause.message || String(error.cause)) : '';
-        console.warn(`[deepseek] fetch lỗi (thử lại lần 2/2)${cause ? `, nguyên nhân: ${cause}` : ''}: ${error?.message || error}`);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-    throw new Error('DeepSeek fetch thất bại.');
+  private async fetchDeepSeekChat(_apiKey: string, body: Record<string, unknown>, _timeoutMs = 30_000): Promise<Response> {
+    return aiProvider.chat(body);
   }
 
   private async prepareV4CaptionDeck(): Promise<GuideDeck> {
@@ -1901,6 +1908,10 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   async generateBatchLists(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    return aiProvider.run(() => this.generateBatchListsWithAi(request));
+  }
+
+  private async generateBatchListsWithAi(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
     const requestId = String(request.requestId || '').trim().slice(0, 100);
     if (requestId) {
       const existingRequest = this.batchGenerationRequests.get(requestId);
@@ -1918,7 +1929,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   private async generateBatchListsOnce(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
     const deckId = String(request.deckId ?? '').trim();
-    if (deckId !== 'itinerary-note-timed') {
+    if (deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
       this.assertDriveCacheReady();
     }
     if (deckId === 'spotlight-partner') {
@@ -1961,12 +1972,7 @@ export class GuideService implements OnApplicationBootstrap {
       return { deckId, lists: results, successCount: results.length, failCount, errors };
     }
 
-    const apiKey = String(process.env.DEEPSEEK_API_KEY ?? '').trim();
-    if (!apiKey) {
-      throw new BadRequestException(
-        'Thiếu DEEPSEEK_API_KEY. Hãy thêm vào backend/.env rồi khởi động lại.',
-      );
-    }
+    const apiKey = ''; // Credentials are resolved only by the AI adapter.
 
     const v4CaptionDeck = deckId === 'spotlight-v4' ? await this.prepareV4CaptionDeck() : null;
     const toneRotation: DeepSeekCaptionResponse['tone'][] = [
@@ -2012,7 +2018,7 @@ export class GuideService implements OnApplicationBootstrap {
 
         if (!response.ok) {
           const responseBody = (await response.text()).replace(/\s+/g, ' ').trim().slice(0, 300);
-          const message = `DeepSeek HTTP ${response.status}${responseBody ? `: ${responseBody}` : ''}`;
+          const message = `AI HTTP ${response.status}${responseBody ? `: ${responseBody}` : ''}`;
           console.warn(`[batch] ${message} cho tone ${tone}`);
           errors.push({ index: i + 1, tone, message });
           failCount++;
@@ -2022,14 +2028,14 @@ export class GuideService implements OnApplicationBootstrap {
         const responseText = await response.text();
         let payload: any;
         try { payload = JSON.parse(responseText); } catch {
-          errors.push({ index: i + 1, tone, message: 'DeepSeek trả dữ liệu không phải JSON hợp lệ.' });
+          errors.push({ index: i + 1, tone, message: 'AI trả dữ liệu không phải JSON hợp lệ.' });
           failCount++;
           continue;
         }
 
         const content = String(payload?.choices?.[0]?.message?.content ?? '').trim();
         if (!content) {
-          errors.push({ index: i + 1, tone, message: 'DeepSeek không trả nội dung.' });
+          errors.push({ index: i + 1, tone, message: 'AI không trả nội dung.' });
           failCount++;
           continue;
         }
@@ -2071,6 +2077,12 @@ export class GuideService implements OnApplicationBootstrap {
         console.warn(`[batch] Lỗi tạo list ${i + 1}/${count} (tone=${tone}):`, message);
         errors.push({ index: i + 1, tone, message });
         failCount++;
+        if (error instanceof AiError && error.fatal) {
+          const remaining = count - i - 1;
+          failCount += remaining;
+          if (remaining) errors.push({ index: i + 2, tone, message: `Dừng ${remaining} list còn lại do cấu hình/quota AI. Không tự đổi nhà cung cấp.` });
+          break;
+        }
       }
     }
 
@@ -2500,7 +2512,7 @@ export class GuideService implements OnApplicationBootstrap {
           ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
           ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.diaryFontSize !== undefined ? { diaryFontSize: ownOverride.diaryFontSize } : {}),
           ...(page.layoutVariant === 'itinerary-note-timed-day' && ownOverride.chipText !== undefined ? { chipText: ownOverride.chipText } : {}),
-          ...(page.type === 'list' && (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
+          ...(page.type === 'list' && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
             items: page.items.map((item, index) => ({ ...item, ...ownOverride.items?.[index] })),
           } : {}),
         };
@@ -2667,7 +2679,8 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === 'spotlight-v6-dark') return SPOTLIGHT_V6_DARK_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v6-persimmon') return SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v6-maps') return SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION;
-    if (isTextNoteDeck(deckId)) return deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_TEMPLATE_VERSION : deckId === 'itinerary-note-2days' ? ITINERARY_NOTE_TEMPLATE_VERSION : SUMMARY_NOTE_TEMPLATE_VERSION;
+    if (deckId === THREADS_BUDGET_ID) return THREADS_BUDGET_TEMPLATE_VERSION;
+    if (isTextNoteDeck(deckId)) return deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_TEMPLATE_VERSION : (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) ? ITINERARY_NOTE_TEMPLATE_VERSION : SUMMARY_NOTE_TEMPLATE_VERSION;
     if (deckId === 'carousel-mau-1') return CAROUSEL_MAU_1_TEMPLATE_VERSION;
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
     if (deckId === 'itinerary-4n3d-stack') return ITINERARY_4N3D_STACK_TEMPLATE_VERSION;
@@ -2719,7 +2732,7 @@ export class GuideService implements OnApplicationBootstrap {
       ...cleanList,
       description: safeDescription,
       pages: enrichedPages.map((page, pageIndex) => {
-        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day'))) {
+        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
           return page;
         }
         const pageBackgroundImage = this.backgroundImageForPage(cleanList, page, pageIndex, coverImageUrls);
@@ -2740,7 +2753,7 @@ export class GuideService implements OnApplicationBootstrap {
     return {
       ...list,
       pages: enrichedPages.map((page, pageIndex) => {
-        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day'))) {
+        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
           return page;
         }
         if (page.type === 'cover') {
@@ -2883,7 +2896,7 @@ export class GuideService implements OnApplicationBootstrap {
       return this.sanitizeDeckPageText(page);
     }
 
-    if ((String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day'))) {
+    if ((String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
       return {
         ...page,
         title: this.sanitizeContentText(sanitizeDeckHeadline(page.title)),
@@ -3386,7 +3399,7 @@ export class GuideService implements OnApplicationBootstrap {
                 ? this.budgetGalleryItemMetaFromSource(sourceItem)
                 : page.layoutVariant === 'spotlight-v3'
                   ? this.spotlightV3ItemMetaFromSource(sourceItem, page.chipText)
-                  : (page.layoutVariant === 'spotlight-v4-page' || page.layoutVariant === 'spotlight-v5-place' || page.layoutVariant === 'spotlight-v6-page' || (page.layoutVariant === 'summary-note-page' || page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-timed-day'))
+                  : (page.layoutVariant === 'spotlight-v4-page' || page.layoutVariant === 'spotlight-v5-place' || page.layoutVariant === 'spotlight-v6-page' || (page.layoutVariant === 'summary-note-page' || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))
                     ? [String(sourceItem.address || '').trim(), ''] as [string, string]
                   : page.layoutVariant === 'carousel-mau-1-page'
                     ? [String(sourceItem.address || '').trim(), ''] as [string, string]
@@ -4398,8 +4411,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   private async enrichPov3V2StackTaglines(pages: DeckPage[]): Promise<DeckPage[]> {
-    const apiKey = String(process.env.DEEPSEEK_API_KEY ?? '').trim();
-    if (!apiKey) return pages;
+    if (!aiProvider.hasKey()) return pages;
 
     type Entry = { key: string; name: string; moTa: string };
     const entries: Entry[] = [];
@@ -4430,10 +4442,7 @@ export class GuideService implements OnApplicationBootstrap {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 30_000);
     try {
-      const response = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
+      const response = await aiProvider.chat({
           model: 'deepseek-chat',
           messages: [
             { role: 'system', content: 'Chỉ trả về JSON object hợp lệ, không markdown, không giải thích.' },
@@ -4442,9 +4451,7 @@ export class GuideService implements OnApplicationBootstrap {
           temperature: 1.05,
           max_tokens: 1200,
           stream: false,
-        }),
-        signal: controller.signal,
-      });
+        });
       if (!response.ok) return pages;
 
       const responseText = await response.text();
@@ -4478,7 +4485,8 @@ export class GuideService implements OnApplicationBootstrap {
           }),
         };
       });
-    } catch {
+    } catch (error) {
+      console.warn('[ai] Bỏ qua tagline bổ sung:', error instanceof AiError ? error.message : 'Không nhận được nội dung hợp lệ.');
       return pages;
     } finally {
       clearTimeout(timer);
@@ -4496,7 +4504,7 @@ export class GuideService implements OnApplicationBootstrap {
       const p = this.tryParseJson(content.slice(firstBrace, lastBrace + 1));
       if (p) return p;
     }
-    throw new BadRequestException('Không parse được JSON caption từ DeepSeek.');
+    throw new BadRequestException('Không parse được JSON caption từ AI.');
   }
 
   private collectCaptionForbiddenNames(deckList: GuideDeckList): string[] {
@@ -4686,6 +4694,7 @@ export class GuideService implements OnApplicationBootstrap {
     const oneWayMultiline = page.layoutVariant === 'one-way-story-road';
     const cleanPage: DeckPage = {
       ...page,
+      ...(page.layoutVariant === 'itinerary-note-threads-budget' ? { backgroundImage: '' } : {}),
       chipText: this.sanitizeContentText(localizeText(page.chipText || '', this.activeDestinationId)),
       title: this.sanitizeContentText(sanitizeDeckHeadline(localizeText(page.title || '', this.activeDestinationId))),
       subtitle: oneWayMultiline
@@ -4815,7 +4824,7 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   private sanitizePageItemText(item: PageItem, page?: DeckPage): PageItem {
-    const isBudgetTableItem = page?.type === 'list' && page.layoutVariant === 'budget-3n2d-table';
+    const isBudgetTableItem = page?.type === 'list' && (page.layoutVariant === 'budget-3n2d-table' || page.layoutVariant === 'itinerary-note-threads-budget');
     const isPov3V2Stack = page?.type === 'list' && page.layoutVariant === 'pov-3-v2-stack';
     const stackTagline = isPov3V2Stack
       ? finalizePov3V2Tagline({ name: item.name, highlight: item.label || item.imageNote || '', sectionKey: item.sourceSectionKey } as GuideItem)

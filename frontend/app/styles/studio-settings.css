@@ -13,6 +13,17 @@
   color: var(--studio-ink);
 }
 
+.ai-settings-card { margin-bottom:24px; gap:12px; }
+.ai-settings-card p { margin:0; font-size:.85rem; line-height:1.5; }
+.ai-settings-card fieldset { min-width:0; }
+.ai-settings-card label { display:grid; grid-template-columns:140px minmax(0,1fr); align-items:center; gap:12px; }
+.ai-settings-card input,.ai-settings-card select { width:100%; min-width:0; box-sizing:border-box; padding:10px 12px; border:1px solid var(--studio-line,#526055); border-radius:8px; background:var(--studio-surface,#202b24); color:var(--studio-ink,#f3f3ee); font:inherit; }
+.ai-settings-card button { padding:10px 14px; border:1px solid var(--studio-line,#526055); border-radius:8px; background:var(--studio-surface,#202b24); color:var(--studio-ink,#f3f3ee); cursor:pointer; font:inherit; }
+.ai-settings-card button:disabled { opacity:.5; cursor:default; }
+.ai-settings-card a { color:var(--studio-accent,#f39b70); }
+.ai-settings-card small { color:var(--studio-muted,#aab8ad); }
+@media(max-width:640px) { .ai-settings-card label {grid-template-columns:1fr;gap:5px;} }
+
 .settings-panel-head {
   display: flex;
   align-items: flex-start;

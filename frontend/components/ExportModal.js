@@ -11,7 +11,7 @@ const EXPORT_QUALITY_OPTIONS = [
   {
     id: 'original',
     title: 'Chất lượng gốc',
-    description: 'Xuất final khi đã chốt list. PNG gốc, nét nhất nhưng chậm hơn và ZIP lớn hơn nhiều.',
+    description: 'Xuất final khi đã chốt list. Độ phân giải gốc nhưng chậm hơn và ZIP lớn hơn nhiều.',
   },
 ];
 
@@ -20,6 +20,8 @@ export default function ExportModal({
   dataset,
   selectedIds,
   setSelectedIds,
+  format = 'png',
+  setFormat,
   quality,
   setQuality,
   runtimePerformance,
@@ -60,6 +62,7 @@ export default function ExportModal({
             để Windows sắp đúng: set1 mẫu A → set1 mẫu B → set2 mẫu A → set2 mẫu B.
           </p>
 
+          <label>Định dạng ảnh <select value={format} disabled={busy} onChange={e => setFormat(e.target.value)}><option value="png">PNG</option><option value="jpg">JPG</option></select></label>
           <section className="export-quality-panel">
             <div>
               <p className="panel-kicker">Chất lượng render</p>

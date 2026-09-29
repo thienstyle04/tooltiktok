@@ -44,7 +44,8 @@ export function resolveWorkspaceRoot(backendRoot = resolveBackendRoot()): string
 }
 
 export function resolveBackendDataDir(backendRoot = resolveBackendRoot()): string {
-  return path.join(backendRoot, 'data');
+  const configured = String(process.env.DALAT_DATA_DIR || '').trim();
+  return configured ? path.resolve(configured) : path.join(backendRoot, 'data');
 }
 
 export function resolveBackendReportsDir(backendRoot = resolveBackendRoot()): string {

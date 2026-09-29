@@ -3,6 +3,36 @@ const icon = body => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 const share = icon('<path d="M8 8H5v14h14V8h-3M12 15V1m-4 4 4-4 4 4"/>');
 const more = icon('<circle cx="12" cy="12" r="10"/><circle cx="7" cy="12" r=".7" fill="currentColor"/><circle cx="12" cy="12" r=".7" fill="currentColor"/><circle cx="17" cy="12" r=".7" fill="currentColor"/>');
 export function renderItineraryNotePage(page, index, listId) {
+  if (page.layoutVariant === 'itinerary-note-threads-day') {
+    const items = page.items || [];
+    if (items.some(item => /^Ngày \d+\|/.test(item.label || ''))) {
+      let previousDay = '';
+      const rows = items.map((item, itemIndex) => {
+        const day = String(item.label || '').split('|')[0];
+        const number = Number(day.match(/\d+/)?.[0]) || 1;
+        const showDay = day !== previousDay; previousDay = day;
+        const period = String(item.label || '').split('|')[1] || '';
+        const activity = item.sourceSectionKey === 'quan_an' ? ({ Sáng: 'Ăn sáng', Trưa: 'Ăn trưa', Tối: 'Ăn tối' }[period] || 'Ăn uống') : item.sourceSectionKey === 'cafe' ? 'Cà phê' : item.sourceSectionKey === 'choi_dem' ? 'Đi chơi đêm' : 'Tham quan / check-in';
+        const note = item.metaSecondary || activity;
+        const next = items[itemIndex + 1];
+        const rest = period === 'Trưa' && next && String(next.label || '').startsWith(day + '|') && !String(next.label).endsWith('|Trưa')
+          ? '<tr class="threads-rest"><td></td><td colspan="3">Quay lại chỗ nghỉ · nghỉ ngơi</td></tr>' : '';
+        return `<tr class="threads-place-row day-${number}"><td${showDay ? ` class="threads-day-label threads-day-${number}"` : ''}>${showDay ? escape(day) : ''}</td><td>${escape(item.name)}</td><td>${escape(item.metaPrimary)}</td><td>${escape(note)}</td></tr>${rest}`;
+      }).join('');
+      return `<article class="story-page itinerary-note-day itinerary-note-threads-day threads-summary threads-portrait" data-list-id="${escape(listId)}" data-page-index="${index}" data-export-name="lich-trinh-tong-hop.png"><div class="in-content"><table class="threads-table"><colgroup><col style="width:12%"><col style="width:26%"><col style="width:40%"><col style="width:22%"></colgroup><thead><tr><th>Ngày</th><th>Địa điểm / hoạt động</th><th>Địa chỉ</th><th>Ghi chú</th></tr></thead><tbody>${rows}</tbody></table></div></article>`;
+    }
+    const groups = ['Sáng', 'Trưa', 'Chiều', 'Tối'].map(period => {
+      const selected = items.filter(item => item.label === period);
+      if (!selected.length) return '';
+      const rows = selected.map(item => {
+        const visit = ['check_in', 'khu_du_lich', 'hoat_dong', 'dia_diem_lich_su', 'choi_dem'].includes(item.sourceSectionKey);
+        const note = item.metaSecondary || (item.sourceSectionKey === 'quan_an' ? 'Ăn uống' : item.sourceSectionKey === 'cafe' ? 'Cafe' : visit ? 'Tham quan / check-in' : '');
+        return `<tr class="threads-place-row"><td>${escape(item.scheduleTime || '')}</td><td${visit ? ' class="threads-highlight"' : ''}>${escape(item.name)}</td><td>${escape(item.metaPrimary)}</td></tr>`;
+      }).join('');
+      return `<tr class="threads-period"><th colspan="3">${period}</th></tr>${rows}${period === 'Trưa' ? '<tr class="threads-rest"><td colspan="3">Về chỗ nghỉ · nghỉ ngơi</td></tr>' : ''}`;
+    }).join('');
+    return `<article class="story-page itinerary-note-day itinerary-note-threads-day threads-portrait" data-list-id="${escape(listId)}" data-page-index="${index}" data-export-name="${index+1}-note-threads.png"><div class="in-content"><h1>${escape(page.title)}</h1><p class="threads-subtitle">${escape(page.subtitle)}</p><table class="threads-table"><colgroup><col style="width:17%"><col style="width:45%"><col style="width:38%"></colgroup><thead><tr><th>Giờ dự kiến</th><th>Hoạt động / địa điểm</th><th>Địa chỉ</th></tr></thead><tbody>${groups}</tbody></table></div></article>`;
+  }
   const rows = (page.items || []).map(item => {
     const name = item.name ?? item.rawName ?? '';
     const address = item.metaPrimary ?? '';
@@ -22,16 +52,53 @@ export function fitItineraryNote(root, strict = false) {
   for (const node of nodes) {
     const content = node.querySelector('.in-content');
     if (!content || !content.clientHeight) continue;
-    let size = 18;
+    const threads = node.classList.contains('itinerary-note-threads-day');
+    const budget = node.classList.contains('itinerary-note-threads-budget');
+    const portrait = node.classList.contains('threads-portrait');
+    const explicitSize = Number(node.dataset.textFontSize);
+    const hasExplicitSize = explicitSize >= 8 && explicitSize <= 72;
+    const summary = node.classList.contains('threads-summary');
+    const overflows = () => content.scrollHeight > content.clientHeight + 1 || content.scrollWidth > content.clientWidth + 1;
+    if (summary && portrait) {
+      node.style.removeProperty('--threads-table-width');
+      node.style.removeProperty('--threads-cell-pad-y');
+    }
+    let size = budget ? 20 : summary ? (portrait ? 20 : 8) : threads ? 16 : 18;
     node.style.setProperty('--in-font-size', size + 'px');
-    while (content.scrollHeight > content.clientHeight + 1 && size > 14) {
+    while (overflows()
+      && size > (budget ? 12 : summary ? (portrait ? 11 : 7) : threads ? 11 : 14) && !((threads || budget) && hasExplicitSize)) {
       size -= .5;
       node.style.setProperty('--in-font-size', size + 'px');
     }
-    const overflow = content.scrollHeight > content.clientHeight + 1 || content.scrollWidth > content.clientWidth + 1;
+    // Keep the compact Threads table by default; borrow page width only for unusually long rows.
+    if (summary && portrait && overflows()) {
+      for (const width of [774]) {
+        node.style.setProperty('--threads-table-width', width + 'px');
+        if (!overflows()) break;
+      }
+      if (!hasExplicitSize) {
+        while (overflows() && size > 10) {
+          size -= .5;
+          node.style.setProperty('--in-font-size', size + 'px');
+        }
+      }
+    }
+    // Use spare vertical room for even row spacing, without enlarging the columns again.
+    if (summary && portrait && !hasExplicitSize && !overflows()) {
+      const table = content.querySelector('.threads-table');
+      if (table?.rows.length) {
+        const spareHeight = content.clientHeight - 12 - table.offsetHeight;
+        const extraPadding = Math.min(12, Math.max(0, spareHeight / (table.rows.length * 2)));
+        if (extraPadding >= .1) {
+          node.style.setProperty('--threads-cell-pad-y', (2 + extraPadding).toFixed(2) + 'px');
+          if (overflows()) node.style.removeProperty('--threads-cell-pad-y');
+        }
+      }
+    }
+    const overflow = overflows();
     node.dataset.noteOverflow = String(overflow);
     node.title = overflow ? 'Nội dung quá dài. Vui lòng rút gọn trước khi xuất.' : '';
-    if (overflow && strict) throw new Error('Lịch trình Note: nội dung quá dài ở ' + node.querySelector('.in-day')?.textContent + '. Vui lòng rút gọn trước khi xuất.');
+    if (overflow && strict) throw new Error('Lịch trình Note: nội dung quá dài ở ' + (node.querySelector('.in-day')?.textContent || node.querySelector('h1')?.textContent || 'trang đang chọn') + '. Vui lòng giảm cỡ chữ hoặc rút gọn trước khi xuất.');
   }
 }
 

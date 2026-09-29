@@ -1,0 +1,9 @@
+[Unit]
+Description=Renew Dalat Studio IP update certificate without touching other Certbot profiles
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/dalat-updates-certbot/bin/certbot renew --cert-name 113.161.254.76 --config-dir /etc/letsencrypt-dalat-updates --work-dir /var/lib/letsencrypt-dalat-updates --logs-dir /var/log/letsencrypt-dalat-updates --quiet --deploy-hook /usr/local/sbin/dalat-updates-reload-nginx.sh
+ExecStartPost=/usr/bin/openssl x509 -in /etc/letsencrypt-dalat-updates/live/113.161.254.76/fullchain.pem -noout -checkend 172800

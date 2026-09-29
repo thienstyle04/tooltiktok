@@ -154,7 +154,8 @@ function exportCallbacks(callbacks = {}) {
   };
 }
 
-function exportQualityProfile(quality, deckId, runtimeMode = 'modern') {
+function exportQualityProfile(quality, deckId, runtimeMode = 'modern', format = 'png') {
+  if (format === 'jpg') return { ...exportQualityProfile(quality, deckId, runtimeMode), imageFormat: 'image/jpeg', imageExtension: 'jpg', imageQuality: 0.95, backgroundColor: '#ffffff' };
   const profile = EXPORT_QUALITY_PROFILES[quality] || EXPORT_QUALITY_PROFILES.optimized;
   if (profile.id !== 'optimized' || runtimeMode === 'legacy') {
     return runtimeMode === 'legacy' && profile.id === 'optimized'
@@ -194,11 +195,12 @@ function prepareQualityLayout(nodes, profile) {
     node.dataset.exportStrict = 'true';
     if (!profile.losslessSource) { delete node.dataset.exportLossless; continue; }
     node.dataset.exportLossless = 'true';
-    // Only normalized portrait layouts need a different design height.
+    // Use the design frame for normalized layouts.
     if (!isSpotlightV6PageNode(node) && !isSpotlightV5PageNode(node) && !isSpotlightV6MapsPageNode(node)) continue;
     // Use the design frame rather than responsive preview dimensions.
-    node.style.setProperty('width', '397px', 'important');
-    node.style.setProperty('height', `${397 * (isSpotlightV5PageNode(node) ? 1.25 : isSpotlightV6MapsPageNode(node) ? 4 / 3 : 16 / 9)}px`, 'important');
+    const threadsPortrait = isThreadsPortraitPageNode(node);
+    node.style.setProperty('width', threadsPortrait ? '810px' : '397px', 'important');
+    node.style.setProperty('height', threadsPortrait ? '1080px' : `${397 * (isSpotlightV5PageNode(node) ? 1.25 : isSpotlightV6MapsPageNode(node) ? 4 / 3 : 16 / 9)}px`, 'important');
     node.style.setProperty('min-height', '0', 'important');
     node.style.setProperty('max-width', 'none', 'important');
     node.style.setProperty('flex-shrink', '0', 'important');
@@ -218,6 +220,7 @@ function usesFullResolutionV6(pageNode, options) {
 function balancedPixelRatio(node, fallback) {
   if (node?.dataset?.exportLossless !== 'true') return fallback;
   const rect = node.getBoundingClientRect();
+  if (isThreadsPortraitPageNode(node)) return Math.max(1080 / rect.width, 1440 / rect.height) + 1e-9;
   if (isSpotlightV5PageNode(node) || isSpotlightV6PageNode(node) || isSpotlightV6MapsPageNode(node)) {
     const targetHeight = isSpotlightV5PageNode(node) ? 1350 : isSpotlightV6MapsPageNode(node) ? 1440 : 1920;
     return Math.max(1080 / rect.width, targetHeight / rect.height) + 1e-9;
@@ -274,6 +277,8 @@ function collectDriveFileIdsFromLists(lists) {
       return;
     }
     if (typeof value !== 'object') return;
+    // Threads chi phí chỉ render chữ; ảnh còn sót trong snapshot không phải tài nguyên xuất.
+    if (value.layoutVariant === 'itinerary-note-threads-budget') return;
     for (const [key, child] of Object.entries(value)) {
       // Candidate chỉ dùng khi primary fail — không prefetch hết (máy mới sẽ rất lâu).
       if (key === 'candidateImageUrls' || key === 'candidates') continue;
@@ -1556,6 +1561,10 @@ function isSpotlightV5PageNode(pageNode) {
   return Boolean(pageNode?.classList?.contains('spotlight-v5-cover') || pageNode?.classList?.contains('spotlight-v5-playlist') || pageNode?.classList?.contains('spotlight-v5-place'));
 }
 
+function isThreadsPortraitPageNode(pageNode) {
+  return Boolean(pageNode?.classList?.contains('threads-portrait') || pageNode?.classList?.contains('itinerary-note-threads-budget'));
+}
+
 function isSpotlightV6PageNode(pageNode) {
   return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day') || pageNode?.classList?.contains('itinerary-note-timed-day'));
 }
@@ -1576,10 +1585,21 @@ function normalizeSpotlightV6MapsCanvas(canvas, pageNode) {
 }
 
 function normalizeSpotlightV6Canvas(canvas, pageNode) {
-  if (!isSpotlightV6PageNode(pageNode) || !canvas) return canvas;
+  if (!isSpotlightV6PageNode(pageNode) || isThreadsPortraitPageNode(pageNode) || !canvas) return canvas;
   const target = document.createElement('canvas');
   target.width = 1080;
   target.height = 1920;
+  const ctx = target.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.drawImage(canvas, 0, 0, target.width, target.height);
+  return target;
+}
+function normalizeThreadsCanvas(canvas, pageNode) {
+  if (!isThreadsPortraitPageNode(pageNode) || !canvas) return canvas;
+  if (canvas.width === 1080 && canvas.height === 1440) return canvas;
+  const target = document.createElement('canvas');
+  target.width = 1080;
+  target.height = 1440;
   const ctx = target.getContext('2d');
   if (!ctx) return canvas;
   ctx.drawImage(canvas, 0, 0, target.width, target.height);
@@ -1759,9 +1779,9 @@ export async function renderPageBlob(pageNode, options = {}) {
     if (!lossless && !diaryPage) return undefined;
     const canvas = document.createElement('canvas');
     const rect = pageNode.getBoundingClientRect();
-    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode) || isSpotlightV6MapsPageNode(pageNode);
+    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode) || isSpotlightV6MapsPageNode(pageNode) || isThreadsPortraitPageNode(pageNode);
     canvas.width = normalized ? 1080 : Math.floor(rect.width * pixelRatio);
-    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : isSpotlightV6MapsPageNode(pageNode) ? 1440 : 1920) : Math.floor(rect.height * pixelRatio);
+    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : isSpotlightV6MapsPageNode(pageNode) || isThreadsPortraitPageNode(pageNode) ? 1440 : 1920) : Math.floor(rect.height * pixelRatio);
     return canvas;
   };
   const renderTimeoutMs = Number(options.renderTimeoutMs || PAGE_RENDER_TIMEOUT_MS);
@@ -1796,7 +1816,7 @@ export async function renderPageBlob(pageNode, options = {}) {
   let cornersAlreadyClipped = false;
   const finalizeCanvasBlob = async (canvas) => {
     const clipped = clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor);
-    const normalized = normalizeSpotlightV6MapsCanvas(normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode), pageNode);
+    const normalized = normalizeThreadsCanvas(normalizeSpotlightV6MapsCanvas(normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode), pageNode), pageNode);
     try { return await canvasToBlob(normalized, imageFormat, imageQuality); }
     finally {
       if (lossless) for (const bitmap of new Set([canvas, clipped, normalized])) {
@@ -1805,13 +1825,13 @@ export async function renderPageBlob(pageNode, options = {}) {
     }
   };
   const finalizeBlob = async (blob) => {
-    if (diaryPage) {
+    if (diaryPage || isThreadsPortraitPageNode(pageNode)) {
       const bitmap = await createImageBitmap(blob);
       const canvas = document.createElement('canvas');
       canvas.width = 1080; canvas.height = 1440;
       try {
         const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Không tạo được canvas Nhật ký.');
+        if (!ctx) throw new Error('Không tạo được canvas xuất ảnh 3:4.');
         ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
         return await canvasToBlob(canvas, imageFormat, imageQuality);
       } finally { bitmap.close(); canvas.width = 0; canvas.height = 0; }
@@ -2061,7 +2081,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
   const { deck, list, selectedPageIndex, quality = 'optimized', dataset = null, _compatRetry = false } = context;
   if (!deck || !list) return;
   const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
-  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode);
+  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode, context.format);
 
   const exportList = resolveExportList(deck, list, dataset);
   const page = exportList.pages?.[selectedPageIndex];
@@ -2070,7 +2090,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
   }
 
   cb.setBusy(true);
-  cb.setStatus(`Đang xuất PNG cho trang ${selectedPageIndex + 1}/${list.pages.length}...`);
+  cb.setStatus(`Đang xuất ${qualityProfile.imageExtension.toUpperCase()} cho trang ${selectedPageIndex + 1}/${list.pages.length}...`);
   cb.showProgress(`Chuẩn bị xuất trang ${selectedPageIndex + 1}/${list.pages.length}...`, 5);
   resetBatchImageCache();
 
@@ -2102,7 +2122,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
     let blob;
     try {
       await assertRuntimeResources(qualityProfile);
-      cb.updateProgress(66, 'Đang render PNG...');
+      cb.updateProgress(66, `Đang render ${qualityProfile.imageExtension.toUpperCase()}...`);
       blob = await renderPageBlobWithRetry(pageNode, {
         imagesReady: true,
         pixelRatio: qualityProfile.pixelRatio,
@@ -2115,13 +2135,13 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
     } finally {
       restoreImagesFromBlobs(preparedImages);
     }
-    cb.updateProgress(92, 'Đang lưu file PNG...');
+    cb.updateProgress(92, 'Đang lưu file ảnh...');
     await assertRuntimeResources(qualityProfile);
-    if (!downloadBlobFile(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${pageNode.dataset.exportName}`)) {
-      throw new Error('Trình duyệt chặn bước tải PNG. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+    if (!downloadBlobFile(blob, `${sanitizeFilePart(deck.id)}-${sanitizeFilePart(list.id)}-${exportNameWithExtension(pageNode, selectedPageIndex, qualityProfile.imageExtension)}`)) {
+      throw new Error('Trình duyệt chặn bước tải ảnh. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
     }
-    cb.completeProgress('Đã xuất xong PNG.');
-    cb.setStatus('Đã xuất PNG.');
+    cb.completeProgress(`Đã xuất xong ${qualityProfile.imageExtension.toUpperCase()}.`);
+    cb.setStatus(`Đã xuất ${qualityProfile.imageExtension.toUpperCase()}.`);
   } catch (error) {
     if (!_compatRetry && quality === 'optimized' && runtime.mode === 'modern' && isResourceExportError(error)) {
       error.retryCompatibleExport = true;
@@ -2129,7 +2149,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
     }
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`Page PNG export failed: ${message}`);
-    cb.failProgress(`Xuất PNG thất bại: ${message}`);
+    cb.failProgress(`Xuất ảnh thất bại: ${message}`);
     cb.setStatus(`Lỗi: ${message}`);
   } finally {
     clearBatchExportRoot();
@@ -2213,7 +2233,7 @@ async function exportActiveListAttempt(context, callbacks = {}) {
   const { deck, list, quality = 'optimized', dataset = null, _compatRetry = false } = context;
   if (!deck || !list) return;
   const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
-  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode);
+  const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode, context.format);
 
   const exportList = resolveExportList(deck, list, dataset);
   assertBudget72HExportReady(deck, exportList);
@@ -2287,7 +2307,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
   const { dataset, selectedListIds, quality = 'optimized', _compatRetry = false } = context;
   if (!dataset || selectedListIds.size === 0) return;
   const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
-  const qualityProfile = exportQualityProfile(quality, undefined, runtime.mode);
+  const qualityProfile = exportQualityProfile(quality, undefined, runtime.mode, context.format);
 
   const listIds = Array.from(selectedListIds);
   const allLists = [];
@@ -2354,7 +2374,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
       }
       pages.forEach((page, pageIndex) => {
         pageTasks.push({
-          qualityProfile: exportQualityProfile(quality, item.deck.id, runtime.mode),
+          qualityProfile: exportQualityProfile(quality, item.deck.id, runtime.mode, context.format),
           list: item.list,
           listIndex,
           page,

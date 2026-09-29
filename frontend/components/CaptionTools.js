@@ -40,13 +40,13 @@ export default function CaptionTools({
     || activeDeck?.id === 'spotlight-v6-persimmon'
     || activeDeck?.id === 'spotlight-v6-maps'
     || activeDeck?.id === 'spotlight-v6-diary'
-    || (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id === 'itinerary-note-timed');
-  const nonAiTemplateName = activeDeck?.id === 'spotlight-v6-diary' ? 'Spotlight Nhật ký Đà Lạt' : activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'spotlight-v6-dark' ? 'Spotlight V6 Tone đen' : activeDeck?.id === 'spotlight-v6-persimmon' ? 'Spotlight Mùa hồng' : activeDeck?.id === 'spotlight-v6-maps' ? 'Spotlight V6 Google Maps' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : activeDeck?.id === 'itinerary-note-2days' ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
+    || (activeDeck?.id === 'summary-note' || (activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id?.startsWith('itinerary-note-threads-')) || activeDeck?.id === 'itinerary-note-timed');
+  const nonAiTemplateName = activeDeck?.id === 'spotlight-v6-diary' ? 'Spotlight Nhật ký Đà Lạt' : activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'spotlight-v6-dark' ? 'Spotlight V6 Tone đen' : activeDeck?.id === 'spotlight-v6-persimmon' ? 'Spotlight Mùa hồng' : activeDeck?.id === 'spotlight-v6-maps' ? 'Spotlight V6 Google Maps' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : (activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id?.startsWith('itinerary-note-threads-')) ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
     ? 'Đường một chiều'
     : activeDeck?.id === 'summary-note'
       ? 'Tổng hợp địa điểm'
       : 'Mẫu 1';
-  const creationDisabled = busy || (!cacheReady && activeDeck?.id !== 'itinerary-note-timed');
+  const creationDisabled = busy || (!cacheReady && activeDeck?.id !== 'itinerary-note-timed' && !activeDeck?.id?.startsWith('itinerary-note-threads-'));
 
   const handleDeckChange = (event) => {
     const deck = decks.find((item) => item.id === event.target.value);

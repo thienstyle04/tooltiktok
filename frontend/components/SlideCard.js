@@ -104,6 +104,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     fitItineraryNoteTimed(root);
     fitSpotlightDiary(root);
     applyPageTextScale(root);
+    if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root);
   });
 
   useEffect(() => {
@@ -116,7 +117,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
-    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); };
+    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); };
     fitNotes();
     const noteFitFrame = window.requestAnimationFrame(fitNotes);
     const noteFitTimer = window.setTimeout(fitNotes, 120);

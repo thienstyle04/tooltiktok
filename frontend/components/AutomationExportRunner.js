@@ -58,6 +58,7 @@ export default function AutomationExportRunner({ runId, token }) {
           dataset,
           selectedListIds,
           quality: 'optimized',
+          format: context.format || 'png',
           skipImageErrors: true,
           onExportOutcome: recordOutcome,
           onArchive: async (archive, name, outcome) => {

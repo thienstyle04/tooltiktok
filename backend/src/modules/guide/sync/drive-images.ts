@@ -58,6 +58,7 @@ export function configureDriveFileDiskCache(dir: string): void {
 
 function resolveDriveFileDiskCacheDir(): string {
   if (driveFileDiskCacheDir) return driveFileDiskCacheDir;
+  if (process.env.DALAT_DATA_DIR?.trim()) return path.join(path.resolve(process.env.DALAT_DATA_DIR), 'drive-file-cache');
   // backend/src/modules/guide/sync -> backend/data/drive-file-cache
   return path.join(__dirname, '../../../../data/drive-file-cache');
 }
