@@ -745,6 +745,7 @@ const V2_LIST_VARIANTS = new Set([
   'summary-note-page',
   'itinerary-note-day',
   'itinerary-note-threads-day',
+  'itinerary-note-threads-budget',
   'itinerary-note-timed-day',
   'carousel-mau-1-page',
   'one-way-story-road',
@@ -1839,6 +1840,7 @@ function renderSpotlightV4VenuePage(page, index, listId, list) {
 }
 
 import { renderItineraryNotePage, renderItineraryNoteTimedPage } from './itineraryNote';
+import { renderThreadsBudgetPage } from './threadsBudget';
 function renderSummaryNotePage(page, index, listId) {
   const title = page.title !== undefined ? String(page.title || '').trim() : '';
   const rows = (page.items || []).slice(0, 8).map((item) => {
@@ -2445,6 +2447,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
     return renderSpotlightV4ImagePage(page, index, listId);
   }
   if (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') return renderItineraryNotePage(page, index, listId);
+  if (page.layoutVariant === 'itinerary-note-threads-budget') return renderThreadsBudgetPage(page, index, listId);
   if (page.layoutVariant === 'itinerary-note-timed-day') return renderItineraryNoteTimedPage(page, index, listId);
   if (page.layoutVariant === 'summary-note-page') {
     return renderSummaryNotePage(page, index, listId);

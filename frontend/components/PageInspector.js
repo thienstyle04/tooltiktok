@@ -2,6 +2,7 @@ import { currentPageLabel, imageSourceClass, sourceLabel } from '../lib/utils';
 import FontSizeControl from './FontSizeControl';
 import { useEffect, useState } from 'react';
 import { renderedTextSizes } from '../lib/pageTextScale';
+import { parseThreadsBudgetAmount } from '../lib/threadsBudget';
 
 function isPortableImageUrl(value) {
   const url = String(value || '').trim();
@@ -51,15 +52,16 @@ export default function PageInspector({
   }
 
   const items = Array.isArray(page.items) ? page.items : [];
+  const isThreadsBudget = page.layoutVariant === 'itinerary-note-threads-budget';
   const hasItems = items.length > 0;
   const itemsWithImages = items.filter((item) => item.imageUrl);
   const mappedCount = itemsWithImages.filter((item) => item.imageSource === 'manual' || item.imageSource === 'auto' || item.imageMapped).length;
   const fallbackCount = itemsWithImages.filter((item) => imageSourceClass(item) === 'fallback').length;
   const partnerCount = items.filter((item) => item.isPartner).length;
-  const pageBackground = isPortableImageUrl(page.backgroundImage)
+  const pageBackground = isThreadsBudget ? '' : isPortableImageUrl(page.backgroundImage)
     ? page.backgroundImage
     : firstPortableListImage(list) || page.backgroundImage || '';
-  const coverImage = hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
+  const coverImage = isThreadsBudget ? '' : hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
   const isSpotlightV4ImagePage = page.layoutVariant === 'spotlight-v4-image' || page.layoutVariant === 'spotlight-v6-map-page';
   const canEditPage = typeof onPageTextChange === 'function' && !isSpotlightV4ImagePage;
   const canSavePage = canEditPage && typeof onPageTextSave === 'function';
@@ -92,15 +94,15 @@ export default function PageInspector({
       </div> : null}
       {canEditPage ? (
         <div className="inspector-cover-editor inspector-page-editor">
-          {!isTimedNote ? <label className="inspector-field">
+          {!isTimedNote && !isThreadsBudget ? <label className="inspector-field">
             <span className="inspector-field-head"><span>Tiêu đề trang</span><span>{pageTitle.length}/{titleLimit}</span></span>
             <textarea value={pageTitle} placeholder="Nhập tiêu đề trang..." rows={2} maxLength={titleLimit} onChange={(event) => onPageTextChange({ title: event.target.value })} />
-          </label> : (
+          </label> : isTimedNote ? (
             <label className="inspector-field">
               <span className="inspector-field-head"><span>Nhãn ngày</span><span>{String(page.chipText || '').length}/40</span></span>
               <input value={page.chipText ?? ''} maxLength={40} onChange={(event) => onPageTextChange({ chipText: event.target.value })} />
             </label>
-          )}
+          ) : null}
           {!hideSubtitleEditor ? (
             <label className="inspector-field">
               <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/220</span></span>
@@ -114,6 +116,14 @@ export default function PageInspector({
               <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
             </div>
           )) : null}
+          {isThreadsBudget ? <>
+            <p className="inspector-field">Tổng tạm tính cộng các khoản đã có giá và ghi rõ số khoản còn thiếu. Nhập giá VND cho các khoản trống để có tổng đầy đủ.</p>
+            {items.map((item, i) => <div className="inspector-field" key={item.id || i}>
+              <span>{item.label} · Khoản {i + 1}</span>
+              <input aria-label={'Chi tiết khoản ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              <input aria-label={'Tiền khoản ' + (i + 1)} value={item.metaSecondary ?? ''} placeholder="Ví dụ: 65.000 đ" maxLength={80} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaSecondary: event.target.value } : row) })} />
+            </div>)}
+          </> : null}
           {page.layoutVariant === 'spotlight-v6-diary-page' ? <>
             <label className="inspector-field"><span>Vị trí chữ</span>
               <select value={page.titlePlacement || 'center'} onChange={event => onPageTextChange({ titlePlacement: event.target.value })}>
@@ -160,23 +170,25 @@ export default function PageInspector({
       {hasItems ? (
         <>
           <div className="inspector-stats">
-            <div><strong>{items.length}</strong><span>dữ liệu</span></div>
-            <div><strong>{mappedCount}</strong><span>có ảnh</span></div>
-            <div><strong>{partnerCount}</strong><span>đối tác</span></div>
-            <div><strong>{fallbackCount}</strong><span>minh họa</span></div>
+            <div><strong>{items.length}</strong><span>{isThreadsBudget ? 'khoản chi' : 'dữ liệu'}</span></div>
+            {isThreadsBudget ? <div><strong>{items.filter(item => parseThreadsBudgetAmount(item.metaSecondary) !== null).length}</strong><span>đã có giá</span></div> : <>
+              <div><strong>{mappedCount}</strong><span>có ảnh</span></div>
+              <div><strong>{partnerCount}</strong><span>đối tác</span></div>
+              <div><strong>{fallbackCount}</strong><span>minh họa</span></div>
+            </>}
           </div>
           <ul className="inspector-list">
             {items.map((item, index) => (
-              <li key={`${item.id || item.name}-${index}`} className={`inspector-item ${item.imageUrl ? 'rich' : ''}`}>
-                {item.imageUrl ? <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" /> : null}
+              <li key={`${item.id || item.name}-${index}`} className={`inspector-item ${!isThreadsBudget && item.imageUrl ? 'rich' : ''}`}>
+                {!isThreadsBudget && item.imageUrl ? <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" /> : null}
                 <span className="inspector-item-copy">
                   <span className="inspector-item-label">{item.label || ''}</span>
                   <span className="inspector-item-name">{item.name}</span>
-                  <span className="inspector-item-meta">{item.metaPrimary || ''}</span>
+                  <span className="inspector-item-meta">{isThreadsBudget ? (item.metaSecondary || 'Chưa có giá') : (item.metaPrimary || '')}</span>
                 </span>
-                {item.imageUrl
+                {!isThreadsBudget && item.imageUrl
                   ? <span className={`inspector-item-source ${imageSourceClass(item)}`}>{sourceLabel(item)}</span>
-                  : <span className="inspector-item-source text-only">Bảng</span>}
+                  : <span className="inspector-item-source text-only">{isThreadsBudget ? 'Chi phí' : 'Bảng'}</span>}
               </li>
             ))}
           </ul>

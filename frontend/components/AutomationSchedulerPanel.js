@@ -6,7 +6,7 @@ import { listIsMain } from '../lib/utils';
 
 const DALAT_ONLY_DECKS = new Set([
   'spotlight-v6-diary', 'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-2days', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-2days', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
 ]);
 const DALAT_EXTRA_DECKS = [
   { id: 'spotlight-v5', navTitle: 'Spotlight V5' },
@@ -18,6 +18,7 @@ const DALAT_EXTRA_DECKS = [
   { id: 'summary-note', navTitle: 'Tổng hợp địa điểm' },
   { id: 'itinerary-note-threads-3n2d', navTitle: 'Note Threads 3N2Đ' },
   { id: 'itinerary-note-threads-2n1d', navTitle: 'Note Threads 2N1Đ' },
+  { id: 'itinerary-note-threads-budget-3n2d', navTitle: 'Chi phí Threads 3N2Đ' },
   { id: 'itinerary-note-2days', navTitle: 'Lịch trình Note 2 ngày' },
   { id: 'itinerary-note-timed', navTitle: 'Lịch trình Note theo giờ' },
   { id: 'carousel-mau-1', navTitle: 'Carousel mẫu 1' },

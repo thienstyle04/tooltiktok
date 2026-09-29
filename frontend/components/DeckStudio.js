@@ -147,7 +147,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v6-maps',
   'spotlight-v6-diary',
   'summary-note',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-2days',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-2days',
   'itinerary-note-timed',
   'one-way-story',
   'itinerary-4n3d-stack',
@@ -161,7 +161,7 @@ const DALAT_ONLY_CATALOG_DECK_IDS = new Set([
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
   'spotlight-v6-diary',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-2days',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-2days',
   'itinerary-note-timed',
   'one-way-story',
 ]);
@@ -2170,7 +2170,7 @@ export default function DeckStudio({ initialDataset = null }) {
                 <div className="panel-head compact">
                   <div>
                     <p className="panel-kicker">Dữ liệu trang</p>
-                    <h3 className="panel-title">Dữ liệu & ảnh</h3>
+                    <h3 className="panel-title">{activePage?.layoutVariant === 'itinerary-note-threads-budget' ? 'Dữ liệu bảng chi phí' : 'Dữ liệu & ảnh'}</h3>
                     <p role="status">{savingPageText ? 'Đang lưu…' : editorSaveState === 'dirty' ? '● Chưa lưu' : editorSaveState === 'failed' ? 'Lưu thất bại — bản nháp vẫn còn' : 'Đã lưu'}</p>
                   </div>
                 </div>

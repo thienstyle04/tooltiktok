@@ -16,7 +16,7 @@ const V2_DECK_IDS = new Set([
   'spotlight-v6-maps',
   'spotlight-v6-diary',
   'summary-note',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-2days',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-2days',
   'itinerary-note-timed',
   'carousel-mau-1',
   'one-way-story',

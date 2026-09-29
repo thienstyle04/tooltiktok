@@ -195,11 +195,12 @@ function prepareQualityLayout(nodes, profile) {
     node.dataset.exportStrict = 'true';
     if (!profile.losslessSource) { delete node.dataset.exportLossless; continue; }
     node.dataset.exportLossless = 'true';
-    // Only normalized portrait layouts need a different design height.
+    // Use the design frame for normalized layouts.
     if (!isSpotlightV6PageNode(node) && !isSpotlightV5PageNode(node) && !isSpotlightV6MapsPageNode(node)) continue;
     // Use the design frame rather than responsive preview dimensions.
-    node.style.setProperty('width', '397px', 'important');
-    node.style.setProperty('height', `${397 * (isSpotlightV5PageNode(node) ? 1.25 : isSpotlightV6MapsPageNode(node) ? 4 / 3 : 16 / 9)}px`, 'important');
+    const threadsPortrait = isThreadsPortraitPageNode(node);
+    node.style.setProperty('width', threadsPortrait ? '810px' : '397px', 'important');
+    node.style.setProperty('height', threadsPortrait ? '1080px' : `${397 * (isSpotlightV5PageNode(node) ? 1.25 : isSpotlightV6MapsPageNode(node) ? 4 / 3 : 16 / 9)}px`, 'important');
     node.style.setProperty('min-height', '0', 'important');
     node.style.setProperty('max-width', 'none', 'important');
     node.style.setProperty('flex-shrink', '0', 'important');
@@ -219,6 +220,7 @@ function usesFullResolutionV6(pageNode, options) {
 function balancedPixelRatio(node, fallback) {
   if (node?.dataset?.exportLossless !== 'true') return fallback;
   const rect = node.getBoundingClientRect();
+  if (isThreadsPortraitPageNode(node)) return Math.max(1080 / rect.width, 1440 / rect.height) + 1e-9;
   if (isSpotlightV5PageNode(node) || isSpotlightV6PageNode(node) || isSpotlightV6MapsPageNode(node)) {
     const targetHeight = isSpotlightV5PageNode(node) ? 1350 : isSpotlightV6MapsPageNode(node) ? 1440 : 1920;
     return Math.max(1080 / rect.width, targetHeight / rect.height) + 1e-9;
@@ -275,6 +277,8 @@ function collectDriveFileIdsFromLists(lists) {
       return;
     }
     if (typeof value !== 'object') return;
+    // Threads chi phí chỉ render chữ; ảnh còn sót trong snapshot không phải tài nguyên xuất.
+    if (value.layoutVariant === 'itinerary-note-threads-budget') return;
     for (const [key, child] of Object.entries(value)) {
       // Candidate chỉ dùng khi primary fail — không prefetch hết (máy mới sẽ rất lâu).
       if (key === 'candidateImageUrls' || key === 'candidates') continue;
@@ -1557,6 +1561,10 @@ function isSpotlightV5PageNode(pageNode) {
   return Boolean(pageNode?.classList?.contains('spotlight-v5-cover') || pageNode?.classList?.contains('spotlight-v5-playlist') || pageNode?.classList?.contains('spotlight-v5-place'));
 }
 
+function isThreadsPortraitPageNode(pageNode) {
+  return Boolean(pageNode?.classList?.contains('threads-portrait') || pageNode?.classList?.contains('itinerary-note-threads-budget'));
+}
+
 function isSpotlightV6PageNode(pageNode) {
   return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day') || pageNode?.classList?.contains('itinerary-note-timed-day'));
 }
@@ -1577,10 +1585,21 @@ function normalizeSpotlightV6MapsCanvas(canvas, pageNode) {
 }
 
 function normalizeSpotlightV6Canvas(canvas, pageNode) {
-  if (!isSpotlightV6PageNode(pageNode) || !canvas) return canvas;
+  if (!isSpotlightV6PageNode(pageNode) || isThreadsPortraitPageNode(pageNode) || !canvas) return canvas;
   const target = document.createElement('canvas');
   target.width = 1080;
   target.height = 1920;
+  const ctx = target.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.drawImage(canvas, 0, 0, target.width, target.height);
+  return target;
+}
+function normalizeThreadsCanvas(canvas, pageNode) {
+  if (!isThreadsPortraitPageNode(pageNode) || !canvas) return canvas;
+  if (canvas.width === 1080 && canvas.height === 1440) return canvas;
+  const target = document.createElement('canvas');
+  target.width = 1080;
+  target.height = 1440;
   const ctx = target.getContext('2d');
   if (!ctx) return canvas;
   ctx.drawImage(canvas, 0, 0, target.width, target.height);
@@ -1760,9 +1779,9 @@ export async function renderPageBlob(pageNode, options = {}) {
     if (!lossless && !diaryPage) return undefined;
     const canvas = document.createElement('canvas');
     const rect = pageNode.getBoundingClientRect();
-    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode) || isSpotlightV6MapsPageNode(pageNode);
+    const normalized = isSpotlightV6PageNode(pageNode) || isSpotlightV5PageNode(pageNode) || isSpotlightV6MapsPageNode(pageNode) || isThreadsPortraitPageNode(pageNode);
     canvas.width = normalized ? 1080 : Math.floor(rect.width * pixelRatio);
-    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : isSpotlightV6MapsPageNode(pageNode) ? 1440 : 1920) : Math.floor(rect.height * pixelRatio);
+    canvas.height = normalized ? (isSpotlightV5PageNode(pageNode) ? 1350 : isSpotlightV6MapsPageNode(pageNode) || isThreadsPortraitPageNode(pageNode) ? 1440 : 1920) : Math.floor(rect.height * pixelRatio);
     return canvas;
   };
   const renderTimeoutMs = Number(options.renderTimeoutMs || PAGE_RENDER_TIMEOUT_MS);
@@ -1797,7 +1816,7 @@ export async function renderPageBlob(pageNode, options = {}) {
   let cornersAlreadyClipped = false;
   const finalizeCanvasBlob = async (canvas) => {
     const clipped = clipCanvasToPageCorners(canvas, pageNode, imageFormat, backgroundColor);
-    const normalized = normalizeSpotlightV6MapsCanvas(normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode), pageNode);
+    const normalized = normalizeThreadsCanvas(normalizeSpotlightV6MapsCanvas(normalizeSpotlightV6Canvas(normalizeSpotlightV5Canvas(clipped, pageNode), pageNode), pageNode), pageNode);
     try { return await canvasToBlob(normalized, imageFormat, imageQuality); }
     finally {
       if (lossless) for (const bitmap of new Set([canvas, clipped, normalized])) {
@@ -1806,13 +1825,13 @@ export async function renderPageBlob(pageNode, options = {}) {
     }
   };
   const finalizeBlob = async (blob) => {
-    if (diaryPage) {
+    if (diaryPage || isThreadsPortraitPageNode(pageNode)) {
       const bitmap = await createImageBitmap(blob);
       const canvas = document.createElement('canvas');
       canvas.width = 1080; canvas.height = 1440;
       try {
         const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Không tạo được canvas Nhật ký.');
+        if (!ctx) throw new Error('Không tạo được canvas xuất ảnh 3:4.');
         ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
         return await canvasToBlob(canvas, imageFormat, imageQuality);
       } finally { bitmap.close(); canvas.width = 0; canvas.height = 0; }

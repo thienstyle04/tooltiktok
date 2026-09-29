@@ -12,8 +12,12 @@
 .itinerary-note-day .in-home { position:absolute; bottom:7px; width:125px; height:5px; left:50%; transform:translateX(-50%); background:#111; border-radius:5px; }
 .itinerary-note-day[data-note-overflow="true"] .in-content { outline:2px solid #c33; }
 
-/* Threads: plain, ruled itinerary table from the supplied reference. */
+/* Threads: a portrait worksheet, keeping the reference's thin ruled grid. */
 .story-page.itinerary-note-threads-day { color:#171717; background:#fff; }
+.story-page.itinerary-note-threads-day.threads-portrait,
+.batch-export-root .story-page.itinerary-note-threads-day.threads-portrait { width:810px; height:1080px; aspect-ratio:3/4; }
+.page-grid .story-page.itinerary-note-threads-day.threads-portrait,
+.template-compare-focus-stage .story-page.itinerary-note-threads-day.threads-portrait { zoom:.37; }
 .itinerary-note-threads-day .in-content { top:20px; bottom:20px; left:12px; right:12px; font-size:var(--in-font-size,14px); }
 .itinerary-note-threads-day .in-content h1 { font-size:22px; color:#111; margin:0 0 7px; }
 .itinerary-note-threads-day .threads-subtitle { font-size:11px; line-height:1.35; margin:0 0 12px; color:#555; }
@@ -26,13 +30,47 @@
 .itinerary-note-threads-day .threads-rest td { text-align:center; padding:5px; font-style:italic; font-size:.9em; }
 
 .threads-summary .in-content { inset:9px 9px 8px; font-family:"Times New Roman",serif; font-size:var(--in-font-size,8px); }
+.threads-summary.threads-portrait .in-content { inset:20px 18px; font-size:var(--in-font-size,16px); }
 .threads-summary .in-content h1 { font-size:12px; line-height:1.15; text-align:center; background:#fff; color:#111; padding:5px; margin:0; }
 .threads-summary .threads-table { line-height:1.12; }
-.threads-summary .threads-table th,.threads-summary .threads-table td { padding:3px 3px; vertical-align:middle; border-color:#777; background:#fff; color:#111; }
-.threads-summary .threads-table thead th { background:#fff; color:#111; font-size:1em; text-transform:uppercase; }
+.threads-summary .threads-table th,.threads-summary .threads-table td { padding:3px 3px; vertical-align:middle; border-color:#444; background:#fff; color:#111; font-family:inherit; }
+.threads-summary.threads-portrait .threads-table { width:min(100%,var(--threads-table-width,754px)); margin-inline:auto; line-height:1.16; }
+.threads-summary.threads-portrait .threads-table th,.threads-summary.threads-portrait .threads-table td { padding:var(--threads-cell-pad-y,2px) 4px; }
+.threads-summary .threads-table thead th { background:#e8ece8; color:#111; font-size:1em; text-transform:uppercase; }
 .threads-summary .threads-table td:first-child { text-align:center; }
+.threads-summary .threads-table thead th:first-child,.threads-summary .threads-table td.threads-day-label { white-space:nowrap; overflow-wrap:normal; }
+.threads-summary .threads-table td.threads-day-label { font-weight:700; }
+.threads-summary .threads-table td.threads-day-1 { background:#c8ddb9; }
+.threads-summary .threads-table td.threads-day-2 { background:#afcce8; }
+.threads-summary .threads-table td.threads-day-3 { background:#ffe7a5; }
 .threads-summary .threads-table .threads-rest td { text-align:center; }
 .threads-summary .threads-subtitle { font-size:8px; margin:5px 0 0; }
+
+/* Threads trip expenses: four-column worksheet matching the supplied reference. */
+.story-page.itinerary-note-threads-budget,
+.batch-export-root .story-page.itinerary-note-threads-budget { width:810px; height:1080px; aspect-ratio:3/4; color:#151515; background:#fff; font-family:Arial,sans-serif; }
+.page-grid .story-page.itinerary-note-threads-budget,
+.template-compare-focus-stage .story-page.itinerary-note-threads-budget { zoom:.37; }
+.itinerary-note-threads-budget .in-content { inset:24px 20px; font-size:var(--in-font-size,20px); }
+.threads-budget-table { width:100%; height:100%; border-collapse:collapse; table-layout:fixed; line-height:1.18; font:inherit; color:#111; }
+.itinerary-note-threads-budget.is-example .threads-budget-table { height:calc(100% - 38px); }
+.threads-budget-table th,.threads-budget-table td { border:1.5px solid #222; padding:7px 6px; vertical-align:middle; overflow-wrap:anywhere; }
+.threads-budget-table thead th { font-weight:700; text-align:center; font-size:1.08em; background:#fff; }
+.threads-budget-index,.threads-budget-category { text-align:center; }
+.threads-budget-index { font-weight:700; font-size:1.12em; }
+.threads-budget-money { text-align:right; white-space:nowrap; overflow-wrap:normal; font-variant-numeric:tabular-nums; }
+.threads-budget-money.is-per-person { white-space:normal; overflow-wrap:anywhere; font-size:.84em; }
+.threads-budget-money.is-missing { white-space:normal; text-align:center; font-size:.75em; color:#666; }
+.threads-budget-subtotal th { font-weight:700; text-align:center; }
+.threads-budget-subtotal small,.threads-budget-grand small { display:block; margin-top:2px; font-size:.65em; line-height:1.15; font-weight:400; }
+.threads-budget-subtotal.tone-green th { background:#c8ddb9; }
+.threads-budget-subtotal.tone-blue th { background:#afcce8; }
+.threads-budget-subtotal.tone-yellow th { background:#ffe7a5; }
+.threads-budget-grand th { border-top-width:2px; padding-block:13px; font-size:1.12em; }
+.threads-budget-grand th:first-child { text-align:left; }
+.threads-budget-grand th:last-child { text-align:right; white-space:nowrap; }
+.threads-budget-foot { margin:10px 0 0; font-size:.65em; line-height:1.25; color:#555; }
+.itinerary-note-threads-budget[data-note-overflow="true"] .in-content { outline:2px solid #c33; }
 
 .story-page.itinerary-note-timed-day { position:relative; width:397px; height:706px; aspect-ratio:9/16; box-sizing:border-box; border-radius:0; background:#fff; color:#505050; isolation:isolate; font-family:Arial,"Helvetica Neue",sans-serif; padding:0; overflow:hidden; }
 .itinerary-note-timed-day svg { display:block; flex:none; }
