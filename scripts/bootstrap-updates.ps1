@@ -102,7 +102,7 @@ if ($package -ne $install) {
 }
 $pointer = @{ release = $newName; version = $newVersion } | ConvertTo-Json -Compress
 $temporary = Join-Path $shared 'current.json.tmp'
-[IO.File]::WriteAllText($temporary, $pointer, [Text.Encoding]::UTF8)
+[IO.File]::WriteAllText($temporary, $pointer, [Text.UTF8Encoding]::new($false))
 Move-Item -LiteralPath $temporary -Destination (Join-Path $shared 'current.json')
 Write-Host "Da cai launcher cap nhat: $install"
 Write-Host "Du lieu giu tai: $newData"

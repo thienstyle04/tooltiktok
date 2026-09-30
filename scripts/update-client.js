@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { execFileSync, spawn } = require('node:child_process');
-const { fetchLatest, downloadRelease, compareVersions, writeJsonAtomic } = require('./update-protocol');
+const { fetchLatest, downloadRelease, compareVersions, parseJsonUtf8, writeJsonAtomic } = require('./update-protocol');
 const { stopPreviousInstance } = require('./runtime-instance');
 const { INSTANCE_PATH } = require('./runtime-instance');
 
@@ -14,7 +14,7 @@ function releasePath(root, name) {
   return path.join(root, 'releases', name);
 }
 function readCurrent(root) {
-  const value = JSON.parse(fs.readFileSync(path.join(root, 'shared', 'current.json'), 'utf8'));
+  const value = parseJsonUtf8(fs.readFileSync(path.join(root, 'shared', 'current.json'), 'utf8'));
   if (!value || typeof value.release !== 'string' || !/^\d+\.\d+\.\d+-[a-f0-9]{8}$/.test(value.release)) fail('Con trỏ phiên bản đang dùng không hợp lệ.');
   return value;
 }
@@ -43,7 +43,7 @@ function inspectRelease(dir, version) {
   const parts = rawVersion.match(/^(\d+)\.(\d+)\.(\d+)$/);
   if (!parts || `${Number(parts[1])}.${Number(parts[2])}.${String(Number(parts[3])).padStart(2, '0')}` !== version) fail('Phiên bản trong gói không khớp manifest.');
   for (const name of ['package.json', 'frontend/package.json', 'backend/package.json']) {
-    if (JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')).version !== version) fail('Backend/frontend không cùng phiên bản.');
+    if (parseJsonUtf8(fs.readFileSync(path.join(dir, name), 'utf8')).version !== version) fail('Backend/frontend không cùng phiên bản.');
   }
   const walk = folder => {
     for (const item of fs.readdirSync(folder, { withFileTypes: true })) {
@@ -58,7 +58,7 @@ async function stageRelease(root, info) {
   const name = `${info.version}-${info.commit.slice(0, 8)}`;
   const target = releasePath(root, name);
   if (fs.existsSync(target)) {
-    const installed = JSON.parse(fs.readFileSync(path.join(target, '.release.json'), 'utf8'));
+    const installed = parseJsonUtf8(fs.readFileSync(path.join(target, '.release.json'), 'utf8'));
     if (installed.sha256 !== info.artifact.sha256) fail('Tên bản phát hành đã tồn tại với nội dung khác.');
     inspectRelease(target, info.version);
     return name;

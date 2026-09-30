@@ -24,6 +24,8 @@ Get-ChildItem -LiteralPath (Join-Path $root 'shared\data') -Recurse -File | ForE
 if ($before.Count -ne $after.Count) { throw 'So file du lieu khong khop.' }
 foreach ($relative in $before.Keys) { if ($after[$relative] -ne $before[$relative]) { throw "File du lieu bi thay doi: $relative" } }
 $current = Get-Content -LiteralPath (Join-Path $root 'shared\current.json') -Raw | ConvertFrom-Json
+$pointerBytes = [IO.File]::ReadAllBytes((Join-Path $root 'shared\current.json'))
+if ($pointerBytes.Length -ge 3 -and $pointerBytes[0] -eq 0xEF -and $pointerBytes[1] -eq 0xBB -and $pointerBytes[2] -eq 0xBF) { throw 'Con tro phien ban van co UTF-8 BOM.' }
 if (-not (Test-Path -LiteralPath (Join-Path $root "releases\$($current.release)\scripts\update-client.js"))) { throw 'Release moi thieu updater.' }
 Write-Host "PASS bootstrap isolated; evidence: $root"
 

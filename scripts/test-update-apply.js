@@ -6,6 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const JSZip = require('../frontend/node_modules/jszip');
+const { parseJsonUtf8 } = require('./update-protocol');
 
 const keyFile = path.join(process.env.LOCALAPPDATA || '', 'DalatStudioReleaseSigning', 'private.pem');
 if (!fs.existsSync(keyFile)) throw Error('Test cần khóa ký phát hành cục bộ, không nằm trong Git.');
@@ -15,7 +16,7 @@ function makeRoot() {
   fs.mkdirSync(path.join(root, 'shared', 'data'), { recursive: true });
   fs.mkdirSync(path.join(root, 'releases'), { recursive: true });
   fs.writeFileSync(path.join(root, 'shared', 'data', 'keep.json'), '{"important":"unchanged"}');
-  fs.writeFileSync(path.join(root, 'shared', 'current.json'), JSON.stringify({ release: '0.7.04-00000000', version: '0.7.04' }));
+  fs.writeFileSync(path.join(root, 'shared', 'current.json'), '\uFEFF' + JSON.stringify({ release: '0.7.04-00000000', version: '0.7.04' }));
   return root;
 }
 async function makePackage() {
@@ -25,12 +26,12 @@ async function makePackage() {
   zip.file('start.bat', '@echo off\r\n');
   zip.file('scripts/dev.js', '// test');
   zip.file('scripts/update-client.js', '// test');
-  for (const name of packages) zip.file(name, JSON.stringify({ version: '0.7.05' }));
+  for (const name of packages) zip.file(name, '\uFEFF' + JSON.stringify({ version: '0.7.05' }));
   const archive = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   const artifact = { path: 'releases/test-0.7.05.zip', sha256: crypto.createHash('sha256').update(archive).digest('hex'), size: archive.length };
   const payload = Buffer.from(JSON.stringify({ schema: 1, channel: 'stable', platform: 'win32-x64', version: '0.7.05', commit: 'a'.repeat(40), notes: ['Test'], artifact }));
   const signature = crypto.sign(null, payload, fs.readFileSync(keyFile)).toString('base64');
-  return { archive, manifest: Buffer.from(JSON.stringify({ payload: payload.toString('base64'), signature })) };
+  return { archive, manifest: Buffer.from('\uFEFF' + JSON.stringify({ payload: payload.toString('base64'), signature })) };
 }
 function runUpdater(root, url, healthFail = false) {
   return new Promise(resolve => {
@@ -57,16 +58,16 @@ async function main() {
     fs.mkdirSync(staging, { recursive: true });
     fs.writeFileSync(path.join(staging, `0.7.05-${'a'.repeat(8)}.zip`), Buffer.from('incomplete older download'));
     assert.equal(await runUpdater(successRoot, url), 0);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(successRoot, 'shared', 'current.json'))).version, '0.7.05');
+    assert.equal(parseJsonUtf8(fs.readFileSync(path.join(successRoot, 'shared', 'current.json'), 'utf8')).version, '0.7.05');
     assert.equal(fs.readFileSync(path.join(successRoot, 'shared', 'data', 'keep.json'), 'utf8'), '{"important":"unchanged"}');
     const rollbackRoot = makeRoot();
     assert.equal(await runUpdater(rollbackRoot, url, true), 1);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(rollbackRoot, 'shared', 'current.json'))).version, '0.7.04');
+    assert.equal(parseJsonUtf8(fs.readFileSync(path.join(rollbackRoot, 'shared', 'current.json'), 'utf8')).version, '0.7.04');
     assert.equal(fs.readFileSync(path.join(rollbackRoot, 'shared', 'data', 'keep.json'), 'utf8'), '{"important":"unchanged"}');
     serveCorrupt = true;
     const badHashRoot = makeRoot();
     assert.equal(await runUpdater(badHashRoot, url), 1);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(badHashRoot, 'shared', 'current.json'))).version, '0.7.04');
+    assert.equal(parseJsonUtf8(fs.readFileSync(path.join(badHashRoot, 'shared', 'current.json'), 'utf8')).version, '0.7.04');
     assert.equal(fs.readFileSync(path.join(badHashRoot, 'shared', 'data', 'keep.json'), 'utf8'), '{"important":"unchanged"}');
     console.log('PASS update apply and rollback in isolated Windows roots:', successRoot, rollbackRoot);
   } finally { server.close(); }

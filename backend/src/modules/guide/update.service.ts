@@ -146,7 +146,7 @@ export class UpdateService implements OnApplicationBootstrap, OnApplicationShutd
 
   private readState(): SavedState {
     try {
-      const value = JSON.parse(fs.readFileSync(this.statePath, 'utf8'));
+      const value = JSON.parse(fs.readFileSync(this.statePath, 'utf8').replace(/^\uFEFF/, ''));
       return { scheduledAt: typeof value.scheduledAt === 'string' ? value.scheduledAt : null };
     } catch { return { scheduledAt: null }; }
   }
@@ -154,7 +154,7 @@ export class UpdateService implements OnApplicationBootstrap, OnApplicationShutd
   private readProcessState(): { phase: string; message: string; updatedAt: string; bytes?: number; total?: number } | null {
     if (!this.installRoot) return null;
     try {
-      const value = JSON.parse(fs.readFileSync(path.join(this.installRoot, 'shared', 'update-process.json'), 'utf8'));
+      const value = JSON.parse(fs.readFileSync(path.join(this.installRoot, 'shared', 'update-process.json'), 'utf8').replace(/^\uFEFF/, ''));
       if (!value?.phase || !Number.isFinite(Date.parse(value.updatedAt)) || Date.now() - Date.parse(value.updatedAt) > 60 * 60_000) return null;
       return value;
     } catch { return null; }
