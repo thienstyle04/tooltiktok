@@ -1557,6 +1557,14 @@ function collectPartnerNames(list) {
   return Array.from(partnerNames).sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
+function assertSpotlightV4V6PartnerExportReady(list, deckId = '') {
+  if (deckId !== 'spotlight-v4' && deckId !== 'spotlight-v6') return;
+  const count = collectPartnerNames(list).length;
+  if (count < 4) {
+    throw new Error(`List Spotlight V4/V6 chỉ có ${count}/4 đối tác hiển thị hợp lệ. Đây có thể là list cũ; hãy tạo list mới rồi xuất lại.`);
+  }
+}
+
 function isSpotlightV5PageNode(pageNode) {
   return Boolean(pageNode?.classList?.contains('spotlight-v5-cover') || pageNode?.classList?.contains('spotlight-v5-playlist') || pageNode?.classList?.contains('spotlight-v5-place'));
 }
@@ -1712,7 +1720,8 @@ function todayDateTag() {
   return `${dd}-${mm}-${yyyy}_${hh}-${min}-${ss}`;
 }
 
-async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(list)) {
+async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(list), deckId = '') {
+  assertSpotlightV4V6PartnerExportReady(list, deckId);
   const setLabel = formatListSetLabel(setIndex);
   const coverTitle = String(list.coverTitle || list.title || list.navTitle || '').trim();
   const isSpotlightPartnerList = Array.isArray(list?.pages)
@@ -2222,7 +2231,7 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
     }
   }
 
-  await addListMetadataFiles(folder, list);
+  await addListMetadataFiles(folder, list, parseListSetIndex(list), deckId);
   await assertRuntimeResources(options);
 
   return zipInstance ? null : await generateExportZip(currentZip, options.onZipProgress);
@@ -2244,6 +2253,7 @@ async function exportActiveListAttempt(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
+    assertSpotlightV4V6PartnerExportReady(exportList, deck.id);
     await assertExportImagesReady([{ deck, list: exportList }], cb);
     const pageNodes = renderPagesForExport(exportList);
     await waitForExportLayout();
@@ -2337,6 +2347,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
 
   const skippedLists = [];
   try {
+    orderedLists.forEach(({ deck, list }) => assertSpotlightV4V6PartnerExportReady(list, deck.id));
     const inspection = await inspectExportImages(orderedLists, renderPageMarkupForExport);
     if (inspection.skippedLists.length) {
       skippedLists.push(...inspection.skippedLists);
@@ -2364,7 +2375,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
       const setIndex = parseListSetIndex(item.list);
       return mainZip.folder(batchFolderName(item.deck.id, setIndex, dataset));
     });
-    await mapWithConcurrency(orderedLists, qualityProfile.compatibility ? 1 : 6, (item, index) => addListMetadataFiles(folders[index], item.list));
+    await mapWithConcurrency(orderedLists, qualityProfile.compatibility ? 1 : 6, (item, index) => addListMetadataFiles(folders[index], item.list, parseListSetIndex(item.list), item.deck.id));
 
     const pageTasks = [];
     orderedLists.forEach((item, listIndex) => {

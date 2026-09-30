@@ -77,7 +77,7 @@ import {
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_DARK_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION, SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_DARK_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION, SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, spotlightV4VenueAvailability, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
 import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, uniqueCachedDriveFileIdsByVisualContent, warmDriveFileDiskCache } from './sync/drive-images';
@@ -1587,6 +1587,12 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
             item.imageSource = item.imageUrl ? 'manual' : 'fallback';
           }
         }
+      }
+    }
+    if (deckId === 'spotlight-v4' || deckId === 'spotlight-v6') {
+      const availability = spotlightV4VenueAvailability(context.itemsBySection);
+      if (availability.partnerCount < 4 || availability.regularCount < 4) {
+        throw new BadRequestException(`Mẫu Spotlight V4/V6 cần 4 đối tác và 4 địa điểm thường có ảnh; hiện có ${availability.partnerCount}/4 đối tác, ${availability.regularCount}/4 địa điểm thường.`);
       }
     }
     const currentDeck = context.decks.find((d) => d.id === deckId);
