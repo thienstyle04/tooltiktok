@@ -71,9 +71,9 @@ export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 6;
 export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 8;
 export const SPOTLIGHT_V2_TEMPLATE_VERSION = 17;
 export const SPOTLIGHT_V3_TEMPLATE_VERSION = 2;
-export const SPOTLIGHT_V4_TEMPLATE_VERSION = 3;
+export const SPOTLIGHT_V4_TEMPLATE_VERSION = 4;
 export const SPOTLIGHT_V5_TEMPLATE_VERSION = 2;
-export const SPOTLIGHT_V6_TEMPLATE_VERSION = 2;
+export const SPOTLIGHT_V6_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V6_DARK_TEMPLATE_VERSION = 1;
 export const SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION = 1;
@@ -535,6 +535,7 @@ function uniquePortableImages(urls: string[]): string[] {
 
 const SPOTLIGHT_V4_BACKGROUND_COUNT = 6;
 const SPOTLIGHT_V4_VENUE_COUNT = 8;
+const SPOTLIGHT_V4_PARTNER_COUNT = 4;
 const SPOTLIGHT_V4_EXCLUDED_BACKGROUND_FILE_IDS = new Set([
   // 111.png là cùng cảnh Phân Viện Sinh Học với ảnh riêng của địa điểm.
   '10Ag0aESSGkGCmExm3UuWxWFGRyYb0M8-',
@@ -572,6 +573,29 @@ function spotlightV4VenuePool(pools: ReturnType<typeof createDeckBuildPools>): G
   return dedupeItems(spotlightV4VenueGroups(pools).flatMap((group) => group.items));
 }
 
+function spotlightV4UniqueNames(items: GuideItem[]): GuideItem[] {
+  const names = new Set<string>();
+  return items.filter((item) => {
+    const name = normalizeText(item.name);
+    if (!name || names.has(name)) return false;
+    names.add(name);
+    return true;
+  });
+}
+
+export function spotlightV4VenueAvailability(itemsBySection: WorkbookItemsBySection): {
+  venueCount: number;
+  partnerCount: number;
+  regularCount: number;
+} {
+  const venues = spotlightV4VenuePool(createDeckBuildPools(itemsBySection));
+  return {
+    venueCount: venues.length,
+    partnerCount: spotlightV4UniqueNames(venues.filter((item) => item.isPartner)).length,
+    regularCount: spotlightV4UniqueNames(venues.filter((item) => !item.isPartner)).length,
+  };
+}
+
 function pickSpotlightV4Venues(
   pools: ReturnType<typeof createDeckBuildPools>,
   seed: string,
@@ -581,41 +605,43 @@ function pickSpotlightV4Venues(
     .sort((a, b) => stableHash(`${seed}:group:${a.key}`) - stableHash(`${seed}:group:${b.key}`));
   const selected: GuideItem[] = [];
   const selectedKeys = new Set<string>();
-  const addFromGroup = (group: SpotlightV4VenueGroup, suffix: string): boolean => {
-    if (selected.length >= SPOTLIGHT_V4_VENUE_COUNT) return false;
-    const candidate = pick(group.items, 1, `${seed}:${suffix}:${group.key}`)[0];
-    if (!candidate) return false;
-    const key = itemUsageKey(candidate);
-    if (selectedKeys.has(key)) return false;
-    selected.push(candidate);
-    selectedKeys.add(key);
-    return true;
+  const selectedNames = new Set<string>();
+  const fillQuota = (partner: boolean, target: number, label: string): void => {
+    let round = 0;
+    while (selected.filter((item) => item.isPartner === partner).length < target) {
+      let added = false;
+      // Chọn nhóm ít xuất hiện hơn, ưu tiên nhóm còn nhiều địa điểm chưa dùng.
+      const rankedGroups = [...groups].sort((a, b) => {
+        const countA = selected.filter((item) => item.sectionKey === a.key).length;
+        const countB = selected.filter((item) => item.sectionKey === b.key).length;
+        const freshA = a.items.filter((item) => item.isPartner === partner && !pick.isUsed?.(item)).length;
+        const freshB = b.items.filter((item) => item.isPartner === partner && !pick.isUsed?.(item)).length;
+        return countA - countB || freshB - freshA
+          || stableHash(`${seed}:${label}:${round}:${a.key}`) - stableHash(`${seed}:${label}:${round}:${b.key}`);
+      });
+      for (const group of rankedGroups) {
+        if (selected.filter((item) => item.isPartner === partner).length >= target) break;
+        const available = group.items.filter((item) => item.isPartner === partner
+          && !selectedKeys.has(itemUsageKey(item))
+          && !selectedNames.has(normalizeText(item.name)));
+        if (!available.length) continue;
+        const candidate = pick(available, 1, `${seed}:${label}:${round}:${group.key}`)[0];
+        if (!candidate) continue;
+        selected.push(candidate);
+        selectedKeys.add(itemUsageKey(candidate));
+        selectedNames.add(normalizeText(candidate.name));
+        added = true;
+      }
+      if (!added) break;
+      round += 1;
+    }
   };
 
-  // Lượt đầu lấy một đại diện từ mỗi nhóm có ảnh. Các lượt sau tiếp tục theo
-  // vòng tròn cho đến khi đủ 8 địa điểm, nên V4 không còn dồn vào quán/cafe.
-  groups.forEach((group, index) => addFromGroup(group, `representative-${index}`));
-  let round = 0;
-  while (selected.length < SPOTLIGHT_V4_VENUE_COUNT && groups.length > 0) {
-    let added = false;
-    groups.forEach((group, index) => {
-      if (selected.length >= SPOTLIGHT_V4_VENUE_COUNT) return;
-      added = addFromGroup(group, `round-${round}-${index}`) || added;
-    });
-    if (!added) break;
-    round += 1;
-  }
-
-  if (selected.length < SPOTLIGHT_V4_VENUE_COUNT) {
-    const fallback = spotlightV4VenuePool(pools).filter((item) => !selectedKeys.has(itemUsageKey(item)));
-    for (const item of pick(fallback, SPOTLIGHT_V4_VENUE_COUNT - selected.length, `${seed}:fill`)) {
-      const key = itemUsageKey(item);
-      if (selectedKeys.has(key)) continue;
-      selected.push(item);
-      selectedKeys.add(key);
-    }
-  }
-  return selected.slice(0, SPOTLIGHT_V4_VENUE_COUNT);
+  fillQuota(true, SPOTLIGHT_V4_PARTNER_COUNT, 'partners');
+  fillQuota(false, SPOTLIGHT_V4_VENUE_COUNT - SPOTLIGHT_V4_PARTNER_COUNT, 'regulars');
+  const partners = selected.filter((item) => item.isPartner);
+  const regulars = selected.filter((item) => !item.isPartner);
+  return partners.flatMap((item, index) => [item, regulars[index]].filter((value): value is GuideItem => Boolean(value)));
 }
 /**
  * Spotlight V4: một cover Hinh_nen có hook, năm ảnh nghỉ xen giữa tám địa điểm.
@@ -649,7 +675,9 @@ export function buildSpotlightV4Pages(
   options: SpotlightV3BuildContext = {},
   backgroundOverride?: SpotlightBackgroundOverride,
 ): DeckPage[] {
-  const globallyUsedImages = common.globalUsedImageUrls || new Set<string>();
+  // Không ghi vòng sử dụng vào scope ngoài khi list dựng thất bại.
+  const globallyUsedImages = new Set(common.globalUsedImageUrls || []);
+  const globallyUsedItems = new Set(common.globalUsedItemIds || []);
   let selectedImages: string[];
   if (backgroundOverride) {
     const coverPool = uniquePortableImages(backgroundOverride.coverImageUrls).filter(spotlightV4BackgroundAllowed);
@@ -705,6 +733,10 @@ export function buildSpotlightV4Pages(
   if (venuePool.length < SPOTLIGHT_V4_VENUE_COUNT) {
     throw new Error(`Mẫu Spotlight V4 cần ít nhất ${SPOTLIGHT_V4_VENUE_COUNT} địa điểm có ảnh từ các nhóm dữ liệu (${venuePool.length}/${SPOTLIGHT_V4_VENUE_COUNT}).`);
   }
+  const { partnerCount, regularCount } = spotlightV4VenueAvailability(common.itemsBySection);
+  if (partnerCount < SPOTLIGHT_V4_PARTNER_COUNT || regularCount < SPOTLIGHT_V4_VENUE_COUNT - SPOTLIGHT_V4_PARTNER_COUNT) {
+    throw new Error(`Mẫu Spotlight V4/V6 cần 4 đối tác và 4 địa điểm thường có ảnh; hiện có ${partnerCount}/4 đối tác, ${regularCount}/4 địa điểm thường.`);
+  }
 
   const mappedImageUrls = collectMappedImageUrls(pools);
   const listImageUrls = new Set(selectedImages);
@@ -716,10 +748,11 @@ export function buildSpotlightV4Pages(
     globallyUsedImages,
     { orientation: 'any', strictMapping: true },
   );
-  const pick = createListPicker(common.globalUsedItemIds);
+  const pick = createListPicker(globallyUsedItems);
   const venues = pickSpotlightV4Venues(pools, `${seedPrefix}:spotlight-v4-venues`, pick);
-  if (venues.length < SPOTLIGHT_V4_VENUE_COUNT) {
-    throw new Error(`Mẫu Spotlight V4 cần đủ ${SPOTLIGHT_V4_VENUE_COUNT} địa điểm không trùng (${venues.length}/${SPOTLIGHT_V4_VENUE_COUNT}).`);
+  const selectedPartnerCount = venues.filter((item) => item.isPartner).length;
+  if (venues.length !== SPOTLIGHT_V4_VENUE_COUNT || selectedPartnerCount !== SPOTLIGHT_V4_PARTNER_COUNT) {
+    throw new Error(`Mẫu Spotlight V4/V6 chỉ chọn được ${selectedPartnerCount}/4 đối tác và ${venues.length - selectedPartnerCount}/4 địa điểm thường không trùng.`);
   }
 
   const venuePages = venues.map((item, index): ListPage => {
@@ -756,7 +789,7 @@ export function buildSpotlightV4Pages(
   };
 
   const imagePage = (url: string): ListPage => buildListPage('', 'slate', '', '', [], url, 'spotlight-v4-image');
-  return [
+  const pages: DeckPage[] = [
     cover,
     imagePage(selectedImages[1]),
     venuePages[0],
@@ -772,6 +805,9 @@ export function buildSpotlightV4Pages(
     venuePages[6],
     venuePages[7],
   ];
+  globallyUsedImages.forEach((url) => common.globalUsedImageUrls?.add(url));
+  globallyUsedItems.forEach((key) => common.globalUsedItemIds?.add(key));
+  return pages;
 }
 
 /** Text-only one-page summary note: four Cafe + four Quan_an locations, with up to two partners per group. */

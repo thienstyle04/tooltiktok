@@ -26,3 +26,29 @@ foreach ($relative in $before.Keys) { if ($after[$relative] -ne $before[$relativ
 $current = Get-Content -LiteralPath (Join-Path $root 'shared\current.json') -Raw | ConvertFrom-Json
 if (-not (Test-Path -LiteralPath (Join-Path $root "releases\$($current.release)\scripts\update-client.js"))) { throw 'Release moi thieu updater.' }
 Write-Host "PASS bootstrap isolated; evidence: $root"
+
+# A git clone uses the same directory for PackageRoot and InstallRoot.
+$clone = Join-Path ([IO.Path]::GetTempPath()) "dalat-update-clone-test-$([guid]::NewGuid().ToString('N'))"
+$source = Split-Path -Parent $PSScriptRoot
+foreach ($relative in @('scripts', 'backend\src', 'backend\data', 'frontend')) {
+  New-Item -ItemType Directory -Path (Join-Path $clone $relative) -Force | Out-Null
+}
+foreach ($relative in @('start.bat', 'VERSION', 'scripts\bootstrap-updates.ps1', 'scripts\launch-current.ps1', 'scripts\dev.js', 'scripts\update-client.js', 'backend\package.json', 'backend\src\main.ts', 'frontend\package.json')) {
+  Copy-Item -LiteralPath (Join-Path $source $relative) -Destination (Join-Path $clone $relative)
+}
+[IO.File]::WriteAllText((Join-Path $clone 'backend\data\generated-caption-lists.dalat.json'), '{"lists":[{"id":"clone-keep-me"}]}')
+[IO.File]::WriteAllText((Join-Path $clone 'backend\.env'), 'DEEPSEEK_API_KEY=clone-test-key')
+$previousLocalAppData = $env:LOCALAPPDATA
+try {
+  $env:LOCALAPPDATA = Join-Path $clone 'test-profile'
+  & (Join-Path $clone 'scripts\bootstrap-updates.ps1') -InstallRoot $clone -PackageRoot $clone -IsolatedTest
+  $cloneCurrent = Get-Content -LiteralPath (Join-Path $clone 'shared\current.json') -Raw | ConvertFrom-Json
+  $cloneData = Join-Path $clone 'shared\data\generated-caption-lists.dalat.json'
+  $cloneEnv = Join-Path $env:LOCALAPPDATA 'DalatTikTokCarouselTool\config\backend.env'
+  if (-not (Test-Path -LiteralPath $cloneData) -or (Get-Content -LiteralPath $cloneData -Raw) -notmatch 'clone-keep-me') { throw 'Clone bootstrap lost saved list.' }
+  if (-not (Test-Path -LiteralPath $cloneEnv) -or (Get-Content -LiteralPath $cloneEnv -Raw) -notmatch 'clone-test-key') { throw 'Clone bootstrap lost backend config.' }
+  if (-not (Test-Path -LiteralPath (Join-Path $clone "releases\$($cloneCurrent.release)\start.bat"))) { throw 'Clone bootstrap did not create a complete release.' }
+  Write-Host "PASS same-root clone bootstrap; evidence: $clone"
+} finally {
+  $env:LOCALAPPDATA = $previousLocalAppData
+}
