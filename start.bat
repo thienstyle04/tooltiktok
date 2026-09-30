@@ -2,12 +2,28 @@
 title Khoi dong Dalat TikTok Carousel Tool
 cd /d "%~dp0"
 
+rem A release launched by launch-current.ps1 already has a stable install root.
+if defined DALAT_INSTALL_ROOT goto RUN_RELEASE
+
+rem First launch from a fresh git clone: install the updater once.
+if not exist "%~dp0shared\current.json" (
+  echo Dang cai trinh cap nhat lan dau va chuyen du lieu vao shared\data...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\bootstrap-updates.ps1" -InstallRoot "%~dp0." -PackageRoot "%~dp0."
+  if errorlevel 1 (
+    echo.
+    echo [LOI] Chua cai duoc trinh cap nhat. Du lieu cu duoc giu nguyen; vui long kiem tra thong bao phia tren.
+    pause
+    exit /b 1
+  )
+)
+
 rem Stable install root: dispatch to one complete backend/frontend release.
 if exist "%~dp0shared\current.json" (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\launch-current.ps1" -InstallRoot "%~dp0."
   exit /b %errorlevel%
 )
 
+:RUN_RELEASE
 echo ==============================================================
 echo KHOI DONG DALAT TIKTOK CAROUSEL TOOL
 echo ==============================================================
