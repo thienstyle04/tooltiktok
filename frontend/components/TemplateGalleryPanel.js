@@ -16,7 +16,7 @@ const V2_DECK_IDS = new Set([
   'spotlight-v6-maps',
   'spotlight-v6-diary',
   'summary-note',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-2days',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
   'itinerary-note-timed',
   'carousel-mau-1',
   'one-way-story',
@@ -67,7 +67,7 @@ export default function TemplateGalleryPanel({
 }) {
   const [query, setQuery] = useState('');
   const [group, setGroup] = useState('');
-  const decks = (dataset?.decks || []).filter(deck => `${deck.navTitle} ${deck.title}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')) && (!group || (group === 'Spotlight' ? deck.id.includes('spotlight') : group === 'Note' ? deck.id.includes('note') : group === 'Lưới' ? deck.id.includes('grid') : deck.id.includes('itinerary') || deck.id.includes('budget'))));
+  const decks = (dataset?.decks || []).filter(deck => `${deck.navTitle} ${deck.title}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')) && (!group || (group === 'Spotlight' ? deck.id.includes('spotlight') : group === 'Note' ? deck.id.includes('note') || deck.id === 'threads-toplist-dalat' : group === 'Lưới' ? deck.id.includes('grid') : deck.id.includes('itinerary') || deck.id.includes('budget'))));
 
   return (
     <section className="template-gallery-shell">

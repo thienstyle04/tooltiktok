@@ -77,7 +77,7 @@ import {
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_DARK_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION, SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_DARK_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION, SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, spotlightV4VenueAvailability, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
 import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, uniqueCachedDriveFileIdsByVisualContent, warmDriveFileDiskCache } from './sync/drive-images';
@@ -129,13 +129,15 @@ const isSectionedGoogleDocHookDeck = (deckId: string): boolean => Boolean(HOOK_S
 const isGoogleDocHookDeck = (deckId: string): boolean =>
   deckId === 'spotlight-v6-diary' || isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
-import { ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION } from './logic/itinerary-note';
+import { ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION, ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_TEMPLATE_VERSION, ITINERARY_NOTE_DARK_CAPTION } from './logic/itinerary-note';
 import { DIARY_TEMPLATE_VERSION, DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
 import { ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
 import { threadsNoteCaption } from './logic/itinerary-note-threads';
 import { THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION, threadsBudgetCaption } from './logic/itinerary-note-threads-budget';
-const isTextNoteDeck = (deckId: string): boolean => deckId === 'summary-note' || (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) || deckId === 'itinerary-note-timed';
-const isNonAiDeck = (deckId: string): boolean => deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
+import { THREADS_TOPLIST_ID, THREADS_TOPLIST_TEMPLATE_VERSION, THREADS_TOPLIST_CAPTION } from './logic/threads-toplist';
+import { isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_CAFE_TEMPLATE_VERSION, THREADS_FOOD_ID, THREADS_FOOD_TEMPLATE_VERSION, THREADS_MIX_ID, THREADS_MIX_TEMPLATE_VERSION, THREADS_MIX_TEXT_ID, THREADS_MIX_TEXT_TEMPLATE_VERSION, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from './logic/threads-food-local';
+const isTextNoteDeck = (deckId: string): boolean => deckId === THREADS_TOPLIST_ID || deckId === 'summary-note' || deckId === ITINERARY_NOTE_DARK_ID || (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) || deckId === 'itinerary-note-timed';
+const isNonAiDeck = (deckId: string): boolean => isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -1455,7 +1457,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     store.decks[deckId][listId] ||= {};
     const previousItems = store.decks[deckId][listId][String(pageIndex)]?.items;
     let items = previousItems;
-    const isEditableNoteRows = (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget')
+    const isEditableNoteRows = (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-toplist-page')
       || page.layoutVariant === 'itinerary-note-timed-day'
       || page.layoutVariant === 'spotlight-v6-map-place'
       || page.layoutVariant === 'spotlight-v6-diary-page'
@@ -1499,7 +1501,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   private async generateDeckFromCaptionWithAi(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     this.ensureGeneratedListsLoaded();
     const deckId = String(request.deckId ?? '').trim();
-    if (deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
+    if (deckId !== THREADS_TOPLIST_ID && deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
       this.assertDriveCacheReady();
     }
     if (deckId === 'spotlight-partner') {
@@ -1522,7 +1524,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       deckId,
     );
 
-    if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'spotlight-v6-green' && deckId !== 'spotlight-v6-dark' && deckId !== 'spotlight-v6-persimmon' && deckId !== 'spotlight-v6-maps' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
+    if (!isThreadsLocalDeck(deckId) && !isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'spotlight-v6-green' && deckId !== 'spotlight-v6-dark' && deckId !== 'spotlight-v6-persimmon' && deckId !== 'spotlight-v6-maps' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
       throw new BadRequestException('Cần có tiêu đề cover trước khi tạo list mới.');
     }
 
@@ -1539,7 +1541,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     const mapsReadyImageIds = deckId === 'spotlight-v6-maps'
       ? await this.prepareSpotlightV6MapsResources()
       : null;
-    const context = await this.buildLocallyVerifiedGenerationContext(!isTextNoteDeck(deckId));
+    const context = await this.buildLocallyVerifiedGenerationContext(!isTextNoteDeck(deckId) && !isThreadsLocalDeck(deckId));
     if (greenReadyImageIds) {
       context.hinhNenImagePools = {
         ...context.hinhNenImagePools,
@@ -1589,6 +1591,12 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         }
       }
     }
+    if (deckId === 'spotlight-v4' || deckId === 'spotlight-v6') {
+      const availability = spotlightV4VenueAvailability(context.itemsBySection);
+      if (availability.partnerCount < 4 || availability.regularCount < 4) {
+        throw new BadRequestException(`Mẫu Spotlight V4/V6 cần 4 đối tác và 4 địa điểm thường có ảnh; hiện có ${availability.partnerCount}/4 đối tác, ${availability.regularCount}/4 địa điểm thường.`);
+      }
+    }
     const currentDeck = context.decks.find((d) => d.id === deckId);
     if (!currentDeck) throw new NotFoundException(`Không tìm thấy deck: ${deckId}`);
 
@@ -1619,12 +1627,12 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     const deckUsage = this.createUsageScope();
     currentDeck.lists.forEach((list) => {
       const isPreviewList = /-main$/i.test(String(list.id || '')) || String(list.id || '').toLowerCase() === 'main';
-      if ((deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID) && isPreviewList) return;
+      if ((isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID) && isPreviewList) return;
       this.markUsedInDeck(list.pages, deckUsage);
     });
     // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
     for (const prevList of existing) {
-      if (deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID) this.markUsedInDeck(prevList.pages, deckUsage);
+      if (isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID) this.markUsedInDeck(prevList.pages, deckUsage);
       for (const page of prevList.pages) {
         if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
         if (page.type !== 'list') continue;
@@ -1733,14 +1741,15 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     const finalCaption = deckId === 'budget-3n2d' || deckId === 'budget-3n2d-story' || deckId === 'budget-72h-summary'
       ? this.budget3N2DCoverCaption(safeCaption)
       : safeCaption;
-    let generatedPages = deckId === 'spotlight-v6-diary' ? basePages : applyCaptionToPages(basePages, finalCaption);
+    let generatedPages = isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === THREADS_TOPLIST_ID ? basePages : applyCaptionToPages(basePages, finalCaption);
     if (deckId === 'pov-3-v2') {
       generatedPages = await this.enrichPov3V2StackTaglines(generatedPages);
     }
-    if (deckId !== 'spotlight-v6-diary') generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
+    if (!isThreadsLocalDeck(deckId) && deckId !== 'spotlight-v6-diary') generatedPages = this.applyMainTemplateFieldStructure(currentDeck, generatedPages);
     generatedPages = inheritPageTypography(currentDeck, generatedPages, this.loadPageTextOverrides());
-    const effectiveCoverTitle = deckId === 'spotlight-v6-diary' ? basePages[0].title : deckId === 'itinerary-note-timed'
+    const effectiveCoverTitle = isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === THREADS_TOPLIST_ID ? basePages[0].title : deckId === 'itinerary-note-timed'
       ? currentDeck.navTitle
+      : deckId === ITINERARY_NOTE_DARK_ID ? currentDeck.navTitle
       : (deckId === 'summary-note' || (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')))
       ? String((generatedPages.find((page) => page.type === 'list') as ListPage | undefined)?.title || '').trim()
       : deckId === 'spotlight-v6-maps'
@@ -1749,7 +1758,11 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       ? String((generatedPages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
       : finalCaption.coverTitle;
 
-    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' || deckId === 'spotlight-v6-maps' ? 14 : deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' ? 11 : isTextNoteDeck(deckId) ? (deckId === 'summary-note' ? 1 : deckId.startsWith('itinerary-note-threads-') ? 1 : 2) : 0;
+    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' || deckId === 'spotlight-v6-maps' ? 14 : deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' ? 11 : isTextNoteDeck(deckId) ? (deckId === THREADS_TOPLIST_ID ? 4 : deckId === 'summary-note' ? 1 : deckId.startsWith('itinerary-note-threads-') ? 1 : 2) : 0;
+    const threadsLocalCount = deckId === THREADS_MIX_TEXT_ID ? 12 : 10;
+    if (isThreadsLocalDeck(deckId) && (generatedPages.length !== 1 || generatedPages[0].type !== 'list' || generatedPages[0].items.length !== threadsLocalCount)) {
+      throw new BadRequestException(`Threads ${deckId === THREADS_CAFE_ID ? 'Cà phê' : deckId === THREADS_MIX_TEXT_ID ? 'Tổng hợp chữ' : deckId === THREADS_MIX_ID ? 'Tổng hợp' : 'Quán ăn'} cần đúng 1 list gồm ${threadsLocalCount} địa điểm.`);
+    }
     if (expectedNonAiPageCount && generatedPages.length !== expectedNonAiPageCount) {
       throw new BadRequestException(`Mẫu ${currentDeck.navTitle} phải có đúng ${expectedNonAiPageCount} trang, hiện có ${generatedPages.length}.`);
     }
@@ -1765,17 +1778,18 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       generatedPages,
     );
     generatedList.coverTitle = effectiveCoverTitle;
+    if (isThreadsLocalDeck(deckId)) generatedList.canvasPreset = 'tiktok-3x4';
     if (deckId === 'spotlight-v6-diary') generatedList.canvasPreset = 'tiktok-3x4';
     if (deckId === 'spotlight-v5') generatedList.canvasPreset = 'tiktok-4x5';
     if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon') generatedList.canvasPreset = 'tiktok-9x16';
     if (deckId === 'spotlight-v6-maps') generatedList.canvasPreset = 'tiktok-3x4';
-    if (isTextNoteDeck(deckId)) generatedList.canvasPreset = deckId.startsWith('itinerary-note-threads-') ? 'tiktok-3x4' : 'tiktok-9x16';
+    if (isTextNoteDeck(deckId)) generatedList.canvasPreset = deckId === THREADS_TOPLIST_ID ? 'tiktok-4x5' : deckId.startsWith('itinerary-note-threads-') ? 'tiktok-3x4' : 'tiktok-9x16';
     generatedList.postCaption = deckId === 'spotlight-v6-persimmon'
       ? 'Đà Lạt mùa hồng 🍂\nLưu lại những địa điểm trong list để tham khảo cho chuyến đi nhé.'
       : deckId === 'spotlight-v6-maps'
       ? 'tới Đà Lạt vì'
       : isTextNoteDeck(deckId)
-      ? (deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_CAPTION : (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) ? ITINERARY_NOTE_CAPTION : summaryNoteDefaultCaption())
+      ? (deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_CAPTION : deckId === ITINERARY_NOTE_DARK_ID ? ITINERARY_NOTE_DARK_CAPTION : (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) ? ITINERARY_NOTE_CAPTION : summaryNoteDefaultCaption())
       : finalCaption.headline;
     if (deckId === 'itinerary-note-threads-3n2d' || deckId === 'itinerary-note-threads-2n1d') {
       generatedList.postCaption = threadsNoteCaption(deckId, generatedNumber - 1);
@@ -1783,20 +1797,26 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     if (deckId === THREADS_BUDGET_ID) {
       generatedList.postCaption = threadsBudgetCaption(generatedNumber - 1);
     }
+    if (deckId === THREADS_TOPLIST_ID) {
+      generatedList.postCaption = THREADS_TOPLIST_CAPTION;
+    }
+    if (isThreadsLocalDeck(deckId)) generatedList.postCaption = deckId === THREADS_CAFE_ID ? threadsCafeCaption(generatedNumber - 1)
+      : deckId === THREADS_MIX_TEXT_ID ? threadsMixTextCaption(generatedNumber - 1)
+        : deckId === THREADS_MIX_ID ? threadsMixCaption(generatedNumber - 1) : threadsFoodCaption(generatedNumber - 1);
     // Không dùng chung `description`: trường đó có thể bị làm rỗng để list con
     // bám đúng cấu trúc chữ của mẫu mẹ, còn caption xuất file vẫn phải giữ mô tả.
     generatedList.captionBody = deckId === 'spotlight-v6-persimmon'
       ? ''
       : deckId === 'spotlight-v6-maps'
       ? ''
-      : isTextNoteDeck(deckId)
+      : isThreadsLocalDeck(deckId) || isTextNoteDeck(deckId)
       ? ''
       : (this.sanitizeContentText(caption.body) || this.captionBodyFallback());
     generatedList.captionHashtags = deckId === 'spotlight-v6-persimmon'
       ? []
       : deckId === 'spotlight-v6-maps'
       ? ['#dalat', '#reviewdalat', '#dalatreview', '#dalatdidau', '#dalattrip']
-      : isTextNoteDeck(deckId) ? [] : finalCaption.hashtags;
+      : isThreadsLocalDeck(deckId) || isTextNoteDeck(deckId) ? [] : finalCaption.hashtags;
     generatedList.templateVersion = this.templateVersionForDeck(deckId);
     if (deckId === 'spotlight-v6-diary') {
       if (generatedPages.length !== DIARY_PAGE_COUNT) throw new BadRequestException(`Spotlight Nhật ký phải có đúng ${DIARY_PAGE_COUNT} trang.`);
@@ -1929,7 +1949,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
   private async generateBatchListsOnce(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
     const deckId = String(request.deckId ?? '').trim();
-    if (deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
+    if (deckId !== THREADS_TOPLIST_ID && deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
       this.assertDriveCacheReady();
     }
     if (deckId === 'spotlight-partner') {
@@ -2050,7 +2070,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           this.collectCaptionForbiddenNames(deckList),
         );
 
-        if (!isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
+        if (!isThreadsLocalDeck(deckId) && !isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
           errors.push({ index: i + 1, tone, message: 'Phản hồi AI thiếu tiêu đề cover.' });
           failCount++;
           continue;
@@ -2512,7 +2532,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
           ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.diaryFontSize !== undefined ? { diaryFontSize: ownOverride.diaryFontSize } : {}),
           ...(page.layoutVariant === 'itinerary-note-timed-day' && ownOverride.chipText !== undefined ? { chipText: ownOverride.chipText } : {}),
-          ...(page.type === 'list' && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
+          ...(page.type === 'list' && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
             items: page.items.map((item, index) => ({ ...item, ...ownOverride.items?.[index] })),
           } : {}),
         };
@@ -2680,6 +2700,12 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     if (deckId === 'spotlight-v6-persimmon') return SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v6-maps') return SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION;
     if (deckId === THREADS_BUDGET_ID) return THREADS_BUDGET_TEMPLATE_VERSION;
+    if (deckId === THREADS_FOOD_ID) return THREADS_FOOD_TEMPLATE_VERSION;
+    if (deckId === THREADS_CAFE_ID) return THREADS_CAFE_TEMPLATE_VERSION;
+    if (deckId === THREADS_MIX_ID) return THREADS_MIX_TEMPLATE_VERSION;
+    if (deckId === THREADS_MIX_TEXT_ID) return THREADS_MIX_TEXT_TEMPLATE_VERSION;
+    if (deckId === ITINERARY_NOTE_DARK_ID) return ITINERARY_NOTE_DARK_TEMPLATE_VERSION;
+    if (deckId === THREADS_TOPLIST_ID) return THREADS_TOPLIST_TEMPLATE_VERSION;
     if (isTextNoteDeck(deckId)) return deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_TEMPLATE_VERSION : (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) ? ITINERARY_NOTE_TEMPLATE_VERSION : SUMMARY_NOTE_TEMPLATE_VERSION;
     if (deckId === 'carousel-mau-1') return CAROUSEL_MAU_1_TEMPLATE_VERSION;
     if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
@@ -2721,7 +2747,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     deckId?: string,
   ): GuideDeckList {
     const cleanList = this.sanitizeGeneratedListText(list, deckId);
-    if (deckId === 'spotlight-v6-diary') return cleanList;
+    if (isThreadsLocalDeck(deckId || '') || deckId === 'spotlight-v6-diary') return cleanList;
     if (!/caption-/i.test(cleanList.id)) return cleanList;
 
     const safeDescription = this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanList.description, cleanList.pages));
@@ -2732,7 +2758,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       ...cleanList,
       description: safeDescription,
       pages: enrichedPages.map((page, pageIndex) => {
-        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
+        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
           return page;
         }
         const pageBackgroundImage = this.backgroundImageForPage(cleanList, page, pageIndex, coverImageUrls);
@@ -2747,13 +2773,14 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private sanitizeBaseListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
+    if (list.id.startsWith(THREADS_FOOD_ID) || list.id.startsWith(THREADS_CAFE_ID) || list.id.startsWith(THREADS_MIX_ID) || list.id.startsWith(THREADS_MIX_TEXT_ID)) return this.cloneJson(list);
     if (list.id.startsWith('spotlight-v6-diary-')) return this.cloneJson(list);
     const pages = list.pages.map((page) => this.sanitizeBasePageForDisplay(page, list));
     const enrichedPages = tuneSpotlightV2Cover(pages, coverImageUrls, `${list.id}|cover-grid`);
     return {
       ...list,
       pages: enrichedPages.map((page, pageIndex) => {
-        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
+        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
           return page;
         }
         if (page.type === 'cover') {
@@ -2896,7 +2923,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       return this.sanitizeDeckPageText(page);
     }
 
-    if ((String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
+    if ((String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
       return {
         ...page,
         title: this.sanitizeContentText(sanitizeDeckHeadline(page.title)),
@@ -3091,6 +3118,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       const baseDeck = baseDecks.find((deck) => deck.id === deckId);
       baseDeck?.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
       const refreshedLists = lists.map((list, listIndex) => {
+        if (isThreadsLocalDeck(deckId)) return list;
         // Spotlight V4/V5 lưu snapshot hook, ảnh và địa điểm; thay đổi mẫu chỉ
         // áp dụng cho list mới, không rebuild các list người dùng đã tạo.
         if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) return list;
@@ -3369,6 +3397,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
+      if (isThreadsLocalDeck(deckId)) continue;
       // Maps lưu snapshot theo cặp: item của trang Maps phải giữ file Anh_GG_maps.
       // Luồng refresh chung chỉ biết ảnh thật Link_drive và sẽ thay nhầm trang Maps
       // thành ảnh địa điểm sau lần reload/getDataset đầu tiên.
@@ -3399,7 +3428,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
                 ? this.budgetGalleryItemMetaFromSource(sourceItem)
                 : page.layoutVariant === 'spotlight-v3'
                   ? this.spotlightV3ItemMetaFromSource(sourceItem, page.chipText)
-                  : (page.layoutVariant === 'spotlight-v4-page' || page.layoutVariant === 'spotlight-v5-place' || page.layoutVariant === 'spotlight-v6-page' || (page.layoutVariant === 'summary-note-page' || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))
+                : (page.layoutVariant === 'spotlight-v4-page' || page.layoutVariant === 'spotlight-v5-place' || page.layoutVariant === 'spotlight-v6-page' || (page.layoutVariant === 'summary-note-page' || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))
                     ? [String(sourceItem.address || '').trim(), ''] as [string, string]
                   : page.layoutVariant === 'carousel-mau-1-page'
                     ? [String(sourceItem.address || '').trim(), ''] as [string, string]
@@ -3557,6 +3586,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
       if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
+      if (isThreadsLocalDeck(deckId)) continue;
       const sanitizedLists = lists.map((list) => {
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
@@ -3953,6 +3983,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       diaryDescriptionRaw: String(row.mo_ta ?? row.mota ?? row.mo_ta_dia_diem ?? ''),
       diaryImageUrls: [...sheetDriveCandidateUrls],
       partnerFlag: partner,
+      classification: firstValue(row, 'phan_loai'),
       isPartner: normalizeText(partner) === 'x',
       headPrice,
       hasHeadPriceColumn,
@@ -4637,7 +4668,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     if (this.isBannedSampleCaptionText(title)) title = safeCoverFallback;
     let description = this.sanitizeContentText(localizeText(list.description || '', this.activeDestinationId));
     if (this.isBannedSampleCaptionText(description)) description = safeBodyFallback;
-    const isSummaryNote = isTextNoteDeck(resolvedDeckId || '');
+    const isSummaryNote = isThreadsLocalDeck(resolvedDeckId || '') || isTextNoteDeck(resolvedDeckId || '');
     const storedCaptionBody = isSummaryNote ? '' : (list.captionBody || (
       list.postCaption || (Array.isArray(list.captionHashtags) && list.captionHashtags.length > 0)
         ? list.description || safeBodyFallback

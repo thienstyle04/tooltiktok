@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
-import { buildItineraryNotePages } from '../logic/itinerary-note';
+import { buildItineraryNotePages, buildItineraryNoteDarkPages, ITINERARY_NOTE_DARK_CAPTION } from '../logic/itinerary-note';
 const keys: SectionKey[] = ['quan_an','cafe','check_in','khu_du_lich','hoat_dong','dia_diem_lich_su','choi_dem','homestay','dich_vu'];
 const pools = Object.fromEntries(keys.map(key => [key, Array.from({length:8}, (_,i) => ({
  id:key+i, name:key+' '+i, address:'33 Ngô Quyền, Cam Ly - Đà Lạt', sectionKey:key, isPartner:i===0,
@@ -10,6 +10,21 @@ const common={itemsBySection:pools,globalUsedItemIds:new Set<string>()};
 const pages=buildItineraryNotePages(common,'test',new Date('2026-09-30T18:00:00Z'));
 assert.equal(pages.length,2);
 assert.equal(pages[0].title,'Đi Đà Lạt tháng 10');
+const darkUsed = new Set<string>();
+const darkPages = buildItineraryNoteDarkPages({ itemsBySection: pools, globalUsedItemIds: darkUsed }, 'dark-test');
+assert.equal(darkPages.length, 2);
+assert.ok(darkPages.every(page => page.title === '' && page.subtitle === '' && page.layoutVariant === 'itinerary-note-dark-day'));
+assert.deepEqual(darkPages.map(page => page.items.length), [11, 11]);
+assert.deepEqual(darkPages.map(page => page.items.filter(item => item.isPartner).length), [4, 3]);
+assert.ok(darkPages.every(page => page.items.every(item => !item.imageUrl)));
+assert.equal(new Set(darkPages.flatMap(page => page.items.map(item => item.name))).size, 22);
+assert.ok(darkPages.every(page => page.items.every(item => Boolean(item.id && darkUsed.has(item.id)))));
+assert.ok(darkPages.every(page => page.items[4].sourceSectionKey === 'quan_an' && page.items[6].sourceSectionKey === 'cafe'));
+assert.ok(darkPages.every(page => {
+ const dinnerIndex = page.items.map(item => item.sourceSectionKey).lastIndexOf('quan_an');
+ return dinnerIndex > 6 && page.items.every((item, index) => item.sourceSectionKey !== 'choi_dem' || index > dinnerIndex);
+}));
+assert.ok(ITINERARY_NOTE_DARK_CAPTION.includes('?'));
 assert.equal(new Set(pages.flatMap(page=>page.items.map(item=>item.name))).size,14);
 for(const [pageIndex,page] of pages.entries()) {
  assert.equal(page.items.length,7); assert.equal(page.type,'list');

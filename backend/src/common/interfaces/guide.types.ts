@@ -118,6 +118,8 @@ export interface GuideItem {
   theme?: string;
   partnerFlag: string;
   isPartner: boolean;
+  /** Original Sheet phan_loai, needed for Local-only Threads lists. */
+  classification?: string;
   /** Giá đầu người — cột sheet `gia_dau_nguoi`, dùng cho bảng chi phí 72H. */
   headPrice: string;
   /** Sheet có cột giá đầu người (kể cả khi ô trống). */
@@ -149,6 +151,7 @@ export interface PageItem {
   imageSource: 'manual' | 'auto' | 'fallback';
   candidateImageUrls?: string[];
   isPartner?: boolean;
+  isLocal?: boolean;
   rawName?: string;
   scheduleTime?: string;
   scheduleIcon?: string;
@@ -173,7 +176,7 @@ export interface CoverPage {
   backgroundImage: string;
   /** Spotlight V2 cover: lưới 2×2 — chỉ ảnh nền (pool Hinh_nen). */
   coverImages?: string[];
-  layoutVariant?: 'standard' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung-cover' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung-cover' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-cover' | 'itinerary-timeline-cover' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-cover' | 'spotlight-v5-cover' | 'spotlight-v6-cover' | 'carousel-mau-1-cover' | 'one-way-story-cover' | 'spotlight-partner' | 'spotlight-partner-v2' | 'pov-maikem' | 'pov-3-v2-cover' | 'budget-3n2d' | 'budget-3n2d-story' | 'budget-wallet-cover';
+  layoutVariant?: 'threads-toplist-cover' | 'standard' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung-cover' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung-cover' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-cover' | 'itinerary-timeline-cover' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-cover' | 'spotlight-v5-cover' | 'spotlight-v6-cover' | 'carousel-mau-1-cover' | 'one-way-story-cover' | 'spotlight-partner' | 'spotlight-partner-v2' | 'pov-maikem' | 'pov-3-v2-cover' | 'budget-3n2d' | 'budget-3n2d-story' | 'budget-wallet-cover';
   titlePlacement?: TitlePlacement;
   canvasPreset?: 'default' | 'tiktok-3x4' | 'tiktok-4x5' | 'tiktok-9x16' | 'landscape-4x3';
 }
@@ -189,7 +192,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'itinerary-note-threads-budget' | 'itinerary-note-threads-day' | 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
+  layoutVariant?: 'threads-toplist-page' | 'itinerary-note-threads-budget' | 'itinerary-note-threads-day' | 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-dark-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
   titlePlacement?: TitlePlacement;
   contentStyle?: MutantContentStyle;
   playlistLines?: string[];

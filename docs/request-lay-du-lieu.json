@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "name": "Dalat Studio - request lấy dữ liệu",
+  "purpose": "Mô tả request đọc dữ liệu hiện tại của tool; file này không chứa workbook, API key hoặc thông tin đăng nhập.",
+  "baseUrl": "http://127.0.0.1:3001",
+  "backendFallbackUrl": "http://127.0.0.1:3000",
+  "request": {
+    "method": "GET",
+    "path": "/api/guide-data",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "cache": "no-store",
+    "timeoutMs": 180000,
+    "body": null
+  },
+  "retry": {
+    "maxAttempts": 3,
+    "retryHttpStatuses": [500, 502, 503, 504],
+    "delayBeforeRetryMs": [1200, 2400],
+    "fallbackToBackendForGetOnly": true
+  },
+  "success": {
+    "httpStatus": 200,
+    "responseType": "application/json",
+    "fields": {
+      "source.destinationId": "Mã nguồn dữ liệu đang chọn",
+      "source.destinationLabel": "Tên nguồn dữ liệu đang chọn",
+      "source.totalItems": "Tổng số địa điểm",
+      "decks": "Danh sách mẫu và các list của từng mẫu",
+      "generatedAt": "Thời điểm backend tạo response"
+    }
+  },
+  "dataSourceLogic": [
+    "Backend ưu tiên đọc workbook XLSX đã lưu trên máy.",
+    "Nếu máy chưa có workbook cục bộ, lần tải đầu có thể lấy Google Sheet và lưu thành XLSX cục bộ.",
+    "GET /api/guide-data không chủ động đồng bộ Google Sheet mỗi lần gọi.",
+    "GET /api/guide-data?refresh=1 nạp lại workbook cục bộ khi đã có; đây không phải lệnh tải mới từ Google Sheet."
+  ],
+  "manualGoogleSheetSync": {
+    "separateFromReadRequest": true,
+    "method": "POST",
+    "pathTemplate": "/api/destinations/{destinationId}/refresh-from-sheet?background=1",
+    "statusMethod": "GET",
+    "statusPath": "/api/night-sync/status",
+    "note": "Chỉ gọi khi người dùng chủ động yêu cầu cập nhật dữ liệu."
+  }
+}

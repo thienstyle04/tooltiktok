@@ -1,0 +1,30 @@
+/* Original Đà Lạt cover and editable notebook-style venue pages. */
+.story-page.threads-toplist-cover,
+.story-page.threads-toplist-page,
+.batch-export-root .story-page.threads-toplist-cover,
+.batch-export-root .story-page.threads-toplist-page {
+  width:397px;
+  height:496px;
+  aspect-ratio:4 / 5;
+  border-radius:0;
+  overflow:hidden;
+  isolation:isolate;
+}
+.threads-toplist-cover { background:#431c19; }
+.threads-toplist-door { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 48%; }
+.threads-toplist-cover-shade { position:absolute; inset:31% 10% 17%; background:linear-gradient(180deg,rgba(42,6,5,.32),rgba(42,6,5,.48)); border-radius:4px; }
+.threads-toplist-cover h1 { position:absolute; top:40%; left:12%; right:12%; margin:0; color:#fff; font-family:"Be Vietnam Pro",Arial,sans-serif; font-size:35px; font-weight:900; line-height:1.15; letter-spacing:-.045em; text-align:center; text-shadow:0 2px 7px rgba(25,0,0,.42); overflow-wrap:anywhere; }
+.threads-toplist-page { background:#e9e2d1; color:#211d1a; }
+.threads-toplist-paper { position:absolute; inset:0; padding:26px 26px 20px 64px; background:repeating-linear-gradient(to bottom,transparent 0 25px,#b9b5ab 25px 26px) 0 26px / 100% 26px repeat-y,#f4f0e7; }
+.threads-toplist-paper::before { content:""; position:absolute; top:0; bottom:0; left:52px; width:1px; background:#aa7371; }
+.threads-toplist-paper h2 { position:relative; height:52px; margin:0; font-size:calc(27px * var(--toplist-fit, 1)); font-weight:750; line-height:26px; overflow-wrap:break-word; }
+.threads-toplist-paper ul { position:relative; margin:0; padding:0; list-style:none; }
+.threads-toplist-paper li { display:block; min-height:var(--toplist-row-min-height, 78px); break-inside:avoid; }
+.threads-toplist-place { min-width:0; }
+.threads-toplist-place strong { display:block; font-size:calc(17px * var(--toplist-fit, 1)); line-height:26px; font-weight:700; overflow-wrap:break-word; }
+.threads-toplist-place span { display:block; font-size:calc(12px * var(--toplist-fit, 1)); line-height:26px; overflow-wrap:break-word; }
+.threads-toplist-example { position:absolute; left:64px; right:22px; bottom:13px; margin:0; font-family:"Be Vietnam Pro",Arial,sans-serif; font-size:9px; line-height:1.2; font-weight:600; color:#775e59; }
+@media (max-width:500px) {
+  .page-grid .story-page.threads-toplist-cover,
+  .page-grid .story-page.threads-toplist-page { max-width:397px; }
+}

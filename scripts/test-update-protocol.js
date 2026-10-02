@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const test = require('node:test');
-const { compareVersions, verifyManifest } = require('./update-protocol');
+const { compareVersions, parseJsonUtf8, verifyManifest } = require('./update-protocol');
 
 const keys = crypto.generateKeyPairSync('ed25519');
 const publicKey = keys.publicKey.export({ type: 'spki', format: 'pem' });
@@ -19,6 +19,11 @@ test('so sánh phiên bản dạng 0.7.04', () => {
   assert.equal(compareVersions('0.7.05', '0.7.04'), 1);
   assert.equal(compareVersions('0.7.04', '0.7.04'), 0);
   assert.equal(compareVersions('0.6.10', '0.7.01'), -1);
+});
+
+test('đọc JSON UTF-8 có BOM do PowerShell cũ tạo', () => {
+  assert.deepEqual(parseJsonUtf8('\uFEFF{"version":"0.8.08"}'), { version: '0.8.08' });
+  assert.deepEqual(parseJsonUtf8('ï»¿{"version":"0.8.08"}'), { version: '0.8.08' });
 });
 
 test('chỉ nhận manifest có chữ ký và đường dẫn gói an toàn', () => {

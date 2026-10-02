@@ -4,6 +4,9 @@ import { stableHash } from './image-resolver';
 
 export const ITINERARY_NOTE_TEMPLATE_VERSION = 2;
 export const ITINERARY_NOTE_CAPTION = 'Mình tổng hợp lịch trình Đà Lạt 2 ngày như hình bên dưới.\nMọi người xem giúp mình lịch này có ổn không, có điểm nào nên ghé thêm không ạ?';
+export const ITINERARY_NOTE_DARK_ID = 'itinerary-note-dark';
+export const ITINERARY_NOTE_DARK_TEMPLATE_VERSION = 4;
+export const ITINERARY_NOTE_DARK_CAPTION = 'Tuiiiii xếp lịch Đà Lạt 2 ngày nè. Đi vậy có quá sức khum? Mấy ní thấy nên đổi chỗ nào thì cmt cứu tui zới 👇';
 const visits: SectionKey[] = ['check_in', 'khu_du_lich', 'hoat_dong', 'dia_diem_lich_su', 'choi_dem'];
 const PARTNER_TARGETS = [4, 3] as const;
 const identity = (item: GuideItem) => item.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '');
@@ -81,4 +84,52 @@ export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsB
       imageUrl: '', imageMapped: false, imageSource: 'fallback', imageNote: 'text-only', isPartner: item.isPartner,
     })),
   }));
+}
+
+export function buildItineraryNoteDarkPages(common: { itemsBySection: WorkbookItemsBySection; globalUsedItemIds?: Set<string> }, seed: string): ListPage[] {
+  const nextUsed = new Set(common.globalUsedItemIds);
+  const pages = buildItineraryNotePages({ ...common, globalUsedItemIds: nextUsed }, seed);
+  const selectedNames = new Set(pages.flatMap((page) => page.items.map((item) => identity({ name: item.name } as GuideItem))));
+  const usedPerDay = pages.map((page) => page.items.reduce((counts, item) => {
+    const key = item.sourceSectionKey;
+    if (key) counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {} as Record<string, number>));
+  const chooseExtra = (day: number, groups: SectionKey[], slot: string): GuideItem => {
+    const candidates = groups.flatMap((key) => common.itemsBySection[key] || []).filter((item) =>
+      !item.isPartner && item.name?.trim() && item.address?.trim() && !selectedNames.has(identity(item)));
+    candidates.sort((a, b) =>
+      (usedPerDay[day][a.sectionKey] || 0) - (usedPerDay[day][b.sectionKey] || 0)
+      || Number(Boolean(common.globalUsedItemIds?.has(itemUsageKey(a)) || common.globalUsedItemIds?.has(a.id)))
+        - Number(Boolean(common.globalUsedItemIds?.has(itemUsageKey(b)) || common.globalUsedItemIds?.has(b.id)))
+      || stableHash(`${seed}:dark:${day}:${slot}:${a.id}`) - stableHash(`${seed}:dark:${day}:${slot}:${b.id}`));
+    const chosen = candidates[0];
+    if (!chosen) throw new Error(`Lịch trình Note nền đen thiếu địa điểm thường có tên và địa chỉ cho ${slot} Ngày ${day + 1}; chưa lưu list.`);
+    selectedNames.add(identity(chosen));
+    usedPerDay[day][chosen.sectionKey] = (usedPerDay[day][chosen.sectionKey] || 0) + 1;
+    nextUsed.add(itemUsageKey(chosen)); nextUsed.add(chosen.id);
+    return chosen;
+  };
+  const toPageItem = (item: GuideItem) => ({
+    id: item.id, sourceKey: itemUsageKey(item), sourceSectionKey: item.sectionKey,
+    label: item.sectionKey === 'quan_an' ? 'Ăn tại' : item.sectionKey === 'cafe' ? 'Ghé cà phê' : 'Ghé',
+    name: item.name, rawName: item.name, metaPrimary: item.address.trim(), metaSecondary: '',
+    imageUrl: '', imageMapped: false, imageSource: 'fallback' as const, imageNote: 'text-only', isPartner: false,
+  });
+  const darkPages = pages.map((page, day) => {
+    const lunch = toPageItem(chooseExtra(day, ['quan_an'], 'bữa trưa'));
+    const coffee = toPageItem(chooseExtra(day, ['cafe'], 'cà phê chiều'));
+    const visitOne = toPageItem(chooseExtra(day, visits.filter((key) => key !== 'choi_dem'), 'tham quan chiều'));
+    const visitTwo = toPageItem(chooseExtra(day, visits.filter((key) => key !== 'choi_dem'), 'tham quan chiều'));
+    const outings = [...page.items.slice(2, 5), visitOne, visitTwo, page.items[6]];
+    const daytime = outings.filter((item) => item.sourceSectionKey !== 'choi_dem');
+    const nighttime = outings.filter((item) => item.sourceSectionKey === 'choi_dem');
+    return {
+      ...page, title: '', subtitle: '', layoutVariant: 'itinerary-note-dark-day' as const,
+      items: [page.items[0], page.items[1], ...daytime.slice(0, 2), lunch,
+        ...daytime.slice(2, 3), coffee, ...daytime.slice(3), page.items[5], ...nighttime],
+    };
+  });
+  for (const key of nextUsed) common.globalUsedItemIds?.add(key);
+  return darkPages;
 }

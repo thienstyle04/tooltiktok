@@ -147,7 +147,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v6-maps',
   'spotlight-v6-diary',
   'summary-note',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-2days',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
   'itinerary-note-timed',
   'one-way-story',
   'itinerary-4n3d-stack',
@@ -161,7 +161,7 @@ const DALAT_ONLY_CATALOG_DECK_IDS = new Set([
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
   'spotlight-v6-diary',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-2days',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
   'itinerary-note-timed',
   'one-way-story',
 ]);
@@ -1180,7 +1180,7 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
@@ -1232,7 +1232,7 @@ export default function DeckStudio({ initialDataset = null }) {
           subtitle: activePage.subtitle || '',
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { titlePlacement: activePage.titlePlacement, items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { chipText: activePage.chipText || '' } : {}),
-          ...((activePage.layoutVariant === 'itinerary-note-day' || activePage.layoutVariant === 'itinerary-note-threads-day') ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
+          ...((activePage.layoutVariant === 'itinerary-note-day' || activePage.layoutVariant === 'itinerary-note-dark-day' || activePage.layoutVariant === 'itinerary-note-threads-day' || activePage.layoutVariant === 'threads-toplist-page') ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { items: activePage.items.map(({ name, metaPrimary, scheduleTime }) => ({ name, metaPrimary, scheduleTime })) } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-map-place' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activeDeck.id === 'spotlight-v6-persimmon' && activePage.layoutVariant === 'spotlight-v6-page' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
@@ -1309,18 +1309,22 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
     }
-    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
+    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'threads-toplist-dalat' && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
-    const isNonAiTemplate = activeDeck.id === 'carousel-mau-1'
+    const isNonAiTemplate = activeDeck.id === 'threads-food-local'
+      || activeDeck.id === 'threads-cafe-local'
+      || activeDeck.id === 'threads-mix-local'
+      || activeDeck.id === 'threads-mix-text'
+      || activeDeck.id === 'carousel-mau-1'
       || activeDeck.id === 'one-way-story'
       || activeDeck.id === 'spotlight-v6-green'
       || activeDeck.id === 'spotlight-v6-dark'
       || activeDeck.id === 'spotlight-v6-persimmon'
       || activeDeck.id === 'spotlight-v6-maps'
       || activeDeck.id === 'spotlight-v6-diary'
-      || (activeDeck.id === 'summary-note' || (activeDeck.id === 'itinerary-note-2days' || activeDeck.id.startsWith('itinerary-note-threads-')) || activeDeck.id === 'itinerary-note-timed');
+      || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-dark' || (activeDeck.id === 'itinerary-note-2days' || activeDeck.id.startsWith('itinerary-note-threads-')) || activeDeck.id === 'itinerary-note-timed' || activeDeck.id === 'threads-toplist-dalat');
     const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
       && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
     const coverTitle = (caption.coverTitle || '').trim();
@@ -1386,7 +1390,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Chưa có deck để tạo batch list.');
       return;
     }
-    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
+    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'threads-toplist-dalat' && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
@@ -1721,7 +1725,8 @@ export default function DeckStudio({ initialDataset = null }) {
       if ((event.ctrlKey || event.metaKey) && key === 's') {
         event.preventDefault();
         if (!busy) {
-          handleExportPage();
+          if (activeDeck?.id === 'threads-food-local' || activeDeck?.id === 'threads-cafe-local' || activeDeck?.id === 'threads-mix-local' || activeDeck?.id === 'threads-mix-text') handleExportList();
+          else handleExportPage();
         }
         return;
       }
@@ -1762,6 +1767,7 @@ export default function DeckStudio({ initialDataset = null }) {
     exportCb,
     exportQuality,
     handleExportPage,
+    handleExportList,
     pushSelectionSnapshot,
     restoreSelectionSnapshot,
     selectedPageIndex,
@@ -2170,7 +2176,7 @@ export default function DeckStudio({ initialDataset = null }) {
                 <div className="panel-head compact">
                   <div>
                     <p className="panel-kicker">Dữ liệu trang</p>
-                    <h3 className="panel-title">{activePage?.layoutVariant === 'itinerary-note-threads-budget' ? 'Dữ liệu bảng chi phí' : 'Dữ liệu & ảnh'}</h3>
+                    <h3 className="panel-title">{activePage?.layoutVariant === 'itinerary-note-threads-budget' ? 'Dữ liệu bảng chi phí' : activeDeck?.id === 'threads-toplist-dalat' ? 'Dữ liệu địa điểm' : 'Dữ liệu & ảnh'}</h3>
                     <p role="status">{savingPageText ? 'Đang lưu…' : editorSaveState === 'dirty' ? '● Chưa lưu' : editorSaveState === 'failed' ? 'Lưu thất bại — bản nháp vẫn còn' : 'Đã lưu'}</p>
                   </div>
                 </div>

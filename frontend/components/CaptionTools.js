@@ -33,20 +33,24 @@ export default function CaptionTools({
   const lists = mainLists.length ? mainLists : allLists.slice(0, 1);
   const selectedCaptionList = lists.find((list) => list.id === activeList?.id) || lists[0] || null;
   const isSpotlightPartnerDeck = activeDeck?.id === 'spotlight-partner';
-  const isNonAiTemplate = activeDeck?.id === 'carousel-mau-1'
+  const isNonAiTemplate = activeDeck?.id === 'threads-food-local'
+    || activeDeck?.id === 'threads-cafe-local'
+    || activeDeck?.id === 'threads-mix-local'
+    || activeDeck?.id === 'threads-mix-text'
+    || activeDeck?.id === 'carousel-mau-1'
     || activeDeck?.id === 'one-way-story'
     || activeDeck?.id === 'spotlight-v6-green'
     || activeDeck?.id === 'spotlight-v6-dark'
     || activeDeck?.id === 'spotlight-v6-persimmon'
     || activeDeck?.id === 'spotlight-v6-maps'
     || activeDeck?.id === 'spotlight-v6-diary'
-    || (activeDeck?.id === 'summary-note' || (activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id?.startsWith('itinerary-note-threads-')) || activeDeck?.id === 'itinerary-note-timed');
-  const nonAiTemplateName = activeDeck?.id === 'spotlight-v6-diary' ? 'Spotlight Nhật ký Đà Lạt' : activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'spotlight-v6-dark' ? 'Spotlight V6 Tone đen' : activeDeck?.id === 'spotlight-v6-persimmon' ? 'Spotlight Mùa hồng' : activeDeck?.id === 'spotlight-v6-maps' ? 'Spotlight V6 Google Maps' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : (activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id?.startsWith('itinerary-note-threads-')) ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
+    || (activeDeck?.id === 'summary-note' || activeDeck?.id === 'itinerary-note-dark' || (activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id?.startsWith('itinerary-note-threads-')) || activeDeck?.id === 'itinerary-note-timed' || activeDeck?.id === 'threads-toplist-dalat');
+  const nonAiTemplateName = activeDeck?.id === 'threads-food-local' ? 'Quán ăn Threads Local' : activeDeck?.id === 'threads-cafe-local' ? 'Cà phê Threads Local' : activeDeck?.id === 'threads-mix-local' ? 'Tổng hợp Threads' : activeDeck?.id === 'threads-mix-text' ? 'Tổng hợp Threads chữ' : activeDeck?.id === 'threads-toplist-dalat' ? 'Top list Đà Lạt' : activeDeck?.id === 'spotlight-v6-diary' ? 'Spotlight Nhật ký Đà Lạt' : activeDeck?.id === 'spotlight-v6-green' ? 'Spotlight V6 Mảng xanh' : activeDeck?.id === 'spotlight-v6-dark' ? 'Spotlight V6 Tone đen' : activeDeck?.id === 'spotlight-v6-persimmon' ? 'Spotlight Mùa hồng' : activeDeck?.id === 'spotlight-v6-maps' ? 'Spotlight V6 Google Maps' : activeDeck?.id === 'itinerary-note-dark' ? 'Lịch trình Note nền đen' : activeDeck?.id === 'itinerary-note-timed' ? 'Lịch trình Note theo giờ' : (activeDeck?.id === 'itinerary-note-2days' || activeDeck?.id?.startsWith('itinerary-note-threads-')) ? 'Lịch trình Note 2 ngày' : activeDeck?.id === 'one-way-story'
     ? 'Đường một chiều'
     : activeDeck?.id === 'summary-note'
       ? 'Tổng hợp địa điểm'
       : 'Mẫu 1';
-  const creationDisabled = busy || (!cacheReady && activeDeck?.id !== 'itinerary-note-timed' && !activeDeck?.id?.startsWith('itinerary-note-threads-'));
+  const creationDisabled = busy || (!cacheReady && activeDeck?.id !== 'threads-toplist-dalat' && activeDeck?.id !== 'itinerary-note-timed' && !activeDeck?.id?.startsWith('itinerary-note-threads-'));
 
   const handleDeckChange = (event) => {
     const deck = decks.find((item) => item.id === event.target.value);
@@ -79,7 +83,7 @@ export default function CaptionTools({
         <span className="ai-state-pill">{visible ? 'Đang mở' : 'Sẵn sàng'}</span>
       </div>
 
-      {!cacheReady ? (
+      {!cacheReady && activeDeck?.id !== 'threads-toplist-dalat' ? (
         <div className="ai-cache-warning" role="status">
           Đang đồng bộ ảnh Drive vào cache. Chức năng tạo list sẽ mở sau khi tải xong.
         </div>

@@ -8,6 +8,12 @@ const DEFAULT_BASE_URL = 'https://113.161.254.76/dalat-studio/updates/';
 const RELEASE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAAyD3MvB4waUtw84aOVaPV6ApmWW9qVjAJuGDTGR9SjA=\n-----END PUBLIC KEY-----`;
 const MAX_RELEASE_BYTES = 2 * 1024 * 1024 * 1024;
 
+function parseJsonUtf8(value) {
+  // Windows PowerShell 5.1 may write UTF-8 with BOM. Some older files also
+  // contain the three BOM bytes decoded as Latin-1; neither is JSON syntax.
+  return JSON.parse(String(value).replace(/^(?:\uFEFF|\u00EF\u00BB\u00BF)+/, ''));
+}
+
 function baseUrl() {
   const url = new URL(process.env.DALAT_UPDATE_BASE_URL || DEFAULT_BASE_URL);
   if (url.protocol !== 'https:' && process.env.DALAT_UPDATE_ALLOW_HTTP_FOR_TEST !== '1') throw Error('Kênh cập nhật phải dùng HTTPS.');
@@ -30,7 +36,7 @@ function verifyManifest(envelope, key = RELEASE_PUBLIC_KEY) {
   const payload = Buffer.from(envelope.payload, 'base64');
   const signature = Buffer.from(envelope.signature, 'base64');
   if (!payload.length || payload.length > 32_768 || signature.length !== 64 || !crypto.verify(null, payload, key, signature)) throw Error('Chữ ký bản cập nhật không hợp lệ.');
-  const info = JSON.parse(payload.toString('utf8'));
+  const info = parseJsonUtf8(payload.toString('utf8'));
   if (info.schema !== 1 || info.channel !== 'stable' || info.platform !== 'win32-x64') throw Error('Manifest cập nhật không tương thích.');
   compareVersions(info.version, '0.0.0');
   if (!/^[a-f0-9]{40}$/.test(info.commit) || !/^[a-f0-9]{64}$/.test(info.artifact?.sha256 || '') || !Number.isSafeInteger(info.artifact?.size) || info.artifact.size < 1 || info.artifact.size > MAX_RELEASE_BYTES) throw Error('Manifest cập nhật thiếu thông tin gói hợp lệ.');
@@ -44,7 +50,7 @@ async function fetchLatest() {
   if (!response.ok) throw Error(`Không tải được thông tin phiên bản (HTTP ${response.status}).`);
   const text = await response.text();
   if (text.length > 64_000) throw Error('Manifest cập nhật quá lớn.');
-  return verifyManifest(JSON.parse(text));
+  return verifyManifest(parseJsonUtf8(text));
 }
 
 async function downloadRelease(info, targetPath, onProgress = () => undefined) {
@@ -87,4 +93,4 @@ function writeJsonAtomic(file, value) {
   fs.renameSync(temp, file);
 }
 
-module.exports = { DEFAULT_BASE_URL, RELEASE_PUBLIC_KEY, baseUrl, compareVersions, verifyManifest, fetchLatest, downloadRelease, writeJsonAtomic };
+module.exports = { DEFAULT_BASE_URL, RELEASE_PUBLIC_KEY, baseUrl, compareVersions, parseJsonUtf8, verifyManifest, fetchLatest, downloadRelease, writeJsonAtomic };

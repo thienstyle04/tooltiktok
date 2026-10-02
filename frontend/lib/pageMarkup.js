@@ -1,4 +1,5 @@
 import { escapeHtml, sanitizeFilePart } from './utils';
+import { compactThreadsLocalAddress } from './threadsFoodExport.mjs';
 
 function sourceLabel(item) {
   const source = item?.imageSource || (item?.imageMapped ? 'manual' : 'fallback');
@@ -708,6 +709,7 @@ function sanitizeSubtitleForDisplay(value, pages) {
 }
 
 const V2_COVER_VARIANTS = new Set([
+  'threads-toplist-cover',
   'grid-6-quaytung-cover',
   'grid-8-feed',
   'grid-8-quaytung-cover',
@@ -727,6 +729,7 @@ const V2_COVER_VARIANTS = new Set([
 ]);
 
 const V2_LIST_VARIANTS = new Set([
+  'threads-toplist-page',
   'grid-6-quaytung',
   'grid-8-feed',
   'grid-8-quaytung',
@@ -744,6 +747,7 @@ const V2_LIST_VARIANTS = new Set([
   'spotlight-v6-diary-page',
   'summary-note-page',
   'itinerary-note-day',
+  'itinerary-note-dark-day',
   'itinerary-note-threads-day',
   'itinerary-note-threads-budget',
   'itinerary-note-timed-day',
@@ -1841,6 +1845,7 @@ function renderSpotlightV4VenuePage(page, index, listId, list) {
 
 import { renderItineraryNotePage, renderItineraryNoteTimedPage } from './itineraryNote';
 import { renderThreadsBudgetPage } from './threadsBudget';
+import { renderThreadsToplistCover, renderThreadsToplistPage } from './threadsToplist';
 function renderSummaryNotePage(page, index, listId) {
   const title = page.title !== undefined ? String(page.title || '').trim() : '';
   const rows = (page.items || []).slice(0, 8).map((item) => {
@@ -2338,6 +2343,7 @@ function renderOneWayStoryPhoto(page, index, listId) {
 }
 
 function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backgroundImage, coverImageUrls = []) {
+  if (page.layoutVariant === 'threads-toplist-cover') return renderThreadsToplistCover(page, index, listId);
   if (page.layoutVariant === 'one-way-story-cover') {
     return renderOneWayStoryCover(page, index, listId, coverTitle, backgroundImage);
   }
@@ -2390,6 +2396,7 @@ function renderCoverPageV2(page, index, listId, coverTitle, coverSubtitle, backg
 }
 
 function renderListPageV2(page, index, listId, list, pageSubtitle) {
+  if (page.layoutVariant === 'threads-toplist-page') return renderThreadsToplistPage(page, index, listId);
   if (page.layoutVariant === 'one-way-story-road') {
     return renderOneWayStoryRoad(page, index, listId);
   }
@@ -2446,7 +2453,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   if (page.layoutVariant === 'spotlight-v4-image') {
     return renderSpotlightV4ImagePage(page, index, listId);
   }
-  if (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') return renderItineraryNotePage(page, index, listId);
+  if (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') return renderItineraryNotePage(page, index, listId);
   if (page.layoutVariant === 'itinerary-note-threads-budget') return renderThreadsBudgetPage(page, index, listId);
   if (page.layoutVariant === 'itinerary-note-timed-day') return renderItineraryNoteTimedPage(page, index, listId);
   if (page.layoutVariant === 'summary-note-page') {
@@ -3519,6 +3526,25 @@ export function renderListPage(page, ...args) {
 
 function renderListPageContent(page, index, total, listId, hashtags = [], list = null) {
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
+  if (String(listId || '').startsWith('threads-food-local') || String(listId || '').startsWith('threads-cafe-local') || String(listId || '').startsWith('threads-mix-local') || String(listId || '').startsWith('threads-mix-text')) {
+    const items = Array.isArray(page.items) ? page.items : [];
+    const isCafe = String(listId || '').startsWith('threads-cafe-local');
+    const isMix = String(listId || '').startsWith('threads-mix-local');
+    const isTextOnly = String(listId || '').startsWith('threads-mix-text');
+    return '<article class="' + escapeHtml(storyPageClass(listId, 'threads-food-preview', isTextOnly ? 'threads-food-preview--text-only' : ''))
+      + '" data-list-id="' + escapeHtml(listId) + '" data-page-index="' + index + '">'
+      + '<div class="threads-food-preview-head"><span>THREADS · XEM TRƯỚC</span><h2>'
+      + escapeHtml(page.title || (isTextOnly ? 'List Đà Lạt lưu lại nè' : isMix ? 'Đi đâu ở Đà Lạt?' : isCafe ? 'Cà phê nào ở Đà Lạt?' : 'Ăn gì ở Đà Lạt?'))
+      + '</h2><p>File xuất gồm TXT ' + (isTextOnly ? '12' : '10') + ' ' + (isMix || isTextOnly ? 'địa điểm đa nhóm' : isCafe ? 'quán cà phê' : 'quán ăn')
+      + ', XLSX ' + (isTextOnly ? '6' : '5') + ' đối tác' + (isTextOnly ? '; không có ảnh' : ' và 6 ảnh gốc') + '; không xuất khung preview này.</p></div>'
+      + '<ul class="threads-food-preview-list">'
+      + items.map((item) => '<li>' + escapeHtml(item.name || '')
+        + (item.isPartner && item.metaPrimary ? ' (' + escapeHtml(compactThreadsLocalAddress(item.metaPrimary)) + ')' : '') + '</li>').join('')
+      + '</ul>' + (isTextOnly ? '' : '<div class="threads-food-preview-photos">'
+        + items.filter((item) => item.imageUrl).map((item) => '<img src="' + escapeHtml(item.imageUrl)
+          + '" alt="' + escapeHtml(item.name || '') + '" loading="lazy" />').join('')
+        + '</div>') + '</article>';
+  }
   if (page.layoutVariant === 'grid-5') {
     return renderGrid5Page(page, index, listId, pageSubtitle, list);
   }

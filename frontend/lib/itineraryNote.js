@@ -1,3 +1,5 @@
+import { compactThreadsLocalAddress } from './threadsFoodExport.mjs';
+
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = body => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
 const share = icon('<path d="M8 8H5v14h14V8h-3M12 15V1m-4 4 4-4 4 4"/>');
@@ -33,15 +35,19 @@ export function renderItineraryNotePage(page, index, listId) {
     }).join('');
     return `<article class="story-page itinerary-note-day itinerary-note-threads-day threads-portrait" data-list-id="${escape(listId)}" data-page-index="${index}" data-export-name="${index+1}-note-threads.png"><div class="in-content"><h1>${escape(page.title)}</h1><p class="threads-subtitle">${escape(page.subtitle)}</p><table class="threads-table"><colgroup><col style="width:17%"><col style="width:45%"><col style="width:38%"></colgroup><thead><tr><th>Giờ dự kiến</th><th>Hoạt động / địa điểm</th><th>Địa chỉ</th></tr></thead><tbody>${groups}</tbody></table></div></article>`;
   }
+  const dark = page.layoutVariant === 'itinerary-note-dark-day';
   const rows = (page.items || []).map(item => {
     const name = item.name ?? item.rawName ?? '';
     const address = item.metaPrimary ?? '';
-    const text = [name ? [item.label, name].filter(Boolean).join(' ') : '', address].filter(Boolean).join(' - ');
+    const place = name ? [item.label, name].filter(Boolean).join(' ') : '';
+    const text = dark
+      ? place + (item.isPartner && address ? ' (' + compactThreadsLocalAddress(address) + ')' : '')
+      : [place, address].filter(Boolean).join(' - ');
     return '<li>' + escape(text) + '</li>';
   }).join('');
-  return `<article class="story-page itinerary-note-day" data-list-id="${escape(listId)}" data-page-index="${index}" data-export-name="${String(index+1).padStart(2,'0')}-ngay-${index+1}.png">
+  return `<article class="story-page itinerary-note-day${dark ? ' itinerary-note-dark-day' : ''}" data-list-id="${escape(listId)}" data-page-index="${index}" data-export-name="${String(index+1).padStart(2,'0')}-ngay-${index+1}.png">
     <div class="in-toolbar" aria-hidden="true"><span>${icon('<path d="m15 3-9 9 9 9"/>')}Ghi chú</span><span>${share}${more}</span></div>
-    <div class="in-content"><h1>${escape(page.title)}</h1><p class="in-day">${escape(page.chipText ?? 'Ngày ' + (index+1))}</p><ul>${rows}</ul></div>
+    <div class="in-content">${dark ? '' : `<h1>${escape(page.title)}</h1><p class="in-day">${escape(page.chipText ?? 'Ngày ' + (index+1))}</p>`}<ul>${rows}</ul></div>
     <div class="in-home" aria-hidden="true"></div>
   </article>`;
 }
@@ -98,7 +104,7 @@ export function fitItineraryNote(root, strict = false) {
     const overflow = overflows();
     node.dataset.noteOverflow = String(overflow);
     node.title = overflow ? 'Nội dung quá dài. Vui lòng rút gọn trước khi xuất.' : '';
-    if (overflow && strict) throw new Error('Lịch trình Note: nội dung quá dài ở ' + (node.querySelector('.in-day')?.textContent || node.querySelector('h1')?.textContent || 'trang đang chọn') + '. Vui lòng giảm cỡ chữ hoặc rút gọn trước khi xuất.');
+    if (overflow && strict) throw new Error('Lịch trình Note: nội dung quá dài ở ' + (node.querySelector('.in-day')?.textContent || node.querySelector('h1')?.textContent || `trang ${Number(node.dataset.pageIndex || 0) + 1}`) + '. Vui lòng giảm cỡ chữ hoặc rút gọn trước khi xuất.');
   }
 }
 

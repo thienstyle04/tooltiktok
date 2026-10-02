@@ -4,10 +4,12 @@ import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { generateExportZip } from './exportZip';
+import { THREADS_CAFE_DECK_ID, THREADS_MIX_DECK_ID, THREADS_MIX_TEXT_DECK_ID, addThreadsFoodFiles, isThreadsLocalDeck, isThreadsTextOnlyDeck } from './threadsFoodExport.mjs';
 import { ensureRuntimePerformanceForBalancedExport, getRuntimePerformance, markRuntimeResourceFailure } from './runtimePerformance';
 import { buildCaptionExportText } from './captionText';
 import { fitItineraryNote, fitItineraryNoteTimed } from './itineraryNote';
 import { fitSpotlightDiary } from './spotlightDiary';
+import { fitThreadsToplist } from './threadsToplist';
 import { ExportImageError, inspectExportImages, lateImageListFailure } from './exportImageValidation';
 import { applyPageTextScale, resetPageTextScale } from './pageTextScale';
 import { renderCoverPage, renderListPage } from './pageMarkup';
@@ -823,6 +825,7 @@ async function waitForPageImagesSettled(node, timeoutMs = 20000) {
   fitItineraryNote(node, true);
   fitItineraryNoteTimed(node, true);
   fitSpotlightDiary(node, true);
+  fitThreadsToplist(node, true);
   const images = Array.from(node?.querySelectorAll?.('img') || []);
   if (!images.length) return;
   await Promise.all(images.map(async (img) => {
@@ -1557,8 +1560,27 @@ function collectPartnerNames(list) {
   return Array.from(partnerNames).sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
+function assertSpotlightV4V6PartnerExportReady(list, deckId = '') {
+  const isV4V6 = deckId === 'spotlight-v4' || deckId === 'spotlight-v6';
+  if (!isV4V6) return;
+  const count = collectPartnerNames(list).length;
+  if (count < 4) {
+    throw new Error(`List Spotlight V4/V6 chỉ có ${count}/4 đối tác hiển thị hợp lệ. Đây có thể là list cũ; hãy tạo list mới rồi xuất lại.`);
+  }
+}
+
+function assertItineraryNoteDarkPartnerExportReady(list, deckId = '') {
+  if (deckId !== 'itinerary-note-dark') return;
+  const pages = (list.pages || []).filter((page) => page?.layoutVariant === 'itinerary-note-dark-day');
+  const dailyCounts = pages.map((page) => (page.items || []).filter((item) => item?.isPartner && String(item.rawName || item.name || '').trim()).length);
+  const names = collectPartnerNames(list);
+  if (pages.length !== 2 || dailyCounts[0] !== 4 || dailyCounts[1] !== 3 || names.length !== 7) {
+    throw new Error(`Lịch trình Note nền đen chỉ có ${names.length}/7 đối tác hợp lệ trong list. Cần 4 đối tác Ngày 1 và 3 đối tác Ngày 2; hãy tạo lại list trước khi xuất.`);
+  }
+}
+
 function isSpotlightV5PageNode(pageNode) {
-  return Boolean(pageNode?.classList?.contains('spotlight-v5-cover') || pageNode?.classList?.contains('spotlight-v5-playlist') || pageNode?.classList?.contains('spotlight-v5-place'));
+  return Boolean(pageNode?.classList?.contains('spotlight-v5-cover') || pageNode?.classList?.contains('spotlight-v5-playlist') || pageNode?.classList?.contains('spotlight-v5-place') || pageNode?.classList?.contains('threads-toplist-cover') || pageNode?.classList?.contains('threads-toplist-page'));
 }
 
 function isThreadsPortraitPageNode(pageNode) {
@@ -1680,8 +1702,13 @@ function deckShortName(deckId) {
     'spotlight-v6-persimmon': 'spotlight-mua-hong',
     'spotlight-v6-maps': 'spotlightv6-google-maps',
     'spotlight-v6-diary': 'spotlight-nhat-ky-da-lat',
+    'threads-food-local': 'quan-an-threads',
+    'threads-cafe-local': 'ca-phe-threads',
+    'threads-mix-local': 'tong-hop-threads',
+    'threads-mix-text': 'tong-hop-threads-chu',
     'summary-note': 'summary-note',
     'itinerary-note-2days': 'itinerary-note-2days',
+    'itinerary-note-dark': 'itinerary-note-dark',
     'itinerary-note-timed': 'itinerary-note-timed',
     'carousel-mau-1': 'mau1',
     'one-way-story': 'duong-mot-chieu',
@@ -1712,7 +1739,13 @@ function todayDateTag() {
   return `${dd}-${mm}-${yyyy}_${hh}-${min}-${ss}`;
 }
 
-async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(list)) {
+async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(list), deckId = '') {
+  if (isThreadsLocalDeck(deckId)) {
+    await addThreadsFoodFiles(folder, list, loadThreadsFoodPhoto, sanitizeFilePart, createHorizontalXlsx);
+    return;
+  }
+  assertSpotlightV4V6PartnerExportReady(list, deckId);
+  assertItineraryNoteDarkPartnerExportReady(list, deckId);
   const setLabel = formatListSetLabel(setIndex);
   const coverTitle = String(list.coverTitle || list.title || list.navTitle || '').trim();
   const isSpotlightPartnerList = Array.isArray(list?.pages)
@@ -1746,6 +1779,24 @@ async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(l
       'Du lieu Mau 1',
     ));
   }
+}
+
+async function loadThreadsFoodPhoto(item) {
+  const result = await fetchImageBlob(item.imageUrl);
+  const blob = result?.blob;
+  if (!blob || await blobLooksLikeDriveFallback(blob)) {
+    throw new Error('Ảnh riêng của "' + item.name + '" không tải được: ' + (result?.reason || 'ảnh placeholder') + '. Hãy đồng bộ ảnh rồi xuất lại.');
+  }
+  const mime = String(blob.type || '').toLowerCase().split(';')[0];
+  const extension = mime === 'image/jpeg' ? 'jpg' : mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : '';
+  if (!extension) throw new Error('Ảnh của "' + item.name + '" không phải JPEG/PNG/WebP hợp lệ.');
+  try {
+    const bitmap = await createImageBitmap(blob);
+    bitmap.close();
+  } catch {
+    throw new Error('Ảnh của "' + item.name + '" không giải mã được. Hãy đồng bộ ảnh rồi xuất lại.');
+  }
+  return { blob, extension };
 }
 
 function renderBatchTaskPages(tasks) {
@@ -2080,6 +2131,7 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
   const cb = exportCallbacks(callbacks);
   const { deck, list, selectedPageIndex, quality = 'optimized', dataset = null, _compatRetry = false } = context;
   if (!deck || !list) return;
+  if (isThreadsLocalDeck(deck.id)) throw new Error(`Mẫu Threads này chỉ xuất ZIP gồm TXT, XLSX đối tác${isThreadsTextOnlyDeck(deck.id) ? '' : ' và 6 ảnh'}; hãy dùng Xuất list ZIP.`);
   const runtime = _compatRetry ? { mode: 'legacy' } : await exportRuntimeProfile(quality, cb);
   const qualityProfile = exportQualityProfile(quality, deck.id, runtime.mode, context.format);
 
@@ -2222,7 +2274,7 @@ async function generateZipForList(list, zipInstance = null, options = {}, callba
     }
   }
 
-  await addListMetadataFiles(folder, list);
+  await addListMetadataFiles(folder, list, parseListSetIndex(list), deckId);
   await assertRuntimeResources(options);
 
   return zipInstance ? null : await generateExportZip(currentZip, options.onZipProgress);
@@ -2244,6 +2296,26 @@ async function exportActiveListAttempt(context, callbacks = {}) {
   resetBatchImageCache();
 
   try {
+    assertSpotlightV4V6PartnerExportReady(exportList, deck.id);
+    assertItineraryNoteDarkPartnerExportReady(exportList, deck.id);
+    if (isThreadsLocalDeck(deck.id)) {
+      const zip = new JSZip();
+      await addThreadsFoodFiles(zip, exportList, loadThreadsFoodPhoto, sanitizeFilePart, createHorizontalXlsx);
+      const textOnly = isThreadsTextOnlyDeck(deck.id);
+      cb.updateProgress(85, textOnly ? 'Đang đóng ZIP gồm TXT và XLSX...' : 'Đang đóng ZIP gồm TXT, XLSX và 6 ảnh...');
+      const blob = await generateExportZip(zip);
+      const setLabel = formatListSetLabel(parseListSetIndex(list));
+      const filePrefix = deck.id === THREADS_CAFE_DECK_ID ? 'ca-phe-threads-'
+        : deck.id === THREADS_MIX_DECK_ID ? 'tong-hop-threads-'
+          : deck.id === THREADS_MIX_TEXT_DECK_ID ? 'tong-hop-threads-chu-' : 'quan-an-threads-';
+      if (!downloadBlobFile(blob, filePrefix + setLabel + '.zip')) {
+        throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
+      }
+      const doneMessage = textOnly ? 'Đã xuất TXT và XLSX đối tác; không có ảnh.' : 'Đã xuất TXT, XLSX đối tác và 6 ảnh.';
+      cb.completeProgress(doneMessage);
+      cb.setStatus(doneMessage);
+      return { success: true };
+    }
     await assertExportImagesReady([{ deck, list: exportList }], cb);
     const pageNodes = renderPagesForExport(exportList);
     await waitForExportLayout();
@@ -2337,11 +2409,17 @@ async function exportBatchAttempt(context, callbacks = {}) {
 
   const skippedLists = [];
   try {
-    const inspection = await inspectExportImages(orderedLists, renderPageMarkupForExport);
+    orderedLists.forEach(({ deck, list }) => assertSpotlightV4V6PartnerExportReady(list, deck.id));
+    orderedLists.forEach(({ deck, list }) => assertItineraryNoteDarkPartnerExportReady(list, deck.id));
+    const localEntries = orderedLists.filter((entry) => isThreadsLocalDeck(entry.deck.id));
+    const inspection = await inspectExportImages(
+      orderedLists.filter((entry) => !isThreadsLocalDeck(entry.deck.id)),
+      renderPageMarkupForExport,
+    );
     if (inspection.skippedLists.length) {
       skippedLists.push(...inspection.skippedLists);
       const accepted = context.skipImageErrors === true || await context.confirmSkipImages?.(inspection);
-      if (!inspection.validEntries.length) {
+      if (!inspection.validEntries.length && !localEntries.length) {
         await context.onExportOutcome?.({ exportedLists: [], skippedLists });
         throw new ExportImageError('Tất cả list đều thiếu ảnh hợp lệ. Hãy cập nhật dữ liệu trước khi xuất.');
       }
@@ -2350,24 +2428,27 @@ async function exportBatchAttempt(context, callbacks = {}) {
         cb.completeProgress('Đã hủy xuất.');
         return { success: false, cancelled: true, exportedLists: [], skippedLists: inspection.skippedLists };
       }
-      orderedLists = inspection.validEntries;
+      orderedLists = orderListsForBatchExport([...inspection.validEntries, ...localEntries], dataset);
     }
 
     const mainZip = new JSZip();
     await requestExportWakeLock();
-    const totalPages = Math.max(orderedLists.reduce((total, item) => total + (item.list.pages?.length || 0), 0), 1);
+    const totalPages = Math.max(orderedLists.reduce((total, item) => total + (isThreadsLocalDeck(item.deck.id) ? 0 : item.list.pages?.length || 0), 0), 1);
     let renderedPages = 0;
     cb.updateProgress(3, `Đang chuẩn bị ${orderedLists.length} folder ${qualityProfile.label}...`);
-    await ensureExportFontsReady(document.documentElement, { decodeImages: false, embedFonts: true });
+    if (orderedLists.some((item) => !isThreadsLocalDeck(item.deck.id))) {
+      await ensureExportFontsReady(document.documentElement, { decodeImages: false, embedFonts: true });
+    }
 
     const folders = orderedLists.map((item) => {
       const setIndex = parseListSetIndex(item.list);
       return mainZip.folder(batchFolderName(item.deck.id, setIndex, dataset));
     });
-    await mapWithConcurrency(orderedLists, qualityProfile.compatibility ? 1 : 6, (item, index) => addListMetadataFiles(folders[index], item.list));
+    await mapWithConcurrency(orderedLists, qualityProfile.compatibility ? 1 : 6, (item, index) => addListMetadataFiles(folders[index], item.list, parseListSetIndex(item.list), item.deck.id));
 
     const pageTasks = [];
     orderedLists.forEach((item, listIndex) => {
+      if (isThreadsLocalDeck(item.deck.id)) return;
       const pages = item.list.pages || [];
       if (pages.length === 0) {
         throw new Error(`List "${item.list.id}" không có trang; đã dừng xuất.`);

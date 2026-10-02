@@ -1,5 +1,6 @@
 import { fitItineraryNote, fitItineraryNoteTimed } from '../lib/itineraryNote';
 import { fitSpotlightDiary } from '../lib/spotlightDiary';
+import { fitThreadsToplist } from '../lib/threadsToplist';
 import { applyPageTextScale, resetPageTextScale } from '../lib/pageTextScale';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { renderCoverPage, renderListPage } from '../lib/pageMarkup';
@@ -105,6 +106,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     fitSpotlightDiary(root);
     applyPageTextScale(root);
     if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root);
+    fitThreadsToplist(root);
   });
 
   useEffect(() => {
@@ -117,11 +119,11 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
-    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); };
+    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); fitThreadsToplist(root); };
     fitNotes();
     const noteFitFrame = window.requestAnimationFrame(fitNotes);
     const noteFitTimer = window.setTimeout(fitNotes, 120);
-    const noteNode = root.querySelector('.itinerary-note-day, .itinerary-note-timed-day');
+    const noteNode = root.querySelector('.itinerary-note-day, .itinerary-note-timed-day, .threads-toplist-page');
     const noteResizeObserver = noteNode && typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(fitNotes)
       : null;
@@ -237,7 +239,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
         }
       }}
     >
-      <span className="slide-card-number">{String(index + 1).padStart(2, '0')}</span>
+      {!String(page.layoutVariant || '').startsWith('threads-toplist-') ? <span className="slide-card-number">{String(index + 1).padStart(2, '0')}</span> : null}
       <div ref={contentRef} className="slide-card-content" dangerouslySetInnerHTML={slideMarkup} />
     </div>
   );

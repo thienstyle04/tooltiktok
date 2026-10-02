@@ -3,6 +3,7 @@ import FontSizeControl from './FontSizeControl';
 import { useEffect, useState } from 'react';
 import { renderedTextSizes } from '../lib/pageTextScale';
 import { parseThreadsBudgetAmount } from '../lib/threadsBudget';
+import { isThreadsLocalDeck, isThreadsTextOnlyDeck } from '../lib/threadsFoodExport.mjs';
 
 function isPortableImageUrl(value) {
   const url = String(value || '').trim();
@@ -53,15 +54,18 @@ export default function PageInspector({
 
   const items = Array.isArray(page.items) ? page.items : [];
   const isThreadsBudget = page.layoutVariant === 'itinerary-note-threads-budget';
+  const isThreadsLocal = isThreadsLocalDeck(deck.id);
+  const isThreadsTextOnly = isThreadsTextOnlyDeck(deck.id);
   const hasItems = items.length > 0;
   const itemsWithImages = items.filter((item) => item.imageUrl);
   const mappedCount = itemsWithImages.filter((item) => item.imageSource === 'manual' || item.imageSource === 'auto' || item.imageMapped).length;
   const fallbackCount = itemsWithImages.filter((item) => imageSourceClass(item) === 'fallback').length;
   const partnerCount = items.filter((item) => item.isPartner).length;
-  const pageBackground = isThreadsBudget ? '' : isPortableImageUrl(page.backgroundImage)
+  const isThreadsToplist = deck.id === 'threads-toplist-dalat';
+  const pageBackground = isThreadsToplist ? (page.type === 'cover' ? page.backgroundImage : '') : isThreadsBudget ? '' : isPortableImageUrl(page.backgroundImage)
     ? page.backgroundImage
     : firstPortableListImage(list) || page.backgroundImage || '';
-  const coverImage = isThreadsBudget ? '' : hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
+  const coverImage = isThreadsBudget ? '' : isThreadsToplist ? pageBackground : hasItems ? (itemsWithImages[0]?.imageUrl || pageBackground) : pageBackground;
   const isSpotlightV4ImagePage = page.layoutVariant === 'spotlight-v4-image' || page.layoutVariant === 'spotlight-v6-map-page';
   const canEditPage = typeof onPageTextChange === 'function' && !isSpotlightV4ImagePage;
   const canSavePage = canEditPage && typeof onPageTextSave === 'function';
@@ -73,7 +77,8 @@ export default function PageInspector({
   const pageTitle = String(page.title || '');
   const pageSubtitle = String(page.subtitle || '');
   const isTimedNote = page.layoutVariant === 'itinerary-note-timed-day';
-  const hideSubtitleEditor = deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || (deck.id === 'itinerary-note-2days' || deck.id.startsWith('itinerary-note-threads-')) || deck.id === 'itinerary-note-timed') || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const isDarkNote = page.layoutVariant === 'itinerary-note-dark-day';
+  const hideSubtitleEditor = deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-dark' || (deck.id === 'itinerary-note-2days' || deck.id.startsWith('itinerary-note-threads-')) || deck.id === 'itinerary-note-timed' || isThreadsToplist) || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -94,7 +99,7 @@ export default function PageInspector({
       </div> : null}
       {canEditPage ? (
         <div className="inspector-cover-editor inspector-page-editor">
-          {!isTimedNote && !isThreadsBudget ? <label className="inspector-field">
+          {!isTimedNote && !isDarkNote && !isThreadsBudget ? <label className="inspector-field">
             <span className="inspector-field-head"><span>Tiêu đề trang</span><span>{pageTitle.length}/{titleLimit}</span></span>
             <textarea value={pageTitle} placeholder="Nhập tiêu đề trang..." rows={2} maxLength={titleLimit} onChange={(event) => onPageTextChange({ title: event.target.value })} />
           </label> : isTimedNote ? (
@@ -109,9 +114,9 @@ export default function PageInspector({
               <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
             </label>
           ) : null}
-          {(page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-threads-day') ? items.map((item, i) => (
+          {(page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') ? items.map((item, i) => (
             <div className="inspector-field" key={i}>
-              <span>Hoạt động {i + 1}</span>
+              <span>{isThreadsToplist ? 'Địa điểm' : 'Hoạt động'} {i + 1}</span>
               <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
               <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
             </div>
@@ -171,7 +176,7 @@ export default function PageInspector({
         <>
           <div className="inspector-stats">
             <div><strong>{items.length}</strong><span>{isThreadsBudget ? 'khoản chi' : 'dữ liệu'}</span></div>
-            {isThreadsBudget ? <div><strong>{items.filter(item => parseThreadsBudgetAmount(item.metaSecondary) !== null).length}</strong><span>đã có giá</span></div> : <>
+            {isThreadsBudget ? <div><strong>{items.filter(item => parseThreadsBudgetAmount(item.metaSecondary) !== null).length}</strong><span>đã có giá</span></div> : isThreadsToplist ? <div><strong>{partnerCount}</strong><span>đối tác</span></div> : <>
               <div><strong>{mappedCount}</strong><span>có ảnh</span></div>
               <div><strong>{partnerCount}</strong><span>đối tác</span></div>
               <div><strong>{fallbackCount}</strong><span>minh họa</span></div>
@@ -182,13 +187,13 @@ export default function PageInspector({
               <li key={`${item.id || item.name}-${index}`} className={`inspector-item ${!isThreadsBudget && item.imageUrl ? 'rich' : ''}`}>
                 {!isThreadsBudget && item.imageUrl ? <img className="inspector-item-thumb" src={item.imageUrl} alt={item.name} loading="lazy" decoding="async" draggable="false" /> : null}
                 <span className="inspector-item-copy">
-                  <span className="inspector-item-label">{item.label || ''}</span>
+                  {!isThreadsToplist ? <span className="inspector-item-label">{item.label || ''}</span> : null}
                   <span className="inspector-item-name">{item.name}</span>
                   <span className="inspector-item-meta">{isThreadsBudget ? (item.metaSecondary || 'Chưa có giá') : (item.metaPrimary || '')}</span>
                 </span>
                 {!isThreadsBudget && item.imageUrl
                   ? <span className={`inspector-item-source ${imageSourceClass(item)}`}>{sourceLabel(item)}</span>
-                  : <span className="inspector-item-source text-only">{isThreadsBudget ? 'Chi phí' : 'Bảng'}</span>}
+                  : <span className="inspector-item-source text-only">{isThreadsBudget ? 'Chi phí' : isThreadsToplist ? 'Văn bản' : 'Bảng'}</span>}
               </li>
             ))}
           </ul>
@@ -206,13 +211,13 @@ export default function PageInspector({
 
       {typeof onExportPage === 'function' || typeof onExportList === 'function' ? (
         <div className="inspector-export-actions">
-          <p className="inspector-export-kicker">Xuất ảnh</p>
-          <label>Định dạng <select value={exportFormat} disabled={busy} onChange={e => setExportFormat?.(e.target.value)}><option value="png">PNG</option><option value="jpg">JPG</option></select></label>
+          <p className="inspector-export-kicker">{isThreadsTextOnly ? 'Xuất TXT + XLSX' : isThreadsLocal ? 'Xuất TXT + XLSX + ảnh' : 'Xuất ảnh'}</p>
+          {!isThreadsLocal ? <label>Định dạng <select value={exportFormat} disabled={busy} onChange={e => setExportFormat?.(e.target.value)}><option value="png">PNG</option><option value="jpg">JPG</option></select></label> : null}
           <div className="inspector-export-buttons">
-            {typeof onExportPage === 'function' ? <button className="toolbar-button secondary" type="button" disabled={busy} onClick={onExportPage}>Xuất trang {exportFormat.toUpperCase()}</button> : null}
-            {typeof onExportList === 'function' ? <button className="toolbar-button" type="button" disabled={busy} onClick={onExportList}>Xuất list ZIP</button> : null}
+            {!isThreadsLocal && typeof onExportPage === 'function' ? <button className="toolbar-button secondary" type="button" disabled={busy} onClick={onExportPage}>Xuất trang {exportFormat.toUpperCase()}</button> : null}
+            {typeof onExportList === 'function' ? <button className="toolbar-button" type="button" disabled={busy} onClick={onExportList}>{isThreadsTextOnly ? 'Xuất ZIP (TXT + XLSX)' : isThreadsLocal ? 'Xuất ZIP (TXT + XLSX + 6 ảnh)' : 'Xuất list ZIP'}</button> : null}
           </div>
-          <p className="inspector-export-hint">Phím tắt: Ctrl+S xuất trang · ← → đổi trang</p>
+          <p className="inspector-export-hint">{isThreadsLocal ? 'Phím tắt: Ctrl+S xuất ZIP · ← → đổi trang' : 'Phím tắt: Ctrl+S xuất trang · ← → đổi trang'}</p>
         </div>
       ) : null}
     </>

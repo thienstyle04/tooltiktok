@@ -11,6 +11,13 @@
 .itinerary-note-day li::before { content:"–"; position:absolute; left:-24px; top:0; }
 .itinerary-note-day .in-home { position:absolute; bottom:7px; width:125px; height:5px; left:50%; transform:translateX(-50%); background:#111; border-radius:5px; }
 .itinerary-note-day[data-note-overflow="true"] .in-content { outline:2px solid #c33; }
+.story-page.itinerary-note-dark-day { background:#000; color:#fff; }
+.itinerary-note-dark-day .in-content { top:68px; }
+.itinerary-note-dark-day ul { display:flex; flex-direction:column; justify-content:space-between; height:calc(100% - 40px); }
+.itinerary-note-dark-day li { flex-shrink:0; margin-bottom:0; }
+.itinerary-note-dark-day .in-day,
+.itinerary-note-dark-day li { color:#fff; }
+.itinerary-note-dark-day .in-home { background:#fff; }
 
 /* Threads: a portrait worksheet, keeping the reference's thin ruled grid. */
 .story-page.itinerary-note-threads-day { color:#171717; background:#fff; }
@@ -98,3 +105,50 @@
 .itinerary-note-timed-day .int-bottom-toolbar svg { width:25px; height:25px; }
 .itinerary-note-timed-day .int-home { position:absolute; z-index:3; left:50%; bottom:7px; width:124px; height:5px; transform:translateX(-50%); border-radius:4px; background:#090909; }
 .itinerary-note-timed-day[data-note-overflow="true"] .int-content { outline:2px solid #c33; }
+.threads-food-preview {
+  background: #f6efe2;
+  color: #1d2923;
+  padding: 28px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-sizing: border-box;
+}
+.threads-food-preview-head span { font-size: 12px; letter-spacing: .14em; font-weight: 800; color: #ad5f3a; }
+.threads-food-preview-head h2 { margin: 8px 0 6px; font-size: 27px; line-height: 1.1; }
+.threads-food-preview-head p { margin: 0; font-size: 12px; line-height: 1.45; }
+.threads-food-preview-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 14px;
+  row-gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.threads-food-preview-list li { position: relative; padding-left: 16px; }
+.threads-food-preview-list li::before { content: '-'; position: absolute; left: 0; color: #ad5f3a; }
+.threads-food-preview--text-only { gap: 14px; }
+.threads-food-preview--text-only .threads-food-preview-list {
+  grid-template-columns: 1fr;
+  row-gap: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.threads-food-preview-photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: auto;
+}
+.threads-food-preview-photos img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
