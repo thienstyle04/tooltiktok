@@ -221,6 +221,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   // ─── In-memory caches ──────────────────────────────────────────────────────
   private workbookDerivedCache: WorkbookDerivedContext | null = null;
+  private workbookDerivedCacheBuilding = false;
   private workbookDerivedCacheTime = 0;
   private workbookDerivedCacheFresh = false;
   private readonly DATASET_CACHE_TTL_MS = 20 * 60 * 1000; // chỉ dùng khi tắt session-sticky
@@ -2300,6 +2301,18 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private rebuildWorkbookDerivedCacheNow(): WorkbookDerivedContext {
+    if (this.workbookDerivedCacheBuilding) {
+      throw new Error('Không thể dựng dataset lồng nhau khi đang làm mới list.');
+    }
+    this.workbookDerivedCacheBuilding = true;
+    try {
+      return this.buildWorkbookDerivedCacheNow();
+    } finally {
+      this.workbookDerivedCacheBuilding = false;
+    }
+  }
+
+  private buildWorkbookDerivedCacheNow(): WorkbookDerivedContext {
     const t0 = Date.now();
     const workbookSource = this.getWorkbookSource();
     const imageUrls = imageUrlsForDirectory(this.dalatImageDir, '/assets/dalat');
@@ -2733,11 +2746,19 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
   private hasGeneratedListsNeedingTemplateRefresh(): boolean {
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
+      if (!this.canRefreshGeneratedTemplate(deckId)) continue;
       const templateVersion = this.templateVersionForDeck(deckId);
       if (!templateVersion) continue;
       if (lists.some((list) => list.templateVersion !== templateVersion)) return true;
     }
     return false;
+  }
+
+  private canRefreshGeneratedTemplate(deckId: string): boolean {
+    // Snapshot templates retain approved content, even when their template version changes.
+    return !isThreadsLocalDeck(deckId) && !isTextNoteDeck(deckId)
+      && !['spotlight-v4', 'spotlight-v5', 'spotlight-v6', 'spotlight-v6-green',
+        'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-diary', 'spotlight-v6-maps'].includes(deckId);
   }
 
   private sanitizeGeneratedListForDisplay(
@@ -3114,14 +3135,17 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
       const templateVersion = this.templateVersionForDeck(deckId);
+      if (!this.canRefreshGeneratedTemplate(deckId) || !templateVersion
+        || lists.every(list => list.templateVersion === templateVersion)) continue;
       const deckUsage = this.createUsageScope();
       const baseDeck = baseDecks.find((deck) => deck.id === deckId);
       baseDeck?.lists.forEach((list) => this.markUsedInDeck(list.pages, deckUsage));
+      lists.filter(list => list.templateVersion === templateVersion).forEach(list => {
+        this.markUsedInDeck(list.pages, deckUsage);
+        this.markUsedInDeck(list.pages, renderUsage);
+      });
       const refreshedLists = lists.map((list, listIndex) => {
-        if (isThreadsLocalDeck(deckId)) return list;
-        // Spotlight V4/V5 lưu snapshot hook, ảnh và địa điểm; thay đổi mẫu chỉ
-        // áp dụng cho list mới, không rebuild các list người dùng đã tạo.
-        if (deckId === 'spotlight-v4' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) return list;
+        if (list.templateVersion === templateVersion) return list;
         if (deckId === 'spotlight-partner') {
           const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
           if (!partnerItem) return list;
@@ -3185,7 +3209,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         if (isLegacyGoogleDocHookDeck(deckId) && !hasFestivalHookSnapshot) {
           setSpotlightV3BuildContext({
             destinationId: this.activeDestinationId,
-            usedHookTitles: this.getUsedCaptionTitles(deckId),
+            usedHookTitles: this.getUsedCaptionTitles(deckId, baseDecks),
           });
         }
         let basePages: DeckPage[];
@@ -3250,6 +3274,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         return this.sanitizeGeneratedListText(nextList, deckId);
       });
       const sanitizedLists = refreshedLists.map((list) => {
+        if (lists.includes(list)) return list;
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
         return sanitizedList;
@@ -4101,7 +4126,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
   // ─── Private: DeepSeek prompt helpers ────────────────────────────────────
 
-  private getUsedCaptionTitles(deckId: string): string[] {
+  private getUsedCaptionTitles(deckId: string, baseDecks: GuideDeck[] = this.workbookDerivedCache?.baseDecks || []): string[] {
     this.ensureGeneratedListsLoaded();
     const titles: string[] = [];
     const pushTitle = (value: string) => {
@@ -4111,7 +4136,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
     // Tiêu đề/mô tả list mẫu (main) — list AI không được copy y hệt.
     try {
-      const mainList = this.buildDatasetContext().decks
+      // Never build a dataset just to read titles: refresh calls this before
+      // the first derived cache is published. A rebuild here recursively refreshes lists.
+      const mainList = baseDecks
         .find((deck) => deck.id === deckId)
         ?.lists
         ?.find((list) => /-main$/i.test(String(list.id || '')));
