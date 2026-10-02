@@ -86,14 +86,14 @@ if (Test-Path -LiteralPath $oldData -PathType Container) {
 }
 if ($package -ne $install) {
     New-Item -ItemType Junction -Path (Join-Path $legacyRelease 'backend\data') -Target $newData | Out-Null
-    $oldEnv = Join-Path $install 'backend\.env'
-    if (Test-Path -LiteralPath $oldEnv -PathType Leaf) {
-        $config = Join-Path $env:LOCALAPPDATA 'DalatTikTokCarouselTool\config'
-        New-Item -ItemType Directory -Path $config -Force | Out-Null
-        $sharedEnv = Join-Path $config 'backend.env'
-        if (-not (Test-Path -LiteralPath $sharedEnv)) { Copy-Item -LiteralPath $oldEnv -Destination $sharedEnv }
-        Copy-Item -LiteralPath $oldEnv -Destination (Join-Path $legacyRelease 'backend\.env')
-    }
+}
+$oldEnv = Join-Path $install 'backend\.env'
+if (Test-Path -LiteralPath $oldEnv -PathType Leaf) {
+    $config = Join-Path $env:LOCALAPPDATA 'DalatTikTokCarouselTool\config'
+    New-Item -ItemType Directory -Path $config -Force | Out-Null
+    $sharedEnv = Join-Path $config 'backend.env'
+    if (-not (Test-Path -LiteralPath $sharedEnv)) { Copy-Item -LiteralPath $oldEnv -Destination $sharedEnv }
+    if ($package -ne $install) { Copy-Item -LiteralPath $oldEnv -Destination (Join-Path $legacyRelease 'backend\.env') }
 }
 Copy-Item -LiteralPath (Join-Path $install 'start.bat') -Destination (Join-Path $shared 'legacy-start.bat')
 if ($package -ne $install) {
