@@ -738,9 +738,13 @@
 
 .story-page.spotlight-v2-cover .spotlight-v2-cover-center {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  left: 6%;
+  top: 0;
+  bottom: 0;
+  transform: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   z-index: 2;
   width: 88%;
   text-align: center;
@@ -756,6 +760,8 @@
 .story-page.spotlight-v2-cover.spotlight-v2-place-bottom-center .spotlight-v2-cover-center,
 .story-page.spotlight-v2-cover.spotlight-v2-place-bottom-right .spotlight-v2-cover-center {
   transform: none;
+  bottom: auto;
+  justify-content: flex-start;
 }
 
 .story-page.spotlight-v2-cover.spotlight-v2-place-top-left .spotlight-v2-cover-center {
@@ -767,9 +773,9 @@
 }
 
 .story-page.spotlight-v2-cover.spotlight-v2-place-top-center .spotlight-v2-cover-center {
-  left: 50%;
+  left: 6%;
   top: 7%;
-  transform: translateX(-50%);
+  transform: none;
   width: 88%;
   text-align: center;
 }
@@ -806,10 +812,10 @@
 }
 
 .story-page.spotlight-v2-cover.spotlight-v2-place-bottom-center .spotlight-v2-cover-center {
-  left: 50%;
+  left: 6%;
   top: auto;
   bottom: 8%;
-  transform: translateX(-50%);
+  transform: none;
   width: 88%;
   text-align: center;
 }
@@ -842,6 +848,12 @@
 .story-page.spotlight-v3-cover .spotlight-v2-cover-center {
   width: 72%;
   max-width: 78%;
+}
+
+/* Center with actual layout, not a translated parent: html2canvas otherwise
+   applies the transform twice to the hook's descendants and clips the text. */
+.story-page.spotlight-v3-cover:is(.spotlight-v2-place-center,.spotlight-v2-place-top-center,.spotlight-v2-place-bottom-center) .spotlight-v2-cover-center {
+  left: 14%;
 }
 
 /* Spotlight V3: font giống Lịch trình Timeline (Cormorant + Be Vietnam Pro). */

@@ -1,0 +1,59 @@
+/* Snapshot-only revision: never match old lists, V6 or Color Edit. */
+.story-page.spotlight-design-1.spotlight-cover .grid4-feature-title {
+  text-align:left !important; text-align-last:left !important; text-justify:none; display:block; -webkit-line-clamp:unset; overflow:visible;
+}
+.story-page.spotlight-design-1.spotlight-service-list.spotlight-list-page .spotlight-list-heading { margin-bottom:10px; }
+.story-page.spotlight-design-1.spotlight-service-list.spotlight-list-page .spotlight-list-panel { background:rgba(20,28,23,.9) !important; }
+.story-page.spotlight-design-1.spotlight-v2-cover .spotlight-v2-cover-center {
+  left:14% !important; top:0 !important; right:auto !important; bottom:0 !important;
+  transform:none !important; width:72% !important; max-width:72% !important; text-align:center !important; justify-content:center;
+}
+.story-page.spotlight-design-1.spotlight-v2-cover .spotlight-v2-cover-title {
+  width:100%; max-width:100% !important; text-align:center !important; text-wrap:balance; overflow-wrap:normal; word-break:normal;
+}
+.story-page.spotlight-design-1.spotlight-v3-cover .spotlight-v2-cover-center {
+  top:10% !important; bottom:10% !important; justify-content:flex-start;
+}
+/* Explicit placements from editorial labels or manual overrides take precedence. */
+.story-page.spotlight-design-1.spotlight-v2-cover.spotlight-v2-place-top-center .spotlight-v2-cover-center { top:10% !important; bottom:10% !important; justify-content:flex-start; }
+.story-page.spotlight-design-1.spotlight-v2-cover.spotlight-v2-place-bottom-center .spotlight-v2-cover-center { top:10% !important; bottom:10% !important; justify-content:flex-end; }
+.story-page.spotlight-design-1.spotlight-v3-cover.spotlight-v2-place-center .spotlight-v2-cover-center { top:0 !important; bottom:0 !important; justify-content:center; }
+.story-page.spotlight-design-1.spotlight-v4-cover.spotlight-v2-place-bottom-center .spotlight-v4-cover-copy { left:50%; right:auto; bottom:10%; top:auto; transform:translateX(-50%); text-align:center; width:80%; }
+.story-page.spotlight-design-1.spotlight-v3-page .spotlight-v2-copy { gap:4px !important; }
+.story-page.spotlight-design-1.spotlight-v3-page .spotlight-v2-address,
+.story-page.spotlight-design-1.spotlight-v3-page .spotlight-v2-price { font-size:.78rem !important; line-height:1.2; margin:0 !important; }
+.story-page.spotlight-design-1.spotlight-v3-page .spotlight-v2-name { margin:0 0 3px !important; }
+.story-page.spotlight-design-1.spotlight-v4-cover.spotlight-v2-place-center .spotlight-v4-cover-copy {
+  left:50%; top:50%; right:auto; bottom:auto; transform:translate(-50%,-50%); width:80%; text-align:center;
+}
+.story-page.spotlight-design-1.spotlight-v4-cover .spotlight-v4-cover-title {
+  max-width:100%; font-size:1.122rem; text-shadow:0 2px 5px rgba(0,0,0,.85),0 0 12px rgba(0,0,0,.35); text-wrap:balance;
+}
+.story-page.spotlight-design-1.spotlight-v5-cover .spotlight-v5-cover-hook,
+.story-page.spotlight-design-1.spotlight-v5-place .spotlight-v5-place-copy,
+.story-page.spotlight-design-1.spotlight-v5-playlist .spotlight-v5-playlist-copy {
+  -webkit-text-stroke:0; text-shadow:-.7px -.7px 0 #000,.7px -.7px 0 #000,-.7px .7px 0 #000,.7px .7px 0 #000;
+}
+.story-page.spotlight-design-1.spotlight-v5-playlist .spotlight-v5-playlist-copy { align-items:center; text-align:left; }
+.story-page.spotlight-design-1.spotlight-v5-playlist .spotlight-v5-playlist-line { width:100%; }
+.story-page.spotlight-design-1.spotlight-v5-cover.spotlight-v5-position-top-center .spotlight-v5-cover-hook { left:50%; top:10%; right:auto; bottom:auto; transform:translateX(-50%); width:80%; text-align:center; }
+.story-page.spotlight-design-1.spotlight-v5-cover.spotlight-v5-position-bottom-center .spotlight-v5-cover-hook { left:50%; bottom:10%; right:auto; top:auto; transform:translateX(-50%); width:80%; text-align:center; }
+.story-page.spotlight-design-1 h1,
+.story-page.spotlight-design-1 h2,
+.story-page.spotlight-design-1 p { overflow-wrap:break-word; white-space:normal; }
+.story-page.spotlight-design-1 .spotlight-v2-name-text,
+.story-page.spotlight-design-1 .spotlight-v2-address,
+.story-page.spotlight-design-1 .spotlight-v2-hours,
+.story-page.spotlight-design-1 .spotlight-list-copy strong,
+.story-page.spotlight-design-1 .spotlight-meta > span:last-child {
+  display:block; -webkit-line-clamp:unset !important; line-clamp:unset !important;
+  overflow:visible !important; text-overflow:clip !important; white-space:normal !important; overflow-wrap:break-word;
+}
+/* Keep the pin in its fixed-size flex slot; only the address text wraps. */
+.story-page.spotlight-design-1 .spotlight-meta { display:flex; }
+/* The same explicit corner placements work on V2 and its V3 derivative. */
+.story-page.spotlight-design-1.spotlight-v2-cover:is(.spotlight-v2-place-top-left,.spotlight-v2-place-mid-left,.spotlight-v2-place-bottom-left) .spotlight-v2-cover-center { left:8% !important; right:auto !important; transform:none !important; text-align:left !important; }
+.story-page.spotlight-design-1.spotlight-v2-cover:is(.spotlight-v2-place-top-right,.spotlight-v2-place-mid-right,.spotlight-v2-place-bottom-right) .spotlight-v2-cover-center { right:8% !important; left:auto !important; transform:none !important; text-align:right !important; }
+.story-page.spotlight-design-1.spotlight-v2-cover:is(.spotlight-v2-place-top-left,.spotlight-v2-place-top-right) .spotlight-v2-cover-center { top:10% !important; bottom:10% !important; justify-content:flex-start; }
+.story-page.spotlight-design-1.spotlight-v2-cover:is(.spotlight-v2-place-bottom-left,.spotlight-v2-place-bottom-right) .spotlight-v2-cover-center { top:10% !important; bottom:10% !important; justify-content:flex-end; }
+.story-page.spotlight-design-1.spotlight-v2-cover:is(.spotlight-v2-place-mid-left,.spotlight-v2-place-mid-right) .spotlight-v2-cover-center { top:10% !important; bottom:10% !important; transform:none !important; justify-content:center; }

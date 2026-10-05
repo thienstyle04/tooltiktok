@@ -3,8 +3,10 @@
 import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
+import { photoDisplayUrl } from './photoPresets.mjs';
+import { coverReviewError } from './spotlightCoverReview.mjs';
 import { generateExportZip } from './exportZip';
-import { THREADS_CAFE_DECK_ID, THREADS_MIX_DECK_ID, THREADS_MIX_TEXT_DECK_ID, addThreadsFoodFiles, isThreadsLocalDeck, isThreadsTextOnlyDeck } from './threadsFoodExport.mjs';
+import { THREADS_CAFE_DECK_ID, THREADS_MIX_DECK_ID, THREADS_MIX_TEXT_DECK_ID, addThreadsFoodFiles, threadsFoodPayload, isThreadsLocalDeck, isThreadsTextOnlyDeck } from './threadsFoodExport.mjs';
 import { ensureRuntimePerformanceForBalancedExport, getRuntimePerformance, markRuntimeResourceFailure } from './runtimePerformance';
 import { buildCaptionExportText } from './captionText';
 import { fitItineraryNote, fitItineraryNoteTimed } from './itineraryNote';
@@ -164,7 +166,7 @@ function exportQualityProfile(quality, deckId, runtimeMode = 'modern', format = 
       ? { ...profile, label: 'Cân bằng tương thích', compatibility: true, imagePrepareConcurrency: 1, renderChunkSize: 1, captureConcurrency: 1 }
       : profile;
   }
-  const isV6Family = deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
+  const isV6Family = deckId === 'spotlight-v6-diary' || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
   return { ...profile, label: 'Cân bằng mới', losslessSource: true, fullResolutionV6: isV6Family,
     pixelRatio: isV6Family ? 1080 / 397 + 1e-9 : profile.pixelRatio,
     sourceImageMaxDimension: 0, sourceImageFormat: 'image/png', sourceImageQuality: 1 };
@@ -490,7 +492,7 @@ function resetBatchImageCache() {
 function localDriveImageUrl(src) {
   try {
     const url = new URL(src, window.location.href);
-    return url.origin === window.location.origin && url.pathname === '/assets/drive-file' ? url : null;
+    return url.origin === window.location.origin && ['/assets/drive-file', '/assets/color-edit'].includes(url.pathname) ? url : null;
   } catch { return null; }
 }
 
@@ -1522,6 +1524,7 @@ function batchCaptureConcurrencyForProfile(profile) {
 function renderedMarkupIncludesImage(markup, imageUrl) {
   const source = String(imageUrl || '').trim();
   if (!source) return false;
+  if (markup.includes(encodeURIComponent(source))) return true;
   const driveId = source.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || '';
   if (driveId) return markup.includes(driveId);
   return markup.includes(source) || markup.includes(escapeXml(source));
@@ -1561,11 +1564,54 @@ function collectPartnerNames(list) {
 }
 
 function assertSpotlightV4V6PartnerExportReady(list, deckId = '') {
-  const isV4V6 = deckId === 'spotlight-v4' || deckId === 'spotlight-v6';
+  if (deckId === 'spotlight-v5-color-edit') {
+    const count = collectPartnerNames(list).length;
+    if (count !== 7) throw new Error(`List Spotlight V5 Color Edit có ${count}/7 đối tác hiển thị hợp lệ. Hãy tạo lại list đủ đối tác trước khi xuất.`);
+    return;
+  }
+  const isV4V6 = deckId === 'spotlight-v4' || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit');
   if (!isV4V6) return;
   const count = collectPartnerNames(list).length;
   if (count < 4) {
     throw new Error(`List Spotlight V4/V6 chỉ có ${count}/4 đối tác hiển thị hợp lệ. Đây có thể là list cũ; hãy tạo list mới rồi xuất lại.`);
+  }
+}
+
+function assertPartnerExportReady(list, deckId = '') {
+  const coverError = coverReviewError(list);
+  if (coverError) throw new Error(coverError);
+  // Use exactly the names written to this template's XLSX, not a raw count of
+  // isPartner flags: hidden/unrendered partners must not pass the export gate.
+  const names = isThreadsLocalDeck(deckId)
+    ? threadsFoodPayload(list).partnerNames
+    : collectPartnerNames(list);
+  if (!names.length) {
+    const label = String(list?.navTitle || list?.title || list?.id || deckId).trim();
+    const error = new Error(`Không thể xuất list “${label}”: không có đối tác hiển thị hợp lệ để ghi XLSX. Hãy tạo lại list có đối tác rồi xuất lại.`);
+    error.code = 'EXPORT_PARTNER_REQUIRED';
+    throw error;
+  }
+  assertSpotlightV4V6PartnerExportReady(list, deckId);
+  assertItineraryNoteDarkPartnerExportReady(list, deckId);
+  return names;
+}
+
+function assertExportContextPartners(context, batch = false) {
+  if (batch) {
+    const selected = new Set(context.selectedListIds || []);
+    const errors = [];
+    for (const deck of context.dataset?.decks || []) for (const list of deck.lists || []) {
+      if (!selected.has(list.id) || listIsMain(list)) continue;
+      try { assertPartnerExportReady(resolveExportList(deck, list, context.dataset), deck.id); }
+      catch (error) { errors.push(error.message); }
+    }
+    if (errors.length) {
+      const error = new Error(`Đã dừng xuất hàng loạt: ${errors.length} list chưa đạt kiểm tra đối tác. ${errors.join(' ')} Bỏ chọn các list này hoặc tạo lại trước khi xuất.`);
+      error.code = 'EXPORT_PARTNER_REQUIRED';
+      throw error;
+    }
+  } else if (context.deck && context.list) {
+    assertPartnerExportReady(resolveExportList(context.deck, context.list, context.dataset), context.deck.id);
   }
 }
 
@@ -1696,7 +1742,9 @@ function deckShortName(deckId) {
     'spotlight-v3': 'spotlightv3',
     'spotlight-v4': 'spotlightv4',
     'spotlight-v5': 'spotlightv5',
+    'spotlight-v5-color-edit': 'spotlight-v5-color-edit',
     'spotlight-v6': 'spotlightv6',
+    'spotlight-v6-color-edit': 'spotlight-color-edit',
     'spotlight-v6-green': 'spotlightv6-mang-xanh',
     'spotlight-v6-dark': 'spotlightv6-tone-den',
     'spotlight-v6-persimmon': 'spotlight-mua-hong',
@@ -1740,8 +1788,9 @@ function todayDateTag() {
 }
 
 async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(list), deckId = '') {
+  assertPartnerExportReady(list, deckId);
   if (isThreadsLocalDeck(deckId)) {
-    await addThreadsFoodFiles(folder, list, loadThreadsFoodPhoto, sanitizeFilePart, createHorizontalXlsx);
+    await addThreadsFoodFiles(folder, list, item => loadThreadsFoodPhoto(item, list.photoPreset), sanitizeFilePart, createHorizontalXlsx);
     return;
   }
   assertSpotlightV4V6PartnerExportReady(list, deckId);
@@ -1781,8 +1830,8 @@ async function addListMetadataFiles(folder, list, setIndex = parseListSetIndex(l
   }
 }
 
-async function loadThreadsFoodPhoto(item) {
-  const result = await fetchImageBlob(item.imageUrl);
+async function loadThreadsFoodPhoto(item, preset) {
+  const result = await fetchImageBlob(photoDisplayUrl(item.imageUrl, preset));
   const blob = result?.blob;
   if (!blob || await blobLooksLikeDriveFallback(blob)) {
     throw new Error('Ảnh riêng của "' + item.name + '" không tải được: ' + (result?.reason || 'ảnh placeholder') + '. Hãy đồng bộ ảnh rồi xuất lại.');
@@ -2076,6 +2125,8 @@ async function runAdaptiveExport(attempt, context, callbacks) {
   try {
     const cb = exportCallbacks(callbacks);
     try {
+      cb.setStatus('Đang kiểm tra đối tác trước khi xuất...');
+      assertExportContextPartners(context, attempt === exportBatchAttempt);
       cb.setStatus('Đang xác minh phiên frontend/backend trước khi xuất...');
       const assetFileId = collectRuntimePreflightFileIds(context)[0] || '';
       await verifyRuntimeSession({ checkExportRoutes: true, assetFileId });
@@ -2300,7 +2351,7 @@ async function exportActiveListAttempt(context, callbacks = {}) {
     assertItineraryNoteDarkPartnerExportReady(exportList, deck.id);
     if (isThreadsLocalDeck(deck.id)) {
       const zip = new JSZip();
-      await addThreadsFoodFiles(zip, exportList, loadThreadsFoodPhoto, sanitizeFilePart, createHorizontalXlsx);
+      await addThreadsFoodFiles(zip, exportList, item => loadThreadsFoodPhoto(item, exportList.photoPreset), sanitizeFilePart, createHorizontalXlsx);
       const textOnly = isThreadsTextOnlyDeck(deck.id);
       cb.updateProgress(85, textOnly ? 'Đang đóng ZIP gồm TXT và XLSX...' : 'Đang đóng ZIP gồm TXT, XLSX và 6 ảnh...');
       const blob = await generateExportZip(zip);

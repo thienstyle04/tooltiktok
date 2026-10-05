@@ -1,3 +1,4 @@
+import { photoPresetsCatalog } from './photo-presets';
 import {
   Body,
   Controller,
@@ -67,6 +68,9 @@ export class GuideController {
     response.setHeader('Cache-Control', cacheControl);
     response.send(body);
   }
+
+  @Get('api/photo-presets')
+  getPhotoPresets() { return photoPresetsCatalog(); }
 
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')
@@ -467,5 +471,11 @@ export class GuideController {
       response.setHeader('X-Drive-Image-Fallback', '1');
     }
     response.send(asset.body);
+  }
+
+  @Get('assets/color-edit')
+  async getColorEdit(@Query('source') source: string, @Query('preset') preset: string, @Res() response: any): Promise<void> {
+    const body = await this.guideService.getColorEditedAsset(source, preset);
+    this.sendBinaryAsset(response, body, 'image/png', 'no-cache');
   }
 }

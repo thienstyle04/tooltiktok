@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import * as crypto from 'node:crypto';
+import { validatePhotoPreset } from './photo-presets';
+import { migrateColorEditStores, LEGACY_COLOR_DECKS } from './color-edit-migration';
 import { aiProvider } from './ai-provider';
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -40,6 +42,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   private manualJobs = new Map<string, { id: string; requestId: string; status: string; destinationId: string; result?: unknown; error?: string }>();
 
   submitManualGeneration(input: { kind: string; destinationId: string; requestId: string; request: any }) {
+    validatePhotoPreset(input.request?.photoPreset, input.kind === 'partner' ? 'spotlight-partner' : input.request?.deckId);
     const existing = [...this.manualJobs.values()].find(job => job.requestId === input.requestId);
     if (existing) return { ...existing };
     if (!['caption', 'batch', 'partner'].includes(input.kind) || !input.requestId || !input.request?.deckId && input.kind !== 'partner') throw new BadRequestException('Yêu cầu tạo list không hợp lệ.');
@@ -234,7 +237,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const completedByDeck = new Map<string, number>();
     for (const item of previous.generated) completedByDeck.set(item.deckId, (completedByDeck.get(item.deckId) || 0) + 1);
     const remaining = previous.templates
-      .map((item) => ({ deckId: item.deckId, count: Math.max(0, item.count - (completedByDeck.get(item.deckId) || 0)) }))
+      .map((item) => ({ photoPreset: item.photoPreset, deckId: item.deckId, count: Math.max(0, item.count - (completedByDeck.get(item.deckId) || 0)) }))
       .filter((item) => item.count > 0);
     const run = this.newRun(schedule, new Date().toISOString(), remaining.length ? remaining : [], previous.id);
     run.generated = [...previous.generated];
@@ -482,6 +485,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
         try {
           const response = await this.guideService.enqueueGeneration(() => this.guideService.generateBatchLists({
             deckId: template.deckId,
+            photoPreset: template.photoPreset,
             count: template.count,
             requestId: `automation:${run.id}:${template.deckId}`,
             hookSelection: run.hook,
@@ -621,7 +625,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
 
   private validateTemplates(input: AutomationTemplateRequest[]): AutomationTemplateRequest[] {
     if (!Array.isArray(input) || !input.length) throw new BadRequestException('Hãy chọn ít nhất một mẫu.');
-    const merged = new Map<string, number>();
+    const merged = new Map<string, AutomationTemplateRequest>();
     for (const raw of input) {
       const deckId = String(raw?.deckId || '').trim();
       const count = Math.trunc(Number(raw?.count));
@@ -629,15 +633,18 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
         throw new BadRequestException(`Mỗi mẫu phải có từ ${MIN_LISTS_PER_TEMPLATE} đến ${MAX_LISTS_PER_TEMPLATE} list.`);
       }
       if (merged.has(deckId)) throw new BadRequestException(`Mẫu ${deckId} đang bị chọn lặp trong cùng một lịch.`);
-      merged.set(deckId, count);
+      if (LEGACY_COLOR_DECKS[deckId]) throw new BadRequestException('Chọn V5/V6 thay cho mẫu Color Edit riêng.');
+      const photoPreset = validatePhotoPreset(raw.photoPreset, deckId);
+      merged.set(deckId, { deckId, count, ...(photoPreset ? { photoPreset } : {}) });
     }
-    return [...merged].map(([deckId, count]) => ({ deckId, count }));
+    return [...merged.values()];
   }
 
   private assertOutputDirectory(value: string): void {
     if (!value || !path.isAbsolute(value)) throw new BadRequestException('Hãy chọn thư mục lưu file hợp lệ.');
     if (!fs.existsSync(value) || !fs.statSync(value).isDirectory()) throw new BadRequestException('Thư mục lưu file không tồn tại.');
     const probe = path.join(value, `.dalat-automation-write-test-${process.pid}-${crypto.randomBytes(6).toString('hex')}.tmp`);
+    migrateColorEditStores(this.dataRoot);
     try {
       fs.accessSync(value, fs.constants.W_OK);
       fs.writeFileSync(probe, '', { flag: 'wx' });

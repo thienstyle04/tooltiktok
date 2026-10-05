@@ -1,4 +1,5 @@
 import { escapeHtml, sanitizeFilePart } from './utils';
+import { photoRenderArguments, photoDisplayUrl, strictPhotoMarkup } from './photoPresets.mjs';
 import { compactThreadsLocalAddress } from './threadsFoodExport.mjs';
 
 function sourceLabel(item) {
@@ -60,7 +61,7 @@ function renderPreviewImage(src, alt, className = '', candidates = []) {
 
 function isPortableImageUrl(src) {
   const value = String(src || '').trim();
-  return /^https?:\/\//i.test(value) || value.startsWith('/assets/drive-file');
+  return /^https?:\/\//i.test(value) || value.startsWith('/assets/drive-file') || value.startsWith('/assets/color-edit?');
 }
 
 function collectPortableListImages(list) {
@@ -1584,6 +1585,7 @@ function spotlightV3CoverPlacement(page, listId = '') {
     'bottom-left', 'bottom-center', 'bottom-right',
   ];
   const raw = String(page?.titlePlacement || '').trim();
+  if (page?.spotlightDesignRevision === 1 && raw === 'center') return 'center';
   if (allowed.includes(raw)) return raw;
   // Fallback random theo seed list — không mặc định giữa.
   const seed = `${listId || page?.title || 'v3'}|place`;
@@ -1646,7 +1648,7 @@ function renderSpotlightV2Page(page, index, listId, list, options = {}) {
   const titleText = item.rawName || item.name || page.title || '';
   const address = spotlightV2AddressLine(item);
   const hours = spotlightV2HoursLine(item);
-  const price = spotlightV2PriceLine(item);
+  const price = page.spotlightDesignRevision === 1 ? spotlightV2PriceLine(item).replace(/^Giá:\s*/i, '') : spotlightV2PriceLine(item);
   const positionClass = spotlightPositionClass(page, index, item);
   const partnerClass = options.partner ? ' spotlight-partner-v2-page' : '';
   const v3Class = page?.layoutVariant === 'spotlight-v3' ? ' spotlight-v3-page' : '';
@@ -1868,12 +1870,25 @@ function renderSummaryNotePage(page, index, listId) {
     </article>
   `;
 }
+function spotlightColorAttrs(page) {
+  return page.photoPreset === 'iphone-color-edit-v1'
+    ? ' data-export-strict="true" data-photo-preset="iphone-color-edit-v1"' : '';
+}
+
+function renderSpotlightPhoto(page, source, alt) {
+  if (!source) return '';
+  if (!page.photoPreset) return renderPreviewImage(source, alt);
+  const url = photoDisplayUrl(source, page.photoPreset);
+  return renderPreviewImage(url, alt, 'color-edit-photo')
+    .replace('<img', `<img data-photo-source="${escapeHtml(source)}"`);
+}
+
 function renderSpotlightV6Cover(page, index, listId, coverTitle, backgroundImage) {
   const imageUrl = page.backgroundImage || backgroundImage || '';
   const hookTitle = page.title !== undefined ? String(page.title) : String(coverTitle || '');
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-cover'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
-      <div class="spotlight-v6-bg">${imageUrl ? renderPreviewImage(imageUrl, hookTitle || 'cover') : ''}</div>
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-cover'))}"${spotlightColorAttrs(page)} data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="spotlight-v6-bg">${renderSpotlightPhoto(page, imageUrl, hookTitle || 'cover')}</div>
       ${hookTitle ? `<h1 class="spotlight-v6-cover-title">${escapeHtml(hookTitle)}</h1>` : ''}
     </article>
   `;
@@ -1883,8 +1898,8 @@ function renderSpotlightV6ImagePage(page, index, listId) {
   const imageUrl = page.backgroundImage || '';
   const title = String(page.title || '').trim();
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-image'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-image.png">
-      <div class="spotlight-v6-bg">${imageUrl ? renderPreviewImage(imageUrl, 'Hình nền') : ''}</div>
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-image'))}"${spotlightColorAttrs(page)} data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-image.png">
+      <div class="spotlight-v6-bg">${renderSpotlightPhoto(page, imageUrl, 'Hình nền')}</div>
       ${title ? `<h2 class="spotlight-v6-image-title">${escapeHtml(title)}</h2>` : ''}
     </article>
   `;
@@ -1896,8 +1911,8 @@ function renderSpotlightV6VenuePage(page, index, listId, list) {
   const name = page.title !== undefined ? String(page.title || '').trim() : (item.rawName || item.name || '');
   const address = String(item.metaPrimary || '').trim();
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || 'dia-diem')}.png">
-      <div class="spotlight-v6-bg">${imageUrl ? renderPreviewImage(imageUrl, name || 'Địa điểm') : ''}</div>
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v6-page'))}"${spotlightColorAttrs(page)} data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || 'dia-diem')}.png">
+      <div class="spotlight-v6-bg">${renderSpotlightPhoto(page, imageUrl, name || 'Địa điểm')}</div>
       <div class="spotlight-v6-page-copy">
         ${name ? `<h2 class="spotlight-v6-page-name">${escapeHtml(name)}</h2>` : ''}
         ${address ? `<p class="spotlight-v6-page-address">${escapeHtml(address)}</p>` : ''}
@@ -1952,8 +1967,8 @@ function renderSpotlightV5Cover(page, index, listId, coverTitle, backgroundImage
   const placement = page.titlePlacement || 'bottom-right';
   const hookTitle = page.title !== undefined ? String(page.title) : String(coverTitle || '');
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-cover spotlight-v5-position-' + placement))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
-      <div class="spotlight-v5-bg">${imageUrl ? renderPreviewImage(imageUrl, hookTitle || 'cover') : ''}</div>
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-cover spotlight-v5-position-' + placement))}"${spotlightColorAttrs(page)} data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-cover.png">
+      <div class="spotlight-v5-bg">${renderSpotlightPhoto(page, imageUrl, hookTitle || 'cover')}</div>
       <div class="spotlight-v5-shade" aria-hidden="true"></div>
       <h1 class="spotlight-v5-cover-hook">${escapeHtml(hookTitle)}</h1>
     </article>
@@ -1964,8 +1979,8 @@ function renderSpotlightV5PlaylistPage(page, index, listId) {
   const lines = Array.isArray(page.playlistLines) ? page.playlistLines.filter(Boolean) : [];
   const placement = page.titlePlacement || 'center';
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-playlist spotlight-v5-position-' + placement))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-playlist.png">
-      <div class="spotlight-v5-bg">${page.backgroundImage ? renderPreviewImage(page.backgroundImage, 'Playlist Đà Lạt') : ''}</div>
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-playlist spotlight-v5-position-' + placement))}"${spotlightColorAttrs(page)} data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-playlist.png">
+      <div class="spotlight-v5-bg">${renderSpotlightPhoto(page, page.backgroundImage, 'Playlist Đà Lạt')}</div>
       <div class="spotlight-v5-shade" aria-hidden="true"></div>
       <div class="spotlight-v5-playlist-copy">
         ${lines.map((line) => `<div class="spotlight-v5-playlist-line">• ${escapeHtml(line)}</div>`).join('')}
@@ -1982,8 +1997,8 @@ function renderSpotlightV5PlacePage(page, index, listId) {
   const placement = page.titlePlacement || 'bottom-right';
 
   return `
-    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-place spotlight-v5-position-' + placement))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || 'dia-diem')}.png">
-      <div class="spotlight-v5-bg">${imageUrl ? renderPreviewImage(imageUrl, name || 'Địa điểm') : ''}</div>
+    <article class="${escapeHtml(storyPageClass(listId, 'spotlight-v5-place spotlight-v5-position-' + placement))}"${spotlightColorAttrs(page)} data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(name || 'dia-diem')}.png">
+      <div class="spotlight-v5-bg">${renderSpotlightPhoto(page, imageUrl, name || 'Địa điểm')}</div>
       <div class="spotlight-v5-shade" aria-hidden="true"></div>
       <div class="spotlight-v5-place-copy">
         ${name ? `<div class="spotlight-v5-place-name">${escapeHtml(name)}</div>` : ''}
@@ -2518,10 +2533,12 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
 }
 
 export function renderCoverPage(page, ...args) {
-  return withPageTextScale(renderCoverPageContent(page, ...args), page);
+  const render = photoRenderArguments(page, args);
+  return strictPhotoMarkup(withPageTextScale(renderCoverPageContent(render.page, ...render.args), render.page), render.preset);
 }
 
 function withPageTextScale(html, page) {
+  if (page.spotlightDesignRevision === 1) html = html.replace('class="story-page ', `class="story-page spotlight-design-1 ${isServiceListPage(page) ? 'spotlight-service-list ' : ''}`);
   const scale = Math.max(50, Math.min(100, Number(page.textScale) || 100));
   const size = Number(page.textFontSize);
   const font = Number.isFinite(size) && size >= 8 && size <= 72 ? ` data-text-font-size="${size}"` : '';
@@ -2913,8 +2930,7 @@ function renderSpotlightListPage(page, index, listId, list, pageSubtitle) {
       <div class="spotlight-list-shade"></div>
       <div class="spotlight-list-panel">
         <div class="spotlight-list-heading">
-          <span>${escapeHtml(page.chipText || '')}</span>
-          <h2>${escapeHtml(page.title || '')}</h2>
+          ${page.spotlightDesignRevision === 1 && /dịch vụ/i.test(page.chipText || page.title || '') ? '<h2>Dịch vụ cần lưu</h2>' : `<span>${escapeHtml(page.chipText || '')}</span><h2>${escapeHtml(page.title || '')}</h2>`}
         </div>
         <div class="spotlight-list-stack">
           ${renderSpotlightListItems(page.items, { showLabels: showItemLabels })}
@@ -3521,7 +3537,8 @@ function journey4N3DTitle(chipText, title) {
 }
 
 export function renderListPage(page, ...args) {
-  return withPageTextScale(renderListPageContent(page, ...args), page);
+  const render = photoRenderArguments(page, args);
+  return strictPhotoMarkup(withPageTextScale(renderListPageContent(render.page, ...render.args), render.page), render.preset);
 }
 
 function renderListPageContent(page, index, total, listId, hashtags = [], list = null) {
@@ -3536,7 +3553,7 @@ function renderListPageContent(page, index, total, listId, hashtags = [], list =
       + '<div class="threads-food-preview-head"><span>THREADS · XEM TRƯỚC</span><h2>'
       + escapeHtml(page.title || (isTextOnly ? 'List Đà Lạt lưu lại nè' : isMix ? 'Đi đâu ở Đà Lạt?' : isCafe ? 'Cà phê nào ở Đà Lạt?' : 'Ăn gì ở Đà Lạt?'))
       + '</h2><p>File xuất gồm TXT ' + (isTextOnly ? '12' : '10') + ' ' + (isMix || isTextOnly ? 'địa điểm đa nhóm' : isCafe ? 'quán cà phê' : 'quán ăn')
-      + ', XLSX ' + (isTextOnly ? '6' : '5') + ' đối tác' + (isTextOnly ? '; không có ảnh' : ' và 6 ảnh gốc') + '; không xuất khung preview này.</p></div>'
+      + ', XLSX ' + (isTextOnly ? '6' : '5') + ' đối tác' + (isTextOnly ? '; không có ảnh' : page.photoPreset ? ' và 6 ảnh Color Edit' : ' và 6 ảnh gốc') + '; không xuất khung preview này.</p></div>'
       + '<ul class="threads-food-preview-list">'
       + items.map((item) => '<li>' + escapeHtml(item.name || '')
         + (item.isPartner && item.metaPrimary ? ' (' + escapeHtml(compactThreadsLocalAddress(item.metaPrimary)) + ')' : '') + '</li>').join('')

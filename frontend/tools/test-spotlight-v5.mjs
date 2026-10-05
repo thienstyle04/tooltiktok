@@ -7,4 +7,12 @@ const list={id:'spotlight-v5-test',pages:[]}; const bg='https://example.invalid/
 const cover={type:'cover',title:'có nhạc rồi đi Đà Lạt thoiiii',subtitle:'',backgroundImage:bg,layoutVariant:'spotlight-v5-cover',titlePlacement:'bottom-right'};
 const playlist={type:'list',chipText:'',title:'Playlist Đà Lạt',subtitle:'',items:[],backgroundImage:bg,layoutVariant:'spotlight-v5-playlist',playlistLines:['Giấc mơ - Tùng','An - Lil Wuyn'],titlePlacement:'center'};
 const place={type:'list',chipText:'',title:'Quán thử',subtitle:'',items:[{name:'Quán thử',rawName:'Quán thử',imageUrl:'https://example.invalid/place.jpg',metaPrimary:'33 Ngô Quyền, Cam Ly - Đà Lạt',metaSecondary:''}],backgroundImage:'https://example.invalid/place.jpg',layoutVariant:'spotlight-v5-place',titlePlacement:'bottom-left'}; list.pages=[cover,playlist,place];
+for (const [index, page] of list.pages.entries()) {
+ const render = page.type === 'cover' ? renderCoverPage : renderListPage;
+ const original=render(page,index,15,list.id,[],list,[]);
+ const edited=render({...page,photoPreset:'iphone-color-edit-v1'},index,15,list.id,[],list,[]);
+ assert.doesNotMatch(original,/assets\/color-edit|data-export-strict/);
+ assert.match(edited,/assets\/color-edit/); assert.match(edited,/data-export-strict="true"/);
+ assert.match(edited,/data-photo-source=/);
+}
 const ch=renderCoverPage(cover,0,15,list.id,[],list,[]); assert.match(ch,/spotlight-v5-cover/); assert.match(ch,/có nhạc rồi đi Đà Lạt thoiiii/); const blankCoverHtml=renderCoverPage({...cover,title:''},0,15,list.id,[],{...list,coverTitle:'fallback'},[]); assert.doesNotMatch(blankCoverHtml,/có nhạc rồi đi Đà Lạt/); const ph=renderListPage(playlist,1,15,list.id,[],list); assert.match(ph,/spotlight-v5-playlist-line/); assert.match(ph,/Giấc mơ - Tùng/); const vh=renderListPage(place,2,15,list.id,[],list); assert.match(vh,/Quán thử/); assert.match(vh,/33 Ngô Quyền/); assert.doesNotMatch(vh,/Giá:|Khung giờ|pin|chip/); console.log('PASS spotlight-v5 renderer: cover, playlist, place chỉ tên+địa chỉ.');

@@ -1,11 +1,13 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
 export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v82';
 export const DESTINATION_STORAGE_KEY = 'dalat-carousel-active-destination-v1';
-export const STUDIO_CATALOG_REVISION = '2026-10-01-itinerary-note-dark-no-day-label';
+export const STUDIO_CATALOG_REVISION = '2026-10-05-shared-photo-presets';
 export const STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
 
 /** Deck đã gỡ khỏi app — lọc khỏi cache/dataset cũ. */
 export const RETIRED_DECK_IDS = new Set([
+  'spotlight-v5-color-edit',
+  'spotlight-v6-color-edit',
   'grid-cafe-light',
   'budget-4n3d-wallet',
   'must-go',

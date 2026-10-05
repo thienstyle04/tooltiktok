@@ -10,7 +10,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8');
 const bundle = await esbuild.build({
   stdin: {
-    contents: `${source}\nexport { collectPartnerNames, createHorizontalXlsx, JSZip };`,
+    contents: `${source}\nexport { collectPartnerNames, createHorizontalXlsx, JSZip, assertPartnerExportReady };`,
     resolveDir: path.join(root, 'lib'),
   },
   bundle: true,
@@ -50,6 +50,14 @@ try {
     }));
     const v5List = { id: 'v5-partner-export', pages: v5Pages, captionHashtags: [] };
     const names = TestExport.collectPartnerNames(v5List);
+    const editedList=structuredClone(v5List);
+    editedList.id='spotlight-v5-color-edit-caption-test';
+    editedList.pages.forEach(page=>page.photoPreset='iphone-color-edit-v1');
+    if(TestExport.assertPartnerExportReady(editedList,'spotlight-v5-color-edit').length!==7) throw Error('Color Edit partner collection failed');
+    editedList.pages[0].items[0].isPartner=false;
+    let blocked='';
+    try { TestExport.assertPartnerExportReady(editedList,'spotlight-v5-color-edit'); } catch(error) { blocked=error.message; }
+    if(!blocked.includes('6/7')) throw Error('Color Edit must block an incomplete partner set');
     const workbookBlob = await TestExport.createHorizontalXlsx(names);
     const zip = await TestExport.JSZip.loadAsync(workbookBlob);
     const sheetXml = await zip.file('xl/worksheets/sheet1.xml').async('string');

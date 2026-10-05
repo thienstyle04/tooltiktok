@@ -19,6 +19,7 @@ import {
 import { hasItemKey, itemUsageKey, markItemKey } from './data-allocator';
 import { allowedImageKindsForItem, createListImageResolver, stableHash, topDirKind } from './image-resolver';
 import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
+import { prepareSpotlightDesign } from './spotlight-design';
 import { buildPagesForDeckV2, getV2DeckDefinitions, isV2DeckId } from './deck-builder-v2';
 import { cityLabel, cityLabelUpper, getMarketingCopy, buildCaptionHashtags, getActiveDestinationLocalize } from '../sync/destination-localize';
 import { isPartnerFirstDestination } from '../sync/destination-config';
@@ -50,7 +51,7 @@ export const GRID_5_TEMPLATE_VERSION = 4;
 export const GRID_6_TEMPLATE_VERSION = 18;
 export const GRID_6_ZIGZAG_TEMPLATE_VERSION = 4;
 export const GRID_8_TEMPLATE_VERSION = 19;
-export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 5;
+export const SPOTLIGHT_GUIDE_TEMPLATE_VERSION = 6;
 export const BUDGET_3N2D_TEMPLATE_VERSION = 7;
 export const BUDGET_3N2D_STORY_TEMPLATE_VERSION = 5;
 export const BUDGET_72H_SUMMARY_TEMPLATE_VERSION = 7;
@@ -1147,7 +1148,7 @@ export function buildDeckList(
   description: string,
   pages: DeckPage[],
 ): GuideDeckList {
-  return { id: `${deckId}-${listSuffix}`, navTitle, title, description, pages };
+  return prepareSpotlightDesign({ id: `${deckId}-${listSuffix}`, navTitle, title, description, pages }, deckId, []);
 }
 
 // ─── Item selection helpers ───────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { currentPageLabel, imageSourceClass, sourceLabel } from '../lib/utils';
 import FontSizeControl from './FontSizeControl';
+import { coverApprovalToken } from '../lib/spotlightCoverReview.mjs';
 import { useEffect, useState } from 'react';
 import { renderedTextSizes } from '../lib/pageTextScale';
 import { parseThreadsBudgetAmount } from '../lib/threadsBudget';
@@ -69,7 +70,7 @@ export default function PageInspector({
   const isSpotlightV4ImagePage = page.layoutVariant === 'spotlight-v4-image' || page.layoutVariant === 'spotlight-v6-map-page';
   const canEditPage = typeof onPageTextChange === 'function' && !isSpotlightV4ImagePage;
   const canSavePage = canEditPage && typeof onPageTextSave === 'function';
-  const titleLimit = page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
+  const titleLimit = page.spotlightDesignRevision === 1 && page.type === 'cover' ? 220 : page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
     ? 110
     : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
       ? 220
@@ -78,7 +79,7 @@ export default function PageInspector({
   const pageSubtitle = String(page.subtitle || '');
   const isTimedNote = page.layoutVariant === 'itinerary-note-timed-day';
   const isDarkNote = page.layoutVariant === 'itinerary-note-dark-day';
-  const hideSubtitleEditor = deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || deck.id === 'spotlight-v5' || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-dark' || (deck.id === 'itinerary-note-2days' || deck.id.startsWith('itinerary-note-threads-')) || deck.id === 'itinerary-note-timed' || isThreadsToplist) || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const hideSubtitleEditor = deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || (deck.id === 'spotlight-v5' || deck.id === 'spotlight-v5-color-edit') || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-dark' || (deck.id === 'itinerary-note-2days' || deck.id.startsWith('itinerary-note-threads-')) || deck.id === 'itinerary-note-timed' || isThreadsToplist) || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -128,6 +129,15 @@ export default function PageInspector({
               <input aria-label={'Chi tiết khoản ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
               <input aria-label={'Tiền khoản ' + (i + 1)} value={item.metaSecondary ?? ''} placeholder="Ví dụ: 65.000 đ" maxLength={80} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaSecondary: event.target.value } : row) })} />
             </div>)}
+          </> : null}
+          {page.type === 'cover' && page.spotlightDesignRevision === 1 ? <>
+            {deck.id !== 'spotlight-guide' ? <label className="inspector-field"><span>Vị trí hook</span><select value={page.titlePlacement || 'center'} onChange={event => onPageTextChange({ titlePlacement: event.target.value })}>
+              <option value="top-center">Trên</option><option value="center">Giữa</option><option value="bottom-center">Dưới</option>
+            </select></label> : null}
+            <label className="inspector-field"><span>Ảnh bìa: URL ảnh trong kho nền, mỗi dòng một ảnh</span>
+              <textarea value={(page.coverImages?.length ? page.coverImages : [page.backgroundImage]).join('\n')} rows={deck.id === 'spotlight-v2' ? 4 : 2} onChange={event => onPageTextChange({ coverImages: event.target.value.split('\n'), coverApproval: '' })} />
+            </label>
+            <label className="inspector-field"><span><input type="checkbox" checked={page.coverApproval === coverApprovalToken(page)} onChange={event => onPageTextChange({ coverApproval: event.target.checked ? coverApprovalToken(page) : '' })} /> Tôi đã kiểm tra ảnh bìa phù hợp hook</span></label>
           </> : null}
           {page.layoutVariant === 'spotlight-v6-diary-page' ? <>
             <label className="inspector-field"><span>Vị trí chữ</span>

@@ -167,6 +167,9 @@ export type TitlePlacement =
 export type MutantContentStyle = 'strip' | 'center-card';
 
 export interface CoverPage {
+  coverApproval?: string;
+  spotlightDesignRevision?: 1;
+  photoPreset?: 'iphone-color-edit-v1';
   textFontSize?: number | null;
   textScale?: number;
   diaryFontSize?: number;
@@ -182,6 +185,8 @@ export interface CoverPage {
 }
 
 export interface ListPage {
+  spotlightDesignRevision?: 1;
+  photoPreset?: 'iphone-color-edit-v1';
   textFontSize?: number | null;
   textScale?: number;
   diaryFontSize?: number;
@@ -203,6 +208,9 @@ export interface ListPage {
 export type DeckPage = CoverPage | ListPage;
 
 export interface GuideDeckList {
+  spotlightDesignRevision?: 1;
+  coverReview?: { topic: string | null; warnings: string[]; approvedSourceIds: string[] };
+  photoPreset?: 'iphone-color-edit-v1';
   id: string;
   navTitle: string;
   title: string;
@@ -337,6 +345,7 @@ export interface CaptionBlocks {
 }
 
 export interface GenerateCaptionDeckRequest {
+  photoPreset?: 'iphone-color-edit-v1' | null;
   deckId?: string;
   listId?: string;
   tone?: DeepSeekCaptionResponse['tone'];
@@ -354,6 +363,7 @@ export interface GenerateCaptionDeckResponse {
 }
 
 export interface GenerateBatchListsRequest {
+  photoPreset?: 'iphone-color-edit-v1' | null;
   deckId?: string;
   count?: number;
   requestId?: string;
@@ -388,6 +398,7 @@ export interface GenerateBatchListsResponse {
 }
 
 export interface GeneratePartnerSpotlightRequest {
+  photoPreset?: 'iphone-color-edit-v1' | null;
   partnerId?: string;
   partnerName?: string;
 }
@@ -414,6 +425,8 @@ export interface UpdateGeneratedListCoverResponse {
 }
 
 export interface UpdatePageTextRequest {
+  coverImages?: string[];
+  coverApproval?: string;
   textFontSize?: number | null;
   textScale?: number;
   diaryFontSize?: number;
@@ -425,6 +438,8 @@ export interface UpdatePageTextRequest {
 }
 
 export interface UpdatePageTextResponse {
+  coverImages?: string[];
+  coverApproval?: string;
   textFontSize?: number | null;
   textScale?: number;
   diaryFontSize?: number;
@@ -441,7 +456,7 @@ export interface UpdatePageTextResponse {
 export interface PageTextOverrideStore {
   version: 1;
   savedAt: string;
-  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; textFontSize?: number | null; textScale?: number; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; metaSecondary?: string; scheduleTime?: string }> }>>>;
+  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; coverImages?: string[]; coverApproval?: string; textFontSize?: number | null; textScale?: number; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; metaSecondary?: string; scheduleTime?: string }> }>>>;
 }
 
 export interface DatasetBuildContext {

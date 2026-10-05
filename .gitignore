@@ -2,6 +2,9 @@ node_modules/
 .next/
 .next-*/
 release/
+releases/
+outputs/
+shared/
 .tmp-*
 *.log
 .claude/
@@ -10,6 +13,8 @@ dev-log*.txt
 .test-runtime/
 backend/src/modules/guide/tools/export-quality-test-output/
 backend/data/drive-file-cache/
+backend/data/photo-preset-cache/
+backend/data/migration-backups/
 backend/data/drive-file-cache-sim-*/
 backend/data/workbook-cache.*.xlsx
 backend/data/workbook-source-meta.*.json

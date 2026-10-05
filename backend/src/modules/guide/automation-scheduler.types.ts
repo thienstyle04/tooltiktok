@@ -2,6 +2,7 @@ export type AutomationFrequency = 'once' | 'daily';
 export type AutomationHookMode = 'normal' | 'festival';
 
 export interface AutomationTemplateRequest {
+  photoPreset?: 'iphone-color-edit-v1' | null;
   deckId: string;
   count: number;
 }

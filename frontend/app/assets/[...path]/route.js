@@ -7,9 +7,9 @@ export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 export function GET(request) {
-  return proxyBackendRequest(request, { cacheControl: ASSET_CACHE_CONTROL });
+  return proxyBackendRequest(request, { cacheControl: new URL(request.url).pathname === '/assets/color-edit' ? 'no-cache' : ASSET_CACHE_CONTROL });
 }
 
 export function HEAD(request) {
-  return proxyBackendRequest(request, { cacheControl: ASSET_CACHE_CONTROL });
+  return proxyBackendRequest(request, { cacheControl: new URL(request.url).pathname === '/assets/color-edit' ? 'no-cache' : ASSET_CACHE_CONTROL });
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../lib/apiClient';
 import { listIsMain } from '../lib/utils';
+import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET } from '../lib/photoPresets.mjs';
 
 const DALAT_ONLY_DECKS = new Set([
   'spotlight-v6-diary', 'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
@@ -72,7 +73,8 @@ function loadDraftForm(destinationId) {
       hookMode: saved.hookMode === 'festival' ? 'festival' : 'normal',
       sourceId: String(saved.sourceId || ''),
       templates: Array.isArray(saved.templates) ? saved.templates
-        .map((entry) => ({ deckId: String(entry?.deckId || ''), count: Math.min(5, Math.max(3, Number(entry?.count) || 3)) }))
+        .map((entry) => { const legacy={'spotlight-v5-color-edit':'spotlight-v5','spotlight-v6-color-edit':'spotlight-v6'};
+          return { deckId: legacy[entry?.deckId] || String(entry?.deckId || ''), photoPreset: legacy[entry?.deckId] ? COLOR_EDIT_PRESET : entry?.photoPreset===COLOR_EDIT_PRESET ? COLOR_EDIT_PRESET : null, count: Math.min(5, Math.max(3, Number(entry?.count) || 3)) }; })
         .filter((entry) => entry.deckId) : [],
     };
   } catch {
@@ -105,6 +107,14 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
   const [section, setSection] = useState('create');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [photoPresets, setPhotoPresets] = useState(DEFAULT_PHOTO_PRESETS);
+  useEffect(() => {
+    apiFetch('/api/photo-presets').then(response=>response.ok?response.json():Promise.reject())
+      .then(value=>{
+        if (!Array.isArray(value.presets) || !value.presets.length) throw new Error('Danh mục bảng màu không hợp lệ');
+        setPhotoPresets(value.presets);
+      }).catch(()=>setPhotoPresets([{id:null,label:'Ảnh gốc'}]));
+  }, []);
   const outputPickerReady = state.outputPicker === 'save-file-v1';
 
   const decks = useMemo(() => {
@@ -265,7 +275,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
           <p>Mỗi mẫu tạo riêng {minListsPerTemplate}–{maxListsPerTemplate} list; không giới hạn tổng ở 5. Mẫu dùng hook cố định/chủ đề vẫn giữ hook riêng.</p>
           <div className="automation-template-grid">{decks.map((deck) => {
             const selected = form.templates.find((entry) => entry.deckId === deck.id);
-            return <label key={deck.id} className={selected ? 'selected' : ''}><input type="checkbox" checked={Boolean(selected)} onChange={(e) => toggleTemplate(deck.id, e.target.checked)} /><span>{deck.navTitle || deck.title}</span>{selected ? <input aria-label={`Số list ${deck.navTitle}`} type="number" min={minListsPerTemplate} max={maxListsPerTemplate} value={selected.count} onChange={(e) => setTemplateCount(deck.id, e.target.value)} /> : null}</label>;
+            return <label key={deck.id} className={selected ? 'selected' : ''}><input type="checkbox" checked={Boolean(selected)} onChange={(e) => toggleTemplate(deck.id, e.target.checked)} /><span>{deck.navTitle || deck.title}</span>{selected ? <input aria-label={`Số list ${deck.navTitle}`} type="number" min={minListsPerTemplate} max={maxListsPerTemplate} value={selected.count} onChange={(e) => setTemplateCount(deck.id, e.target.value)} /> : null}{selected&&supportsPhotoPreset(deck.id)?<select aria-label={`Bảng màu ${deck.navTitle}`} value={selected.photoPreset||''} disabled={busy||state.locked} onChange={e=>setForm(current=>({...current,templates:current.templates.map(entry=>entry.deckId===deck.id?{...entry,photoPreset:e.target.value||null}:entry)}))}>{photoPresets.map(p=><option key={p.id||'original'} value={p.id||''}>{p.label}</option>)}</select>:null}</label>;
           })}</div>
         </div>
         <div className="automation-form-actions"><button className="toolbar-button primary" disabled={Boolean(saveDisabledReason)} title={saveDisabledReason} aria-busy={busy} type="submit">{busy ? 'Đang lưu...' : editingId ? 'Lưu chỉnh sửa' : 'Tạo lịch'}</button>{!form.outputDir ? <button type="button" onClick={chooseDirectory} disabled={busy || !outputPickerReady}>Chọn file ZIP</button> : null}{editingId ? <button type="button" onClick={() => { setEditingId(''); setForm(blankForm(currentDestinationId)); }}>Hủy sửa</button> : null}<span>{message || saveDisabledReason}</span></div>

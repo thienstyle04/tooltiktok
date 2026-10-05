@@ -71,10 +71,10 @@ export function normalizeGrid8FeedPostCaption(value: string): string {
 }
 export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 6;
 export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 8;
-export const SPOTLIGHT_V2_TEMPLATE_VERSION = 17;
-export const SPOTLIGHT_V3_TEMPLATE_VERSION = 2;
-export const SPOTLIGHT_V4_TEMPLATE_VERSION = 4;
-export const SPOTLIGHT_V5_TEMPLATE_VERSION = 2;
+export const SPOTLIGHT_V2_TEMPLATE_VERSION = 18;
+export const SPOTLIGHT_V3_TEMPLATE_VERSION = 3;
+export const SPOTLIGHT_V4_TEMPLATE_VERSION = 5;
+export const SPOTLIGHT_V5_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V6_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V6_DARK_TEMPLATE_VERSION = 1;
@@ -96,7 +96,9 @@ export const V2_DECK_IDS = [
   'spotlight-v3',
   'spotlight-v4',
   'spotlight-v5',
+  'spotlight-v5-color-edit',
   'spotlight-v6',
+  'spotlight-v6-color-edit',
   'spotlight-v6-green',
   'spotlight-v6-dark',
   'spotlight-v6-persimmon',
@@ -2132,7 +2134,9 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'spotlight-v3': SPOTLIGHT_V3_TEMPLATE_VERSION,
   'spotlight-v4': SPOTLIGHT_V4_TEMPLATE_VERSION,
   'spotlight-v5': SPOTLIGHT_V5_TEMPLATE_VERSION,
+  'spotlight-v5-color-edit': SPOTLIGHT_V5_TEMPLATE_VERSION,
   'spotlight-v6': SPOTLIGHT_V6_TEMPLATE_VERSION,
+  'spotlight-v6-color-edit': 1,
   'spotlight-v6-green': SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION,
   'spotlight-v6-dark': SPOTLIGHT_V6_DARK_TEMPLATE_VERSION,
   'spotlight-v6-persimmon': SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION,
@@ -2205,6 +2209,18 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
     title: 'Bộ spotlight dọc 9:16 (V6)',
     description: 'Biến thể Spotlight V4 khung 9:16: hook hiện hành, ảnh nền xen kẽ và 8 địa điểm; title căn giữa.',
     listName: 'List spotlight V6',
+  },
+  'spotlight-v5-color-edit': {
+    nav: 'Spotlight V5 Color Edit',
+    title: 'Spotlight V5 Color Edit',
+    description: 'Bản sao V5 khung 4:5, 15 trang: hook, playlist và 13 địa điểm gồm 7 đối tác; áp dụng bộ màu mô phỏng iPhone cho toàn bộ ảnh.',
+    listName: 'List Spotlight V5 Color Edit',
+  },
+  'spotlight-v6-color-edit': {
+    nav: 'Spotlight Color Edit',
+    title: 'Spotlight Color Edit',
+    description: 'Spotlight V6 9:16, 14 trang, 4 đối tác + 4 địa điểm thường; bộ chỉnh màu mô phỏng iPhone áp dụng tất cả ảnh.',
+    listName: 'List Spotlight Color Edit',
   },
   'spotlight-v6-green': {
     nav: 'Spotlight V6 Mảng xanh',
@@ -2349,8 +2365,14 @@ export function buildPagesForDeckV2(
       return buildSpotlightV4Pages(common, seedPrefix, getSpotlightV3BuildContext());
     case 'spotlight-v5':
       return buildSpotlightV5Pages(common, seedPrefix);
+    case 'spotlight-v5-color-edit':
+      return buildSpotlightV5Pages(common, seedPrefix)
+        .map(page => ({ ...page, photoPreset: 'iphone-color-edit-v1' as const }));
     case 'spotlight-v6':
       return buildSpotlightV6Pages(common, seedPrefix, getSpotlightV3BuildContext());
+    case 'spotlight-v6-color-edit':
+      return buildSpotlightV6Pages(common, seedPrefix, getSpotlightV3BuildContext())
+        .map(page => ({ ...page, photoPreset: 'iphone-color-edit-v1' as const }));
     case 'spotlight-v6-green':
       return buildSpotlightV6GreenPages(common, seedPrefix, getSpotlightV3BuildContext());
     case 'spotlight-v6-dark':
@@ -2461,11 +2483,15 @@ export function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): Guid
     pages,
   );
   list.templateVersion = V2_TEMPLATE_VERSIONS[deckId];
+  if (deckId === 'spotlight-v6-color-edit' || deckId === 'spotlight-v5-color-edit') {
+    list.photoPreset = 'iphone-color-edit-v1';
+    list.canvasPreset = deckId === 'spotlight-v5-color-edit' ? 'tiktok-4x5' : 'tiktok-9x16';
+  }
   if (deckId === 'spotlight-v6-diary') {
     list.canvasPreset = 'tiktok-3x4'; list.postCaption = DIARY_CAPTION; list.captionBody = '';
     list.captionHashtags = ['#dalat', '#reviewdalat', '#dalatreview', '#dalatdidau', '#dalattrip'];
   }
-  if (deckId === 'spotlight-v5') list.canvasPreset = 'tiktok-4x5';
+  if (deckId === 'spotlight-v5' || deckId === 'spotlight-v5-color-edit') list.canvasPreset = 'tiktok-4x5';
   if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon') list.canvasPreset = 'tiktok-9x16';
   if (deckId === 'spotlight-v6-maps') {
     list.canvasPreset = 'tiktok-3x4';
@@ -2528,6 +2554,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   const summaryNoteCafeCount = dedupeItems(common.itemsBySection.cafe || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   const summaryNoteQuanAnCount = dedupeItems(common.itemsBySection.quan_an || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   return V2_DECK_IDS
+    .filter(deckId => deckId !== 'spotlight-v5-color-edit' && deckId !== 'spotlight-v6-color-edit')
     .filter((deckId) => deckId !== 'carousel-mau-1')
     .filter((deckId) => deckId !== 'spotlight-v6-diary' || activeDestinationId === 'dalat')
     .filter((deckId) => deckId !== 'itinerary-note-2days' || activeDestinationId === 'dalat')
@@ -2544,13 +2571,13 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       uniquePortableImages(common.coverImageUrls).filter(spotlightV4BackgroundAllowed).length >= SPOTLIGHT_V4_BACKGROUND_COUNT
       && v4VenueCount >= SPOTLIGHT_V4_VENUE_COUNT
     ))
-    .filter((deckId) => deckId !== 'spotlight-v5' || (
+    .filter((deckId) => !['spotlight-v5', 'spotlight-v5-color-edit'].includes(deckId) || (
       activeDestinationId === 'dalat'
       && uniquePortableImages(common.coverImageUrls).length >= 2
       && v5VenueCount >= SPOTLIGHT_V5_VENUE_COUNT
       && v5PartnerCount >= SPOTLIGHT_V5_PARTNER_TARGET
     ))
-    .filter((deckId) => deckId !== 'spotlight-v6' || (
+    .filter((deckId) => !['spotlight-v6', 'spotlight-v6-color-edit'].includes(deckId) || (
       activeDestinationId === 'dalat'
         ? uniquePortableImages(common.hinhNenImagePools?.dark || []).filter(spotlightV4BackgroundAllowed).length >= 1
           && uniquePortableImages(common.hinhNenImagePools?.random || []).filter(spotlightV4BackgroundAllowed).length >= SPOTLIGHT_V4_BACKGROUND_COUNT - 1

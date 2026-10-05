@@ -1,5 +1,9 @@
 // ─── GuideService: orchestration, caching, AI captions ───────────────────────
 import 'dotenv/config';
+import { applyListPhotoPreset, validatePhotoPreset } from './photo-presets';
+import { migrateColorEditStores, LEGACY_COLOR_DECKS } from './color-edit-migration';
+import { prepareSpotlightDesign, SPOTLIGHT_DESIGN_DECKS } from './logic/spotlight-design';
+import { getColorEditAsset, COLOR_EDIT_PRESET } from './color-edit';
 import { aiProvider, AiError } from './ai-provider';
 import { verifyDriveFileCache } from './sync/drive-images';
 import { inheritPageTypography } from './logic/inherit-page-typography';
@@ -124,7 +128,7 @@ const HOOK_SECTION_BY_DECK: Record<string, { key: string; headingIncludes: strin
   ].map((deckId) => [deckId, { key: 'hook-4', headingIncludes: ['Hook 4', 'Feed 8'] }])),
 };
 const isLegacyGoogleDocHookDeck = (deckId: string): boolean =>
-  deckId === 'spotlight-v3' || deckId === 'spotlight-v4' || deckId === 'spotlight-v6' || deckId === 'carousel-mau-1' || deckId === 'spotlight-guide';
+  deckId === 'spotlight-v3' || deckId === 'spotlight-v4' || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'carousel-mau-1' || deckId === 'spotlight-guide';
 const isSectionedGoogleDocHookDeck = (deckId: string): boolean => Boolean(HOOK_SECTION_BY_DECK[deckId]);
 const isGoogleDocHookDeck = (deckId: string): boolean =>
   deckId === 'spotlight-v6-diary' || isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
@@ -137,7 +141,11 @@ import { THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION, threadsBudgetCaptio
 import { THREADS_TOPLIST_ID, THREADS_TOPLIST_TEMPLATE_VERSION, THREADS_TOPLIST_CAPTION } from './logic/threads-toplist';
 import { isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_CAFE_TEMPLATE_VERSION, THREADS_FOOD_ID, THREADS_FOOD_TEMPLATE_VERSION, THREADS_MIX_ID, THREADS_MIX_TEMPLATE_VERSION, THREADS_MIX_TEXT_ID, THREADS_MIX_TEXT_TEMPLATE_VERSION, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from './logic/threads-food-local';
 const isTextNoteDeck = (deckId: string): boolean => deckId === THREADS_TOPLIST_ID || deckId === 'summary-note' || deckId === ITINERARY_NOTE_DARK_ID || (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) || deckId === 'itinerary-note-timed';
-const isNonAiDeck = (deckId: string): boolean => isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || deckId === 'spotlight-v5' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
+const isNonAiDeck = (deckId: string): boolean => isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || isSpotlightV5Deck(deckId) || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
+
+function isSpotlightV5Deck(deckId: string): boolean {
+  return deckId === 'spotlight-v5' || deckId === 'spotlight-v5-color-edit';
+}
 
 const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -274,6 +282,7 @@ export class GuideService implements OnApplicationBootstrap {
   };
 
   constructor(private readonly runtimePerformance: RuntimePerformanceService = new RuntimePerformanceService()) {
+    migrateColorEditStores(this.dataRoot);
     this.festivalHookSources = new FestivalHookSourceStore(this.dataRoot);
     this.greenHookSource = new GreenHookSourceStore(this.dataRoot);
     this.darkHookSource = new DarkHookSourceStore(this.dataRoot);
@@ -833,6 +842,24 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       throw new NotFoundException('Drive file id is required.');
     }
     return withLocalDataOnly(() => fetchDriveFileAsset(normalizedFileId));
+  }
+
+  async getColorEditedAsset(source: string, preset: string): Promise<Buffer> {
+    if (preset !== COLOR_EDIT_PRESET) throw new BadRequestException('Bộ màu không được hỗ trợ.');
+    if (!source?.startsWith('/assets/') || source.startsWith('//')) throw new BadRequestException('Ảnh phải nằm trong cache cục bộ.');
+    const url = new URL(source, 'http://localhost');
+    let body: Buffer;
+    if (url.pathname === '/assets/drive-file') {
+      const asset = await this.getDriveFileAsset(url.searchParams.get('id') || '');
+      if (asset.isFallback) throw new BadRequestException('Không thể chỉnh màu: ảnh gốc chưa có cache hợp lệ.');
+      body = asset.body;
+    } else if (url.pathname === '/assets/library') body = this.getLibraryAsset(url.searchParams.get('path') || '', url.searchParams.get('root') || 'main');
+    else if (url.pathname === '/assets/workspace') body = this.getWorkspaceAsset(url.searchParams.get('path') || '');
+    else if (/^\/assets\/dalat\/[^/]+$/.test(url.pathname)) body = this.getDalatAsset(decodeURIComponent(url.pathname.split('/')[3]));
+    else if (/^\/assets\/tiktok\/[^/]+\/[^/]+$/.test(url.pathname)) body = this.getTiktokAsset(decodeURIComponent(url.pathname.split('/')[3]), decodeURIComponent(url.pathname.split('/')[4]));
+    else throw new BadRequestException('Nguồn ảnh không được hỗ trợ cho bộ màu.');
+    try { return await getColorEditAsset(body, this.dataRoot, preset); }
+    catch { throw new BadRequestException('Không thể xử lý ảnh Color Edit. Hãy kiểm tra ảnh và thử lại; ảnh gốc vẫn được giữ nguyên.'); }
   }
 
   /**
@@ -1443,7 +1470,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     const page = list.pages?.[pageIndex];
     if (!page) throw new NotFoundException(`Khong tim thay trang: ${pageIndex + 1}`);
 
-    const titleLimit = page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
+    const titleLimit = page.spotlightDesignRevision === 1 && page.type === 'cover' ? 220 : page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
       ? 110
       : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
         ? 220
@@ -1475,10 +1502,21 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     const chipText = page.layoutVariant === 'itinerary-note-timed-day'
       ? this.normalizeEditablePageText(request.chipText ?? page.chipText).slice(0, 40)
       : undefined;
-    const titlePlacement = page.layoutVariant === 'spotlight-v6-diary-page'
+    const editableSpotlightCover = page.type === 'cover' && page.spotlightDesignRevision === 1;
+    const priorCover = store.decks[deckId][listId][String(pageIndex)];
+    const rawCoverImages = editableSpotlightCover ? request.coverImages ?? priorCover?.coverImages : undefined;
+    const coverImages = Array.isArray(rawCoverImages) ? rawCoverImages.map(url => typeof url === 'string' ? url.trim() : url).filter(url => url !== '') : rawCoverImages;
+    const coverApproval = editableSpotlightCover ? request.coverApproval ?? priorCover?.coverApproval : undefined;
+    if (coverImages !== undefined && (!Array.isArray(coverImages) || coverImages.length !== (deckId === 'spotlight-v2' ? 4 : 1)
+      || new Set(coverImages).size !== coverImages.length || coverImages.some(url => !derived.coverImageUrls.includes(url)))) {
+      throw new BadRequestException('Ảnh bìa phải khác nhau và thuộc kho ảnh nền hiện tại.');
+    }
+    if (coverApproval !== undefined && (typeof coverApproval !== 'string' || coverApproval.length > 4000)) throw new BadRequestException('Xác nhận ảnh bìa không hợp lệ.');
+    const titlePlacement = page.layoutVariant === 'spotlight-v6-diary-page' || editableSpotlightCover
       ? request.titlePlacement ?? store.decks[deckId][listId][String(pageIndex)]?.titlePlacement ?? page.titlePlacement
       : undefined;
-    if (titlePlacement && !['top-center', 'center', 'bottom-center'].includes(titlePlacement)) throw new BadRequestException('Vị trí chữ Nhật ký phải là trên, giữa hoặc dưới.');
+    if (titlePlacement && !['top-left', 'top-center', 'top-right', 'mid-left', 'mid-right', 'bottom-left', 'bottom-center', 'bottom-right', 'center'].includes(titlePlacement)) throw new BadRequestException('Vị trí chữ không hợp lệ.');
+    if (page.layoutVariant === 'spotlight-v6-diary-page' && titlePlacement && !['top-center', 'center', 'bottom-center'].includes(titlePlacement)) throw new BadRequestException('Vị trí chữ không hợp lệ.');
     const textScale = request.textScale ?? store.decks[deckId][listId][String(pageIndex)]?.textScale ?? page.textScale ?? 100;
     const textFontSize = request.textFontSize !== undefined ? request.textFontSize : store.decks[deckId][listId][String(pageIndex)]?.textFontSize ?? page.textFontSize ?? null;
     if (textFontSize !== null && (typeof textFontSize !== 'number' || !Number.isFinite(textFontSize) || textFontSize < 8 || textFontSize > 72 || textFontSize * 2 !== Math.round(textFontSize * 2))) throw new BadRequestException('Cỡ chữ phải từ 8 đến 72px, bước 0.5px.');
@@ -1487,15 +1525,17 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       ? request.diaryFontSize ?? store.decks[deckId][listId][String(pageIndex)]?.diaryFontSize ?? page.diaryFontSize ?? 13
       : undefined;
     if (diaryFontSize !== undefined && (typeof diaryFontSize !== 'number' || !Number.isFinite(diaryFontSize) || diaryFontSize < 9 || diaryFontSize > 13 || diaryFontSize * 2 !== Math.round(diaryFontSize * 2))) throw new BadRequestException('Cỡ chữ Nhật ký phải từ 9 đến 13px, bước 0.5px.');
-    store.decks[deckId][listId][String(pageIndex)] = { title, subtitle, textScale, textFontSize, ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
+    store.decks[deckId][listId][String(pageIndex)] = { title, subtitle, textScale, textFontSize, ...(coverImages ? { coverImages } : {}), ...(coverApproval !== undefined ? { coverApproval } : {}), ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
     store.savedAt = new Date().toISOString();
     this.ensureDataRoot();
     this.writeJsonFileSafe(this.getDestinationDataPath('page-text-overrides'), store);
 
-    return { deckId, listId, pageIndex, title, subtitle, textScale, textFontSize, ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
+    return { deckId, listId, pageIndex, title, subtitle, textScale, textFontSize, ...(coverImages ? { coverImages } : {}), ...(coverApproval !== undefined ? { coverApproval } : {}), ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
+    validatePhotoPreset(request.photoPreset, request.deckId);
+    if (LEGACY_COLOR_DECKS[String(request.deckId)]) throw new BadRequestException('Mẫu Color Edit riêng đã chuyển thành lựa chọn Bảng màu. Chọn V5 hoặc V6.');
     return aiProvider.run(() => this.generateDeckFromCaptionWithAi(request));
   }
 
@@ -1525,7 +1565,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       deckId,
     );
 
-    if (!isThreadsLocalDeck(deckId) && !isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && deckId !== 'spotlight-v6-green' && deckId !== 'spotlight-v6-dark' && deckId !== 'spotlight-v6-persimmon' && deckId !== 'spotlight-v6-maps' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
+    if (!isThreadsLocalDeck(deckId) && !isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && !isSpotlightV5Deck(deckId) && deckId !== 'spotlight-v6-green' && deckId !== 'spotlight-v6-dark' && deckId !== 'spotlight-v6-persimmon' && deckId !== 'spotlight-v6-maps' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
       throw new BadRequestException('Cần có tiêu đề cover trước khi tạo list mới.');
     }
 
@@ -1592,7 +1632,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         }
       }
     }
-    if (deckId === 'spotlight-v4' || deckId === 'spotlight-v6') {
+    if (deckId === 'spotlight-v4' || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit')) {
       const availability = spotlightV4VenueAvailability(context.itemsBySection);
       if (availability.partnerCount < 4 || availability.regularCount < 4) {
         throw new BadRequestException(`Mẫu Spotlight V4/V6 cần 4 đối tác và 4 địa điểm thường có ảnh; hiện có ${availability.partnerCount}/4 đối tác, ${availability.regularCount}/4 địa điểm thường.`);
@@ -1755,11 +1795,11 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       ? String((generatedPages.find((page) => page.type === 'list') as ListPage | undefined)?.title || '').trim()
       : deckId === 'spotlight-v6-maps'
       ? currentDeck.navTitle
-      : deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon'
+      : isSpotlightV5Deck(deckId) || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon'
       ? String((generatedPages.find((page) => page.type === 'cover') as CoverPage | undefined)?.title || '').trim()
       : finalCaption.coverTitle;
 
-    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : deckId === 'spotlight-v5' ? 15 : deckId === 'spotlight-v6' || deckId === 'spotlight-v6-maps' ? 14 : deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' ? 11 : isTextNoteDeck(deckId) ? (deckId === THREADS_TOPLIST_ID ? 4 : deckId === 'summary-note' ? 1 : deckId.startsWith('itinerary-note-threads-') ? 1 : 2) : 0;
+    const expectedNonAiPageCount = deckId === 'carousel-mau-1' ? 14 : deckId === 'one-way-story' ? 12 : deckId === 'spotlight-v4' ? 14 : isSpotlightV5Deck(deckId) ? 15 : (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-maps' ? 14 : deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' ? 11 : isTextNoteDeck(deckId) ? (deckId === THREADS_TOPLIST_ID ? 4 : deckId === 'summary-note' ? 1 : deckId.startsWith('itinerary-note-threads-') ? 1 : 2) : 0;
     const threadsLocalCount = deckId === THREADS_MIX_TEXT_ID ? 12 : 10;
     if (isThreadsLocalDeck(deckId) && (generatedPages.length !== 1 || generatedPages[0].type !== 'list' || generatedPages[0].items.length !== threadsLocalCount)) {
       throw new BadRequestException(`Threads ${deckId === THREADS_CAFE_ID ? 'Cà phê' : deckId === THREADS_MIX_TEXT_ID ? 'Tổng hợp chữ' : deckId === THREADS_MIX_ID ? 'Tổng hợp' : 'Quán ăn'} cần đúng 1 list gồm ${threadsLocalCount} địa điểm.`);
@@ -1778,11 +1818,13 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       isNonAiDeck(deckId) ? '' : finalCaption.body,
       generatedPages,
     );
+    Object.assign(generatedList, prepareSpotlightDesign(generatedList, deckId, context.coverImageUrls));
     generatedList.coverTitle = effectiveCoverTitle;
+    applyListPhotoPreset(generatedList, request.photoPreset);
     if (isThreadsLocalDeck(deckId)) generatedList.canvasPreset = 'tiktok-3x4';
     if (deckId === 'spotlight-v6-diary') generatedList.canvasPreset = 'tiktok-3x4';
-    if (deckId === 'spotlight-v5') generatedList.canvasPreset = 'tiktok-4x5';
-    if (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon') generatedList.canvasPreset = 'tiktok-9x16';
+    if (isSpotlightV5Deck(deckId)) generatedList.canvasPreset = 'tiktok-4x5';
+    if ((deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon') generatedList.canvasPreset = 'tiktok-9x16';
     if (deckId === 'spotlight-v6-maps') generatedList.canvasPreset = 'tiktok-3x4';
     if (isTextNoteDeck(deckId)) generatedList.canvasPreset = deckId === THREADS_TOPLIST_ID ? 'tiktok-4x5' : deckId.startsWith('itinerary-note-threads-') ? 'tiktok-3x4' : 'tiktok-9x16';
     generatedList.postCaption = deckId === 'spotlight-v6-persimmon'
@@ -1929,6 +1971,8 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   async generateBatchLists(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    validatePhotoPreset(request.photoPreset, request.deckId);
+    if (LEGACY_COLOR_DECKS[String(request.deckId)]) throw new BadRequestException('Chọn mẫu V5/V6 và bảng màu thay cho mẫu Color Edit riêng.');
     return aiProvider.run(() => this.generateBatchListsWithAi(request));
   }
 
@@ -1978,6 +2022,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
             deckId,
             tone: 'lich_trinh_huu_ich',
             caption: { coverTitle: '', headline: '', body: '', hashtags: [] },
+            photoPreset: request.photoPreset,
             hookSelection: request.hookSelection,
             automationRunId: request.automationRunId,
             automationPosition: `${deckId}:${i + 1}`,
@@ -2071,7 +2116,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           this.collectCaptionForbiddenNames(deckList),
         );
 
-        if (!isThreadsLocalDeck(deckId) && !isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && deckId !== 'spotlight-v5' && !isTextNoteDeck(deckId) && !caption.coverTitle) {
+        if (!isThreadsLocalDeck(deckId) && !isGoogleDocHookDeck(deckId) && !isPremadeHookDeck(deckId) && !isSpotlightV5Deck(deckId) && !isTextNoteDeck(deckId) && !caption.coverTitle) {
           errors.push({ index: i + 1, tone, message: 'Phản hồi AI thiếu tiêu đề cover.' });
           failCount++;
           continue;
@@ -2086,6 +2131,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
             body: caption.body,
             hashtags: caption.hashtags,
           },
+          photoPreset: request.photoPreset,
           hookSelection: request.hookSelection,
           automationRunId: request.automationRunId,
           automationPosition: `${deckId}:${i + 1}`,
@@ -2136,6 +2182,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   async generatePartnerSpotlight(request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
+    validatePhotoPreset(request.photoPreset, 'spotlight-partner');
     this.assertDriveCacheReady();
     const partnerId = String(request.partnerId ?? '').trim();
     const partnerName = String(request.partnerName ?? '').trim();
@@ -2201,6 +2248,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       partnerItem.address || partnerItem.type || '',
       pages,
     );
+    applyListPhotoPreset(generatedList, request.photoPreset);
     generatedList.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
     generatedList.postCaption = SPOTLIGHT_PARTNER_POST_CAPTION;
     generatedList.captionBody = SPOTLIGHT_PARTNER_CAPTION_BODY;
@@ -2467,7 +2515,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         const sanitized = this.sanitizeBaseListForDisplay(list, coverImageUrls);
         return templateVersion ? { ...sanitized, templateVersion } : sanitized;
       });
-      const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => this.sanitizeGeneratedListText(list, deck.id));
+      const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deck.id) ? this.cloneJson(list) : this.sanitizeGeneratedListText(list, deck.id));
       const displayLists = generatedLists.length === 0
         ? baseLists
         : [
@@ -2479,13 +2527,13 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       // Một số bước làm sạch giao diện có fallback chữ để cứu dữ liệu cũ. Áp lại
       // cấu trúc mẫu mẹ sau cùng để fallback không tái tạo trường đã bị xóa.
       const structuredDisplayLists = displayLists.map((list) => (
-        /-main$/i.test(String(list.id || ''))
+        list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deck.id) || /-main$/i.test(String(list.id || ''))
           || String(list.id || '').toLowerCase() === 'main'
           || String(list.navTitle || '').trim().toLowerCase() === 'list chính'
           ? list
           : { ...list, pages: this.applyMainTemplateFieldStructure(deck, list.pages) }
       ));
-      const guardedLists = this.applyRecentImageReuseGuard(structuredDisplayLists);
+      const guardedLists = SPOTLIGHT_DESIGN_DECKS.includes(deck.id) ? structuredDisplayLists : this.applyRecentImageReuseGuard(structuredDisplayLists);
       return { ...deck, lists: this.applyPageTextOverrides(deck.id, guardedLists, pageTextOverrides) };
     });
   }
@@ -2542,7 +2590,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         return { ...page, title: ownOverride.title, subtitle: ownOverride.subtitle,
           ...(ownOverride.textScale !== undefined ? { textScale: ownOverride.textScale } : {}),
           ...(ownOverride.textFontSize !== undefined ? { textFontSize: ownOverride.textFontSize } : {}),
-          ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
+          ...((page.layoutVariant === 'spotlight-v6-diary-page' || page.spotlightDesignRevision === 1) && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
+          ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && ownOverride.coverImages ? { coverImages: ownOverride.coverImages, backgroundImage: ownOverride.coverImages[0] } : {}),
+          ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && ownOverride.coverApproval !== undefined ? { coverApproval: ownOverride.coverApproval } : {}),
           ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.diaryFontSize !== undefined ? { diaryFontSize: ownOverride.diaryFontSize } : {}),
           ...(page.layoutVariant === 'itinerary-note-timed-day' && ownOverride.chipText !== undefined ? { chipText: ownOverride.chipText } : {}),
           ...(page.type === 'list' && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
@@ -2564,7 +2614,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     // Typography is inherited separately when the child snapshot is created.
     if (deck.id === 'spotlight-v6-maps') return pages;
     if (deck.id === 'spotlight-v6-diary') return pages;
-    if (deck.id === 'spotlight-v5' || isTextNoteDeck(deck.id)) return pages;
+    if (isSpotlightV5Deck(deck.id) || isTextNoteDeck(deck.id)) return pages;
     const mainList = deck.lists.find((list) => (
       /-main$/i.test(String(list.id || ''))
       || String(list.id || '').toLowerCase() === 'main'
@@ -2612,7 +2662,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     const recentListImageSets: Array<Set<string>> = [];
 
     return lists.map((list) => {
-      if (list.id.startsWith('spotlight-v6-diary-')) return list;
+      if (list.photoPreset || list.id.startsWith('spotlight-v6-diary-')) return list;
       const recentImageUrls = this.mergeRecentImageSets(recentListImageSets);
       const currentListVisualImageUrls = new Set<string>();
       const currentListItemImageUrls = new Set<string>();
@@ -2706,7 +2756,8 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     if (deckId === 'spotlight-v2') return SPOTLIGHT_V2_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v3') return SPOTLIGHT_V3_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v4') return SPOTLIGHT_V4_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v5') return SPOTLIGHT_V5_TEMPLATE_VERSION;
+    if (isSpotlightV5Deck(deckId)) return SPOTLIGHT_V5_TEMPLATE_VERSION;
+    if (deckId === 'spotlight-v6-color-edit') return 1;
     if (deckId === 'spotlight-v6') return SPOTLIGHT_V6_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v6-green') return SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION;
     if (deckId === 'spotlight-v6-dark') return SPOTLIGHT_V6_DARK_TEMPLATE_VERSION;
@@ -2757,7 +2808,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   private canRefreshGeneratedTemplate(deckId: string): boolean {
     // Snapshot templates retain approved content, even when their template version changes.
     return !isThreadsLocalDeck(deckId) && !isTextNoteDeck(deckId)
-      && !['spotlight-v4', 'spotlight-v5', 'spotlight-v6', 'spotlight-v6-green',
+      && !['spotlight-guide', 'spotlight-v2', 'spotlight-v3', 'spotlight-v4', 'spotlight-v5', 'spotlight-v5-color-edit', 'spotlight-v6', 'spotlight-v6-color-edit', 'spotlight-v6-green',
         'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-diary', 'spotlight-v6-maps'].includes(deckId);
   }
 
@@ -2767,6 +2818,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     usedCoverUrls?: Set<string>,
     deckId?: string,
   ): GuideDeckList {
+    if (list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deckId || '')) return this.cloneJson(list);
     const cleanList = this.sanitizeGeneratedListText(list, deckId);
     if (isThreadsLocalDeck(deckId || '') || deckId === 'spotlight-v6-diary') return cleanList;
     if (!/caption-/i.test(cleanList.id)) return cleanList;
@@ -2794,6 +2846,8 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private sanitizeBaseListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
+    const spotlightId = SPOTLIGHT_DESIGN_DECKS.find(id => list.id === `${id}-main`);
+    if (spotlightId) return prepareSpotlightDesign(this.cloneJson(list), spotlightId, coverImageUrls);
     if (list.id.startsWith(THREADS_FOOD_ID) || list.id.startsWith(THREADS_CAFE_ID) || list.id.startsWith(THREADS_MIX_ID) || list.id.startsWith(THREADS_MIX_TEXT_ID)) return this.cloneJson(list);
     if (list.id.startsWith('spotlight-v6-diary-')) return this.cloneJson(list);
     const pages = list.pages.map((page) => this.sanitizeBasePageForDisplay(page, list));
@@ -3145,6 +3199,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         this.markUsedInDeck(list.pages, renderUsage);
       });
       const refreshedLists = lists.map((list, listIndex) => {
+        if (list.photoPreset) return list;
         if (list.templateVersion === templateVersion) return list;
         if (deckId === 'spotlight-partner') {
           const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
@@ -3422,6 +3477,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
+      if (SPOTLIGHT_DESIGN_DECKS.includes(deckId)) continue;
       if (isThreadsLocalDeck(deckId)) continue;
       // Maps lưu snapshot theo cặp: item của trang Maps phải giữ file Anh_GG_maps.
       // Luồng refresh chung chỉ biết ảnh thật Link_drive và sẽ thay nhầm trang Maps
@@ -3610,9 +3666,11 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
     let changed = false;
     for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (deckId === 'spotlight-v5' || deckId === 'spotlight-v6' || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
+      if (SPOTLIGHT_DESIGN_DECKS.includes(deckId)) continue;
+      if (isSpotlightV5Deck(deckId) || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
       if (isThreadsLocalDeck(deckId)) continue;
       const sanitizedLists = lists.map((list) => {
+        if (list.photoPreset) return list;
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
         return sanitizedList;

@@ -34,7 +34,8 @@ try {
       id: `spotlight-${version}-saved-list`,
       pages: Array.from({ length: 8 }, (_, index) => ({
         type: 'list',
-        layoutVariant: `spotlight-${version}-page`,
+        layoutVariant: version === 'v6-color-edit' ? 'spotlight-v6-page' : `spotlight-${version}-page`,
+        ...(version === 'v6-color-edit' ? { photoPreset: 'iphone-color-edit-v1' } : {}),
         title: `Địa điểm ${index + 1}`,
         backgroundImage: `/assets/drive-file?id=venue-${index + 1}`,
         items: [{
@@ -48,7 +49,7 @@ try {
       })),
     });
     const outputs = [];
-    for (const version of ['v4', 'v6']) {
+    for (const version of ['v4', 'v6', 'v6-color-edit']) {
       for (const partnerCount of [0, 3, 4]) {
         const list = JSON.parse(JSON.stringify(makeList(version, partnerCount)));
         const names = SpotlightExportTest.collectPartnerNames(list);

@@ -207,6 +207,29 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
       }
     };
 
+    root.querySelectorAll('img.color-edit-photo').forEach((img) => {
+      let notice;
+      const clearNotice = () => { notice?.remove(); notice = null; };
+      const showError = () => {
+        if (cancelled || notice) return;
+        notice = document.createElement('button');
+        notice.type = 'button';
+        notice.textContent = 'Không xử lý được ảnh Color Edit. Bấm để thử lại.';
+        notice.style.cssText = 'position:absolute;inset:35% 8%;z-index:5;color:white;background:#202020;border:1px solid #fff;padding:12px;cursor:pointer';
+        notice.onclick = event => {
+          event.stopPropagation();
+          clearNotice();
+          const url = new URL(img.src, window.location.href);
+          url.searchParams.set('_retry', String(Date.now()));
+          img.src = url.href;
+        };
+        img.parentElement.appendChild(notice);
+      };
+      img.addEventListener('error', showError);
+      img.addEventListener('load', clearNotice);
+      if (img.complete && !img.naturalWidth) showError();
+    });
+
     root.querySelectorAll('img[data-candidate-srcs]').forEach((img) => {
       img.addEventListener('error', () => {
         const next = tryNextCandidate(img);

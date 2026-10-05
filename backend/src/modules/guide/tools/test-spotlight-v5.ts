@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
-import { buildSpotlightV5Pages, getV2DeckDefinitions, V2_DECK_IDS } from '../logic/deck-builder-v2';
+import { buildSpotlightV5Pages, buildPagesForDeckV2, getV2DeckDefinitions, V2_DECK_IDS } from '../logic/deck-builder-v2';
 import { setActiveDestinationLocalize } from '../sync/destination-localize';
 
 const keys: SectionKey[] = ['quan_an','cafe','check_in','khu_du_lich','hoat_dong','dia_diem_lich_su','choi_dem','homestay','dich_vu'];
@@ -22,5 +22,14 @@ assert.throws(() => buildSpotlightV5Pages({itemsBySection,imageUrls:[],libraryEn
 assert.throws(() => buildSpotlightV5Pages({itemsBySection:{...itemsBySection, quan_an:[]},imageUrls:[],libraryEntries:[],coverImageUrls:hinhNen},'short-place'), /ít nhất 13 địa điểm/);
 const shortPartnerItems = Object.fromEntries(Object.entries(itemsBySection).map(([key, items]) => [key, items.map((entry, index) => ({ ...entry, isPartner: index === 0 && ['quan_an','cafe','khu_du_lich'].includes(key), partnerFlag: index === 0 ? 'X' : '' }))])) as WorkbookItemsBySection;
 assert.throws(() => buildSpotlightV5Pages({itemsBySection:shortPartnerItems,imageUrls:[],libraryEntries:[],coverImageUrls:hinhNen},'short-partner'), /ít nhất 7 địa điểm đối tác có ảnh \(3\/7\)/);
+const original = buildPagesForDeckV2('spotlight-v5', itemsBySection, [], [], 'same-seed', undefined, undefined, hinhNen);
+const edited = buildPagesForDeckV2('spotlight-v5-color-edit', itemsBySection, [], [], 'same-seed', undefined, undefined, hinhNen);
+assert.ok(edited.every(page => page.photoPreset === 'iphone-color-edit-v1'));
+assert.ok(original.every(page => !page.photoPreset));
+assert.deepEqual(edited.map(({photoPreset, ...page}) => page), original, 'The copy only adds a preset; original layout/content selection unchanged');
+assert.ok(!getV2DeckDefinitions({itemsBySection,imageUrls:[],libraryEntries:[],coverImageUrls:hinhNen}).some(d => d.id === 'spotlight-v5-color-edit'));
+const shortCatalog=getV2DeckDefinitions({itemsBySection:shortPartnerItems,imageUrls:[],libraryEntries:[],coverImageUrls:hinhNen});
+assert.ok(!shortCatalog.some(d => d.id === 'spotlight-v5-color-edit'));
 setActiveDestinationLocalize('greenland'); assert.throws(() => buildSpotlightV5Pages({itemsBySection,imageUrls:[],libraryEntries:[],coverImageUrls:hinhNen},'green'), /chỉ áp dụng cho Đà Lạt/);
+assert.ok(!getV2DeckDefinitions({itemsBySection,imageUrls:[],libraryEntries:[],coverImageUrls:hinhNen}).some(d => d.id === 'spotlight-v5-color-edit'));
 console.log('PASS spotlight-v5 builder: 15 trang, hook/playlist cố định, pool địa điểm+ảnh không trùng, catalog chỉ Đà Lạt.');
