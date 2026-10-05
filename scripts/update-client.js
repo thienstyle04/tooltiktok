@@ -117,7 +117,12 @@ async function waitForIdle(timeoutMs) {
   fail('Tool vẫn đang xử lý tác vụ hoặc backend không phản hồi; chưa cài bản mới.');
 }
 function launch(root) {
-  spawn('cmd.exe', ['/d', '/c', path.join(root, 'start.bat')], { cwd: root, detached: true, windowsHide: true, stdio: 'ignore' }).unref();
+  // The helper inherits the old release's environment. A stable-root launcher
+  // must resolve current.json instead of treating the root as that release.
+  const env = { ...process.env };
+  delete env.DALAT_INSTALL_ROOT;
+  delete env.DALAT_DATA_DIR;
+  spawn('cmd.exe', ['/d', '/c', path.join(root, 'start.bat')], { cwd: root, env, detached: true, windowsHide: true, stdio: 'ignore' }).unref();
 }
 async function apply(rootArgument) {
   if (process.platform !== 'win32') fail('Trình cập nhật này chỉ hỗ trợ Windows.');

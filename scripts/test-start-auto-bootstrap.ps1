@@ -23,12 +23,16 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "First start failed: $LASTEXITCODE" }
     & (Join-Path $root 'start.bat')
     if ($LASTEXITCODE -ne 0) { throw "Second start failed: $LASTEXITCODE" }
+    # Restarted by an older updater: stable root receives a release environment.
+    $env:DALAT_INSTALL_ROOT = $root
+    & (Join-Path $root 'start.bat')
+    if ($LASTEXITCODE -ne 0) { throw "Inherited-environment restart failed: $LASTEXITCODE" }
     $bootstrapCount = @(Get-Content -LiteralPath (Join-Path $root 'shared\bootstrap-count.txt'))
     $launchCount = @(Get-Content -LiteralPath (Join-Path $root 'shared\launch-count.txt'))
-    if ($bootstrapCount.Count -ne 1 -or $launchCount.Count -ne 2) {
+    if ($bootstrapCount.Count -ne 1 -or $launchCount.Count -ne 3) {
         throw "Unexpected calls: bootstrap=$($bootstrapCount.Count), launch=$($launchCount.Count)"
     }
-    Write-Host "PASS start.bat auto-bootstrap once; fixture: $root"
+    Write-Host "PASS start.bat auto-bootstrap once and inherited updater environment; fixture: $root"
 } finally {
     if ($null -eq $previousInstallRoot) {
         Remove-Item Env:DALAT_INSTALL_ROOT -ErrorAction SilentlyContinue

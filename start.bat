@@ -2,6 +2,10 @@
 title Khoi dong Dalat TikTok Carousel Tool
 cd /d "%~dp0"
 
+rem A stable root must dispatch its pointer even when the updater inherited
+rem DALAT_INSTALL_ROOT from the previous backend. It has no backend/frontend.
+if exist "%~dp0shared\current.json" goto DISPATCH_CURRENT
+
 rem A release launched by launch-current.ps1 already has a stable install root.
 if defined DALAT_INSTALL_ROOT goto RUN_RELEASE
 
@@ -18,6 +22,7 @@ if not exist "%~dp0shared\current.json" (
 )
 
 rem Stable install root: dispatch to one complete backend/frontend release.
+:DISPATCH_CURRENT
 if exist "%~dp0shared\current.json" (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\launch-current.ps1" -InstallRoot "%~dp0."
   exit /b %errorlevel%
