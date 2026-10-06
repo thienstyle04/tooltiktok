@@ -108,6 +108,16 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [photoPresets, setPhotoPresets] = useState(DEFAULT_PHOTO_PRESETS);
+  const [scheduleHookSources, setScheduleHookSources] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    setScheduleHookSources(null);
+    apiFetch('/api/hook-sources?destinationId=' + encodeURIComponent(form.destinationId))
+      .then(response => response.ok ? response.json() : null)
+      .then(value => { if (!cancelled) setScheduleHookSources(value); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [form.destinationId]);
   useEffect(() => {
     apiFetch('/api/photo-presets').then(response=>response.ok?response.json():Promise.reject())
       .then(value=>{
@@ -116,20 +126,23 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       }).catch(()=>setPhotoPresets([{id:null,label:'Ảnh gốc'}]));
   }, []);
   const outputPickerReady = state.outputPicker === 'save-file-v1';
+  const isDalatSource = (id) => ((destinations || []).find(entry => entry.id === id)?.contentDestinationId || id) === 'dalat';
 
   const decks = useMemo(() => {
     const entries = new Map((dataset?.decks || [])
       .filter((deck) => deck.id !== 'spotlight-partner' && (deck.lists || []).some((list) => listIsMain(list)))
       .map((deck) => [deck.id, deck]));
-    if (form.destinationId === 'dalat') {
+    if (isDalatSource(form.destinationId)) {
       for (const deck of DALAT_EXTRA_DECKS) if (!entries.has(deck.id)) entries.set(deck.id, deck);
     }
-    return [...entries.values()].filter((deck) => form.destinationId === 'dalat' || !DALAT_ONLY_DECKS.has(deck.id));
-  }, [dataset, form.destinationId]);
+    return [...entries.values()].filter((deck) => isDalatSource(form.destinationId) || !DALAT_ONLY_DECKS.has(deck.id));
+  }, [dataset, form.destinationId, destinations]);
   const total = form.templates.reduce((sum, entry) => sum + Number(entry.count || 0), 0);
   const templateLabel = (id) => dataset?.decks?.find(deck => deck.id === id)?.navTitle
     || DALAT_EXTRA_DECKS.find(deck => deck.id === id)?.navTitle || id;
-  const festivalSources = (hookSourcesInfo?.sources || []).filter((entry) => entry.cacheStatus === 'ready');
+  const targetHooks = scheduleHookSources?.destinationId === form.destinationId ? scheduleHookSources
+    : hookSourcesInfo?.destinationId === form.destinationId ? hookSourcesInfo : null;
+  const festivalSources = (targetHooks?.sources || []).filter((entry) => entry.cacheStatus === 'ready');
   const saveDisabledReason = busy
     ? 'Đang lưu lịch...'
     : !form.outputDir
@@ -267,7 +280,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
         {form.frequency === 'once' ? <label><span>Ngày giờ bắt đầu</span><input required type="datetime-local" value={form.onceAt} onChange={(e) => setForm({ ...form, onceAt: e.target.value })} /></label> : <label><span>Giờ bắt đầu mỗi ngày</span><input required type="time" value={form.dailyTime} onChange={(e) => setForm({ ...form, dailyTime: e.target.value })} /></label>}
         <label className="automation-output"><span>File ZIP sẽ lưu</span><div><output title={form.outputPath}>{form.outputPath || 'Chưa chọn file ZIP'}</output><button type="button" onClick={chooseDirectory} disabled={busy || !outputPickerReady}>{outputPickerReady ? 'Chọn file ZIP' : 'Cần chạy lại start.bat'}</button></div><small>{outputPickerReady ? 'Windows sẽ mở hộp thoại để chọn thư mục và tên file. Mỗi lượt được đặt trong thư mục riêng nên không ghi đè lượt cũ.' : 'Frontend đang nối với backend cũ. Hãy đóng tool và chạy lại start.bat; tải lại trang không đủ để cập nhật backend.'}</small></label>
         <label><span>Định dạng ảnh</span><select value={form.format} onChange={e => setForm({ ...form, format: e.target.value })}><option value="png">PNG</option><option value="jpg">JPG</option></select></label>
-        <label><span>Hook của lịch</span><select value={form.hookMode} onChange={(e) => setForm({ ...form, hookMode: e.target.value, sourceId: '' })}><option value="normal">Hook thường</option>{form.destinationId === 'dalat' ? <option value="festival">Hook lễ đã lưu</option> : null}</select></label>
+        <label><span>Hook của lịch</span><select value={form.hookMode} onChange={(e) => setForm({ ...form, hookMode: e.target.value, sourceId: '' })}><option value="normal">Hook thường</option>{isDalatSource(form.destinationId) ? <option value="festival">Hook lễ đã lưu</option> : null}</select></label>
         {form.hookMode === 'festival' ? <label><span>Nguồn Hook lễ</span><select required value={form.sourceId} onChange={(e) => setForm({ ...form, sourceId: e.target.value })}><option value="">Chọn nguồn</option>{festivalSources.map((source) => <option key={source.id} value={source.id}>{source.name} ({source.hookCount})</option>)}</select></label> : null}
 
         <div className="automation-template-picker">
@@ -284,7 +297,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       <div className="automation-list" hidden={section!=='saved'}>
         <h3>Lịch đã lưu</h3>
         {state.schedules.length ? state.schedules.map((schedule) => <article key={schedule.id}>
-          <div><strong>{schedule.name}</strong><small>{schedule.destinationId === 'dalat' ? 'Đà Lạt' : 'Green Land'} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small></div>
+          <div><strong>{schedule.name}</strong><small>{(destinations || []).find(entry => entry.id === schedule.destinationId)?.label || schedule.destinationId} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small></div>
           <div className="automation-row-actions"><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/run-now`, { method: 'POST' })} disabled={busy || state.locked}>Chạy ngay</button><button onClick={() => edit(schedule)} disabled={busy || state.activeRunId && state.runs.find((run) => run.id === state.activeRunId)?.scheduleId === schedule.id}>Sửa</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/enabled`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !schedule.enabled }) })} disabled={busy}>{schedule.enabled ? 'Tắt' : 'Bật'}</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}`, { method: 'DELETE' })} disabled={busy}>Xóa</button></div>
         </article>) : <p className="automation-empty">Chưa có lịch tự động.</p>}
       </div>
@@ -293,9 +306,9 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
         <h3>Lịch sử chạy</h3>
         {state.runs.length ? state.runs.map((run) => <article key={run.id}>
           <div><strong>{run.scheduleName} — {STATUS_LABELS[run.status] || run.status}</strong><small>{new Date(run.scheduledFor).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {run.listIds.length} list</small><small>{run.phase}</small>{run.ai ? <small>AI: {run.ai.provider} · {run.ai.model}</small> : null}{run.outputPath ? <small className="automation-path">{run.outputPath}</small> : null}
-            {run.skippedLists?.length > 0 && <details><summary>{run.skippedLists.length} list bị bỏ qua do lỗi ảnh</summary>
+            {run.skippedLists?.length > 0 && <details><summary>{run.skippedLists.length} list bị bỏ qua (đối tác, dữ liệu hoặc ảnh)</summary>
               {run.skippedLists.map(list => <div key={`${list.deckId}/${list.listId}`}><strong>{list.label || list.listId}</strong>
-                {list.errors.map((error, index) => <small key={index} style={{ overflowWrap: 'anywhere' }}>Trang {error.page} · {error.id || ''}: {error.reason}</small>)}
+                {(list.errors || []).map((error, index) => <small key={index} style={{ overflowWrap: 'anywhere' }}>{error.page ? `Trang ${error.page} · ` : ''}{error.id || ''}: {error.reason}</small>)}
               </div>)}
             </details>}
           </div>

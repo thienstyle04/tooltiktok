@@ -34,3 +34,5 @@ backend/data/hook-sources.*.json
 backend/data/automation-*.json
 backend/data/night-sync*.json
 backend/data/night-sync*.tmp
+backend/data/source-hooks/
+backend/data/source-snapshots/

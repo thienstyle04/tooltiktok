@@ -1,4 +1,4 @@
-import { DestinationId, DEFAULT_DESTINATION_ID, getDestinationConfig } from './destination-config';
+import { DestinationId, DEFAULT_DESTINATION_ID, getDestinationConfig, contentDestinationId } from './destination-config';
 import { GuideDeck, GuideDeckList, DeckPage, PageItem } from '../../../common/interfaces/guide.types';
 
 export interface DestinationMarketingCopy {
@@ -76,6 +76,7 @@ let activeDestinationId: DestinationId = DEFAULT_DESTINATION_ID;
 
 /** dalat + greenland đều dùng nguyên văn địa danh "Đà Lạt" trong nội dung — chỉ phanthiet mới cần thay chữ. */
 function skipsTextLocalization(id: DestinationId): boolean {
+  id = contentDestinationId(id);
   return id === 'dalat' || id === 'greenland';
 }
 
@@ -232,6 +233,7 @@ export function resolveDeckIdFromListId(listId: string): string | undefined {
 }
 
 export function getDeckHashtagExtras(deckId: string, id: DestinationId = activeDestinationId): [string, string] {
+  id = contentDestinationId(id);
   const extras = DECK_HASHTAG_EXTRAS[id]?.[deckId];
   if (extras) return [localizeHashtag(extras[0], id), localizeHashtag(extras[1], id)];
   const copy = getMarketingCopy(id);
@@ -278,6 +280,7 @@ export function buildCaptionHashtags(
   id: DestinationId = activeDestinationId,
   deckId?: string,
 ): string[] {
+  id = contentDestinationId(id);
   const copy = getMarketingCopy(id);
   if (deckId) {
     const deckExtras = getDeckHashtagExtras(deckId, id);
@@ -319,7 +322,7 @@ export function buildCaptionHashtags(
 }
 
 export function setActiveDestinationLocalize(id: DestinationId): void {
-  activeDestinationId = id;
+  activeDestinationId = contentDestinationId(id);
 }
 
 export function getActiveDestinationLocalize(): DestinationId {
@@ -327,6 +330,7 @@ export function getActiveDestinationLocalize(): DestinationId {
 }
 
 export function getMarketingCopy(id: DestinationId = activeDestinationId): DestinationMarketingCopy {
+  id = contentDestinationId(id);
   const existing = DESTINATION_MARKETING_COPY[id];
   if (existing) return existing;
 
@@ -361,7 +365,7 @@ export function getMarketingCopy(id: DestinationId = activeDestinationId): Desti
 }
 
 export function cityLabel(id: DestinationId = activeDestinationId): string {
-  return getDestinationConfig(id).label;
+  return getMarketingCopy(id).label;
 }
 
 export function cityLabelUpper(id: DestinationId = activeDestinationId): string {
@@ -369,7 +373,7 @@ export function cityLabelUpper(id: DestinationId = activeDestinationId): string 
 }
 
 export function cityShortLabel(id: DestinationId = activeDestinationId): string {
-  return getDestinationConfig(id).shortLabel;
+  return getMarketingCopy(id).shortLabel;
 }
 
 export function localizeText(text: string, id: DestinationId = activeDestinationId): string {

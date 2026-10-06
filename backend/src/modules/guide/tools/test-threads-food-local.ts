@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { buildThreadsCafePages, buildThreadsFoodPages, buildThreadsMixPages, buildThreadsMixTextPages, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from '../logic/threads-food-local';
+import { setActiveDestinationLocalize } from '../sync/destination-localize';
 
 function food(index: number, partner: boolean, classification = 'Local'): GuideItem {
   const id = (partner ? 'partner-' : 'local-') + index;
@@ -23,9 +24,39 @@ const pool = (partners: number, locals: number) => ({
   ],
 }) as WorkbookItemsBySection;
 
-assert.throws(() => buildThreadsFoodPages(pool(0, 8), 'empty'), /đối tác có địa chỉ \(hiện có 0\)/);
-assert.throws(() => buildThreadsFoodPages(pool(4, 8), 'four'), /đối tác có địa chỉ \(hiện có 4\)/);
-assert.throws(() => buildThreadsFoodPages(pool(7, 4), 'few-local'), /Local.*\(hiện có 4\)/);
+assert.throws(() => buildThreadsFoodPages(pool(0, 12), 'empty'), /ít nhất 1 đối tác.*Hiện có 0/);
+for (const count of [1, 3, 4, 5, 7]) {
+  const result = buildThreadsFoodPages(pool(count, 12), 'ratio-' + count)[0];
+  if (result.type !== 'list') throw new Error('Expected list');
+  const expected = Math.min(5, count);
+  assert.equal(result.items.length, 10);
+  assert.equal(result.items.filter(item => item.isPartner).length, expected);
+  assert.ok(result.items.slice(0, expected).every(item => item.isPartner));
+  assert.ok(result.items.slice(expected).every(item => item.isLocal && !item.isPartner));
+  assert.equal(new Set(result.items.filter(item => item.imageUrl).map(item => item.imageUrl)).size, 6);
+}
+assert.throws(() => buildThreadsFoodPages(pool(7, 4), 'few-local'), /4\/5 quán Local/);
+for (const sourceId of ['dalat', 'dalat-test']) {
+  setActiveDestinationLocalize(sourceId);
+  for (const count of [0, 1, 3, 4, 5, 7]) {
+    const foods = pool(count, 12).quan_an;
+    const cafes = { cafe: foods.map(item => ({ ...item, sectionKey: 'cafe' })) } as WorkbookItemsBySection;
+    if (!count) { assert.throws(() => buildThreadsCafePages(cafes, sourceId), /ít nhất 1 đối tác/); continue; }
+    const result = buildThreadsCafePages(cafes, `${sourceId}-${count}`)[0];
+    if (result.type !== 'list') throw new Error('Expected list');
+    assert.equal(result.items.filter(item => item.isPartner).length, Math.min(5, count));
+  }
+}
+setActiveDestinationLocalize('dalat');
+const duplicatePhotos = pool(5, 6);
+for (const item of duplicatePhotos.quan_an) item.imageUrl = '/assets/drive-file?id=same-photo';
+assert.throws(() => buildThreadsFoodPages(duplicatePhotos, 'duplicate-photos'), /6 ảnh riêng/);
+const duplicateNames = pool(1, 9);
+duplicateNames.quan_an.push({ ...duplicateNames.quan_an[0] });
+const deduplicated = buildThreadsFoodPages(duplicateNames, 'duplicate-name')[0];
+if (deduplicated.type !== 'list') throw new Error('Expected list');
+assert.equal(new Set(deduplicated.items.map(item => item.name)).size, 10);
+assert.equal(deduplicated.items.filter(item => item.isPartner).length, 1);
 
 const built = buildThreadsFoodPages(pool(7, 10), 'first');
 assert.equal(built.length, 1);
@@ -50,10 +81,17 @@ assert.ok(next.items.some((item) => !page.items.some((previous) => previous.name
 
 const noPhoto = pool(7, 10);
 for (const item of noPhoto.quan_an.filter((item) => item.isPartner).slice(2)) item.imageMapped = false;
-assert.throws(() => buildThreadsFoodPages(noPhoto, 'no-photo'), /ảnh riêng hợp lệ/);
+const twoPhotos = buildThreadsFoodPages(noPhoto, 'no-photo')[0];
+if (twoPhotos.type !== 'list') throw new Error('Expected list');
+assert.equal(twoPhotos.items.filter(item => item.isPartner && item.imageUrl).length, 2);
+assert.equal(twoPhotos.items.filter(item => item.isLocal && item.imageUrl).length, 4);
+for (const item of noPhoto.quan_an) item.imageMapped = false;
+assert.throws(() => buildThreadsFoodPages(noPhoto, 'no-photos'), /6 ảnh riêng hợp lệ/);
 const noAddress = pool(7, 10);
 for (const item of noAddress.quan_an.filter((item) => item.isPartner).slice(4)) item.address = '';
-assert.throws(() => buildThreadsFoodPages(noAddress, 'no-address'), /đối tác có địa chỉ \(hiện có 4\)/);
+const fourAddresses = buildThreadsFoodPages(noAddress, 'no-address')[0];
+if (fourAddresses.type !== 'list') throw new Error('Expected list');
+assert.equal(fourAddresses.items.filter(item => item.isPartner).length, 4);
 const cafePool = { cafe: pool(7, 10).quan_an.map((item) => ({ ...item, sectionKey: 'cafe' })) } as WorkbookItemsBySection;
 const cafePages = buildThreadsCafePages(cafePool, 'cafe-first');
 assert.equal(cafePages.length, 1);
@@ -66,7 +104,7 @@ assert.equal(cafePages[0].items.filter((item) => item.imageUrl).length, 6);
 assert.ok(cafePages[0].items.every((item) => item.sourceSectionKey === 'cafe'));
 assert.ok(cafePages[0].title.includes('Cà phê'));
 assert.ok(threadsCafeCaption().includes('?'));
-assert.throws(() => buildThreadsCafePages({ cafe: cafePool.cafe.filter((item) => !item.isPartner) } as WorkbookItemsBySection, 'no-cafe-partner'), /Threads Cà phê cần 5 quán đối tác/);
+assert.throws(() => buildThreadsCafePages({ cafe: cafePool.cafe.filter((item) => !item.isPartner) } as WorkbookItemsBySection, 'no-cafe-partner'), /Threads Cà phê cần ít nhất 1 đối tác/);
 const mixedItem = (index: number, sectionKey: SectionKey, partner: boolean): GuideItem => ({
   ...food(index, partner), sectionKey,
 });

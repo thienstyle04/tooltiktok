@@ -5,6 +5,7 @@ import mammoth from 'mammoth';
 
 import { HookMode, HookSourceSummary, HookSourceType, HookSourcesResponse } from '../../../common/interfaces/guide.types';
 
+import { isDalatContentSource } from './destination-config';
 export const MAX_HOOK_SOURCE_FILE_BYTES = 5 * 1024 * 1024;
 export const FESTIVAL_HOOK_DESTINATION_ID = 'dalat';
 export const FESTIVAL_HOOK_DECK_IDS = ['spotlight-guide', 'spotlight-v2', 'spotlight-v3', 'spotlight-v4', 'spotlight-v6', 'spotlight-v6-diary', 'carousel-mau-1'] as const;
@@ -85,9 +86,9 @@ export class FestivalHookSourceStore {
   }
 
   getStatus(activeDestinationId: string): HookSourcesResponse {
-    const available = activeDestinationId === FESTIVAL_HOOK_DESTINATION_ID;
+    const available = isDalatContentSource(activeDestinationId);
     return {
-      destinationId: FESTIVAL_HOOK_DESTINATION_ID, available,
+      destinationId: activeDestinationId, available,
       mode: available ? this.state.mode : 'normal',
       activeSourceId: available && this.state.mode === 'festival' ? this.state.activeSourceId : '',
       eligibleDeckIds: [...FESTIVAL_HOOK_DECK_IDS],
@@ -154,7 +155,7 @@ export class FestivalHookSourceStore {
 
   setMode(mode: HookMode, sourceId: string, activeDestinationId: string): void {
     this.assertMutable();
-    if (activeDestinationId !== FESTIVAL_HOOK_DESTINATION_ID) throw new Error('Hook lễ chỉ áp dụng cho nguồn Đà Lạt.');
+    if (!isDalatContentSource(activeDestinationId)) throw new Error('Hook lễ chỉ áp dụng cho nguồn Đà Lạt.');
     if (mode !== 'normal' && mode !== 'festival') throw new Error('Chế độ hook không hợp lệ.');
     if (mode === 'festival') {
       const source = this.requireSource(sourceId);
@@ -190,7 +191,7 @@ export class FestivalHookSourceStore {
   ): HookReservation | null {
     const mode = selection?.mode || this.state.mode;
     const sourceId = selection?.mode === 'festival' ? String(selection.sourceId || '').trim() : this.state.activeSourceId;
-    if (destinationId !== FESTIVAL_HOOK_DESTINATION_ID || mode !== 'festival' || !FESTIVAL_HOOK_DECK_IDS.includes(deckId as typeof FESTIVAL_HOOK_DECK_IDS[number])) return null;
+    if (!isDalatContentSource(destinationId) || mode !== 'festival' || !FESTIVAL_HOOK_DECK_IDS.includes(deckId as typeof FESTIVAL_HOOK_DECK_IDS[number])) return null;
     if (this.mutating) throw new Error('Nguồn Hook lễ đang được cập nhật. Vui lòng thử lại sau.');
     const source = this.requireSource(sourceId);
     const reserved = new Set([...this.reservations.values()].filter((entry) => entry.sourceId === source.id).map((entry) => entry.key));

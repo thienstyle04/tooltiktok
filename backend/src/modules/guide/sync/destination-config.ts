@@ -9,6 +9,8 @@ export interface DestinationConfig {
   exportUrl: string;
   workbookName: string;
   sourceType: DestinationSourceType;
+  /** Geographic copy/template capabilities; storage is always scoped by id. */
+  contentDestinationId?: DestinationId;
   /** Tên file XLSX mặc định nằm trong backend/resources/workbooks. */
   bundledWorkbookFile?: string;
   /** Tên file gốc do người dùng nhập, dùng để hiển thị trên giao diện. */
@@ -24,9 +26,11 @@ export interface DestinationInfo {
   sheetUrl: string;
   sourceType: DestinationSourceType;
   workbookFileName: string;
+  contentDestinationId?: DestinationId;
 }
 
 export const DEFAULT_DESTINATION_ID: DestinationId = 'dalat';
+export const DALAT_TEST_SHEET_ID = '1QlMXQ1XH-uHS6bBEC7Pps5f1p9rYJ780';
 
 export const DESTINATIONS: Record<DestinationId, DestinationConfig> = {
   dalat: {
@@ -60,7 +64,26 @@ export const DESTINATIONS: Record<DestinationId, DestinationConfig> = {
     bundledWorkbookFile: 'greenland.xlsx',
     partnerFirst: true,
   },
+  'dalat-test': {
+    id: 'dalat-test', label: 'Đà Lạt Test', shortLabel: 'ĐLT',
+    sheetUrl: `https://docs.google.com/spreadsheets/d/${DALAT_TEST_SHEET_ID}/edit`,
+    exportUrl: `https://docs.google.com/spreadsheets/d/${DALAT_TEST_SHEET_ID}/export?format=xlsx`,
+    workbookName: 'Đà Lạt Test.xlsx', workbookFileName: 'Đà Lạt Test.xlsx',
+    sourceType: 'google-sheet', contentDestinationId: 'dalat',
+  },
 };
+
+export function isDalatTestSource(id: DestinationId): boolean {
+  return DESTINATIONS[id]?.sheetUrl.includes(`/d/${DALAT_TEST_SHEET_ID}/`) === true;
+}
+
+export function contentDestinationId(id: DestinationId): DestinationId {
+  return DESTINATIONS[id]?.contentDestinationId || id;
+}
+
+export function isDalatContentSource(id: DestinationId): boolean {
+  return contentDestinationId(id) === 'dalat';
+}
 
 export function getDestinationList(): DestinationConfig[] {
   return Object.values(DESTINATIONS);
@@ -100,5 +123,6 @@ export function toDestinationInfo(config: DestinationConfig): DestinationInfo {
     sheetUrl: config.sheetUrl,
     sourceType: config.sourceType,
     workbookFileName: config.workbookFileName || config.workbookName,
+    contentDestinationId: contentDestinationId(config.id),
   };
 }

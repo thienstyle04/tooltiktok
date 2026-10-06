@@ -1583,7 +1583,7 @@ function assertPartnerExportReady(list, deckId = '') {
   // Use exactly the names written to this template's XLSX, not a raw count of
   // isPartner flags: hidden/unrendered partners must not pass the export gate.
   const names = isThreadsLocalDeck(deckId)
-    ? threadsFoodPayload(list).partnerNames
+    ? (list.pages || []).flatMap(page => (page.items || []).filter(item => item.isPartner === true).map(item => String(item.name || '').trim())).filter(Boolean)
     : collectPartnerNames(list);
   if (!names.length) {
     const label = String(list?.navTitle || list?.title || list?.id || deckId).trim();
@@ -1591,6 +1591,7 @@ function assertPartnerExportReady(list, deckId = '') {
     error.code = 'EXPORT_PARTNER_REQUIRED';
     throw error;
   }
+  if (isThreadsLocalDeck(deckId)) threadsFoodPayload(list);
   assertSpotlightV4V6PartnerExportReady(list, deckId);
   assertItineraryNoteDarkPartnerExportReady(list, deckId);
   return names;
@@ -1599,20 +1600,48 @@ function assertPartnerExportReady(list, deckId = '') {
 function assertExportContextPartners(context, batch = false) {
   if (batch) {
     const selected = new Set(context.selectedListIds || []);
-    const errors = [];
+    const validIds = new Set();
+    const skippedLists = [...(context._partnerSkippedLists || [])];
     for (const deck of context.dataset?.decks || []) for (const list of deck.lists || []) {
       if (!selected.has(list.id) || listIsMain(list)) continue;
-      try { assertPartnerExportReady(resolveExportList(deck, list, context.dataset), deck.id); }
-      catch (error) { errors.push(error.message); }
+      try {
+        assertPartnerExportReady(resolveExportList(deck, list, context.dataset), deck.id);
+        validIds.add(list.id);
+      } catch (error) {
+        const deckName = deck.navTitle || deck.title || deck.id;
+        const listName = list.navTitle || list.title || list.id;
+        skippedLists.push({ deckId: deck.id, listId: list.id, deckName, listName,
+          label: `${deckName} / ${listName}`, code: error.code || 'EXPORT_LIST_INVALID',
+          errors: [{ page: null, id: '', reason: error.message }] });
+      }
     }
-    if (errors.length) {
-      const error = new Error(`Đã dừng xuất hàng loạt: ${errors.length} list chưa đạt kiểm tra đối tác. ${errors.join(' ')} Bỏ chọn các list này hoặc tạo lại trước khi xuất.`);
+    if (skippedLists.length && !validIds.size) {
+      const error = new Error(`Không có list hợp lệ để xuất; không tạo ZIP rỗng. ${formatSkippedListSummary(skippedLists)}`);
       error.code = 'EXPORT_PARTNER_REQUIRED';
+      error.skippedLists = skippedLists;
       throw error;
     }
+    return { ...context, selectedListIds: validIds, _partnerSkippedLists: skippedLists };
   } else if (context.deck && context.list) {
-    assertPartnerExportReady(resolveExportList(context.deck, context.list, context.dataset), context.deck.id);
+    try { assertPartnerExportReady(resolveExportList(context.deck, context.list, context.dataset), context.deck.id); }
+    catch (error) {
+      error.message = `${context.deck.navTitle || context.deck.title || context.deck.id} / ${context.list.navTitle || context.list.title || context.list.id}: ${error.message}`;
+      throw error;
+    }
   }
+  return context;
+}
+
+export function formatSkippedListSummary(skippedLists = []) {
+  if (!skippedLists.length) return '';
+  const groups = new Map();
+  for (const list of skippedLists) {
+    const name = list.deckName || list.label?.split(' / ')[0] || list.deckId;
+    const entries = groups.get(name) || [];
+    entries.push(`${list.listName || list.label?.split(' / ').slice(1).join(' / ') || list.listId} (${(list.errors || []).map(error => error.reason).join('; ')})`);
+    groups.set(name, entries);
+  }
+  return `Bỏ qua ${skippedLists.length} list: ` + Array.from(groups, ([name, lists]) => `${name}: ${lists.join(', ')}`).join(' | ');
 }
 
 function assertItineraryNoteDarkPartnerExportReady(list, deckId = '') {
@@ -2126,7 +2155,7 @@ async function runAdaptiveExport(attempt, context, callbacks) {
     const cb = exportCallbacks(callbacks);
     try {
       cb.setStatus('Đang kiểm tra đối tác trước khi xuất...');
-      assertExportContextPartners(context, attempt === exportBatchAttempt);
+      context = assertExportContextPartners(context, attempt === exportBatchAttempt);
       cb.setStatus('Đang xác minh phiên frontend/backend trước khi xuất...');
       const assetFileId = collectRuntimePreflightFileIds(context)[0] || '';
       await verifyRuntimeSession({ checkExportRoutes: true, assetFileId });
@@ -2134,7 +2163,11 @@ async function runAdaptiveExport(attempt, context, callbacks) {
       const message = error?.message || 'Không xác minh được phiên tool.';
       cb.failProgress(`Không thể xuất: ${message}`);
       cb.setStatus(`Lỗi: ${message}`);
-      return { success: false, error: message, exportedLists: [] };
+      const skippedLists = error.skippedLists || context._partnerSkippedLists || [];
+      // Only an all-rejected preflight accounts for every scheduled list.
+      // Runtime/session failures leave valid lists unexported, not "skipped".
+      if (error.skippedLists) await context.onExportOutcome?.({ exportedLists: [], skippedLists });
+      return { success: false, error: message, exportedLists: [], skippedLists };
     }
     try {
       return await attempt(context, callbacks);
@@ -2458,7 +2491,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
   cb.showProgress(`Chuẩn bị xuất ${orderedLists.length} list (${qualityProfile.label})...`, 2);
   resetBatchImageCache();
 
-  const skippedLists = [];
+  const skippedLists = [...(context._partnerSkippedLists || [])];
   try {
     orderedLists.forEach(({ deck, list }) => assertSpotlightV4V6PartnerExportReady(list, deck.id));
     orderedLists.forEach(({ deck, list }) => assertItineraryNoteDarkPartnerExportReady(list, deck.id));
@@ -2477,7 +2510,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
       if (!accepted) {
         cb.setStatus('Đã hủy xuất. Các list được giữ nguyên.');
         cb.completeProgress('Đã hủy xuất.');
-        return { success: false, cancelled: true, exportedLists: [], skippedLists: inspection.skippedLists };
+        return { success: false, cancelled: true, exportedLists: [], skippedLists };
       }
       orderedLists = orderListsForBatchExport([...inspection.validEntries, ...localEntries], dataset);
     }
@@ -2616,6 +2649,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
       }
     }
     if (skippedLists.length) mainZip.file('BAO-CAO-LIST-BO-QUA.json', JSON.stringify({ skippedLists }, null, 2));
+    if (skippedLists.length) mainZip.file('BAO-CAO-LIST-BO-QUA.txt', '\uFEFF' + formatSkippedListSummary(skippedLists));
     const outcome = { success: true, exportedLists: successful.map(({ deck, list }) => ({ deckId: deck.id, listId: list.id })), skippedLists };
     cb.updateProgress(90, 'Đang đóng file ZIP hàng loạt...');
     const archive = await generateExportZip(mainZip, (metadata) => {
@@ -2639,8 +2673,9 @@ async function exportBatchAttempt(context, callbacks = {}) {
         throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
       }
     }
-    cb.completeProgress(`Đã xuất ${successful.length} list; bỏ qua ${skippedLists.length} list lỗi ảnh.`);
-    cb.setStatus(`Đã xuất ${successful.length} list; bỏ qua ${skippedLists.length} list lỗi ảnh.`);
+    const doneMessage = `Đã xuất ${successful.length} list.` + (skippedLists.length ? ' ' + formatSkippedListSummary(skippedLists) : '');
+    cb.completeProgress(doneMessage);
+    cb.setStatus(doneMessage);
     return outcome;
   } catch (error) {
     if (!_compatRetry && quality === 'optimized' && runtime.mode === 'modern' && isResourceExportError(error)) {

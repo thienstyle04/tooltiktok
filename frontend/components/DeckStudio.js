@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET } from '../lib/photoPresets.mjs';
 import { canReadPublishedDataset, canApplyPublishedDataset } from '../lib/publishedDataset.mjs';
-import { exportActiveList, exportBatch, exportSelectedPagePng } from '../lib/exportClient';
+import { exportActiveList, exportBatch, exportSelectedPagePng, formatSkippedListSummary } from '../lib/exportClient';
 import { apiFetch, fetchGuideDataset, formatApiError } from '../lib/apiClient';
 import {
   clearCachedDataset,
@@ -180,7 +180,7 @@ function hasEmptySpotlightPartnerDeck(dataset) {
 
 function missingCatalogDecks(dataset) {
   const deckIds = new Set((dataset?.decks || []).map((deck) => deck.id));
-  const destinationId = String(dataset?.source?.destinationId || 'dalat');
+  const destinationId = String(dataset?.source?.contentDestinationId || dataset?.source?.destinationId || 'dalat');
   return REQUIRED_CATALOG_DECK_IDS.filter((deckId) => (
     !deckIds.has(deckId)
     && !(destinationId !== 'dalat' && DALAT_ONLY_CATALOG_DECK_IDS.has(deckId))
@@ -1725,7 +1725,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setBusy(true);
       try {
         await removeExportedGeneratedLists(result.exportedLists);
-        setStatus(`Đã xuất và xóa ${result.exportedLists.length} list; giữ lại ${result.skippedLists?.length || 0} list lỗi ảnh.`);
+        setStatus(`Đã xuất và xóa ${result.exportedLists.length} list; giữ nguyên các list bị bỏ qua. ${formatSkippedListSummary(result.skippedLists)}`);
       } catch (error) {
         setStatus(error?.message || 'Đã xuất file nhưng chưa xóa được list AI đã xuất.');
       } finally {

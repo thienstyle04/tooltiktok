@@ -10,6 +10,7 @@ import { promisify } from 'node:util';
 import { getAppConfig, resolveBackendDataDir, resolveBackendRoot } from '../../config';
 import { getRuntimeSession } from '../../runtime-session';
 import { GuideService } from './guide.service';
+import { isDalatContentSource } from './sync/destination-config';
 import {
   AutomationRun,
   AutomationRunError,
@@ -85,7 +86,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
           } finally {
             if (this.guideService.getDestinations().active.id !== previousDestination) await this.guideService.setActiveDestination({ id: previousDestination });
             const currentHook = this.guideService.getHookSources();
-            if (previousDestination === 'dalat' && (currentHook.mode !== previousHook.mode || currentHook.activeSourceId !== previousHook.activeSourceId)) this.guideService.setHookMode({ mode: previousHook.mode, sourceId: previousHook.activeSourceId });
+            if (isDalatContentSource(previousDestination) && (currentHook.mode !== previousHook.mode || currentHook.activeSourceId !== previousHook.activeSourceId)) this.guideService.setHookMode({ mode: previousHook.mode, sourceId: previousHook.activeSourceId });
           }
         });
         job.status = 'completed';
@@ -319,7 +320,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       run.outputPath = finalPath;
       run.progress = 100;
       run.status = run.errors.length || run.skippedLists?.length ? 'partial' : 'completed';
-      run.phase = run.exportedLists ? `Đã xuất ${run.exportedLists.length} list; bỏ qua ${run.skippedLists?.length || 0} list lỗi ảnh.` : (run.errors.length ? 'Đã xuất phần tạo thành công; một số mẫu có lỗi.' : 'Đã tạo list và lưu ZIP thành công.');
+      run.phase = run.exportedLists ? `Đã xuất ${run.exportedLists.length} list; bỏ qua ${run.skippedLists?.length || 0} list không hợp lệ. Xem báo cáo để biết tên mẫu, list và lý do.` : (run.errors.length ? 'Đã xuất phần tạo thành công; một số mẫu có lỗi.' : 'Đã tạo list và lưu ZIP thành công.');
       run.completedAt = new Date().toISOString();
       run.updatedAt = run.completedAt;
       delete run.exportToken;
@@ -597,8 +598,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const hookMode = input.hook?.mode ?? previous?.hook.mode ?? 'normal';
     const sourceId = String(input.hook?.sourceId ?? previous?.hook.sourceId ?? '').trim();
     if (hookMode === 'festival') {
-      if (destinationId !== 'dalat') throw new BadRequestException('Hook lễ chỉ áp dụng cho Đà Lạt.');
-      const hookStatus = this.guideService.getHookSources();
+      if (!isDalatContentSource(destinationId)) throw new BadRequestException('Hook lễ chỉ áp dụng cho Đà Lạt.');
+      const hookStatus = this.guideService.getHookSources(destinationId);
       if (!hookStatus.sources.some((entry) => entry.id === sourceId && entry.cacheStatus === 'ready')) throw new BadRequestException('Nguồn Hook lễ không tồn tại hoặc chưa sẵn sàng.');
     }
     const onceAt = String(input.onceAt ?? previous?.onceAt ?? '').trim();
@@ -668,9 +669,9 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
 
   private assertHookSelectionReady(run: Pick<AutomationRun, 'destinationId' | 'hook'>): void {
     if (run.hook.mode !== 'festival') return;
-    if (run.destinationId !== 'dalat') throw new Error('Hook lễ chỉ áp dụng cho Đà Lạt.');
+    if (!isDalatContentSource(run.destinationId)) throw new Error('Hook lễ chỉ áp dụng cho Đà Lạt.');
     const sourceId = String(run.hook.sourceId || '').trim();
-    const source = this.guideService.getHookSources().sources.find((entry) => entry.id === sourceId);
+    const source = this.guideService.getHookSources(run.destinationId).sources.find((entry) => entry.id === sourceId);
     if (!source || source.cacheStatus !== 'ready') {
       throw new Error('Nguồn Hook lễ của lịch đã bị xóa hoặc không còn sẵn sàng. Lượt không được chuyển sang nguồn Hook khác.');
     }

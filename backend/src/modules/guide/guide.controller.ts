@@ -199,8 +199,8 @@ export class GuideController {
   }
 
   @Get('api/hook-sources')
-  getHookSources(): HookSourcesResponse {
-    return this.guideService.getHookSources();
+  getHookSources(@Query('destinationId') destinationId?: string): HookSourcesResponse {
+    return this.guideService.getHookSources(destinationId || undefined);
   }
 
   @Post('api/hook-sources')

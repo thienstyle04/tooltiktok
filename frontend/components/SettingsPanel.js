@@ -88,7 +88,7 @@ export default function SettingsPanel({
   const inventoryPercent = inventory?.total > 0 ? Math.round(inventory.cached / inventory.total * 100) : null;
   const activeHasSheetFallback = Boolean(activeDestination?.hasSheetFallback ?? activeDestination?.sheetUrl);
   const activeSheetUrl = String(activeDestination?.sheetUrl || '').trim();
-  const hookAvailable = activeDestinationId === 'dalat';
+  const hookAvailable = (activeDestination?.contentDestinationId || activeDestinationId) === 'dalat';
   const hookSources = Array.isArray(hookSourcesInfo?.sources) ? hookSourcesInfo.sources : [];
   const hookMode = hookAvailable ? (hookSourcesInfo?.mode || 'normal') : 'normal';
   const hasExactlyOneNewHookInput = Boolean(newHookUrl.trim()) !== Boolean(newHookFile);

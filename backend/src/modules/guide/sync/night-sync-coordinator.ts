@@ -21,6 +21,7 @@ interface Options {
   file: string;
   sources: () => Array<{ id: string; label: string }>;
   initialized: (id: string) => boolean;
+  automaticEligible?: (id: string) => boolean;
   busy: () => boolean;
   run: (id: string, sheetDone: boolean, markSheetDone: () => void, progress: (value: SyncProgress) => void) => Promise<NightSourceResult>;
   now?: () => number;
@@ -119,6 +120,7 @@ export class NightSyncCoordinator {
       return;
     }
     for (const source of this.options.sources()) {
+      if (this.options.automaticEligible?.(source.id) === false) continue;
       if (this.manualJobs.size) break;
       if (this.running) break;
       if (!vietnamSyncWindow(this.now()).allowed) break;
