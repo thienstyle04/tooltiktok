@@ -7,6 +7,8 @@ export interface DestinationSummary {
   sheetUrl: string;
   sourceType: 'xlsx' | 'google-sheet';
   workbookFileName: string;
+  contentDestinationId?: DestinationId;
+  allowedDeckIds: string[];
   hasLocalWorkbook: boolean;
   hasSheetFallback: boolean;
   totalItems?: number;
@@ -61,7 +63,7 @@ export interface HookSourceSummary {
 }
 
 export interface HookSourcesResponse {
-  destinationId: 'dalat';
+  destinationId: DestinationId;
   available: boolean;
   mode: HookMode;
   activeSourceId: string;
@@ -185,6 +187,7 @@ export interface CoverPage {
 }
 
 export interface ListPage {
+  threadsPartnerPolicy?: 'balanced-local-v1';
   spotlightDesignRevision?: 1;
   photoPreset?: 'iphone-color-edit-v1';
   textFontSize?: number | null;
@@ -258,6 +261,8 @@ export interface GuideDataset {
     workbook: string;
     destinationId: DestinationId;
     destinationLabel: string;
+    contentDestinationId?: DestinationId;
+    allowedDeckIds: string[];
     imageCount: number;
     coverImageCount: number;
     coverImageUrls: string[];

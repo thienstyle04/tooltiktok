@@ -14,6 +14,7 @@ const privateKeyPath = process.env.DALAT_RELEASE_SIGNING_KEY
 
 function git(...args) { return execFileSync('git', args, { cwd: root, maxBuffer: 64 * 1024 * 1024 }); }
 function included(file) {
+  if (file.startsWith('backend/src/modules/guide/tools/')) return false;
   if (/^(?:backend\/data\/|backend\/node_modules\/|backend\/reports\/|backend\/test\/|frontend\/node_modules\/|frontend\/\.next\/|frontend\/tools\/|\.githooks\/|\.cursor\/|docs\/)/.test(file)) return false;
   if (/\/(?:\.env|\.env\..+)$/.test(file) && !file.endsWith('.env.example')) return false;
   return /^(?:backend\/(?:src\/|\.env\.example$|package(?:-lock)?\.json$|tsconfig(?:\.build)?\.json$)|frontend\/(?:app\/|components\/|lib\/|public\/|next\.config\.js$|package(?:-lock)?\.json$)|scripts\/|start\.bat$|VERSION$|package(?:-lock)?\.json$|README\.md$)/.test(file);

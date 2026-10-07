@@ -1,11 +1,12 @@
 import type { DeckPage, GuideItem, PageItem, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { hasItemKey, itemUsageKey } from './data-allocator';
 import { normalizeText, stableHash } from './image-resolver';
+import { getActiveDestinationLocalize } from '../sync/destination-localize';
 
 export const THREADS_FOOD_ID = 'threads-food-local';
-export const THREADS_FOOD_TEMPLATE_VERSION = 2;
+export const THREADS_FOOD_TEMPLATE_VERSION = 3;
 export const THREADS_CAFE_ID = 'threads-cafe-local';
-export const THREADS_CAFE_TEMPLATE_VERSION = 1;
+export const THREADS_CAFE_TEMPLATE_VERSION = 2;
 export const THREADS_MIX_ID = 'threads-mix-local';
 export const THREADS_MIX_TEMPLATE_VERSION = 1;
 export const THREADS_MIX_TEXT_ID = 'threads-mix-text';
@@ -100,15 +101,18 @@ function buildThreadsLocalPages(itemsBySection: WorkbookItemsBySection, seed: st
   const templateName = isCafe ? 'Cà phê' : 'Quán ăn';
   const sectionKey = isCafe ? 'cafe' : 'quan_an';
   const venues = itemsBySection[sectionKey] || [];
-  const partners = chooseGroup(venues.filter((item) => item.isPartner && String(item.address || '').trim()), seed + ':partner:', used, templateName, 'quán đối tác có địa chỉ');
+  const balanced = getActiveDestinationLocalize() === 'dalat';
+  const selection = balanced ? chooseBalancedLocal(venues, seed, used, templateName) : null;
+  const partners = selection?.partners || chooseGroup(venues.filter((item) => item.isPartner && String(item.address || '').trim()), seed + ':partner:', used, templateName, 'quán đối tác có địa chỉ');
   const partnerNames = new Set(partners.map((entry) => normalizeText(entry.item.name)));
-  const locals = chooseGroup(
+  const locals = selection?.locals || chooseGroup(
     venues.filter((item) => !item.isPartner && normalizeText(item.classification || '') === 'local' && !partnerNames.has(normalizeText(item.name))),
     seed + ':local:', used, templateName, 'quán Local không đối tác',
     new Set(partners.filter((entry) => entry.photo).map((entry) => entry.item.imageUrl)),
   );
   const ordered: Array<{ item: GuideItem; photo: boolean }> = [];
-  for (let index = 0; index < 5; index += 1) ordered.push(partners[index], locals[index]);
+  if (balanced) ordered.push(...partners, ...locals);
+  else for (let index = 0; index < 5; index += 1) ordered.push(partners[index], locals[index]);
   const photoUrls = ordered.filter((entry) => entry.photo).map((entry) => entry.item.imageUrl);
   if (new Set(photoUrls).size !== 6) throw new Error('Threads ' + templateName + ' cần 6 ảnh khác nhau; dữ liệu ảnh hiện đang trùng.');
   const items: PageItem[] = ordered.map(({ item, photo }) => ({
@@ -133,12 +137,53 @@ function buildThreadsLocalPages(itemsBySection: WorkbookItemsBySection, seed: st
     chipText: 'TXT + 6 ảnh + XLSX',
     chipTone: 'terracotta',
     title: isCafe ? 'Cà phê nào ở Đà Lạt?' : 'Ăn gì ở Đà Lạt?',
-    subtitle: isCafe ? '10 quán cà phê · 5 đối tác + 5 Local' : '10 quán ăn · 5 đối tác + 5 Local',
+    subtitle: `10 ${isCafe ? 'quán cà phê' : 'quán ăn'} · ${partners.length} đối tác + ${locals.length} Local`,
+    ...(balanced ? { threadsPartnerPolicy: 'balanced-local-v1' as const } : {}),
     items,
     backgroundImage: '',
     layoutVariant: 'standard',
     canvasPreset: 'tiktok-3x4',
   }];
+}
+
+function chooseBalancedLocal(venues: GuideItem[], seed: string, used: Set<string>, templateName: string) {
+  const partners = ranked(uniqueNames(venues.filter(item => item.isPartner && item.address.trim())), seed + ':partner', used);
+  const partnerNames = new Set(partners.map(item => normalizeText(item.name)));
+  const locals = ranked(uniqueNames(venues.filter(item => !item.isPartner
+    && normalizeText(item.classification) === 'local' && !partnerNames.has(normalizeText(item.name)))), seed + ':local', used);
+  const partnerCount = Math.min(5, partners.length), localCount = 10 - partnerCount;
+  if (!partnerCount || locals.length < localCount) throw new Error(`Threads ${templateName} cần ít nhất 1 đối tác có địa chỉ và đủ 10 tên không trùng. Hiện có ${partners.length} đối tác, ${locals.length}/${localCount} quán Local cần để bù.`);
+  const partnerPhotos = partners.filter(ownPhoto), localPhotos = locals.filter(ownPhoto);
+  let chosenPartners: GuideItem[] | undefined, chosenLocals: GuideItem[] = [];
+  // Look ahead across the two pools so a shared image cannot make a valid
+  // six-photo selection fail merely because it was greedily picked first.
+  for (let count = Math.min(3, partnerCount, partnerPhotos.length); count >= 0 && !chosenPartners; count--) {
+    if (6 - count > localCount) continue;
+    const search = (start: number, picks: GuideItem[], urls: Set<string>): boolean => {
+      if (picks.length === count) {
+        const seen = new Set(urls);
+        const available = localPhotos.filter(item => {
+          if (seen.has(item.imageUrl)) return false;
+          seen.add(item.imageUrl); return true;
+        });
+        if (available.length < 6 - count) return false;
+        chosenPartners = picks; chosenLocals = available.slice(0, 6 - count); return true;
+      }
+      for (let i = start; i < partnerPhotos.length; i++) {
+        if (!urls.has(partnerPhotos[i].imageUrl)
+          && search(i + 1, [...picks, partnerPhotos[i]], new Set([...urls, partnerPhotos[i].imageUrl]))) return true;
+      }
+      return false;
+    };
+    search(0, [], new Set());
+  }
+  if (!chosenPartners) throw new Error(`Threads ${templateName} cần 6 ảnh riêng hợp lệ không trùng; dữ liệu hiện tại chưa đủ.`);
+  const fill = (pool: GuideItem[], photos: GuideItem[], count: number) => {
+    const names = new Set(photos.map(item => normalizeText(item.name)));
+    return [...photos.map(item => ({ item, photo: true })), ...pool.filter(item => !names.has(normalizeText(item.name)))
+      .slice(0, count - photos.length).map(item => ({ item, photo: false }))];
+  };
+  return { partners: fill(partners, chosenPartners, partnerCount), locals: fill(locals, chosenLocals, localCount) };
 }
 
 export function buildThreadsFoodPages(itemsBySection: WorkbookItemsBySection, seed: string, used = new Set<string>()): DeckPage[] {

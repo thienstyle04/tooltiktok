@@ -1,6 +1,7 @@
 import { photoPresetsCatalog } from './photo-presets';
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -199,8 +200,8 @@ export class GuideController {
   }
 
   @Get('api/hook-sources')
-  getHookSources(): HookSourcesResponse {
-    return this.guideService.getHookSources();
+  getHookSources(@Query('destinationId') destinationId?: string): HookSourcesResponse {
+    return this.guideService.getHookSources(destinationId || undefined);
   }
 
   @Post('api/hook-sources')
@@ -259,14 +260,12 @@ export class GuideController {
 
   @Post('api/decks/generate-from-caption')
   generateDeckFromCaption(@Body() request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
-    this.automationScheduler.assertUserMutationAllowed();
-    return this.guideService.enqueueGeneration(() => this.guideService.generateDeckFromCaption(request));
+    return this.enqueueSourceGeneration(request.deckId, () => this.guideService.generateDeckFromCaption(request));
   }
 
   @Post('api/decks/generate-batch')
   generateBatchLists(@Body() request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
-    this.automationScheduler.assertUserMutationAllowed();
-    return this.guideService.enqueueGeneration(() => this.guideService.generateBatchLists(request));
+    return this.enqueueSourceGeneration(request.deckId, () => this.guideService.generateBatchLists(request));
   }
 
   @Post('api/decks/delete-lists')
@@ -278,8 +277,20 @@ export class GuideController {
 
   @Post('api/decks/generate-partner-spotlight')
   generatePartnerSpotlight(@Body() request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
+    return this.enqueueSourceGeneration('spotlight-partner', () => this.guideService.generatePartnerSpotlight(request));
+  }
+
+  private enqueueSourceGeneration<T>(deckId: unknown, task: () => Promise<T>): Promise<T> {
+    const sourceId = this.guideService.getDestinations().active.id;
+    this.guideService.assertTemplateAllowed(deckId, sourceId);
     this.automationScheduler.assertUserMutationAllowed();
-    return this.guideService.enqueueGeneration(() => this.guideService.generatePartnerSpotlight(request));
+    return this.guideService.enqueueGeneration(() => {
+      if (this.guideService.getDestinations().active.id !== sourceId) {
+        throw new BadRequestException('Nguồn dữ liệu đã thay đổi khi yêu cầu đang chờ. Hãy chọn lại đúng nguồn và tạo lại; không tự chuyển tác vụ sang nguồn khác.');
+      }
+      this.guideService.assertTemplateAllowed(deckId, sourceId);
+      return task();
+    });
   }
 
   @Post('api/drive-files/cache-status')

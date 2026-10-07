@@ -47,9 +47,13 @@ export function threadsFoodPayload(list) {
   const photos = items.filter((item) => String(item.imageUrl || '').trim());
   const partnerPhotos = photos.filter((item) => item.isPartner === true);
   const otherPhotos = photos.filter((item) => item.isPartner !== true && (isMix || item.isLocal === true));
-  if (items.length !== targetCount || partners.length !== targetPartners || others.length !== targetPartners
+  const balanced = !isMix && pages[0]?.threadsPartnerPolicy === 'balanced-local-v1';
+  const validRatio = balanced ? partners.length >= 1 && partners.length <= 5 && others.length === 10 - partners.length
+    : partners.length === targetPartners && others.length === targetPartners;
+  if (items.length !== targetCount || !validRatio
     || names.some((name) => !name) || new Set(names.map((name) => name.toLocaleLowerCase('vi'))).size !== targetCount) {
-    throw new Error('List Threads ' + templateName + ` phải có đúng ${targetCount} tên không trùng: ${targetPartners} đối tác và ${targetPartners} địa điểm thường. Hãy tạo lại list.`);
+    throw new Error('List Threads ' + templateName + ` phải có đúng ${targetCount} tên không trùng: `
+      + (balanced ? '1–5 đối tác, phần còn lại là Local.' : `${targetPartners} đối tác và ${targetPartners} địa điểm thường.`) + ' Hãy tạo lại list.');
   }
   if (partners.some((item) => !String(item.metaPrimary || '').trim())) {
     throw new Error('List Threads ' + templateName + ' thiếu địa chỉ đối tác. Hãy tạo list mới rồi xuất lại.');
@@ -57,11 +61,11 @@ export function threadsFoodPayload(list) {
   if (isMix && new Set(items.map((item) => item.sourceSectionKey)).size < 4) {
     throw new Error('List Threads ' + templateName + ' phải có địa điểm từ ít nhất 4 nhóm dữ liệu. Hãy tạo lại list.');
   }
-  if (photos.length !== targetPhotos || (!isTextOnly && (partnerPhotos.length !== 3 || otherPhotos.length !== 3))
+  if (photos.length !== targetPhotos || (!isTextOnly && !balanced && (partnerPhotos.length !== 3 || otherPhotos.length !== 3))
     || new Set(photos.map((item) => item.imageUrl)).size !== targetPhotos
     || photos.some((item) => item.imageMapped !== true || item.imageSource !== 'manual')) {
     throw new Error(isTextOnly ? 'List Threads Tổng hợp chữ không được chứa ảnh. Hãy tạo lại list.'
-      : 'List Threads ' + templateName + ' phải có đúng 6 ảnh riêng không trùng (3 đối tác, 3 địa điểm thường). Hãy tạo lại list.');
+      : 'List Threads ' + templateName + ' phải có đúng 6 ảnh riêng không trùng' + (balanced ? '.' : ' (3 đối tác, 3 địa điểm thường).') + ' Hãy tạo lại list.');
   }
   const caption = String(list.postCaption || '').trim();
   if (!caption) throw new Error('List Threads ' + templateName + ' đang thiếu hook/caption. Hãy tạo lại list.');

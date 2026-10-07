@@ -10,6 +10,7 @@ import { promisify } from 'node:util';
 import { getAppConfig, resolveBackendDataDir, resolveBackendRoot } from '../../config';
 import { getRuntimeSession } from '../../runtime-session';
 import { GuideService } from './guide.service';
+import { isDalatContentSource } from './sync/destination-config';
 import {
   AutomationRun,
   AutomationRunError,
@@ -42,6 +43,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   private manualJobs = new Map<string, { id: string; requestId: string; status: string; destinationId: string; result?: unknown; error?: string }>();
 
   submitManualGeneration(input: { kind: string; destinationId: string; requestId: string; request: any }) {
+    this.guideService.assertTemplateAllowed(input.kind === 'partner' ? 'spotlight-partner' : input.request?.deckId, input.destinationId);
     validatePhotoPreset(input.request?.photoPreset, input.kind === 'partner' ? 'spotlight-partner' : input.request?.deckId);
     const existing = [...this.manualJobs.values()].find(job => job.requestId === input.requestId);
     if (existing) return { ...existing };
@@ -78,6 +80,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       try {
         job.result = await this.guideService.enqueueGeneration(async () => {
           try {
+            this.guideService.assertTemplateAllowed(input.kind === 'partner' ? 'spotlight-partner' : request.deckId, job.destinationId);
             if (previousDestination !== job.destinationId) await this.guideService.setActiveDestination({ id: job.destinationId });
             if (input.kind === 'batch') return await this.guideService.generateBatchLists(request);
             if (input.kind === 'caption') return await this.guideService.generateDeckFromCaption(request);
@@ -85,7 +88,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
           } finally {
             if (this.guideService.getDestinations().active.id !== previousDestination) await this.guideService.setActiveDestination({ id: previousDestination });
             const currentHook = this.guideService.getHookSources();
-            if (previousDestination === 'dalat' && (currentHook.mode !== previousHook.mode || currentHook.activeSourceId !== previousHook.activeSourceId)) this.guideService.setHookMode({ mode: previousHook.mode, sourceId: previousHook.activeSourceId });
+            if (isDalatContentSource(previousDestination) && (currentHook.mode !== previousHook.mode || currentHook.activeSourceId !== previousHook.activeSourceId)) this.guideService.setHookMode({ mode: previousHook.mode, sourceId: previousHook.activeSourceId });
           }
         });
         job.status = 'completed';
@@ -185,6 +188,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const previous = this.requireSchedule(id);
     const replacement = this.validateSchedule(input, previous);
     Object.assign(previous, replacement, { id: previous.id, createdAt: previous.createdAt, updatedAt: new Date().toISOString() });
+    delete previous.disabledReason;
     this.recalculateSchedule(previous);
     this.persist();
     return this.getState();
@@ -202,6 +206,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   setEnabled(id: string, enabled: boolean): AutomationStateResponse {
     this.assertScheduleMutable(id);
     const schedule = this.requireSchedule(id);
+    if (enabled) this.assertTemplatesAllowed(schedule.destinationId, schedule.templates);
+    if (enabled) delete schedule.disabledReason;
     schedule.enabled = Boolean(enabled);
     schedule.updatedAt = new Date().toISOString();
     this.recalculateSchedule(schedule);
@@ -211,6 +217,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
 
   runNow(id: string): AutomationStateResponse {
     const schedule = this.requireSchedule(id);
+    this.assertTemplatesAllowed(schedule.destinationId, schedule.templates);
     const run = this.newRun(schedule, new Date().toISOString());
     this.enqueue(run);
     return this.getState();
@@ -218,6 +225,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
 
   retry(runId: string): AutomationStateResponse {
     const previous = this.requireRun(runId);
+    this.assertTemplatesAllowed(previous.destinationId, previous.templates);
     if (ACTIVE_STATUSES.has(previous.status)) throw new ConflictException('Lượt này vẫn đang chạy.');
     const schedule = this.state.schedules.find((entry) => entry.id === previous.scheduleId) || {
       id: previous.scheduleId,
@@ -319,7 +327,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       run.outputPath = finalPath;
       run.progress = 100;
       run.status = run.errors.length || run.skippedLists?.length ? 'partial' : 'completed';
-      run.phase = run.exportedLists ? `Đã xuất ${run.exportedLists.length} list; bỏ qua ${run.skippedLists?.length || 0} list lỗi ảnh.` : (run.errors.length ? 'Đã xuất phần tạo thành công; một số mẫu có lỗi.' : 'Đã tạo list và lưu ZIP thành công.');
+      run.phase = run.exportedLists ? `Đã xuất ${run.exportedLists.length} list; bỏ qua ${run.skippedLists?.length || 0} list không hợp lệ. Xem báo cáo để biết tên mẫu, list và lý do.` : (run.errors.length ? 'Đã xuất phần tạo thành công; một số mẫu có lỗi.' : 'Đã tạo list và lưu ZIP thành công.');
       run.completedAt = new Date().toISOString();
       run.updatedAt = run.completedAt;
       delete run.exportToken;
@@ -425,6 +433,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   }
 
   private enqueue(run: AutomationRun): void {
+    this.assertTemplatesAllowed(run.destinationId, run.templates);
     this.state.runs.unshift(run);
     this.trimRuns();
     this.persist();
@@ -434,6 +443,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   }
 
   private async execute(run: AutomationRun): Promise<void> {
+    try { this.assertTemplatesAllowed(run.destinationId, run.templates); }
+    catch (error) { this.failRun(run, error instanceof Error ? error.message : String(error)); return; }
     return aiProvider.run(() => this.executeWithAi(run));
   }
 
@@ -586,6 +597,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const frequency = input.frequency ?? previous?.frequency ?? 'once';
     if (!['once', 'daily'].includes(frequency)) throw new BadRequestException('Kiểu lịch không hợp lệ.');
     const templates = this.validateTemplates(input.templates ?? previous?.templates ?? []);
+    this.assertTemplatesAllowed(destinationId, templates);
     const rawOutputDir = String(input.outputDir ?? previous?.outputDir ?? '').trim();
     if (!rawOutputDir) throw new BadRequestException('Hãy chọn thư mục lưu file.');
     const outputDir = path.resolve(rawOutputDir);
@@ -597,8 +609,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const hookMode = input.hook?.mode ?? previous?.hook.mode ?? 'normal';
     const sourceId = String(input.hook?.sourceId ?? previous?.hook.sourceId ?? '').trim();
     if (hookMode === 'festival') {
-      if (destinationId !== 'dalat') throw new BadRequestException('Hook lễ chỉ áp dụng cho Đà Lạt.');
-      const hookStatus = this.guideService.getHookSources();
+      if (!isDalatContentSource(destinationId)) throw new BadRequestException('Hook lễ chỉ áp dụng cho Đà Lạt.');
+      const hookStatus = this.guideService.getHookSources(destinationId);
       if (!hookStatus.sources.some((entry) => entry.id === sourceId && entry.cacheStatus === 'ready')) throw new BadRequestException('Nguồn Hook lễ không tồn tại hoặc chưa sẵn sàng.');
     }
     const onceAt = String(input.onceAt ?? previous?.onceAt ?? '').trim();
@@ -640,6 +652,10 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     return [...merged.values()];
   }
 
+  private assertTemplatesAllowed(destinationId: string, templates: AutomationTemplateRequest[]): void {
+    for (const template of templates) this.guideService.assertTemplateAllowed(template.deckId, destinationId);
+  }
+
   private assertOutputDirectory(value: string): void {
     if (!value || !path.isAbsolute(value)) throw new BadRequestException('Hãy chọn thư mục lưu file hợp lệ.');
     if (!fs.existsSync(value) || !fs.statSync(value).isDirectory()) throw new BadRequestException('Thư mục lưu file không tồn tại.');
@@ -668,9 +684,9 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
 
   private assertHookSelectionReady(run: Pick<AutomationRun, 'destinationId' | 'hook'>): void {
     if (run.hook.mode !== 'festival') return;
-    if (run.destinationId !== 'dalat') throw new Error('Hook lễ chỉ áp dụng cho Đà Lạt.');
+    if (!isDalatContentSource(run.destinationId)) throw new Error('Hook lễ chỉ áp dụng cho Đà Lạt.');
     const sourceId = String(run.hook.sourceId || '').trim();
-    const source = this.guideService.getHookSources().sources.find((entry) => entry.id === sourceId);
+    const source = this.guideService.getHookSources(run.destinationId).sources.find((entry) => entry.id === sourceId);
     if (!source || source.cacheStatus !== 'ready') {
       throw new Error('Nguồn Hook lễ của lịch đã bị xóa hoặc không còn sẵn sàng. Lượt không được chuyển sang nguồn Hook khác.');
     }

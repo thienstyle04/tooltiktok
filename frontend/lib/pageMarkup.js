@@ -3553,7 +3553,7 @@ function renderListPageContent(page, index, total, listId, hashtags = [], list =
       + '<div class="threads-food-preview-head"><span>THREADS · XEM TRƯỚC</span><h2>'
       + escapeHtml(page.title || (isTextOnly ? 'List Đà Lạt lưu lại nè' : isMix ? 'Đi đâu ở Đà Lạt?' : isCafe ? 'Cà phê nào ở Đà Lạt?' : 'Ăn gì ở Đà Lạt?'))
       + '</h2><p>File xuất gồm TXT ' + (isTextOnly ? '12' : '10') + ' ' + (isMix || isTextOnly ? 'địa điểm đa nhóm' : isCafe ? 'quán cà phê' : 'quán ăn')
-      + ', XLSX ' + (isTextOnly ? '6' : '5') + ' đối tác' + (isTextOnly ? '; không có ảnh' : page.photoPreset ? ' và 6 ảnh Color Edit' : ' và 6 ảnh gốc') + '; không xuất khung preview này.</p></div>'
+      + ', XLSX ' + items.filter(item => item.isPartner).length + ' đối tác' + (isTextOnly ? '; không có ảnh' : page.photoPreset ? ' và 6 ảnh Color Edit' : ' và 6 ảnh gốc') + '; không xuất khung preview này.</p></div>'
       + '<ul class="threads-food-preview-list">'
       + items.map((item) => '<li>' + escapeHtml(item.name || '')
         + (item.isPartner && item.metaPrimary ? ' (' + escapeHtml(compactThreadsLocalAddress(item.metaPrimary)) + ')' : '') + '</li>').join('')

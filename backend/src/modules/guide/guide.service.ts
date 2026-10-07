@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 import { enableNightSyncPolicy, hasSyncPermit, withLocalDataOnly } from './sync/night-sync-policy';
 import { NightSyncCoordinator } from './sync/night-sync-coordinator';
 import { syncNightSource } from './sync/night-sync-source';
+import { publishedSourcePaths, publishSourceSnapshot } from './sync/published-source';
 
 import {
   CaptionBlocks,
@@ -95,7 +96,18 @@ import {
   registerDestination,
   unregisterDestination,
   toDestinationInfo,
+  DALAT_TEST_SHEET_ID,
+  DALAT_THREADS_SHEET_ID,
+  contentDestinationId,
+  isDalatContentSource,
+  isIsolatedSheetSource,
+  isDalatThreadsSource,
+  isDeckAllowedForSource,
+  getAllowedDeckIds,
+  sourceTemplateError,
+  THREADS_NOTE_DECK_IDS,
 } from './sync/destination-config';
+import { migrateThreadsSourceStores } from './threads-source-migration';
 
 import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
 import { FestivalHookSourceStore, HookReservation, HookSourceUpload } from './sync/festival-hook-source';
@@ -218,10 +230,25 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly generatedListsByDeckId = new Map<string, GuideDeckList[]>();
   // Written atomically with diary snapshots; deleting a list does not reset its cycle.
   private diaryUsedLines: Record<string, string[]> = {};
-  private readonly festivalHookSources: FestivalHookSourceStore;
-  private readonly greenHookSource: GreenHookSourceStore;
-  private readonly darkHookSource: DarkHookSourceStore;
-  private readonly persimmonHookSource: PersimmonHookSourceStore;
+  private readonly sourceHookStores = new Map<string, {
+    festival: FestivalHookSourceStore; green: GreenHookSourceStore;
+    dark: DarkHookSourceStore; persimmon: PersimmonHookSourceStore;
+  }>();
+  private hooksForSource(id: DestinationId) {
+    const key = isIsolatedSheetSource(id) ? id : 'dalat';
+    let stores = this.sourceHookStores.get(key);
+    if (!stores) {
+      const root = key === 'dalat' ? this.dataRoot : path.join(this.dataRoot, 'source-hooks', key);
+      stores = { festival: new FestivalHookSourceStore(root), green: new GreenHookSourceStore(root),
+        dark: new DarkHookSourceStore(root), persimmon: new PersimmonHookSourceStore(root) };
+      this.sourceHookStores.set(key, stores);
+    }
+    return stores;
+  }
+  private get festivalHookSources() { return this.hooksForSource(this.activeDestinationId).festival; }
+  private get greenHookSource() { return this.hooksForSource(this.activeDestinationId).green; }
+  private get darkHookSource() { return this.hooksForSource(this.activeDestinationId).dark; }
+  private get persimmonHookSource() { return this.hooksForSource(this.activeDestinationId).persimmon; }
   private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
   private usedAllocator = new DataAllocator();
@@ -283,11 +310,8 @@ export class GuideService implements OnApplicationBootstrap {
 
   constructor(private readonly runtimePerformance: RuntimePerformanceService = new RuntimePerformanceService()) {
     migrateColorEditStores(this.dataRoot);
-    this.festivalHookSources = new FestivalHookSourceStore(this.dataRoot);
-    this.greenHookSource = new GreenHookSourceStore(this.dataRoot);
-    this.darkHookSource = new DarkHookSourceStore(this.dataRoot);
-    this.persimmonHookSource = new PersimmonHookSourceStore(this.dataRoot);
     this.loadCustomDestinations();
+    migrateThreadsSourceStores(this.dataRoot);
     this.activeDestinationId = this.loadActiveDestinationId();
     this.driveCacheWarmStatus.destinationId = this.activeDestinationId;
     setActiveDestinationLocalize(this.activeDestinationId);
@@ -353,6 +377,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       file: path.join(this.dataRoot, 'night-sync.json'),
       sources: () => getDestinationList().filter(s => s.sheetUrl && s.exportUrl),
       initialized: id => Object.keys(readSheetDriveManifest(this.dataRoot, id).items).length > 0,
+      automaticEligible: id => !isIsolatedSheetSource(id) || Boolean(this.loadPreferredWorkbookSource(id)),
       busy: () => this.syncMustWait(),
       run: (id, done, mark, progress) => syncNightSource(getDestinationConfig(id), done, mark, {
         progress,
@@ -361,12 +386,13 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         validate: source => this.validateWorkbookData(source),
         save: source => this.saveWorkbookSnapshot(source, true),
         syncHooks: async manifest => {
-          if (id !== 'dalat') return [];
+          if (!isDalatContentSource(id) || isDalatThreadsSource(id)) return [];
+          const stores = this.hooksForSource(id);
           const errors: string[] = [];
           for (const [key, label, store] of [
-            ['green', 'Hook Mảng xanh', this.greenHookSource],
-            ['dark', 'Hook Tone đen', this.darkHookSource],
-            ['persimmon', 'Hook Mùa hồng', this.persimmonHookSource],
+            ['green', 'Hook Mảng xanh', stores.green],
+            ['dark', 'Hook Tone đen', stores.dark],
+            ['persimmon', 'Hook Mùa hồng', stores.persimmon],
           ] as const) {
             try {
               const url = manifest.hookSourceGroups?.[key];
@@ -380,7 +406,8 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         publish: async (source, manifest) => {
           while (this.syncMustWait()) await new Promise(resolve => setTimeout(resolve, 250));
           if (!hasSyncPermit()) throw new Error('Đã hết khung giờ cập nhật.');
-          writeSheetDriveManifest(this.dataRoot, manifest, id);
+          if (isIsolatedSheetSource(id)) publishSourceSnapshot(this.dataRoot, source, manifest, hasSyncPermit);
+          else writeSheetDriveManifest(this.dataRoot, manifest, id);
           this.workbookSourceByDestination.set(id, source);
           this.workbookDerivedCacheByDestination.delete(id);
           if (id === this.activeDestinationId) {
@@ -407,7 +434,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       console.log('[warmup] Đang đọc XLSX cục bộ và build dataset trước khi nhận request...');
       const t0 = Date.now();
       // Hook Doc phải sẵn trước khi build deck spotlight-v3 (cover title).
-      await this.warmSpotlightV3Hooks();
+      if (!isDalatThreadsSource(this.activeDestinationId)) await this.warmSpotlightV3Hooks();
       await this.prepareWorkbookForDataset(false);
       // Chờ manifest Drive xong rồi mới build 1 lần — tránh sync xong lại invalidate/rebuild lần 2.
       const manifestSync = this.manifestSyncByDestination.get(this.activeDestinationId)?.promise;
@@ -424,7 +451,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       console.log(`[warmup] Sẵn sàng phục vụ /api/guide-data (mất ${Date.now() - t0}ms). Session sticky=${this.SESSION_STICKY_DATASET}, autoSyncSheet=${this.AUTO_SYNC_ENABLED}.`);
     } catch (error) {
       console.error('[warmup] Làm nóng dữ liệu trước thất bại:', error);
-      if (this.activeDestinationId !== DEFAULT_DESTINATION_ID) {
+      if (this.activeDestinationId !== DEFAULT_DESTINATION_ID && !isIsolatedSheetSource(this.activeDestinationId)) {
         const failedDestinationId = this.activeDestinationId;
         try {
           console.warn(`[warmup] Nguồn ${failedDestinationId} không sẵn sàng; tự quay về ${DEFAULT_DESTINATION_ID}.`);
@@ -531,7 +558,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       // Spotlight V6 Đà Lạt dùng riêng Tone đen cho cover và Random cho các
       // trang ảnh xen kẽ. Warm hai pool này trước khi mở giao diện tạo list;
       // pool Mảng xanh chỉ lưu metadata và chưa được tải khi chưa có mẫu dùng.
-      if (this.activeDestinationId === 'dalat') {
+      if (isDalatContentSource(this.activeDestinationId)) {
         const specialLimit = Math.max(
           0,
           Number(process.env.DALAT_DRIVE_CACHE_SPECIAL_COVER_LIMIT || 120),
@@ -829,7 +856,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   getLibraryAsset(relativePath: string, rootKey = 'main'): Buffer {
-    const imageMapping = this.loadImageMapping();
+    // Preserve immutable library assets referenced by saved custom-source lists;
+    // the Test generation pool still excludes this library.
+    const imageMapping = this.loadImageMapping(true);
     const libraryRoot = getConfiguredLibraryRoots(imageMapping, this.workspaceRoot).find((e) => e.key === rootKey)?.path ?? '';
     if (!libraryRoot) throw new NotFoundException('Image library root not found.');
     if (!relativePath) throw new NotFoundException('Asset path is required.');
@@ -922,8 +951,16 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     };
   }
 
-  getHookSources(): HookSourcesResponse {
-    return this.festivalHookSources.getStatus(this.activeDestinationId);
+  assertTemplateAllowed(deckIdValue: unknown, sourceId: DestinationId = this.activeDestinationId): void {
+    const deckId = String(deckIdValue || '').trim();
+    if (!isDestinationId(sourceId)) throw new BadRequestException('Nguồn dữ liệu không tồn tại.');
+    if (!deckId) throw new BadRequestException('Thiếu mẫu để tạo list.');
+    if (!isDeckAllowedForSource(sourceId, deckId)) throw new BadRequestException(sourceTemplateError(sourceId, deckId));
+  }
+
+  getHookSources(destinationId: DestinationId = this.activeDestinationId): HookSourcesResponse {
+    if (!isDestinationId(destinationId)) throw new BadRequestException('Nguồn dữ liệu không tồn tại.');
+    return this.hooksForSource(destinationId).festival.getStatus(destinationId);
   }
 
   async addHookSource(input: { name?: unknown; docUrl?: unknown }, file?: HookSourceUpload): Promise<HookSourcesResponse> {
@@ -1191,7 +1228,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       if (this.workbookDerivedCache) {
         this.workbookDerivedCacheByDestination.set(this.activeDestinationId, this.workbookDerivedCache);
       }
-      if (switchingDestination && nextId !== 'dalat') {
+      if (switchingDestination && !isDalatContentSource(nextId)) {
         this.festivalHookSources.deactivate();
       }
       return {
@@ -1251,6 +1288,8 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           workbook: this.getWorkbookSource().workbookName,
           destinationId: destination.id,
           destinationLabel: destination.label,
+          contentDestinationId: contentDestinationId(destination.id),
+          allowedDeckIds: getAllowedDeckIds(destination.id),
           imageCount: context.imageUrls.length,
           coverImageCount: context.coverImageUrls.length,
           coverImageUrls: context.coverImageUrls,
@@ -1306,10 +1345,12 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   // ─── AI caption ───────────────────────────────────────────────────────────
 
   async generateDeepSeekCaption(request: DeepSeekCaptionRequest): Promise<DeepSeekCaptionResponse> {
+    this.assertTemplateAllowed(request.deckId);
     return aiProvider.run(() => this.generateDeepSeekCaptionWithAi(request));
   }
 
   private async generateDeepSeekCaptionWithAi(request: DeepSeekCaptionRequest): Promise<DeepSeekCaptionResponse> {
+    this.assertTemplateAllowed(request.deckId);
     const deckId = String(request.deckId ?? '').trim();
     if (!deckId) throw new BadRequestException('Thiếu deckId để gửi sang AI.');
 
@@ -1534,12 +1575,14 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
+    this.assertTemplateAllowed(request.deckId);
     validatePhotoPreset(request.photoPreset, request.deckId);
     if (LEGACY_COLOR_DECKS[String(request.deckId)]) throw new BadRequestException('Mẫu Color Edit riêng đã chuyển thành lựa chọn Bảng màu. Chọn V5 hoặc V6.');
     return aiProvider.run(() => this.generateDeckFromCaptionWithAi(request));
   }
 
   private async generateDeckFromCaptionWithAi(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
+    this.assertTemplateAllowed(request.deckId);
     this.ensureGeneratedListsLoaded();
     const deckId = String(request.deckId ?? '').trim();
     if (deckId !== THREADS_TOPLIST_ID && deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
@@ -1685,19 +1728,19 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     if (deckId === 'spotlight-v6-green') {
       setSpotlightV3BuildContext({
         hooks: greenHookReservation ? [greenHookReservation.hook] : [],
-        destinationId: this.activeDestinationId,
+        destinationId: contentDestinationId(this.activeDestinationId),
         usedHookTitles: this.getUsedCaptionTitles(deckId),
       });
     } else if (deckId === 'spotlight-v6-dark') {
       setSpotlightV3BuildContext({
         hooks: darkHookReservation ? [darkHookReservation.hook] : [],
-        destinationId: this.activeDestinationId,
+        destinationId: contentDestinationId(this.activeDestinationId),
         usedHookTitles: this.getUsedCaptionTitles(deckId),
       });
     } else if (deckId === 'spotlight-v6-persimmon') {
       setSpotlightV3BuildContext({
         hooks: persimmonHookReservation ? [persimmonHookReservation.hook] : [],
-        destinationId: this.activeDestinationId,
+        destinationId: contentDestinationId(this.activeDestinationId),
         usedHookTitles: this.getUsedCaptionTitles(deckId),
       });
     } else if (isGoogleDocHookDeck(deckId)) {
@@ -1709,7 +1752,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       setSpotlightV3BuildContext({
         ...(hooks ? { hooks } : {}),
         ...(deckId === 'spotlight-v6-diary' ? { diaryUsedLines: this.diaryUsedLines } : {}),
-        destinationId: this.activeDestinationId,
+        destinationId: contentDestinationId(this.activeDestinationId),
         usedHookTitles: this.getUsedCaptionTitles(deckId),
       });
     }
@@ -1971,6 +2014,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   async generateBatchLists(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    this.assertTemplateAllowed(request.deckId);
     validatePhotoPreset(request.photoPreset, request.deckId);
     if (LEGACY_COLOR_DECKS[String(request.deckId)]) throw new BadRequestException('Chọn mẫu V5/V6 và bảng màu thay cho mẫu Color Edit riêng.');
     return aiProvider.run(() => this.generateBatchListsWithAi(request));
@@ -1993,6 +2037,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private async generateBatchListsOnce(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
+    this.assertTemplateAllowed(request.deckId);
     const deckId = String(request.deckId ?? '').trim();
     if (deckId !== THREADS_TOPLIST_ID && deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
       this.assertDriveCacheReady();
@@ -2182,6 +2227,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   async generatePartnerSpotlight(request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
+    this.assertTemplateAllowed('spotlight-partner');
     validatePhotoPreset(request.photoPreset, 'spotlight-partner');
     this.assertDriveCacheReady();
     const partnerId = String(request.partnerId ?? '').trim();
@@ -2363,9 +2409,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   private buildWorkbookDerivedCacheNow(): WorkbookDerivedContext {
     const t0 = Date.now();
     const workbookSource = this.getWorkbookSource();
-    const imageUrls = imageUrlsForDirectory(this.dalatImageDir, '/assets/dalat');
+    const imageUrls = isIsolatedSheetSource(this.activeDestinationId) ? [] : imageUrlsForDirectory(this.dalatImageDir, '/assets/dalat');
     const imageMapping = this.loadImageMapping();
-    const imageLibraryEntries = this.loadImageLibraryEntries(imageMapping);
+    const imageLibraryEntries = isIsolatedSheetSource(this.activeDestinationId) ? [] : this.loadImageLibraryEntries(imageMapping);
     const sheetDriveManifest = this.loadSheetDriveManifest();
     const hinhNenImagePools = this.loadHinhNenImagePools(sheetDriveManifest);
     const coverImageUrls = hinhNenImagePools.default;
@@ -2374,7 +2420,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     this.ensureInventoryLoaded();
     const renderUsage = this.createUsageScope();
     setActiveDestinationLocalize(this.activeDestinationId);
-    setSpotlightV3BuildContext({ destinationId: this.activeDestinationId });
+    setSpotlightV3BuildContext({ destinationId: contentDestinationId(this.activeDestinationId) });
     let baseDecks: GuideDeck[];
     try {
       baseDecks = localizeDecks(
@@ -2533,7 +2579,8 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           ? list
           : { ...list, pages: this.applyMainTemplateFieldStructure(deck, list.pages) }
       ));
-      const guardedLists = SPOTLIGHT_DESIGN_DECKS.includes(deck.id) ? structuredDisplayLists : this.applyRecentImageReuseGuard(structuredDisplayLists);
+      const guardedLists = SPOTLIGHT_DESIGN_DECKS.includes(deck.id) || THREADS_NOTE_DECK_IDS.includes(deck.id)
+        ? structuredDisplayLists : this.applyRecentImageReuseGuard(structuredDisplayLists);
       return { ...deck, lists: this.applyPageTextOverrides(deck.id, guardedLists, pageTextOverrides) };
     });
   }
@@ -2818,7 +2865,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     usedCoverUrls?: Set<string>,
     deckId?: string,
   ): GuideDeckList {
-    if (list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deckId || '')) return this.cloneJson(list);
+    if (list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deckId || '') || THREADS_NOTE_DECK_IDS.includes(deckId || '')) return this.cloneJson(list);
     const cleanList = this.sanitizeGeneratedListText(list, deckId);
     if (isThreadsLocalDeck(deckId || '') || deckId === 'spotlight-v6-diary') return cleanList;
     if (!/caption-/i.test(cleanList.id)) return cleanList;
@@ -2846,6 +2893,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private sanitizeBaseListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
+    // Threads/Note builders own their backgrounds, including the fixed Top list cover.
+    // Generic cover rotation must not replace these assets while displaying saved lists.
+    if (THREADS_NOTE_DECK_IDS.some(id => list.id.startsWith(`${id}-`))) return this.cloneJson(list);
     const spotlightId = SPOTLIGHT_DESIGN_DECKS.find(id => list.id === `${id}-main`);
     if (spotlightId) return prepareSpotlightDesign(this.cloneJson(list), spotlightId, coverImageUrls);
     if (list.id.startsWith(THREADS_FOOD_ID) || list.id.startsWith(THREADS_CAFE_ID) || list.id.startsWith(THREADS_MIX_ID) || list.id.startsWith(THREADS_MIX_TEXT_ID)) return this.cloneJson(list);
@@ -3263,7 +3313,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         const hasFestivalHookSnapshot = list.hookSnapshot?.mode === 'festival';
         if (isLegacyGoogleDocHookDeck(deckId) && !hasFestivalHookSnapshot) {
           setSpotlightV3BuildContext({
-            destinationId: this.activeDestinationId,
+            destinationId: contentDestinationId(this.activeDestinationId),
             usedHookTitles: this.getUsedCaptionTitles(deckId, baseDecks),
           });
         }
@@ -3756,7 +3806,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private async prepareSpotlightV6GreenResources(): Promise<Set<string>> {
-    if (this.activeDestinationId !== 'dalat') {
+    if (!isDalatContentSource(this.activeDestinationId)) {
       throw new BadRequestException('Mẫu Spotlight V6 Mảng xanh hiện chỉ áp dụng cho Đà Lạt.');
     }
     const manifest = this.loadSheetDriveManifest();
@@ -3794,7 +3844,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private async prepareSpotlightV6DarkResources(): Promise<Set<string>> {
-    if (this.activeDestinationId !== 'dalat') {
+    if (!isDalatContentSource(this.activeDestinationId)) {
       throw new BadRequestException('Mẫu Spotlight V6 Tone đen hiện chỉ áp dụng cho Đà Lạt.');
     }
     const manifest = this.loadSheetDriveManifest();
@@ -3837,7 +3887,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private async prepareSpotlightV6PersimmonResources(): Promise<Set<string>> {
-    if (this.activeDestinationId !== 'dalat') {
+    if (!isDalatContentSource(this.activeDestinationId)) {
       throw new BadRequestException('Mẫu Spotlight Mùa hồng hiện chỉ áp dụng cho Đà Lạt.');
     }
     const manifest = this.loadSheetDriveManifest();
@@ -3880,7 +3930,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private async prepareSpotlightV6MapsResources(): Promise<{ map: Set<string>; real: Set<string> }> {
-    if (this.activeDestinationId !== 'dalat') {
+    if (!isDalatContentSource(this.activeDestinationId)) {
       throw new BadRequestException('Mẫu Spotlight V6 Google Maps hiện chỉ áp dụng cho Đà Lạt.');
     }
     const manifest = this.loadSheetDriveManifest();
@@ -4025,6 +4075,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       imageUrls, sequence, imageMapping, libraryEntries, this.workspaceRoot,
     );
     const fallbackResolvedImage = (): ReturnType<typeof resolveMappedImage> => {
+      if (isIsolatedSheetSource(this.activeDestinationId)) return {
+        imageUrl: '', imageMapped: false, imageMappingKey: mappingKey, imageSource: 'fallback', candidateImageUrls: [],
+      };
       const direct = resolvedByName();
       if (!imageHint || normalizeText(imageHint) === normalizeText(rawName)) return direct;
       const hinted = resolvedByHint();
@@ -4033,7 +4086,8 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         : direct;
     };
     
-    const directImageUrls = imageHint ? imageHint.split(/[\n,;]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s)) : [];
+    const directImageUrls = imageHint ? imageHint.split(/[\n,;]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s)
+      && (!isIsolatedSheetSource(this.activeDestinationId) || !/^https?:\/\/(?:drive|docs)\.google\.com\//i.test(s))) : [];
 
     // Item đã có ảnh Drive/link trực tiếp riêng của chính nó -> KHÔNG trộn thêm ảnh thư viện nền chung
     // (resolveMappedImage so khớp mờ theo tên, dễ khớp nhầm sang địa điểm khác) vào candidateImageUrls.
@@ -4111,7 +4165,10 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     scope.markPages(pages);
   }
 
-  private loadImageMapping(): ImageMappingFile {
+  private loadImageMapping(allowLegacyAssets = false): ImageMappingFile {
+    if (!allowLegacyAssets && isIsolatedSheetSource(this.activeDestinationId)) {
+      return { version: 1, libraryRoot: '', extraLibraryRoots: [], instructions: [], mappings: [] };
+    }
     const now = Date.now();
     if (this.imageMappingCache && (now - this.imageMappingCacheTime) < this.IMAGE_MAPPING_CACHE_TTL_MS) {
       return this.imageMappingCache;
@@ -5103,6 +5160,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         await this.refreshSheetDriveManifest(localSource, false);
         return;
       }
+      if (isIsolatedSheetSource(this.activeDestinationId)) {
+        throw new ServiceUnavailableException(`${getDestinationConfig(this.activeDestinationId).label} chưa được khởi tạo. Chọn Tải dữ liệu & chuyển để đồng bộ thủ công.`);
+      }
       await this.syncWorkbookNow('tai du lieu lan dau');
       return;
     }
@@ -5128,7 +5188,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       return;
     }
 
-    if (this.AUTO_SYNC_ENABLED && getDestinationConfig(this.activeDestinationId).sourceType === 'google-sheet') {
+    if (this.AUTO_SYNC_ENABLED && !isIsolatedSheetSource(this.activeDestinationId) && getDestinationConfig(this.activeDestinationId).sourceType === 'google-sheet') {
       void this.triggerBackgroundSync();
     }
   }
@@ -5405,16 +5465,21 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         const sourceType = entry.sourceType === 'xlsx' ? 'xlsx' : 'google-sheet';
         if (!/^(sheet|xlsx)-[a-z0-9]+$/.test(id) || !label) continue;
         if (sourceType === 'google-sheet' && (!sheetUrl || !exportUrl)) continue;
+        const isTest = sheetUrl.includes(`/d/${DALAT_TEST_SHEET_ID}/`);
+        const isThreads = sheetUrl.includes(`/d/${DALAT_THREADS_SHEET_ID}/`);
+        if (isTest) unregisterDestination('dalat-test');
+        if (isThreads) unregisterDestination('dalat-threads');
         registerDestination({
           id,
-          label,
-          shortLabel: String(entry.shortLabel || this.createDestinationShortLabel(label)).slice(0, 3),
+          label: isThreads ? 'Đà Lạt Threads' : isTest ? 'Đà Lạt Test' : label,
+          shortLabel: isThreads ? 'ĐLH' : isTest ? 'ĐLT' : String(entry.shortLabel || this.createDestinationShortLabel(label)).slice(0, 3),
           sheetUrl,
           exportUrl,
           workbookName: String(entry.workbookName || `Google Sheet - ${label}`),
           workbookFileName: String(entry.workbookFileName || entry.workbookName || `${label}.xlsx`),
           sourceType,
           partnerFirst: Boolean(entry.partnerFirst),
+          ...(isTest || isThreads ? { contentDestinationId: 'dalat', partnerFirst: false } : {}),
         });
       }
     } catch (error) {
@@ -5428,7 +5493,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   private persistCustomDestinations(): void {
     this.ensureDataRoot();
     const destinations = getDestinationList().filter(
-      (entry) => entry.id !== 'dalat' && entry.id !== 'greenland',
+      (entry) => entry.id !== 'dalat' && entry.id !== 'greenland' && entry.id !== 'dalat-test' && entry.id !== 'dalat-threads',
     );
     fs.writeFileSync(
       this.customDestinationsPath,
@@ -5486,6 +5551,10 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private workbookSnapshotPath(id: DestinationId): string {
+    if (isIsolatedSheetSource(id)) {
+      const published = publishedSourcePaths(this.dataRoot, id);
+      if (published) return published.workbook;
+    }
     return path.join(this.dataRoot, `workbook-cache.${id}.xlsx`);
   }
 

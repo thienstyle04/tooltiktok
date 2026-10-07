@@ -22,7 +22,8 @@ import { SECTION_CONFIG } from '../../../common/constants/guide.constants';
 import { prepareSpotlightDesign } from './spotlight-design';
 import { buildPagesForDeckV2, getV2DeckDefinitions, isV2DeckId } from './deck-builder-v2';
 import { cityLabel, cityLabelUpper, getMarketingCopy, buildCaptionHashtags, getActiveDestinationLocalize } from '../sync/destination-localize';
-import { isPartnerFirstDestination } from '../sync/destination-config';
+import { isPartnerFirstDestination, isDalatThreadsSource } from '../sync/destination-config';
+import { getActiveSourceId } from '../sync/destination-localize';
 import { getCachedSpotlightV3Hooks, getSpotlightV3BuildContext, pickSpotlightV3Hook } from '../sync/spotlight-hook-source';
 
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
@@ -5304,6 +5305,7 @@ export function buildDecks(
   hinhNenImagePools?: HinhNenImageUrlPools,
 ): GuideDeck[] {
   const common = { itemsBySection, imageUrls, libraryEntries, coverImageUrls, hinhNenImagePools, globalUsedItemIds, globalUsedImageUrls };
+  if (isDalatThreadsSource(getActiveSourceId())) return getV2DeckDefinitions(common);
   return [
     {
       id: 'itinerary-3n2d',

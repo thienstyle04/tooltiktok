@@ -9,7 +9,8 @@ import {
   resolveDriveLinkToEntries,
 } from './drive-images';
 import { composeAddress, firstValue, itemMappingKey, normalizeText, normalizeWorkbookHeaders } from '../logic/image-resolver';
-import { DestinationId } from './destination-config';
+import { DestinationId, isIsolatedSheetSource } from './destination-config';
+import { publishedSourcePaths } from './published-source';
 import { PREFERRED_WORKBOOK_NAME, SheetWorkbookSource } from './workbook-source';
 import { resolveSectionKeyFromSheetName } from './sheet-section';
 import { SectionKey } from '../../../common/interfaces/guide.types';
@@ -184,6 +185,10 @@ async function runLimited<T>(
 }
 
 export function getSheetDriveManifestPath(dataRoot: string, destinationId: DestinationId = 'dalat'): string {
+  if (isIsolatedSheetSource(destinationId)) {
+    const published = publishedSourcePaths(dataRoot, destinationId);
+    if (published) return published.manifest;
+  }
   return path.join(dataRoot, `sheet-drive-images.${destinationId}.json`);
 }
 
@@ -330,7 +335,8 @@ export async function buildSheetDriveManifest(
       const legacyKey = rawAddress === address ? '' : itemMappingKey(sectionKey, name, rawAddress);
 
       if (imageLink) itemTasks.push(async () => {
-        const previousEntry = previousManifest.items[key] ?? (legacyKey ? previousManifest.items[legacyKey] : undefined);
+        const previousCandidate = previousManifest.items[key] ?? (legacyKey ? previousManifest.items[legacyKey] : undefined);
+        const previousEntry = isIsolatedSheetSource(source.destinationId) && previousCandidate?.sourceLink !== imageLink ? undefined : previousCandidate;
         // Sheet lớn (VD: Đà Lạt ~680 mục) mà re-resolve toàn bộ qua mạng mỗi lần đổi
         // điểm đến/đồng bộ sẽ rất chậm (concurrency thấp để tránh 401 hàng loạt) và có
         // thể bị Google rate-limit dồn dập, khiến màn hình chờ trông như bị treo. Nếu
@@ -435,7 +441,8 @@ export async function buildSheetDriveManifest(
 
       // Chạy sau phase ảnh thật để việc cập nhật hai nguồn không ghi đè lẫn nhau.
       mapTasks.push(async () => {
-        const previousEntry = previousManifest.items[key] ?? (legacyKey ? previousManifest.items[legacyKey] : undefined);
+        const previousCandidate = previousManifest.items[key] ?? (legacyKey ? previousManifest.items[legacyKey] : undefined);
+        const previousEntry = isIsolatedSheetSource(source.destinationId) && previousCandidate?.mapSourceLink !== mapImageLink ? undefined : previousCandidate;
         const currentEntry = items[key];
         if (!mapImageLink) {
           if (currentEntry) {
@@ -593,6 +600,7 @@ export async function buildSheetDriveManifest(
     const current = [...coverImagesByGroup[group].values()];
     const previous = previousImageGroups[group];
     const canReusePrevious = previousManifest.version >= 2
+      && (!isIsolatedSheetSource(source.destinationId) || JSON.stringify([...new Set(previousSourceGroups[group])].sort()) === JSON.stringify(normalizedCoverLinkGroups[group]))
       && normalizedCoverLinkGroups[group].length > 0
       && coverResolveErrors[group] > 0
       && previous.length > 0;

@@ -15,6 +15,7 @@ backend/src/modules/guide/tools/export-quality-test-output/
 backend/data/drive-file-cache/
 backend/data/photo-preset-cache/
 backend/data/migration-backups/
+backend/data/threads-source-migration*.json
 backend/data/drive-file-cache-sim-*/
 backend/data/workbook-cache.*.xlsx
 backend/data/workbook-source-meta.*.json
@@ -34,3 +35,5 @@ backend/data/hook-sources.*.json
 backend/data/automation-*.json
 backend/data/night-sync*.json
 backend/data/night-sync*.tmp
+backend/data/source-hooks/
+backend/data/source-snapshots/
