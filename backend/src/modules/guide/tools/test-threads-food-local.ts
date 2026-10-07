@@ -36,7 +36,7 @@ for (const count of [1, 3, 4, 5, 7]) {
   assert.equal(new Set(result.items.filter(item => item.imageUrl).map(item => item.imageUrl)).size, 6);
 }
 assert.throws(() => buildThreadsFoodPages(pool(7, 4), 'few-local'), /4\/5 quán Local/);
-for (const sourceId of ['dalat', 'dalat-test']) {
+for (const sourceId of ['dalat-threads']) {
   setActiveDestinationLocalize(sourceId);
   for (const count of [0, 1, 3, 4, 5, 7]) {
     const foods = pool(count, 12).quan_an;

@@ -8,6 +8,7 @@ export interface DestinationSummary {
   sourceType: 'xlsx' | 'google-sheet';
   workbookFileName: string;
   contentDestinationId?: DestinationId;
+  allowedDeckIds: string[];
   hasLocalWorkbook: boolean;
   hasSheetFallback: boolean;
   totalItems?: number;
@@ -261,6 +262,7 @@ export interface GuideDataset {
     destinationId: DestinationId;
     destinationLabel: string;
     contentDestinationId?: DestinationId;
+    allowedDeckIds: string[];
     imageCount: number;
     coverImageCount: number;
     coverImageUrls: string[];

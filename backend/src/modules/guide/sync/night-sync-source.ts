@@ -1,4 +1,4 @@
-import { DestinationConfig, isDalatTestSource } from './destination-config';
+import { DestinationConfig, isIsolatedSheetSource } from './destination-config';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './workbook-source';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest } from './sheet-drive-manifest';
 import { clearKnownFailedDriveFileIds, warmDriveFileDiskCache } from './drive-images';
@@ -18,7 +18,7 @@ interface SourceHooks {
 /** Destination-scoped worker. Publication is supplied by the owner of the dataset lock. */
 export async function syncNightSource(config: DestinationConfig, sheetDone: boolean, markSheetDone: () => void, hooks: SourceHooks): Promise<NightSourceResult> {
   if (!hasSyncPermit()) throw new Error('Không có quyền tải trong lượt đồng bộ hiện tại.');
-  const staged = isDalatTestSource(config.id);
+  const staged = isIsolatedSheetSource(config.id);
   let source = sheetDone && !staged ? hooks.load() : null;
   if (!source) {
     hooks.progress?.({ stage: 'Đang tải Google Sheet' });
@@ -32,7 +32,7 @@ export async function syncNightSource(config: DestinationConfig, sheetDone: bool
     onProgress: (completed, total) => hooks.progress?.({ stage: 'Đang đọc link ảnh', completed, total }),
   });
   if (!hasSyncPermit()) throw new Error('Đã hết khung giờ; giữ nguyên dataset đang dùng.');
-  if (staged && !Object.keys(manifest.items).length) throw new Error('Đà Lạt Test chưa đọc được ảnh địa điểm hợp lệ; chưa công bố dữ liệu.');
+  if (staged && !Object.keys(manifest.items).length) throw new Error(`${config.label} chưa đọc được ảnh địa điểm hợp lệ; chưa công bố dữ liệu.`);
   const ids = new Set<string>();
   for (const item of Object.values(manifest.items)) {
     for (const id of [item.fileId, item.mapFileId, ...(item.candidateImages || []).map(e => e.fileId), ...(item.mapCandidateImages || []).map(e => e.fileId)]) {
@@ -48,7 +48,7 @@ export async function syncNightSource(config: DestinationConfig, sheetDone: bool
       completed: value.skipped + value.ok + value.fail, failed: value.fail }),
   });
   if (!hasSyncPermit()) throw new Error('Đã hết khung giờ; ảnh hoàn chỉnh được giữ cho lượt sau.');
-  if (staged && ids.size && !warmed.ok && !warmed.skipped) throw new Error('Đà Lạt Test chưa tải được ảnh hợp lệ; giữ nguyên dữ liệu cũ và thử lại.');
+  if (staged && ids.size && !warmed.ok && !warmed.skipped) throw new Error(`${config.label} chưa tải được ảnh hợp lệ; giữ nguyên dữ liệu cũ và thử lại.`);
   hooks.progress?.({ stage: 'Đang cập nhật hook theo chủ đề' });
   const hookErrors = await hooks.syncHooks?.(manifest) || [];
   hooks.progress?.({ stage: 'Đang công bố dữ liệu mới' });

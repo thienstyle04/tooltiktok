@@ -43,7 +43,8 @@ import {
 import type { TitlePlacement } from '../../../common/interfaces/guide.types';
 import { BUNDLED_ONE_WAY_HOOKS, BUNDLED_SPOTLIGHT_HOOKS } from '../sync/hook-fallbacks';
 import { buildDiaryPages, DIARY_TEMPLATE_VERSION, DIARY_CAPTION } from './spotlight-diary';
-import { getActiveDestinationLocalize } from '../sync/destination-localize';
+import { getActiveDestinationLocalize, getActiveSourceId } from '../sync/destination-localize';
+import { isDeckAllowedForSource } from '../sync/destination-config';
 import { buildThreadsNotePages, buildThreadsNoteExample, isThreadsNote, threadsNoteCaption } from './itinerary-note-threads';
 import { buildThreadsBudgetPages, buildThreadsBudgetExample, THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION, threadsBudgetCaption } from './itinerary-note-threads-budget';
 import { buildThreadsToplistPages, buildThreadsToplistExample, THREADS_TOPLIST_ID, THREADS_TOPLIST_TEMPLATE_VERSION, THREADS_TOPLIST_CAPTION } from './threads-toplist';
@@ -2554,6 +2555,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   const summaryNoteCafeCount = dedupeItems(common.itemsBySection.cafe || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   const summaryNoteQuanAnCount = dedupeItems(common.itemsBySection.quan_an || []).filter((item) => String(item.name || '').trim() && String(item.address || '').trim()).length;
   return V2_DECK_IDS
+    .filter(deckId => isDeckAllowedForSource(getActiveSourceId(), deckId))
     .filter(deckId => deckId !== 'spotlight-v5-color-edit' && deckId !== 'spotlight-v6-color-edit')
     .filter((deckId) => deckId !== 'carousel-mau-1')
     .filter((deckId) => deckId !== 'spotlight-v6-diary' || activeDestinationId === 'dalat')

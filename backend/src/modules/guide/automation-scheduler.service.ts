@@ -43,6 +43,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   private manualJobs = new Map<string, { id: string; requestId: string; status: string; destinationId: string; result?: unknown; error?: string }>();
 
   submitManualGeneration(input: { kind: string; destinationId: string; requestId: string; request: any }) {
+    this.guideService.assertTemplateAllowed(input.kind === 'partner' ? 'spotlight-partner' : input.request?.deckId, input.destinationId);
     validatePhotoPreset(input.request?.photoPreset, input.kind === 'partner' ? 'spotlight-partner' : input.request?.deckId);
     const existing = [...this.manualJobs.values()].find(job => job.requestId === input.requestId);
     if (existing) return { ...existing };
@@ -79,6 +80,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       try {
         job.result = await this.guideService.enqueueGeneration(async () => {
           try {
+            this.guideService.assertTemplateAllowed(input.kind === 'partner' ? 'spotlight-partner' : request.deckId, job.destinationId);
             if (previousDestination !== job.destinationId) await this.guideService.setActiveDestination({ id: job.destinationId });
             if (input.kind === 'batch') return await this.guideService.generateBatchLists(request);
             if (input.kind === 'caption') return await this.guideService.generateDeckFromCaption(request);
@@ -186,6 +188,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const previous = this.requireSchedule(id);
     const replacement = this.validateSchedule(input, previous);
     Object.assign(previous, replacement, { id: previous.id, createdAt: previous.createdAt, updatedAt: new Date().toISOString() });
+    delete previous.disabledReason;
     this.recalculateSchedule(previous);
     this.persist();
     return this.getState();
@@ -203,6 +206,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   setEnabled(id: string, enabled: boolean): AutomationStateResponse {
     this.assertScheduleMutable(id);
     const schedule = this.requireSchedule(id);
+    if (enabled) this.assertTemplatesAllowed(schedule.destinationId, schedule.templates);
+    if (enabled) delete schedule.disabledReason;
     schedule.enabled = Boolean(enabled);
     schedule.updatedAt = new Date().toISOString();
     this.recalculateSchedule(schedule);
@@ -212,6 +217,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
 
   runNow(id: string): AutomationStateResponse {
     const schedule = this.requireSchedule(id);
+    this.assertTemplatesAllowed(schedule.destinationId, schedule.templates);
     const run = this.newRun(schedule, new Date().toISOString());
     this.enqueue(run);
     return this.getState();
@@ -219,6 +225,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
 
   retry(runId: string): AutomationStateResponse {
     const previous = this.requireRun(runId);
+    this.assertTemplatesAllowed(previous.destinationId, previous.templates);
     if (ACTIVE_STATUSES.has(previous.status)) throw new ConflictException('Lượt này vẫn đang chạy.');
     const schedule = this.state.schedules.find((entry) => entry.id === previous.scheduleId) || {
       id: previous.scheduleId,
@@ -426,6 +433,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   }
 
   private enqueue(run: AutomationRun): void {
+    this.assertTemplatesAllowed(run.destinationId, run.templates);
     this.state.runs.unshift(run);
     this.trimRuns();
     this.persist();
@@ -435,6 +443,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   }
 
   private async execute(run: AutomationRun): Promise<void> {
+    try { this.assertTemplatesAllowed(run.destinationId, run.templates); }
+    catch (error) { this.failRun(run, error instanceof Error ? error.message : String(error)); return; }
     return aiProvider.run(() => this.executeWithAi(run));
   }
 
@@ -587,6 +597,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const frequency = input.frequency ?? previous?.frequency ?? 'once';
     if (!['once', 'daily'].includes(frequency)) throw new BadRequestException('Kiểu lịch không hợp lệ.');
     const templates = this.validateTemplates(input.templates ?? previous?.templates ?? []);
+    this.assertTemplatesAllowed(destinationId, templates);
     const rawOutputDir = String(input.outputDir ?? previous?.outputDir ?? '').trim();
     if (!rawOutputDir) throw new BadRequestException('Hãy chọn thư mục lưu file.');
     const outputDir = path.resolve(rawOutputDir);
@@ -639,6 +650,10 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       merged.set(deckId, { deckId, count, ...(photoPreset ? { photoPreset } : {}) });
     }
     return [...merged.values()];
+  }
+
+  private assertTemplatesAllowed(destinationId: string, templates: AutomationTemplateRequest[]): void {
+    for (const template of templates) this.guideService.assertTemplateAllowed(template.deckId, destinationId);
   }
 
   private assertOutputDirectory(value: string): void {

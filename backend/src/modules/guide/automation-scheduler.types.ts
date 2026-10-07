@@ -22,6 +22,7 @@ export interface AutomationScheduleInput {
 }
 
 export interface AutomationSchedule {
+  disabledReason?: string;
   id: string;
   name: string;
   destinationId: string;

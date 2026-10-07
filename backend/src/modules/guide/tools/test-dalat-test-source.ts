@@ -89,20 +89,7 @@ async function main() {
       await service.setActiveDestination({ id });
       assert.equal(service.getDestinations().active.id, id);
       for (const deckId of ['threads-food-local', 'threads-cafe-local']) {
-        const result = await service.generateBatchLists({ deckId, count: 4, photoPreset: deckId.includes('cafe') ? 'iphone-color-edit-v1' : null });
-        assert.equal(result.failCount, 0, JSON.stringify(result.errors));
-        assert.equal(result.successCount, 4);
-        const dataset = await service.getDataset();
-        for (const generated of result.lists) {
-          const list = dataset.decks.find((deck: any) => deck.id === deckId).lists.find((entry: any) => entry.id === generated.listId);
-          const items = list.pages[0].items, partners = deckId.includes('food') ? 4 : 5;
-          assert.equal(items.length, 10); assert.equal(items.filter((entry: any) => entry.isPartner).length, partners);
-          assert.ok(items.slice(0, partners).every((entry: any) => entry.isPartner));
-          assert.ok(items.every((entry: any) => entry.name.startsWith(id + ' ')));
-          assert.equal(new Set(items.filter((entry: any) => entry.imageUrl).map((entry: any) => entry.imageUrl)).size, 6);
-          assert.equal(list.pages[0].threadsPartnerPolicy, 'balanced-local-v1');
-          lists.push({ sourceId: id, deckId, list });
-        }
+        await assert.rejects(service.generateBatchLists({ deckId, count: 4 }), /Đà Lạt Threads/);
       }
     }
     const testStores = service.hooksForSource('dalat-test');
@@ -119,8 +106,9 @@ async function main() {
         assert.equal(rendered.pages.filter((page: any) => page.type === 'list' && page.items[0]?.isPartner).length, 4);
       }
       assert.ok(!JSON.stringify(rendered).includes('Đà Lạt Test'));
+      lists.push({ sourceId: 'dalat-test', deckId, list: rendered });
     }
-    const sourceUrl = lists.find(entry => entry.sourceId === 'dalat-test').list.pages[0].items.find((item: any) => item.imageUrl).imageUrl;
+    const sourceUrl = '/assets/drive-file?id=dalat-test-quan_an-0';
     const sourceBody = (await service.getDriveFileAsset(new URL(sourceUrl, 'http://localhost').searchParams.get('id'))).body;
     const editedBody = await service.getColorEditedAsset(sourceUrl, 'iphone-color-edit-v1');
     assert.ok(!sourceBody.equals(editedBody));
@@ -128,17 +116,12 @@ async function main() {
     const usagePath = path.join(data, 'used-inventory.dalat-test.json');
     const usageBeforeFailure = fs.readFileSync(usagePath, 'utf8');
     const savedBeforeFailure = fs.readFileSync(path.join(data, 'generated-caption-lists.dalat-test.json'), 'utf8');
-    const verified = service.buildLocallyVerifiedGenerationContext.bind(service);
-    service.buildLocallyVerifiedGenerationContext = async (...args: any[]) => {
-      const context = await verified(...args);
-      for (const item of context.itemsBySection.quan_an) item.isPartner = false;
-      return context;
-    };
-    await assert.rejects(service.generateDeckFromCaption({ deckId: 'threads-food-local', caption: {} }), /ít nhất 1 đối tác/);
-    service.buildLocallyVerifiedGenerationContext = verified;
+    await assert.rejects(service.generateDeckFromCaption({ deckId: 'threads-food-local', caption: {} }), /Đà Lạt Threads/);
     assert.equal(fs.readFileSync(usagePath, 'utf8'), usageBeforeFailure);
     assert.equal(fs.readFileSync(path.join(data, 'generated-caption-lists.dalat-test.json'), 'utf8'), savedBeforeFailure);
-    const oldState = fs.readFileSync(path.join(data, 'generated-caption-lists.dalat.json'), 'utf8');
+    const oldPath = path.join(data, 'generated-caption-lists.dalat.json');
+    const oldState = fs.existsSync(oldPath) ? fs.readFileSync(oldPath, 'utf8') : null;
+    const readOldState = () => fs.existsSync(oldPath) ? fs.readFileSync(oldPath, 'utf8') : null;
     const beforeHook = service.hooksForSource('dalat'), testHook = service.hooksForSource('dalat-test');
     assert.notEqual(beforeHook.green, testHook.green);
     testHook.green.fetchDocument = async () => 'Hook riêng của nguồn Test\nMột câu hook Test thứ hai';
@@ -154,7 +137,7 @@ async function main() {
       assert.deepEqual(actual.pages, list.pages, `${sourceId} saved pages changed on restart`);
       assert.equal(actual.photoPreset, list.photoPreset);
     }
-    assert.equal(fs.readFileSync(path.join(data, 'generated-caption-lists.dalat.json'), 'utf8'), oldState);
+    assert.equal(readOldState(), oldState);
     let initialized = false, calls = 0;
     const coordinator = new NightSyncCoordinator({ file: path.join(root, 'sync-test.json'), sources: () => [{ id: 'dalat-test', label: 'Đà Lạt Test' }],
       initialized: () => initialized, automaticEligible: () => initialized, busy: () => false, now: () => Date.parse('2026-10-06T16:00:00Z'),
@@ -165,16 +148,16 @@ async function main() {
     // Adopt an existing custom source without migrating its IDs or saved lists.
     const savedCustom = path.join(data, 'custom-destinations.json');
     fs.writeFileSync(savedCustom, JSON.stringify({ destinations: [{ ...config.getDestinationConfig('dalat-test'), id: 'sheet-existing', label: 'Sheet hôm qua' }] }));
-    const preserved = crypto.createHash('sha256').update(oldState).digest('hex');
+    const preserved = readOldState();
     restarted.loadCustomDestinations();
     assert.equal(config.getDestinationConfig('sheet-existing').label, 'Đà Lạt Test');
     assert.equal(config.getDestinationConfig('sheet-existing').contentDestinationId, 'dalat');
     assert.equal(config.getDestinationList().filter((entry: any) => config.isDalatTestSource(entry.id)).length, 1);
-    assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(data, 'generated-caption-lists.dalat.json'))).digest('hex'), preserved);
+    assert.equal(readOldState(), preserved);
     assert.equal(requests.length, 0, 'Local creation/reload must not call external network');
     const output = process.env.DALAT_TEST_REPORT;
     if (output) { fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, JSON.stringify({ lists, result: 'passed', fixture: 'isolated synthetic source-specific images' }, null, 2)); }
-    console.log('PASS: 16 real service batch lists, separate sources/stores/hooks, persistence/presets, interrupted publication, manual-first/night sync, custom source reuse; no external network.');
+    console.log('PASS: old/Test sources reject Threads; five Spotlight variants still create with separate stores/hooks, persistence/presets, interrupted publication, manual-first/night sync, custom source reuse; no external network.');
   } finally {
     global.fetch = originalFetch;
     for (const id of Object.keys(config.DESTINATIONS)) if (!registry[id]) delete config.DESTINATIONS[id];

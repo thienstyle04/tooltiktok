@@ -17,7 +17,7 @@ async function main() {
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
     ['ten_quan', 'dia_chi', 'link_drive'], ['Quán mới', 'Xuân Hương - Đà Lạt', 'https://drive.google.com/drive/folders/new-folder'],
   ]), 'Quan_an');
-  const config = getDestinationConfig('dalat-test');
+  const config = getDestinationConfig(process.env.DALAT_TEST_SYNC_SOURCE || 'dalat-test');
   const source = parseWorkbookBuffer(XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }), {
     destinationId: config.id, workbookName: config.workbookName, sourceUrl: config.sheetUrl, sourceType: 'google-sheet',
   });
@@ -27,7 +27,8 @@ async function main() {
   enableNightSyncPolicy();
   try {
     publishSourceSnapshot(root, source, manifest, () => true);
-    const pointer = fs.readFileSync(path.join(root, 'source-snapshots/dalat-test/current.json'), 'utf8');
+    const pointerPath = path.join(root, 'source-snapshots', config.id, 'current.json');
+    const pointer = fs.readFileSync(pointerPath, 'utf8');
     drive.resolveDriveLinkToEntries = async () => { throw new Error('Unavailable folder'); };
     drive.filterAccessibleDriveEntries = async (entries: any) => entries;
     const changed = await original.build(source, manifest, { forceRevalidate: true });
@@ -48,14 +49,14 @@ async function main() {
       const permit = stage === 'abort' ? controller : new AbortController();
       await assert.rejects(withSyncPermit({ manual: true, signal: permit.signal, waitForIdle: async () => {} },
         () => syncNightSource(config, true, () => { marked++; }, hooks)));
-      assert.equal(fs.readFileSync(path.join(root, 'source-snapshots/dalat-test/current.json'), 'utf8'), pointer);
+      assert.equal(fs.readFileSync(pointerPath, 'utf8'), pointer);
       assert.equal(marked, 0); assert.equal(saved, 0);
     }
     stage = '';
     await withSyncPermit({ manual: true, signal: new AbortController().signal, waitForIdle: async () => {} },
       () => syncNightSource(config, true, () => { marked++; }, hooks));
     assert.equal(marked, 1); assert.equal(saved, 0); assert.equal(fetched, 7);
-    assert.notEqual(fs.readFileSync(path.join(root, 'source-snapshots/dalat-test/current.json'), 'utf8'), pointer);
+    assert.notEqual(fs.readFileSync(pointerPath, 'utf8'), pointer);
     assert.ok(publishedSourcePaths(root, config.id));
     console.log('PASS: changed-link isolation; download/validation/folder/no-photo/warm/cancellation failures keep old atomic snapshot; retry publishes fresh Sheet and manifest together.');
   } finally {

@@ -17,6 +17,7 @@ export function readCachedDataset() {
       if (!raw) continue;
       const entry = JSON.parse(raw);
       if (!entry?.dataset || typeof entry.savedAt !== 'number') continue;
+      if (!Array.isArray(entry.dataset.source?.allowedDeckIds)) continue;
       if (now - entry.savedAt > DATASET_CACHE_TTL_MS) continue;
       return { ...entry, dataset: sanitizeDataset(entry.dataset) };
     } catch {

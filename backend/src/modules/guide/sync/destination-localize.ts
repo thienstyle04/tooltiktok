@@ -322,8 +322,12 @@ export function buildCaptionHashtags(
 }
 
 export function setActiveDestinationLocalize(id: DestinationId): void {
+  activeSourceId = id;
   activeDestinationId = contentDestinationId(id);
 }
+
+let activeSourceId: DestinationId = DEFAULT_DESTINATION_ID;
+export function getActiveSourceId(): DestinationId { return activeSourceId; }
 
 export function getActiveDestinationLocalize(): DestinationId {
   return activeDestinationId;

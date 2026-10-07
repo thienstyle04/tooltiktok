@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../lib/apiClient';
 import { listIsMain } from '../lib/utils';
 import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET } from '../lib/photoPresets.mjs';
+import { filterSourceTemplates, forbiddenTemplateSelections } from '../lib/sourceTemplatePolicy.mjs';
 
 const DALAT_ONLY_DECKS = new Set([
   'spotlight-v6-diary', 'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
@@ -31,6 +32,16 @@ const DALAT_EXTRA_DECKS = [
   { id: 'carousel-mau-1', navTitle: 'Carousel mẫu 1' },
   { id: 'one-way-story', navTitle: 'Đường một chiều' },
 ];
+const BASE_SCHEDULE_DECKS = [
+  ['itinerary-3n2d', 'Lịch trình 3N2Đ'], ['budget-3n2d', '72H 3N2Đ'], ['budget-72h-summary', '72H Tổng hợp'],
+  ['budget-3n2d-story', '72H Story'], ['itinerary-4n3d', 'Lịch trình 4N3Đ'], ['itinerary-4n2d-grid8', 'Lịch trình 4N3Đ lưới 8'],
+  ['grid-6', 'Mẫu Lưới 6 Ô'], ['grid-6-zigzag', 'Mẫu Zigzag 6'], ['grid-8', 'Mẫu Lưới 8 Ô'],
+  ['grid-4', 'Mẫu Lưới 4 Ô'], ['grid-4-mutant', 'Lưới 4 Đột Biến'], ['grid-5', 'Mẫu Lưới 5 Ô'],
+  ['spotlight-guide', 'Mẫu Spotlight'], ['spotlight-v2', 'Spotlight V2'], ['spotlight-v3', 'Spotlight V3'],
+  ['spotlight-v4', 'Spotlight V4'], ['spotlight-v6', 'Spotlight V6'], ['grid-6-quaytung', 'Lưới 6 Quaytung'],
+  ['grid-8-feed', 'Lưới 8 Feed'], ['grid-8-quaytung', 'Lưới 8 Quaytung'],
+  ['itinerary-4n3d-stack', '4N3Đ Stack'], ['itinerary-timeline', 'Lịch trình Timeline'],
+].map(([id, navTitle]) => ({ id, navTitle }));
 
 const STATUS_LABELS = {
   queued: 'Đang chờ', refreshing: 'Đang cập nhật Sheet', warming: 'Đang tải ảnh', generating: 'Đang tạo list',
@@ -127,19 +138,26 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
   }, []);
   const outputPickerReady = state.outputPicker === 'save-file-v1';
   const isDalatSource = (id) => ((destinations || []).find(entry => entry.id === id)?.contentDestinationId || id) === 'dalat';
+  const targetSource = (destinations || []).find(entry => entry.id === form.destinationId);
+  useEffect(() => {
+    if (!Array.isArray(targetSource?.allowedDeckIds)) return;
+    setForm(previous => {
+      const templates = previous.templates.filter(entry => targetSource.allowedDeckIds.includes(entry.deckId));
+      return templates.length === previous.templates.length ? previous : { ...previous, templates };
+    });
+  }, [form.destinationId, targetSource]);
 
   const decks = useMemo(() => {
     const entries = new Map((dataset?.decks || [])
       .filter((deck) => deck.id !== 'spotlight-partner' && (deck.lists || []).some((list) => listIsMain(list)))
       .map((deck) => [deck.id, deck]));
-    if (isDalatSource(form.destinationId)) {
-      for (const deck of DALAT_EXTRA_DECKS) if (!entries.has(deck.id)) entries.set(deck.id, deck);
-    }
-    return [...entries.values()].filter((deck) => isDalatSource(form.destinationId) || !DALAT_ONLY_DECKS.has(deck.id));
+    for (const deck of [...BASE_SCHEDULE_DECKS, ...DALAT_EXTRA_DECKS]) if (!entries.has(deck.id)) entries.set(deck.id, deck);
+    return filterSourceTemplates([...entries.values()], targetSource)
+      .filter((deck) => isDalatSource(form.destinationId) || !DALAT_ONLY_DECKS.has(deck.id));
   }, [dataset, form.destinationId, destinations]);
   const total = form.templates.reduce((sum, entry) => sum + Number(entry.count || 0), 0);
   const templateLabel = (id) => dataset?.decks?.find(deck => deck.id === id)?.navTitle
-    || DALAT_EXTRA_DECKS.find(deck => deck.id === id)?.navTitle || id;
+    || [...BASE_SCHEDULE_DECKS, ...DALAT_EXTRA_DECKS].find(deck => deck.id === id)?.navTitle || id;
   const targetHooks = scheduleHookSources?.destinationId === form.destinationId ? scheduleHookSources
     : hookSourcesInfo?.destinationId === form.destinationId ? hookSourcesInfo : null;
   const festivalSources = (targetHooks?.sources || []).filter((entry) => entry.cacheStatus === 'ready');
@@ -149,6 +167,8 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     ? 'Hãy chọn file ZIP.'
     : form.templates.length < 1
     ? 'Hãy chọn ít nhất một mẫu.'
+    : forbiddenTemplateSelections(form.templates, targetSource).length
+    ? 'Có mẫu không thuộc nguồn đang chọn. Hãy bỏ mẫu đó hoặc chọn đúng nguồn.'
     : form.templates.some((entry) => Number(entry.count) < minListsPerTemplate || Number(entry.count) > maxListsPerTemplate)
     ? `Mỗi mẫu phải có từ ${minListsPerTemplate} đến ${maxListsPerTemplate} list.`
     : '';
@@ -212,6 +232,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
 
   const save = async (event) => {
     event.preventDefault();
+    if (forbiddenTemplateSelections(form.templates, targetSource).length) { setMessage('Lỗi: Mẫu đã chọn không thuộc nguồn này. Threads và Note chỉ dùng Đà Lạt Threads.'); return; }
     if (!form.templates.length || form.templates.some((entry) => Number(entry.count) < minListsPerTemplate || Number(entry.count) > maxListsPerTemplate)) {
       setMessage(`Lỗi: Mỗi mẫu phải có từ ${minListsPerTemplate} đến ${maxListsPerTemplate} list.`);
       return;
@@ -297,7 +318,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       <div className="automation-list" hidden={section!=='saved'}>
         <h3>Lịch đã lưu</h3>
         {state.schedules.length ? state.schedules.map((schedule) => <article key={schedule.id}>
-          <div><strong>{schedule.name}</strong><small>{(destinations || []).find(entry => entry.id === schedule.destinationId)?.label || schedule.destinationId} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small></div>
+          <div><strong>{schedule.name}</strong><small>{(destinations || []).find(entry => entry.id === schedule.destinationId)?.label || schedule.destinationId} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small>{schedule.disabledReason ? <small role="status">{schedule.disabledReason}</small> : null}</div>
           <div className="automation-row-actions"><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/run-now`, { method: 'POST' })} disabled={busy || state.locked}>Chạy ngay</button><button onClick={() => edit(schedule)} disabled={busy || state.activeRunId && state.runs.find((run) => run.id === state.activeRunId)?.scheduleId === schedule.id}>Sửa</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/enabled`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !schedule.enabled }) })} disabled={busy}>{schedule.enabled ? 'Tắt' : 'Bật'}</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}`, { method: 'DELETE' })} disabled={busy}>Xóa</button></div>
         </article>) : <p className="automation-empty">Chưa có lịch tự động.</p>}
       </div>

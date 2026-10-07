@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET } from '../lib/photoPresets.mjs';
 import { canReadPublishedDataset, canApplyPublishedDataset } from '../lib/publishedDataset.mjs';
+import { templateAllowed } from '../lib/sourceTemplatePolicy.mjs';
 import { exportActiveList, exportBatch, exportSelectedPagePng, formatSkippedListSummary } from '../lib/exportClient';
 import { apiFetch, fetchGuideDataset, formatApiError } from '../lib/apiClient';
 import {
@@ -182,6 +183,8 @@ function missingCatalogDecks(dataset) {
   const deckIds = new Set((dataset?.decks || []).map((deck) => deck.id));
   const destinationId = String(dataset?.source?.contentDestinationId || dataset?.source?.destinationId || 'dalat');
   return REQUIRED_CATALOG_DECK_IDS.filter((deckId) => (
+    templateAllowed(dataset?.source, deckId)
+    &&
     !deckIds.has(deckId)
     && !(destinationId !== 'dalat' && DALAT_ONLY_CATALOG_DECK_IDS.has(deckId))
   ));
@@ -192,6 +195,7 @@ function hasRetiredCatalogDecks(dataset) {
 }
 
 function needsSpotlightCoverRefresh(dataset) {
+  if (!templateAllowed(dataset?.source, 'spotlight-v2')) return false;
   const coverCount = dataset?.source?.coverImageCount;
   if (typeof coverCount !== 'number' || coverCount < 4) return true;
   const deck = (dataset?.decks || []).find((item) => item.id === 'spotlight-v2');
@@ -201,6 +205,7 @@ function needsSpotlightCoverRefresh(dataset) {
 }
 
 function needsGrid6QuaytungCatalogRefresh(dataset) {
+  if (!templateAllowed(dataset?.source, 'grid-6-quaytung')) return false;
   const deck = (dataset?.decks || []).find((item) => item.id === 'grid-6-quaytung');
   if (!deck) return true;
   const main = (deck.lists || []).find((list) => listIsMain(list));
@@ -212,6 +217,7 @@ function needsGrid6QuaytungCatalogRefresh(dataset) {
 }
 
 function needsGrid8QuaytungCatalogRefresh(dataset) {
+  if (!templateAllowed(dataset?.source, 'grid-8-quaytung')) return false;
   const deck = (dataset?.decks || []).find((item) => item.id === 'grid-8-quaytung');
   if (!deck) return true;
   const main = (deck.lists || []).find((list) => listIsMain(list));
@@ -225,6 +231,7 @@ function needsGrid8QuaytungCatalogRefresh(dataset) {
 const GRID_5_MIN_TEMPLATE_VERSION = 4;
 
 function needsGrid5CatalogRefresh(dataset) {
+  if (!templateAllowed(dataset?.source, 'grid-5')) return false;
   const deck = (dataset?.decks || []).find((item) => item.id === 'grid-5');
   if (!deck) return true;
   const main = (deck.lists || []).find((list) => listIsMain(list));
@@ -249,6 +256,7 @@ function isStaleBudget72HSummaryList(list, deck = null) {
 }
 
 function needsBudget72HSummaryCatalogRefresh(dataset) {
+  if (!templateAllowed(dataset?.source, 'budget-72h-summary')) return false;
   const deck = (dataset?.decks || []).find((item) => item.id === 'budget-72h-summary');
   if (!deck) return true;
   return (deck.lists || []).some((list) => isStaleBudget72HSummaryList(list, deck));
@@ -276,6 +284,7 @@ function markCatalogRevisionStored() {
 }
 
 function needsTemplateCatalogRefresh(dataset) {
+  if (!Array.isArray(dataset?.source?.allowedDeckIds)) return true;
   if (storedCatalogRevision() !== STUDIO_CATALOG_REVISION) return true;
   return hasEmptySpotlightPartnerDeck(dataset)
     || hasRetiredCatalogDecks(dataset)
@@ -477,6 +486,7 @@ export default function DeckStudio({ initialDataset = null }) {
 
   const applyDataset = useCallback((nextDataset, preferredSelection = {}) => {
     const sanitized = sanitizeDataset(nextDataset);
+    if (sanitized?.decks) sanitized.decks = sanitized.decks.filter(deck => templateAllowed(sanitized.source, deck.id));
     setSpotlightV2CoverImagePool(sanitized?.source?.coverImageUrls || []);
     const normalized = normalizeSelection(sanitized, {
       ...currentSelectionRef.current,
