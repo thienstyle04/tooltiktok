@@ -1,4 +1,5 @@
 export function templateAllowed(source, deckId) {
+  if (deckId === 'spotlight-partner') return false;
   return Array.isArray(source?.allowedDeckIds) && source.allowedDeckIds.includes(deckId);
 }
 

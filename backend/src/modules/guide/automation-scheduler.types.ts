@@ -63,6 +63,7 @@ export interface AutomationRunError {
 }
 
 export interface AutomationRun {
+  warnings?: Array<{ deckId: string; listId: string; message: string }>;
   ai?: { provider: 'deepseek' | 'gemini'; model: string };
   id: string;
   scheduleId: string;

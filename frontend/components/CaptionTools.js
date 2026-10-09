@@ -18,7 +18,7 @@ export default function CaptionTools({
 }) {
   const [batchCount, setBatchCount] = useState(5);
   const [partnerQuery, setPartnerQuery] = useState('');
-  const decks = dataset?.decks || [];
+  const decks = (dataset?.decks || []).filter(deck => !deck.creationDisabled && deck.id !== 'spotlight-partner');
   const allLists = activeDeck?.lists || [];
   const mainLists = allLists.filter(listIsMain);
   const generatedLists = allLists.filter(list => !listIsMain(list));
@@ -43,6 +43,18 @@ export default function CaptionTools({
     { id: 'captionHeadline', label: 'Caption đăng bài', key: 'headline', target: 'headline' },
     { id: 'captionHashtags', label: 'Hashtags', key: 'hashtags', target: 'hashtags' },
   ];
+
+  if (activeDeck?.creationDisabled || activeDeck?.id === 'spotlight-partner') return (
+    <section className="ai-shell list-create-panel">
+      <header className="list-create-head"><div><h3>Mẫu đã ngừng sử dụng</h3>
+        <p>Spotlight Đối tác không còn tạo mới. List đã lưu vẫn có thể chỉnh sửa và xuất trong List đã tạo.</p></div></header>
+      <div className="list-create-body"><label htmlFor="captionDeckSelect">Chọn mẫu khác</label>
+        <select id="captionDeckSelect" value="" disabled={busy} onChange={event => {
+          const deck = decks.find(item => item.id === event.target.value); if (deck) onDeckSelect(deck);
+        }}><option value="">Chọn mẫu…</option>{decks.map(deck => <option key={deck.id} value={deck.id}>{deck.navTitle || deck.title}</option>)}</select>
+      </div>
+    </section>
+  );
 
   return (
     <section className="ai-shell list-create-panel">

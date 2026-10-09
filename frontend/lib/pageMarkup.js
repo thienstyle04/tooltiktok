@@ -1,4 +1,4 @@
-import { escapeHtml, sanitizeFilePart } from './utils';
+import { escapeHtml, sanitizeFilePart } from './utils.js';
 import { photoRenderArguments, photoDisplayUrl, strictPhotoMarkup } from './photoPresets.mjs';
 import { compactThreadsLocalAddress } from './threadsFoodExport.mjs';
 
@@ -1845,9 +1845,9 @@ function renderSpotlightV4VenuePage(page, index, listId, list) {
   `;
 }
 
-import { renderItineraryNotePage, renderItineraryNoteTimedPage } from './itineraryNote';
-import { renderThreadsBudgetPage } from './threadsBudget';
-import { renderThreadsToplistCover, renderThreadsToplistPage } from './threadsToplist';
+import { renderItineraryNotePage, renderItineraryNoteTimedPage } from './itineraryNote.js';
+import { renderThreadsBudgetPage } from './threadsBudget.js';
+import { renderThreadsToplistCover, renderThreadsToplistPage } from './threadsToplist.js';
 function renderSummaryNotePage(page, index, listId) {
   const title = page.title !== undefined ? String(page.title || '').trim() : '';
   const rows = (page.items || []).slice(0, 8).map((item) => {

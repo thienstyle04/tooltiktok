@@ -87,7 +87,7 @@ async function main() {
       await assert.rejects(service.generateDeckFromCaption({ deckId, caption: {} }), /chỉ dành cho Threads và Note/);
       await assert.rejects(service.generateBatchLists({ deckId, count: 4 }), /chỉ dành cho Threads và Note/);
     }
-    await assert.rejects(service.generatePartnerSpotlight({}), /chỉ dành cho Threads và Note/);
+    await assert.rejects(service.generatePartnerSpotlight({}), /đã ngừng sử dụng/);
     const scheduler: any = new AutomationSchedulerService(service);
     scheduler.findBrowser = () => ({ name: 'Test browser', path: 'test' });
     const scheduleInput = { name: 'Thử lịch riêng', destinationId: 'dalat-threads', frequency: 'daily', dailyTime: '23:15', outputDir: root, templates: [{ deckId: 'threads-food-local', count: 4 }], hook: { mode: 'normal' } };

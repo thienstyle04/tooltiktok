@@ -77,7 +77,7 @@ async function readUpload(file: HookSourceUpload): Promise<{ text: string; type:
 export class FestivalHookSourceStore {
   private state: State;
   private readonly statePath: string;
-  private readonly reservations = new Map<string, { sourceId: string; key: string }>();
+  private readonly reservations = new Map<string, { sourceId: string; key: string; resetCycle: boolean }>();
   private mutating = false;
 
   constructor(private readonly dataRoot: string, private readonly fetchDoc = fetchGoogleDoc, private readonly random = Math.random) {
@@ -195,12 +195,14 @@ export class FestivalHookSourceStore {
     if (this.mutating) throw new Error('Nguồn Hook lễ đang được cập nhật. Vui lòng thử lại sau.');
     const source = this.requireSource(sourceId);
     const reserved = new Set([...this.reservations.values()].filter((entry) => entry.sourceId === source.id).map((entry) => entry.key));
-    let candidates = source.hooks.filter((hook) => !source.usedKeys.includes(keyOf(hook)) && !reserved.has(keyOf(hook)));
-    if (!candidates.length && reserved.size === 0) { source.usedKeys = []; candidates = source.hooks.filter((hook) => !reserved.has(keyOf(hook))); }
+    let resetCycle = source.hooks.every(hook => source.usedKeys.includes(keyOf(hook)))
+      && [...this.reservations.values()].some(entry => entry.sourceId === source.id && entry.resetCycle);
+    let candidates = source.hooks.filter((hook) => (resetCycle || !source.usedKeys.includes(keyOf(hook))) && !reserved.has(keyOf(hook)));
+    if (!candidates.length && reserved.size === 0) { resetCycle = true; candidates = source.hooks.filter((hook) => !reserved.has(keyOf(hook))); }
     if (!candidates.length) throw new Error('Các hook còn lại đang được dùng bởi yêu cầu tạo list khác. Vui lòng thử lại.');
     const index = Math.min(candidates.length - 1, Math.floor(Math.max(0, this.random()) * candidates.length));
     const hook = candidates[index], token = crypto.randomUUID();
-    this.reservations.set(token, { sourceId: source.id, key: keyOf(hook) });
+    this.reservations.set(token, { sourceId: source.id, key: keyOf(hook), resetCycle });
     return { token, hook, sourceId: source.id, sourceRevision: source.revision };
   }
 
@@ -209,13 +211,17 @@ export class FestivalHookSourceStore {
     const pending = this.reservations.get(reservation.token); if (!pending) return;
     const source = this.state.sources.find((entry) => entry.id === pending.sourceId);
     try {
-      if (source && source.revision === reservation.sourceRevision && !source.usedKeys.includes(pending.key)) {
+      if (source && source.revision === reservation.sourceRevision) {
         const previousUsedKeys = [...source.usedKeys];
-        source.usedKeys.push(pending.key); source.updatedAt = new Date().toISOString();
+        const previousUpdatedAt = source.updatedAt;
+        const usedKeys = pending.resetCycle && source.hooks.every(hook => source.usedKeys.includes(keyOf(hook))) ? [] : source.usedKeys;
+        if (usedKeys.includes(pending.key)) return;
+        source.usedKeys = [...usedKeys, pending.key]; source.updatedAt = new Date().toISOString();
         try {
           this.persist();
         } catch (error) {
           source.usedKeys = previousUsedKeys;
+          source.updatedAt = previousUpdatedAt;
           throw error;
         }
       }

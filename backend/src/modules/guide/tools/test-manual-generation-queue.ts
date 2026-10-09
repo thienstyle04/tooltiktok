@@ -9,6 +9,7 @@ async function main() {
   let destination = 'dalat', running = 0, peak = 0;
   const calls: any[] = [];
   s.guideService = {
+    assertTemplateAllowed: () => undefined, // Source policy is covered by the source-policy integration suite.
     getNightSyncStatus: () => ({ running: null, queued: [] }),
     getDestinations: () => ({ active: { id: destination }, destinations: [{ id: 'dalat' }, { id: 'greenland' }] }),
     getHookSources: () => ({ mode: 'normal', activeSourceId: '' }),

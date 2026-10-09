@@ -29,6 +29,7 @@ import ExportModal from './ExportModal';
 import PageInspector from './PageInspector';
 import PreviewDashboardPanel from './PreviewDashboardPanel';
 import ProgressBar from './ProgressBar';
+import useExportProgress from './useExportProgress';
 import Sidebar from './Sidebar';
 import StudioListLibrary from './StudioListLibrary';
 import SettingsPanel from './SettingsPanel';
@@ -360,7 +361,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const [exportQuality, setExportQuality] = useState('optimized');
   const [exportFormat, setExportFormat] = useState('png');
   const [selectedListsForDelete, setSelectedListsForDelete] = useState(new Set());
-  const [progress, setProgress] = useState({ visible: false, failed: false, value: 0, label: 'Đang chuẩn bị xuất file...' });
+  const { progress, showProgress, updateProgress, completeProgress, failProgress } = useExportProgress();
   const [partners, setPartners] = useState([]);
   const [savingPageText, setSavingPageText] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -448,33 +449,6 @@ export default function DeckStudio({ initialDataset = null }) {
   const activePageItems = Array.isArray(activePage?.items) ? activePage.items : [];
   const activePartnerCount = activePageItems.filter((item) => item.isPartner).length;
 
-  const showProgress = useCallback((label = 'Đang chuẩn bị xuất file...', value = 0) => {
-    setProgress({ visible: true, failed: false, value, label });
-  }, []);
-
-  const updateProgress = useCallback((value, label) => {
-    setProgress((prev) => ({
-      visible: true,
-      failed: prev.failed,
-      value: Math.max(0, Math.min(100, Number(value) || 0)),
-      label: label || prev.label,
-    }));
-  }, []);
-
-  const completeProgress = useCallback((label = 'Đã xuất xong file.') => {
-    setProgress({ visible: true, failed: false, value: 100, label });
-    window.setTimeout(() => setProgress((prev) => ({ ...prev, visible: false })), 1600);
-  }, []);
-
-  const failProgress = useCallback((label = 'Xuất file thất bại.') => {
-    setProgress((prev) => ({
-      visible: true,
-      failed: true,
-      value: Math.min(99, Math.max(0, Number(prev.value) || 0)),
-      label,
-    }));
-  }, []);
-
   const exportCb = useMemo(() => ({
     setStatus,
     setBusy,
@@ -486,7 +460,8 @@ export default function DeckStudio({ initialDataset = null }) {
 
   const applyDataset = useCallback((nextDataset, preferredSelection = {}) => {
     const sanitized = sanitizeDataset(nextDataset);
-    if (sanitized?.decks) sanitized.decks = sanitized.decks.filter(deck => templateAllowed(sanitized.source, deck.id));
+    if (sanitized?.decks) sanitized.decks = sanitized.decks.filter(deck =>
+      templateAllowed(sanitized.source, deck.id) || (deck.id === SPOTLIGHT_PARTNER_DECK_ID && deck.creationDisabled));
     setSpotlightV2CoverImagePool(sanitized?.source?.coverImageUrls || []);
     const normalized = normalizeSelection(sanitized, {
       ...currentSelectionRef.current,
@@ -1406,7 +1381,7 @@ export default function DeckStudio({ initialDataset = null }) {
         selectedPageIndex: 0,
       }, false);
       await loadHookSources().catch(() => undefined);
-      setStatus(`Đã tạo list mới "${payload.navTitle}" ngay trong deck "${activeDeck.navTitle}".`);
+      setStatus(`Đã tạo list mới "${payload.navTitle}" ngay trong deck "${activeDeck.navTitle}".${payload.warnings?.length ? ` Lưu ý: ${payload.warnings.join(' ')}` : ''}`);
     } catch (error) {
       setStatus(error?.message || 'Không tạo được list AI mới.');
     } finally {
@@ -1452,10 +1427,12 @@ export default function DeckStudio({ initialDataset = null }) {
         selectedPageIndex: 0,
       }, false);
       await loadHookSources().catch(() => undefined);
+      const failures = (payload.errors || []).map(error => `Lượt ${error.index}: ${error.message}`).join(' | ');
       const msg = payload.failCount > 0
-        ? `Đã tạo ${payload.successCount}/${safeCount} list (${payload.failCount} lỗi)${payload.errors?.[0]?.message ? `: ${payload.errors[0].message}` : '.'}`
+        ? `${activeDeck.navTitle}: đã tạo ${payload.successCount}/${safeCount} list (${payload.failCount} lỗi)${failures ? `: ${failures}` : '.'}`
         : `Đã tạo xong ${payload.successCount} list AI.`;
-      setStatus(msg);
+      const warnings = (payload.lists || []).flatMap(list => (list.warnings || []).map(message => `${list.navTitle}: ${message}`));
+      setStatus(msg + (warnings.length ? ` Lưu ý (${warnings.length}): ${warnings.join(' ')}` : ''));
     } catch (error) {
       setStatus(error?.message || 'Không tạo được batch list.');
     } finally {
@@ -1496,7 +1473,7 @@ export default function DeckStudio({ initialDataset = null }) {
         activeListId: payload.listId,
         selectedPageIndex: 0,
       }, false);
-      setStatus(`Đã tạo spotlight "${payload.partnerName}" (${payload.pageCount} trang).`);
+      setStatus(`Đã tạo spotlight "${payload.partnerName}" (${payload.pageCount} trang).${payload.warnings?.length ? ` Lưu ý: ${payload.warnings.join(' ')}` : ''}`);
     } catch (error) {
       setStatus(error?.message || 'Không tạo được spotlight đối tác.');
     } finally {
@@ -1680,6 +1657,7 @@ export default function DeckStudio({ initialDataset = null }) {
   const setManualExportActive = useCallback(async (active) => {
     const response = await apiFetch('/api/automation/manual-export', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active }),
+      signal: AbortSignal.timeout(10000),
     });
     if (!response.ok && active) throw new Error(await formatApiError(response, 'Chưa thể bắt đầu xuất'));
   }, []);
@@ -1691,11 +1669,12 @@ export default function DeckStudio({ initialDataset = null }) {
       await exportSelectedPagePng({ deck: activeDeck, list: activeList, dataset, selectedPageIndex, format: exportFormat, quality: exportQuality }, exportCb);
       await loadRuntimePerformance().catch(() => undefined);
     } catch (error) {
+      failProgress(error?.message || 'Chưa thể xuất trang.'); setBusy(false);
       setStatus(error?.message || 'Chưa thể xuất trang.');
     } finally {
       if (claimed) await setManualExportActive(false).catch(() => undefined);
     }
-  }, [activeDeck, activeList, dataset, exportCb, exportQuality, exportFormat, loadRuntimePerformance, selectedPageIndex, setManualExportActive]);
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, exportFormat, failProgress, loadRuntimePerformance, selectedPageIndex, setManualExportActive]);
 
   const handleExportList = useCallback(async () => {
     let claimed = false;
@@ -1704,11 +1683,12 @@ export default function DeckStudio({ initialDataset = null }) {
       await exportActiveList({ deck: activeDeck, list: activeList, dataset, format: exportFormat, quality: exportQuality }, exportCb);
       await loadRuntimePerformance().catch(() => undefined);
     } catch (error) {
+      failProgress(error?.message || 'Chưa thể xuất list.'); setBusy(false);
       setStatus(error?.message || 'Chưa thể xuất list.');
     } finally {
       if (claimed) await setManualExportActive(false).catch(() => undefined);
     }
-  }, [activeDeck, activeList, dataset, exportCb, exportQuality, exportFormat, loadRuntimePerformance, setManualExportActive]);
+  }, [activeDeck, activeList, dataset, exportCb, exportQuality, exportFormat, failProgress, loadRuntimePerformance, setManualExportActive]);
 
   const handleExportBatch = useCallback(async (options = {}) => {
     const shouldDelete = options.deleteAfterExport !== false;
@@ -1725,6 +1705,8 @@ export default function DeckStudio({ initialDataset = null }) {
         }),
       }, exportCb);
     } catch (error) {
+      failProgress(error?.message || 'Chưa thể xuất hàng loạt.'); setBusy(false);
+      answerExportImages(false);
       setStatus(error?.message || 'Chưa thể xuất hàng loạt.');
     } finally {
       if (claimed) await setManualExportActive(false).catch(() => undefined);
@@ -1742,7 +1724,7 @@ export default function DeckStudio({ initialDataset = null }) {
         setBusy(false);
       }
     }
-  }, [dataset, exportCb, exportQuality, exportFormat, loadRuntimePerformance, removeExportedGeneratedLists, selectedListsForExport, setManualExportActive]);
+  }, [dataset, exportCb, exportQuality, exportFormat, failProgress, answerExportImages, loadRuntimePerformance, removeExportedGeneratedLists, selectedListsForExport, setManualExportActive]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -2015,6 +1997,10 @@ export default function DeckStudio({ initialDataset = null }) {
       {activeList?.spotlightDesignRevision === 1 && (coverReviewError(activeList) || coverReviewWarnings(activeList).length) ? <div className="automation-lock-banner" role="status">
         <span>{coverReviewError(activeList) || coverReviewWarnings(activeList).join(' ')}</span>
       </div> : null}
+      {activeList?.warnings?.length > 0 ? <details className="automation-lock-banner">
+        <summary>{activeList.warnings.length} lưu ý của list này</summary>
+        {activeList.warnings.map((message, index) => <div key={index}>{message}</div>)}
+      </details> : null}
       {manualJob?.status === 'queued' ? <div className="automation-lock-banner" role="status">
         <span>Đã xếp hàng — chờ lượt hiện tại hoàn tất.</span>
         <button type="button" onClick={async () => {

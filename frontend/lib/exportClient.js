@@ -3,6 +3,7 @@
 import * as htmlToImage from 'html-to-image';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
+import { collectPartnerNames } from './partnerNames.mjs';
 import { photoDisplayUrl } from './photoPresets.mjs';
 import { coverReviewError } from './spotlightCoverReview.mjs';
 import { generateExportZip } from './exportZip';
@@ -56,6 +57,7 @@ function downloadBlobFile(blob, filename) {
       console.warn(`Download fallback failed: ${fallbackError?.message || fallbackError}`);
     }
     console.warn(`Download failed: ${error?.message || error}${url ? ` Blob URL: ${url}` : ''}`);
+    if (url) URL.revokeObjectURL(url);
     return false;
   }
 }
@@ -116,6 +118,7 @@ const EXPORT_QUALITY_PROFILES = Object.freeze({
     imagePrepareConcurrency: BATCH_IMAGE_PREPARE_CONCURRENCY,
     renderChunkSize: null,
     captureConcurrency: null,
+    preferHtml2Canvas: true,
     renderTimeoutMs: BATCH_PAGE_RENDER_TIMEOUT_MS,
   },
 });
@@ -333,7 +336,7 @@ async function releaseExportWakeLock() {
   activeWakeLock = null;
   if (wakeLock && typeof wakeLock.release === 'function') {
     try {
-      await wakeLock.release();
+      await settleWithin(wakeLock.release(), 3000);
     } catch {
       // Ignore wake-lock release races; export cleanup must continue.
     }
@@ -469,15 +472,17 @@ export async function ensureExportFontsReady(node, options = {}) {
 function mapWithConcurrency(items, limit, mapper) {
   const results = new Array(items.length);
   let cursor = 0;
+  let failure;
   const workerCount = Math.min(Math.max(limit, 1), items.length);
   const workers = Array.from({ length: workerCount }, async () => {
-    while (cursor < items.length) {
+    while (!failure && cursor < items.length) {
       const index = cursor;
       cursor += 1;
-      results[index] = await mapper(items[index], index);
+      try { results[index] = await mapper(items[index], index); }
+      catch (error) { failure ||= error; }
     }
   });
-  return Promise.all(workers).then(() => results);
+  return Promise.all(workers).then(() => { if (failure) throw failure; return results; });
 }
 
 function resetBatchImageCache() {
@@ -1521,48 +1526,6 @@ function batchCaptureConcurrencyForProfile(profile) {
   return Number(profile?.captureConcurrency || batchCaptureConcurrencyLimit());
 }
 
-function renderedMarkupIncludesImage(markup, imageUrl) {
-  const source = String(imageUrl || '').trim();
-  if (!source) return false;
-  if (markup.includes(encodeURIComponent(source))) return true;
-  const driveId = source.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || '';
-  if (driveId) return markup.includes(driveId);
-  return markup.includes(source) || markup.includes(escapeXml(source));
-}
-
-function collectPartnerNames(list) {
-  const partnerNames = new Set();
-  list.pages?.forEach((page, pageIndex) => {
-    if (page?.type !== 'list') return;
-    // Trang dạng bảng chữ (budget table...) không có ảnh riêng theo item — không có gì
-    // để đối chiếu trong markup, nên chỉ render markup khi thực sự cần (có item có ảnh).
-    const hasImageItems = page.items?.some((item) => String(item?.imageUrl || '').trim());
-    const renderedMarkup = hasImageItems ? renderPageMarkupForExport(list, page, pageIndex) : '';
-    page.items?.forEach((item) => {
-      if (!item?.isPartner) return;
-      const partnerName = String(item?.rawName || item?.name || '')
-        .replace(/^[^:]{1,30}:\s*/, '')
-        .trim();
-      if (!partnerName) return;
-      // V5 lưu ảnh đã chọn của trang trong backgroundImage. Sau khi refresh
-      // dataset, item.imageUrl có thể chuyển sang một ảnh khác trong cùng folder,
-      // trong khi renderer vẫn hiển thị backgroundImage. Đối chiếu đúng ảnh mà
-      // V5 thực sự render để không loại nhầm đối tác khỏi partners-set*.xlsx.
-      // Giữ nguyên quy tắc item.imageUrl cho toàn bộ mẫu còn lại.
-      const imageUrl = page.layoutVariant === 'spotlight-v5-place'
-        ? String(page.backgroundImage || item?.imageUrl || '').trim()
-        : String(item?.imageUrl || '').trim();
-      // Chỉ đối chiếu ảnh đã render khi item có ảnh riêng (grid/gallery...), để tránh đếm
-      // nhầm đối tác mà ảnh thật không lên hình. Dòng không có ảnh (bảng chi phí...) thì
-      // tin trực tiếp cờ isPartner từ dữ liệu.
-      if (imageUrl && !renderedMarkupIncludesImage(renderedMarkup, imageUrl)) return;
-      partnerNames.add(partnerName);
-    });
-  });
-
-  return Array.from(partnerNames).sort((a, b) => a.localeCompare(b, 'vi'));
-}
-
 function assertSpotlightV4V6PartnerExportReady(list, deckId = '') {
   if (deckId === 'spotlight-v5-color-edit') {
     const count = collectPartnerNames(list).length;
@@ -1805,6 +1768,19 @@ function batchFolderName(deckId, setIndex, dataset = null) {
   return `${setLabel} ${short}`;
 }
 
+function uniqueBatchFolderNames(entries, dataset) {
+  const used = new Set();
+  return entries.map(({ deck, list }) => {
+    const base = batchFolderName(deck.id, parseListSetIndex(list), dataset);
+    let name = base, duplicate = 1;
+    // Legacy partner lists have no caption number, so several parse as set1.
+    // Never let JSZip overwrite another list's images, TXT or workbook.
+    while (used.has(name)) name = `${base} - list${++duplicate}`;
+    used.add(name);
+    return name;
+  });
+}
+
 function todayDateTag() {
   const now = new Date();
   const dd = String(now.getDate()).padStart(2, '0');
@@ -1967,10 +1943,10 @@ export async function renderPageBlob(pageNode, options = {}) {
     }
     return cornersAlreadyClipped ? blob : clipBlobToPageCorners(blob, pageNode, imageFormat, imageQuality, backgroundColor);
   };
-  await ensureExportFontsReady(pageNode, { decodeImages: !imagesReady, embedFonts: shouldEmbedFonts });
-  const blobUrls = imagesReady ? [] : await inlineImagesAsBlobs(pageNode, { waitForReady: options.waitForImageReady });
-
+  let blobUrls = [];
   try {
+    await ensureExportFontsReady(pageNode, { decodeImages: !imagesReady, embedFonts: shouldEmbedFonts });
+    blobUrls = imagesReady ? [] : await inlineImagesAsBlobs(pageNode, { waitForReady: options.waitForImageReady });
     // html2canvas is the preferred engine for batch exports because:
     // 1. It works reliably in background tabs (no rAF / foreignObject dependency)
     // 2. It renders CSS layout more faithfully than html-to-image's SVG pipeline
@@ -2151,8 +2127,8 @@ async function runAdaptiveExport(attempt, context, callbacks) {
   }).catch(() => null);
   await updateLease(true);
   const leaseTimer = setInterval(() => { void updateLease(true); }, 30000);
+  const cb = exportCallbacks(callbacks);
   try {
-    const cb = exportCallbacks(callbacks);
     try {
       cb.setStatus('Đang kiểm tra đối tác trước khi xuất...');
       context = assertExportContextPartners(context, attempt === exportBatchAttempt);
@@ -2177,7 +2153,17 @@ async function runAdaptiveExport(attempt, context, callbacks) {
       exportCallbacks(callbacks).setStatus('Thiếu tài nguyên khi xuất; đang xuất lại toàn bộ bằng Cân bằng tương thích...');
       return await attempt({ ...context, _compatRetry: true }, callbacks);
     }
+  } catch (error) {
+    // Also covers failures before an attempt's own try/finally (runtime checks,
+    // layout validation, metadata and compatible retry initialization).
+    const message = error?.message || 'Không rõ lỗi.';
+    cb.failProgress(`Xuất file thất bại: ${message}`);
+    cb.setStatus(`Lỗi: ${message} Đã dừng xuất và hủy dữ liệu xuất dở; list được giữ nguyên. Hãy khắc phục rồi xuất lại.`);
+    return { success: false, error: message, exportedLists: [], skippedLists: context._partnerSkippedLists || [] };
   } finally {
+    cb.setBusy(false);
+    clearBatchExportRoot();
+    resetBatchImageCache();
     clearInterval(leaseTimer);
     await updateLease(false);
     release();
@@ -2286,7 +2272,8 @@ async function exportSelectedPagePngAttempt(context, callbacks = {}) {
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`Page PNG export failed: ${message}`);
     cb.failProgress(`Xuất ảnh thất bại: ${message}`);
-    cb.setStatus(`Lỗi: ${message}`);
+    cb.setStatus(`Lỗi: ${message} Đã dừng xuất và hủy dữ liệu xuất dở; list được giữ nguyên. Hãy khắc phục rồi xuất lại.`);
+    return { success: false, error: message };
   } finally {
     clearBatchExportRoot();
     resetBatchImageCache();
@@ -2450,7 +2437,8 @@ async function exportActiveListAttempt(context, callbacks = {}) {
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`List ZIP export failed: ${message}`);
     cb.failProgress(`Xuất ZIP thất bại: ${message}`);
-    cb.setStatus(`Lỗi: ${message}`);
+    cb.setStatus(`Lỗi: ${message} Đã dừng xuất và hủy dữ liệu xuất dở; list được giữ nguyên. Hãy khắc phục rồi xuất lại.`);
+    return { success: false, error: message };
   } finally {
     clearBatchExportRoot();
     resetBatchImageCache();
@@ -2492,6 +2480,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
   resetBatchImageCache();
 
   const skippedLists = [...(context._partnerSkippedLists || [])];
+  let mainZip;
   try {
     orderedLists.forEach(({ deck, list }) => assertSpotlightV4V6PartnerExportReady(list, deck.id));
     orderedLists.forEach(({ deck, list }) => assertItineraryNoteDarkPartnerExportReady(list, deck.id));
@@ -2515,7 +2504,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
       orderedLists = orderListsForBatchExport([...inspection.validEntries, ...localEntries], dataset);
     }
 
-    const mainZip = new JSZip();
+    mainZip = new JSZip();
     await requestExportWakeLock();
     const totalPages = Math.max(orderedLists.reduce((total, item) => total + (isThreadsLocalDeck(item.deck.id) ? 0 : item.list.pages?.length || 0), 0), 1);
     let renderedPages = 0;
@@ -2524,10 +2513,8 @@ async function exportBatchAttempt(context, callbacks = {}) {
       await ensureExportFontsReady(document.documentElement, { decodeImages: false, embedFonts: true });
     }
 
-    const folders = orderedLists.map((item) => {
-      const setIndex = parseListSetIndex(item.list);
-      return mainZip.folder(batchFolderName(item.deck.id, setIndex, dataset));
-    });
+    const folderNames = uniqueBatchFolderNames(orderedLists, dataset);
+    const folders = folderNames.map(name => mainZip.folder(name));
     await mapWithConcurrency(orderedLists, qualityProfile.compatibility ? 1 : 6, (item, index) => addListMetadataFiles(folders[index], item.list, parseListSetIndex(item.list), item.deck.id));
 
     const pageTasks = [];
@@ -2635,7 +2622,13 @@ async function exportBatchAttempt(context, callbacks = {}) {
     }
 
     const successful = orderedLists.filter(({ list }) => !skippedLists.some(skip => skip.listId === list.id));
-    for (let index = 0; index < orderedLists.length; index++) if (skippedLists.some(skip => skip.listId === orderedLists[index].list.id)) mainZip.remove(folders[index].root);
+    for (let index = 0; index < orderedLists.length; index++) if (skippedLists.some(skip => skip.listId === orderedLists[index].list.id)) {
+      const skipped = skippedLists.find(skip => skip.listId === orderedLists[index].list.id);
+      // Remove the whole failed list: earlier pages and TXT/XLSX metadata may
+      // already exist when a later page fails. Never ship that partial folder.
+      skipped.discardedFiles = Object.values(mainZip.files).filter(file => !file.dir && file.name.startsWith(folders[index].root)).length;
+      mainZip.remove(folders[index].root);
+    }
     if (!successful.length) {
       await context.onExportOutcome?.({ exportedLists: [], skippedLists });
       throw new ExportImageError('Không có list nào đủ ảnh để xuất; không tạo ZIP rỗng.');
@@ -2673,7 +2666,9 @@ async function exportBatchAttempt(context, callbacks = {}) {
         throw new Error('Trình duyệt chặn bước tải ZIP. Hãy giữ tab tool đang mở rồi bấm xuất lại.');
       }
     }
-    const doneMessage = `Đã xuất ${successful.length} list.` + (skippedLists.length ? ' ' + formatSkippedListSummary(skippedLists) : '');
+    const discarded = skippedLists.reduce((total, skip) => total + (skip.discardedFiles || 0), 0);
+    const doneMessage = `Đã xuất ${successful.length} list.` + (skippedLists.length ? ' ' + formatSkippedListSummary(skippedLists) : '')
+      + (discarded ? ` Đã loại bỏ ${discarded} file xuất dở của các list lỗi khỏi ZIP; giữ nguyên list để sửa và xuất lại.` : '');
     cb.completeProgress(doneMessage);
     cb.setStatus(doneMessage);
     return outcome;
@@ -2685,9 +2680,10 @@ async function exportBatchAttempt(context, callbacks = {}) {
     const message = error?.message || 'Không rõ lỗi.';
     console.warn(`Batch export failed: ${message}`);
     cb.failProgress(`Xuất hàng loạt thất bại: ${message}`);
-    cb.setStatus(`Lỗi: ${message}`);
+    cb.setStatus(`Lỗi: ${message} Đã dừng xuất và hủy dữ liệu xuất dở; list được giữ nguyên. Hãy khắc phục rồi xuất lại.`);
     return { success: false, exportedLists: [], skippedLists, error: message };
   } finally {
+    if (mainZip) for (const name of Object.keys(mainZip.files)) mainZip.remove(name);
     await releaseExportWakeLock();
     cb.setBusy(false);
     clearBatchExportRoot();

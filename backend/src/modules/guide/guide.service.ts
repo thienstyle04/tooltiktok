@@ -35,6 +35,7 @@ import {
   GeneratePartnerSpotlightRequest,
   GeneratePartnerSpotlightResponse,
   GeneratedListsStore,
+  PartnerRotationHistory,
   GuideDeck,
   GuideDeckList,
   GuideDataset,
@@ -81,6 +82,7 @@ import {
 } from './logic/image-resolver';
 
 import { DataAllocator, itemUsageKey } from './logic/data-allocator';
+import { bootstrapPartnerHistory, restrictRotationPhotos, rotatePartnerList, visiblePartnerCount, rotationPhotoShortage, requiredPartnerCount, validateRotationStore, partnerSlotCount } from './logic/partner-rotation';
 import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
 import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_DARK_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION, SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, spotlightV4VenueAvailability, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
@@ -251,6 +253,7 @@ export class GuideService implements OnApplicationBootstrap {
   private get persimmonHookSource() { return this.hooksForSource(this.activeDestinationId).persimmon; }
   private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
+  private partnerRotation: Record<string, PartnerRotationHistory> = {};
   private usedAllocator = new DataAllocator();
   private inventoryLoaded = false;
 
@@ -1692,6 +1695,14 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
     const requestedTone = this.normalizeCaptionTone(request.tone);
     const seed = [deckId, generatedSuffix, String(existing.length), requestedTone, caption.coverTitle, caption.headline, caption.body, caption.hashtags.join(' '), timestamp].join('|');
+    const sourceItems = this.cloneJson(context.itemsBySection);
+    const historicalLists = this.applyPageTextOverrides(deckId, this.cloneJson(existing), this.loadPageTextOverrides());
+    const rotationHistory = bootstrapPartnerHistory(historicalLists, deckId, Object.values(sourceItems).flat(), this.partnerRotation[deckId]);
+    let nextRotationHistory = rotationHistory;
+    let rotationWarnings: string[] = [];
+    let rotationDesign: Pick<GuideDeckList, 'spotlightDesignRevision' | 'coverReview'> = {};
+    let requiredPartners = 1;
+    let requiredPartnerSlots = 1;
 
     let festivalReservation: HookReservation | null = null;
     let greenHookReservation: GreenHookReservation | null = null;
@@ -1757,6 +1768,8 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       });
     }
     let basePages: DeckPage[];
+    const startingItemUsage = new Set(deckUsage.itemIds);
+    const startingImageUsage = new Set(deckUsage.imageUrls);
     try {
       basePages = buildPagesForDeck(
         deckId,
@@ -1764,11 +1777,25 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         context.imageUrls,
         context.imageLibraryEntries,
         seed,
-        deckUsage.itemIds,
-        deckUsage.imageUrls,
+        new Set(startingItemUsage),
+        new Set(startingImageUsage),
         context.coverImageUrls,
         context.hinhNenImagePools,
       );
+      requiredPartners = requiredPartnerCount(deckId, sourceItems, basePages);
+      requiredPartnerSlots = Math.max(1, partnerSlotCount(basePages));
+      // Select alternatives through the original builders: their category/quota rules
+      // remain authoritative. Never replace formatted items with generic copy.
+      if (!isTextNoteDeck(deckId)) {
+        const restricted = restrictRotationPhotos(sourceItems, rotationHistory, isThreadsLocalDeck(deckId));
+        context.itemsBySection = restricted;
+        try {
+          basePages = buildPagesForDeck(deckId, restricted, context.imageUrls, context.imageLibraryEntries,
+            seed, new Set(startingItemUsage), new Set(startingImageUsage), context.coverImageUrls, context.hinhNenImagePools);
+        } catch (error) {
+          throw new BadRequestException(`${currentDeck.navTitle}: ${error instanceof Error ? error.message : String(error)}${rotationPhotoShortage(sourceItems, rotationHistory)}`);
+        }
+      }
       if (deckId === 'spotlight-v6-diary') {
         // Only warm selected images; never stall other templates on this pool.
         context.itemsBySection = this.cloneJson(context.itemsBySection);
@@ -1793,10 +1820,45 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           }
           // Each retry removes at least one failing ID. Strict builder reports the shortage.
           basePages = buildPagesForDeck(deckId, context.itemsBySection, context.imageUrls,
-            context.imageLibraryEntries, seed, deckUsage.itemIds, deckUsage.imageUrls,
+            context.imageLibraryEntries, seed, new Set(startingItemUsage), new Set(startingImageUsage),
             context.coverImageUrls, context.hinhNenImagePools);
         }
       }
+      let rotationError: unknown;
+      for (let attempt = 0; attempt < 32; attempt++) {
+        try {
+          let draft = buildDeckList(deckId, `caption-${generatedSuffix}`, '', '', '', basePages);
+          if (SPOTLIGHT_DESIGN_DECKS.includes(deckId)) {
+            const coverHook = festivalReservation?.hook || (isLegacyGoogleDocHookDeck(deckId)
+              ? String(basePages.find(page => page.type === 'cover')?.title || '')
+              : isPremadeHookDeck(deckId) ? this.resolvePremadeHookCoverTitle(deckId, seed) : '');
+            draft.pages = applyCaptionToPages(draft.pages, { ...caption,
+              coverTitle: this.sanitizeContentText(sanitizeDeckHeadline(coverHook || caption.coverTitle)) });
+            // Cover selection must finish BEFORE photo history is staged. A
+            // cover can itself contain a partner's source photo and belongs to
+            // that partner's cycle; never reselect it after rotation.
+            draft = prepareSpotlightDesign(draft, deckId, context.coverImageUrls);
+          }
+          const rotated = rotatePartnerList(draft,
+            deckId, sourceItems, rotationHistory, `${seed}:rotation`, requiredPartners, requiredPartnerSlots);
+          if (this.renderedPartnerNames(rotated.list).length < requiredPartners) throw new Error(`${currentDeck.navTitle}: chưa đủ ${requiredPartners} đối tác thực sự hiển thị để ghi XLSX. Đang thử bộ địa điểm khác.`);
+          basePages = rotated.list.pages;
+          nextRotationHistory = rotated.history;
+          rotationWarnings = rotated.list.warnings || [];
+          rotationDesign = { spotlightDesignRevision: rotated.list.spotlightDesignRevision, coverReview: rotated.list.coverReview };
+          rotationError = undefined;
+          break;
+        } catch (error) {
+          rotationError = error;
+          // A different set of eligible venues may make the legal matching possible.
+          // No history/hook/list is committed during these attempts.
+          if (attempt < 31 && deckId !== 'spotlight-v6-diary') basePages = buildPagesForDeck(deckId,
+            context.itemsBySection, context.imageUrls, context.imageLibraryEntries, `${seed}:alternative:${attempt + 1}`,
+            new Set(startingItemUsage), new Set(startingImageUsage), context.coverImageUrls, context.hinhNenImagePools);
+          else break;
+        }
+      }
+      if (rotationError) throw new BadRequestException(`${currentDeck.navTitle}: ${rotationError instanceof Error ? rotationError.message : String(rotationError)}`);
     } finally {
       clearSpotlightV3BuildContext();
     }
@@ -1861,7 +1923,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       isNonAiDeck(deckId) ? '' : finalCaption.body,
       generatedPages,
     );
-    Object.assign(generatedList, prepareSpotlightDesign(generatedList, deckId, context.coverImageUrls));
+    generatedList.partnerRotationVersion = 1;
+    generatedList.warnings = rotationWarnings;
+    Object.assign(generatedList, rotationDesign);
     generatedList.coverTitle = effectiveCoverTitle;
     applyListPhotoPreset(generatedList, request.photoPreset);
     if (isThreadsLocalDeck(deckId)) generatedList.canvasPreset = 'tiktok-3x4';
@@ -1940,8 +2004,11 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         sourceRevision: persimmonHookReservation.sourceRevision,
       };
     }
-    const sanitizedGeneratedList = this.sanitizeGeneratedListText(generatedList, deckId);
+    const sanitizedGeneratedList = this.cloneJson(this.sanitizeGeneratedListText(generatedList, deckId));
+    if (this.renderedPartnerNames(sanitizedGeneratedList).length < requiredPartners || partnerSlotCount(sanitizedGeneratedList.pages) < requiredPartnerSlots) throw new BadRequestException(`${currentDeck.navTitle}: đối tác bị thiếu sau khi chuẩn bị trang; chưa lưu list.`);
     await this.assertGeneratedImageCache(sanitizedGeneratedList.pages, deckId);
+    const previousRotation = this.partnerRotation[deckId];
+    this.partnerRotation[deckId] = nextRotationHistory;
 
     if (deckId === 'spotlight-v6-diary') {
       const previousLines = this.diaryUsedLines;
@@ -1957,6 +2024,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       this.diaryUsedLines = nextLines;
       this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
       try { this.persistGeneratedLists(); } catch (error) {
+        if (previousRotation) this.partnerRotation[deckId] = previousRotation; else delete this.partnerRotation[deckId];
         this.diaryUsedLines = previousLines;
         this.generatedListsByDeckId.set(deckId, existing);
         throw error;
@@ -1964,18 +2032,36 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     } else {
       this.generatedListsByDeckId.set(deckId, [...existing, sanitizedGeneratedList]);
       try { this.persistGeneratedLists(); } catch (error) {
+        if (previousRotation) this.partnerRotation[deckId] = previousRotation; else delete this.partnerRotation[deckId];
         this.generatedListsByDeckId.set(deckId, existing);
         throw error;
       }
       this.markUsedInDeck(sanitizedGeneratedList.pages);
-      this.persistInventory();
+      // Rotation is authoritative and already committed atomically with the list.
+      // A failure in the legacy, advisory inventory must not turn a saved list into
+      // a failed request (which would invite an unsafe retry and duplicate list).
+      try { this.persistInventory(); } catch (error) { console.warn('[inventory] List đã lưu; chưa ghi được thống kê cũ:', error); }
     }
-    this.festivalHookSources.commit(festivalReservation);
-    this.greenHookSource.commit(greenHookReservation);
-    this.darkHookSource.commit(darkHookReservation);
-    this.persimmonHookSource.commit(persimmonHookReservation);
+    // The list and photo history have committed. A secondary hook-store failure
+    // must not report this saved list as failed and invite duplicate retries.
+    const hookWarnings: string[] = [];
+    for (const commit of [
+      () => this.festivalHookSources.commit(festivalReservation),
+      () => this.greenHookSource.commit(greenHookReservation),
+      () => this.darkHookSource.commit(darkHookReservation),
+      () => this.persimmonHookSource.commit(persimmonHookReservation),
+    ]) {
+      try { commit(); } catch (error) {
+        console.warn('[hooks] List đã lưu; chưa ghi được vòng hook:', error);
+        hookWarnings.push('List đã lưu thành công nhưng chưa ghi được vòng hook. Kiểm tra quyền ghi dữ liệu trước lượt tạo tiếp theo.');
+      }
+    }
+    if (hookWarnings.length) {
+      sanitizedGeneratedList.warnings = [...new Set([...(sanitizedGeneratedList.warnings || []), ...hookWarnings])];
+      try { this.persistGeneratedLists(); } catch (error) { console.warn('[hooks] Chưa lưu được cảnh báo của list:', error); }
+    }
 
-    return { deckId, listId: sanitizedGeneratedList.id, navTitle: sanitizedGeneratedList.navTitle, title: sanitizedGeneratedList.title };
+    return { deckId, listId: sanitizedGeneratedList.id, navTitle: sanitizedGeneratedList.navTitle, title: sanitizedGeneratedList.title, warnings: sanitizedGeneratedList.warnings };
     } catch (error) {
       this.festivalHookSources.rollback(festivalReservation);
       this.greenHookSource.rollback(greenHookReservation);
@@ -2058,7 +2144,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         : deckId === 'spotlight-v6-dark' ? this.darkHookSource
         : deckId === 'spotlight-v6-persimmon' ? this.persimmonHookSource : null;
       if (themedHook) await withLocalDataOnly(() => themedHook.ensureReady(''));
-      const results: Array<{ listId: string; navTitle: string; tone: string }> = [];
+      const results: GenerateBatchListsResponse['lists'] = [];
       let failCount = 0;
       const errors: Array<{ index: number; tone: string; message: string }> = [];
       for (let i = 0; i < count; i += 1) {
@@ -2072,7 +2158,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
             automationRunId: request.automationRunId,
             automationPosition: `${deckId}:${i + 1}`,
           });
-          results.push({ listId: generated.listId, navTitle: generated.navTitle, tone: 'không AI' });
+          results.push({ listId: generated.listId, navTitle: generated.navTitle, tone: 'không AI', warnings: generated.warnings });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.warn(`[batch] Lỗi tạo ${deckId} ${i + 1}/${count}:`, message);
@@ -2094,7 +2180,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       'lich_trinh_huu_ich',
     ];
 
-    const results: Array<{ listId: string; navTitle: string; tone: string }> = [];
+    const results: GenerateBatchListsResponse['lists'] = [];
     let failCount = 0;
     const errors: Array<{ index: number; tone: string; message: string }> = [];
 
@@ -2182,7 +2268,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           automationPosition: `${deckId}:${i + 1}`,
         });
 
-        results.push({ listId: generated.listId, navTitle: generated.navTitle, tone });
+        results.push({ listId: generated.listId, navTitle: generated.navTitle, tone, warnings: generated.warnings });
       } catch (error: any) {
         const cause = error?.cause ? (error.cause.code || error.cause.message || String(error.cause)) : '';
         const message = (error instanceof Error ? error.message : String(error)) + (cause ? ` (${cause})` : '');
@@ -2286,7 +2372,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       context.coverImageUrls,
     );
 
-    const generatedList = buildDeckList(
+    let generatedList = buildDeckList(
       deckId,
       listSuffix,
       partnerItem.name,
@@ -2294,6 +2380,10 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       partnerItem.address || partnerItem.type || '',
       pages,
     );
+    const historicalLists = this.applyPageTextOverrides(deckId, this.cloneJson(existing), this.loadPageTextOverrides());
+    const rotationHistory = bootstrapPartnerHistory(historicalLists, deckId, allItems, this.partnerRotation[deckId]);
+    const rotated = rotatePartnerList(generatedList, deckId, context.itemsBySection, rotationHistory, listSuffix);
+    generatedList = rotated.list;
     applyListPhotoPreset(generatedList, request.photoPreset);
     generatedList.coverTitle = partnerItem.name.toUpperCase().slice(0, 35);
     generatedList.postCaption = SPOTLIGHT_PARTNER_POST_CAPTION;
@@ -2303,15 +2393,19 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     generatedList.templateVersion = SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
     const parentDeck = this.ensureWorkbookDerivedContext().baseDecks.find(deck => deck.id === deckId);
     if (parentDeck) generatedList.pages = inheritPageTypography(parentDeck, generatedList.pages, this.loadPageTextOverrides());
+    if (!this.renderedPartnerNames(generatedList).length) throw new BadRequestException(`Spotlight Đối tác: không có đối tác hiển thị hợp lệ; chưa lưu list.`);
     await this.assertGeneratedImageCache(generatedList.pages, deckId);
 
     this.generatedListsByDeckId.set(deckId, [...existing, generatedList]);
+    const previousRotation = this.partnerRotation[deckId];
+    this.partnerRotation[deckId] = rotated.history;
     try { this.persistGeneratedLists(); } catch (error) {
+      if (previousRotation) this.partnerRotation[deckId] = previousRotation; else delete this.partnerRotation[deckId];
       this.generatedListsByDeckId.set(deckId, existing);
       throw error;
     }
     this.markUsedInDeck(pages);
-    this.persistInventory();
+    try { this.persistInventory(); } catch (error) { console.warn('[inventory] List đã lưu; chưa ghi được thống kê cũ:', error); }
 
     return {
       deckId,
@@ -2320,6 +2414,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       title: generatedList.title,
       partnerName: partnerItem.name,
       pageCount: pages.length,
+      warnings: generatedList.warnings,
     };
   }
 
@@ -2478,6 +2573,14 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     if (errors.length) throw new BadRequestException(`Chưa lưu list ${deckId}: ảnh cache thiếu/hỏng: ${errors.map(ref => `trang ${ref.page}, ${ref.place}, ${ref.id}`).join('; ')}. Hãy cập nhật dữ liệu.`);
   }
 
+  private renderedPartnerNames(list: GuideDeckList): string[] {
+    // The release ships frontend/lib alongside the backend. Node >=22.12 can
+    // load this pure ESM contract synchronously; no browser, AI or I/O is invoked
+    // by the renderer. The exporter imports this exact same implementation.
+    const policy = require(path.join(this.frontendRoot, 'lib', 'partnerNames.mjs')) as { collectPartnerNames(list: GuideDeckList): string[] };
+    return policy.collectPartnerNames(list);
+  }
+
   private async buildLocallyVerifiedGenerationContext(requirePlaceImages = true): Promise<DatasetBuildContext> {
     // Clone before filtering: saved snapshots and the currently visible dataset must not change.
     const context = this.cloneJson(this.buildDatasetContext());
@@ -2555,13 +2658,20 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   private mergeGeneratedLists(decks: GuideDeck[], coverImageUrls: string[] = []): GuideDeck[] {
     const usedCoverUrls = new Set<string>();
     const pageTextOverrides = this.loadPageTextOverrides();
-    return decks.map((deck) => {
+    const archivedPartnerLists = this.generatedListsByDeckId.get('spotlight-partner') ?? [];
+    // Retire creation without deleting or regenerating approved user snapshots.
+    const archivedDecks: GuideDeck[] = archivedPartnerLists.length ? [{
+      id: 'spotlight-partner', creationDisabled: true, navTitle: 'Spotlight Đối tác (đã ngừng)',
+      title: 'List Spotlight Đối tác đã lưu', description: 'Chỉ xem, chỉnh sửa và xuất list đã lưu; không tạo mới.',
+      lists: this.applyPageTextOverrides('spotlight-partner', this.cloneJson(archivedPartnerLists), pageTextOverrides),
+    }] : [];
+    return [...decks.filter(deck => deck.id !== 'spotlight-partner').map((deck) => {
       const templateVersion = this.templateVersionForDeck(deck.id);
       const baseLists = deck.lists.map((list) => {
         const sanitized = this.sanitizeBaseListForDisplay(list, coverImageUrls);
         return templateVersion ? { ...sanitized, templateVersion } : sanitized;
       });
-      const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deck.id) ? this.cloneJson(list) : this.sanitizeGeneratedListText(list, deck.id));
+      const generatedLists = (this.generatedListsByDeckId.get(deck.id) ?? []).map((list) => list.partnerRotationVersion || list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deck.id) ? this.cloneJson(list) : this.sanitizeGeneratedListText(list, deck.id));
       const displayLists = generatedLists.length === 0
         ? baseLists
         : [
@@ -2573,7 +2683,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       // Một số bước làm sạch giao diện có fallback chữ để cứu dữ liệu cũ. Áp lại
       // cấu trúc mẫu mẹ sau cùng để fallback không tái tạo trường đã bị xóa.
       const structuredDisplayLists = displayLists.map((list) => (
-        list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deck.id) || /-main$/i.test(String(list.id || ''))
+        list.partnerRotationVersion || list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deck.id) || /-main$/i.test(String(list.id || ''))
           || String(list.id || '').toLowerCase() === 'main'
           || String(list.navTitle || '').trim().toLowerCase() === 'list chính'
           ? list
@@ -2582,7 +2692,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       const guardedLists = SPOTLIGHT_DESIGN_DECKS.includes(deck.id) || THREADS_NOTE_DECK_IDS.includes(deck.id)
         ? structuredDisplayLists : this.applyRecentImageReuseGuard(structuredDisplayLists);
       return { ...deck, lists: this.applyPageTextOverrides(deck.id, guardedLists, pageTextOverrides) };
-    });
+    }), ...archivedDecks];
   }
 
   private normalizeEditablePageText(value: unknown): string {
@@ -2709,7 +2819,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     const recentListImageSets: Array<Set<string>> = [];
 
     return lists.map((list) => {
-      if (list.photoPreset || list.id.startsWith('spotlight-v6-diary-')) return list;
+      if (list.partnerRotationVersion || list.photoPreset || list.id.startsWith('spotlight-v6-diary-')) return list;
       const recentImageUrls = this.mergeRecentImageSets(recentListImageSets);
       const currentListVisualImageUrls = new Set<string>();
       const currentListItemImageUrls = new Set<string>();
@@ -2865,7 +2975,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     usedCoverUrls?: Set<string>,
     deckId?: string,
   ): GuideDeckList {
-    if (list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deckId || '') || THREADS_NOTE_DECK_IDS.includes(deckId || '')) return this.cloneJson(list);
+    if (list.partnerRotationVersion || list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deckId || '') || THREADS_NOTE_DECK_IDS.includes(deckId || '')) return this.cloneJson(list);
     const cleanList = this.sanitizeGeneratedListText(list, deckId);
     if (isThreadsLocalDeck(deckId || '') || deckId === 'spotlight-v6-diary') return cleanList;
     if (!/caption-/i.test(cleanList.id)) return cleanList;
@@ -3249,7 +3359,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         this.markUsedInDeck(list.pages, renderUsage);
       });
       const refreshedLists = lists.map((list, listIndex) => {
-        if (list.photoPreset) return list;
+        if (list.partnerRotationVersion || list.photoPreset) return list;
         if (list.templateVersion === templateVersion) return list;
         if (deckId === 'spotlight-partner') {
           const partnerItem = this.findPartnerItemForGeneratedList(list, itemsBySection);
@@ -3533,7 +3643,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       // Luồng refresh chung chỉ biết ảnh thật Link_drive và sẽ thay nhầm trang Maps
       // thành ảnh địa điểm sau lần reload/getDataset đầu tiên.
       if (deckId === 'spotlight-partner' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
-      const refreshedLists = lists.map((list) => ({
+      const refreshedLists = lists.map((list) => list.partnerRotationVersion ? list : ({
         ...list,
         pages: list.pages.map((page) => {
           if (page.type !== 'list') return page;
@@ -3625,6 +3735,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         }),
       }));
       const sanitizedLists = refreshedLists.map((list) => {
+        if (list.partnerRotationVersion) return list;
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
         return sanitizedList;
@@ -3640,11 +3751,13 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     this.generatedListsLoaded = true;
     this.generatedListsByDeckId.clear();
     this.diaryUsedLines = {};
+    this.partnerRotation = {};
     if (!fs.existsSync(this.resolveDestinationDataPath('generated-caption-lists'))) return;
 
     try {
       const raw = fs.readFileSync(this.resolveDestinationDataPath('generated-caption-lists'), 'utf-8');
-      const parsed = JSON.parse(raw) as Partial<GeneratedListsStore>;
+      const parsed = JSON.parse(raw.replace(/^\uFEFF/, '')) as Partial<GeneratedListsStore>;
+      this.partnerRotation = validateRotationStore(parsed.partnerRotation);
       this.diaryUsedLines = Object.fromEntries(Object.entries(parsed.diaryUsedLines || {})
         .filter(([, lines]) => Array.isArray(lines) && lines.every(line => typeof line === 'string')));
       const deckEntries = parsed.decks && typeof parsed.decks === 'object' ? parsed.decks : {};
@@ -3658,8 +3771,11 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       });
       this.repairSpotlightV6MapsSnapshots();
       this.migrateGeneratedListTextStore();
-    } catch {
+    } catch (error) {
       this.generatedListsByDeckId.clear();
+      this.partnerRotation = {};
+      this.generatedListsLoaded = false;
+      throw new BadRequestException(`Không đọc được kho list/lịch sử luân phiên; chưa ghi đè dữ liệu. ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -3668,7 +3784,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       (carry, [deckId, lists]) => { carry[deckId] = this.cloneJson(lists); return carry; },
       {} as Record<string, GuideDeckList[]>,
     );
-    const payload: GeneratedListsStore = { version: 1, savedAt: new Date().toISOString(), decks, diaryUsedLines: this.diaryUsedLines };
+    const payload: GeneratedListsStore = { version: 1, savedAt: new Date().toISOString(), decks, diaryUsedLines: this.diaryUsedLines, partnerRotation: this.partnerRotation };
     this.ensureDataRoot();
     this.writeJsonFileSafe(this.getDestinationDataPath('generated-caption-lists'), payload);
     // Không đụng tới cache Sheet ở đây: list AI được merge trực tiếp từ generatedListsByDeckId
@@ -3680,7 +3796,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     const lists = this.generatedListsByDeckId.get('spotlight-v6-maps');
     if (!lists?.length) return;
     let changed = false;
-    const repaired = lists.map((list) => ({
+    const repaired = lists.map((list) => list.partnerRotationVersion ? list : ({
       ...list,
       pages: list.pages.map((page) => {
         if (page.type !== 'list'
@@ -3720,7 +3836,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       if (isSpotlightV5Deck(deckId) || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
       if (isThreadsLocalDeck(deckId)) continue;
       const sanitizedLists = lists.map((list) => {
-        if (list.photoPreset) return list;
+        if (list.partnerRotationVersion || list.photoPreset) return list;
         const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
         if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
         return sanitizedList;
@@ -5717,6 +5833,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   private resetDestinationScopedState(): void {
     this.generatedListsLoaded = false;
     this.generatedListsByDeckId.clear();
+    this.partnerRotation = {};
     this.inventoryLoaded = false;
     this.usedAllocator = new DataAllocator();
     this.driveAccessCacheLoadedFor = null;

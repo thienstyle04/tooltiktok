@@ -21,6 +21,7 @@ async function scenario(outcome: 'completed' | 'failed' | 'cancelled') {
     try { return await task(); } finally { active--; }
   };
   s.guideService = {
+    assertTemplateAllowed: () => undefined, // This fixture isolates queue lifecycle, not source permissions.
     getNightSyncStatus: () => ({ running: null, queued: [] }),
     isGenerationBusy: () => false,
     getDestinations: () => ({ active: { id: destination }, destinations: [{id:'dalat'}, {id:'greenland'}] }),

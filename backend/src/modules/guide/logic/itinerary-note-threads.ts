@@ -1,5 +1,5 @@
 import type { GuideItem, ListPage, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
-import { stableHash } from './image-resolver';
+import { normalizeText, stableHash } from './image-resolver';
 import { itemUsageKey } from './data-allocator';
 
 export const THREADS_NOTE_IDS = ['itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d'] as const;
@@ -62,8 +62,24 @@ export function buildThreadsNotePages(common: { itemsBySection: WorkbookItemsByS
   // is soft: alternate preferred slots, then fall back to any valid same-group venue.
   const owners = new Map<string, number>();
   const chosen: GuideItem[] = new Array(slots.length);
+  // Requested placement for new 3N2Đ lists only. This venue opens in the
+  // evening, so reserve one real food/dinner row, never a morning cafe slot.
+  // All spellings/duplicate food+cafe rows share the same venue identity.
+  const featured = deckId === THREADS_NOTE_IDS[0]
+    ? (common.itemsBySection.quan_an || []).filter(item => item.isPartner && item.name?.trim()
+      && item.address?.trim() && identity(item) === 'tackehoa')
+      .sort((a, b) => Number(!normalizeText(a.type || '').includes('an_toi'))
+        - Number(!normalizeText(b.type || '').includes('an_toi')) || stableHash(seed + a.id) - stableHash(seed + b.id))[0]
+    : undefined;
+  const featuredSlots = featured ? slots.map((slot, i) => ({ slot, i }))
+    .filter(({ slot }) => slot.period === 'Tối' && slot.groups.includes('quan_an'))
+    .sort((a, b) => stableHash(seed + ':featured-dinner:' + a.i) - stableHash(seed + ':featured-dinner:' + b.i)) : [];
+  const reservedSlot = featuredSlots[0]?.i;
+  if (featured && reservedSlot !== undefined) {
+    chosen[reservedSlot] = featured; owners.set(identity(featured), reservedSlot);
+  }
   const localPositions = slots.map((slot, i) => i - slots.findIndex(s => s.day === slot.day));
-  const ranked = pools.map((pool, i) => [...pool].sort((a, b) => {
+  const ranked = pools.map((pool, i) => pool.filter(item => !featured || reservedSlot === undefined || identity(item) !== identity(featured)).sort((a, b) => {
     const preferPartner = localPositions[i] % 2 === 0;
     const score = (x: GuideItem) => Number(slots[i].period === 'Tối' && slots[i].groups.includes('choi_dem') && x.sectionKey !== 'choi_dem') * 100
       + Number(Boolean(x.isPartner) !== preferPartner) * 10
@@ -83,6 +99,7 @@ export function buildThreadsNotePages(common: { itemsBySection: WorkbookItemsByS
     return false;
   }
   for (const i of slots.map((_, i) => i).sort((a,b) => ranked[a].length - ranked[b].length)) {
+    if (i === reservedSlot) continue;
     if (!assign(i, new Set())) throw new Error('Note Threads không đủ địa điểm không trùng đúng nhóm. Hãy cập nhật dữ liệu; không tự giảm số điểm.');
   }
   const pages: ListPage[] = days.map((_, day) => ({

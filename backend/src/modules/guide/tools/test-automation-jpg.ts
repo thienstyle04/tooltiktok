@@ -3,10 +3,11 @@ import { AutomationSchedulerService } from '../automation-scheduler.service';
 
 // In-memory scheduler boundary: never instantiate the live service or write user state.
 const scheduler = Object.create(AutomationSchedulerService.prototype) as any;
-scheduler.guideService = { getDestinations: () => ({destinations:[{id:'dalat'}]}) };
+scheduler.guideService = { getDestinations: () => ({destinations:[{id:'dalat-threads'}]}),
+ assertTemplateAllowed: (deckId: string, sourceId: string) => { assert.equal(deckId, 'summary-note'); assert.equal(sourceId, 'dalat-threads'); } };
 scheduler.assertOutputDirectory = () => undefined;
 scheduler.findBrowser = () => 'test-browser';
-const input = {name:'JPG test',destinationId:'dalat',frequency:'daily',dailyTime:'09:00',outputDir:'test-output',templates:[{deckId:'summary-note',count:3}]};
+const input = {name:'JPG test',destinationId:'dalat-threads',frequency:'daily',dailyTime:'09:00',outputDir:'test-output',templates:[{deckId:'summary-note',count:3}]};
 for (const format of [undefined, 'png', 'jpg']) {
  const schedule=scheduler.validateSchedule({...input,format});
  assert.equal(schedule.format,format || 'png');

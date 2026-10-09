@@ -88,6 +88,11 @@ async function main(): Promise<void> {
     status = store.getStatus('dalat');
     assert.equal(status.sources[0].usedCount, 3);
     assert.equal(status.sources[0].remainingCount, 0);
+    const exhaustedA = store.reserve('spotlight-guide', 'dalat');
+    const exhaustedB = store.reserve('spotlight-v2', 'dalat');
+    store.rollback(exhaustedA);
+    store.rollback(exhaustedB);
+    assert.equal(store.getStatus('dalat').sources[0].usedCount, 3, 'Rollback must not reset an exhausted cycle');
 
     let releaseDoc: (() => void) | undefined;
     docGate = new Promise<void>((resolve) => { releaseDoc = resolve; });

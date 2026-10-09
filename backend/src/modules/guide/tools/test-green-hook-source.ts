@@ -29,7 +29,18 @@ async function main(): Promise<void> {
     const restarted = new GreenHookSourceStore(dataRoot, fetchDoc, () => 0);
     const newRound = restarted.reserve();
     assert.equal(newRound.hook, 'Hook xanh A');
+    assert.equal((restarted as any).state.usedKeys.length, 2, 'Reserve must not reset an exhausted cycle before list commit');
     restarted.rollback(newRound);
+    assert.equal((restarted as any).state.usedKeys.length, 2, 'Failed list retains the exhausted cycle');
+    const nextA = restarted.reserve(), nextB = restarted.reserve();
+    restarted.rollback(nextA);
+    restarted.commit(nextB);
+    assert.equal((restarted as any).state.usedKeys.length, 1, 'Only a successful commit opens the next cycle');
+    restarted.commit(restarted.reserve());
+    const roundA = restarted.reserve(), roundB = restarted.reserve();
+    restarted.commit(roundA);
+    assert.throws(() => restarted.reserve(), /giữ chỗ/, 'A completed hook must not repeat while another new-cycle reservation is pending');
+    restarted.commit(roundB);
 
     shouldFail = true;
     await restarted.ensureReady(docUrl, true);

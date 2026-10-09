@@ -332,6 +332,9 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
                 {(list.errors || []).map((error, index) => <small key={index} style={{ overflowWrap: 'anywhere' }}>{error.page ? `Trang ${error.page} · ` : ''}{error.id || ''}: {error.reason}</small>)}
               </div>)}
             </details>}
+            {run.warnings?.length > 0 && <details><summary>{run.warnings.length} lưu ý khi tạo list</summary>
+              {run.warnings.map((warning, index) => <small key={index} style={{ overflowWrap: 'anywhere' }}>{templateLabel(warning.deckId)} / {warning.listId}: {warning.message}</small>)}
+            </details>}
           </div>
           <div className="automation-run-progress"><span style={{ width: `${run.progress || 0}%` }} /></div>
           {!['queued','refreshing','warming','generating','awaiting-export','exporting'].includes(run.status) ? (

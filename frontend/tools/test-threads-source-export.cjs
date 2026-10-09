@@ -1,4 +1,4 @@
-// Real browser export against synthetic, source-isolated fixtures. Never accesses user data.
+// Real browser export against source-isolated fixtures. Never writes user data.
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), http = require('node:http');
 const { createRequire } = require('node:module');
@@ -8,16 +8,23 @@ const esbuild = backendRequire('esbuild'), { chromium } = require('playwright');
 const reportPath = process.env.DALAT_TEST_REPORT;
 assert.ok(reportPath, 'Set DALAT_TEST_REPORT to the isolated test generation.json');
 const fixture = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-assert.equal(fixture.fixture, 'isolated source-specific synthetic data/images');
-assert.equal(fixture.lists.length, 48);
-const testRoot = path.dirname(reportPath), cache = path.join(testRoot, 'cache');
-const output = path.join(testRoot, 'exports'); fs.mkdirSync(output, { recursive: true });
+assert.ok(['isolated source-specific synthetic data/images', 'isolated live Threads Sheet audit'].includes(fixture.fixture), 'An explicitly isolated fixture is required');
+assert.equal(fixture.lists.length, fixture.expectedCount || 48);
+const selectedDecks = new Set(String(process.env.DALAT_TEST_DECKS || '').split(',').filter(Boolean));
+if (selectedDecks.size) {
+  fixture.lists = fixture.lists.filter(entry => selectedDecks.has(entry.deckId));
+  fixture.expectedCount = fixture.lists.length;
+  assert.ok(fixture.expectedCount, 'Selected templates must exist in the fixture');
+  assert.ok(fixture.lists.some(entry => entry.deckId === 'grid-4' || entry.deckId === 'summary-note'), 'Include grid-4 or summary-note for the JPG/partial-export check');
+}
+const testRoot = path.dirname(reportPath), cache = path.join(fixture.root || testRoot, 'cache');
+const output = path.join(testRoot, selectedDecks.size ? 'exports-selected' : 'exports'); fs.mkdirSync(output, { recursive: true });
 backendRequire('ts-node').register({ project: path.join(backend, 'tsconfig.json'), transpileOnly: true });
 const { getColorEditAsset } = backendRequire('./src/modules/guide/color-edit');
 const sharp = backendRequire('sharp');
 async function main() {
   const source = fs.readFileSync(path.join(front, 'lib/exportClient.js'), 'utf8');
-  const bundle = await esbuild.build({ stdin: { contents: source + '\nexport { JSZip, collectPartnerNames, batchFolderName, parseListSetIndex };', resolveDir: path.join(front, 'lib') }, bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'TestExport' });
+  const bundle = await esbuild.build({ stdin: { contents: source + '\nexport { JSZip, collectPartnerNames, batchFolderName, uniqueBatchFolderNames, parseListSetIndex };', resolveDir: path.join(front, 'lib') }, bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'TestExport' });
   const css = [...fs.readFileSync(path.join(front, 'app/globals.css'), 'utf8').matchAll(/@import url\("(.+?)"\)/g)].map(m => fs.readFileSync(path.join(front, 'app', m[1]), 'utf8')).join('\n');
   const server = http.createServer(async (req, res) => {
     try {
@@ -31,8 +38,8 @@ async function main() {
       let body = ''; for await (const chunk of req) body += chunk;
       if (url.pathname === '/bundle.js') return send(bundle.outputFiles[0].text, 'text/javascript');
       if (url.pathname === '/fixture') return send(fixture);
-      if (url.pathname === '/api/health') return send({ status: 'ok', sessionId: 'isolated-threads', appVersion: '0.9.05' });
-      if (url.pathname === '/api/drive-cache/status') return send({ ready: true, phase: 'ready', destinationId: 'dalat-threads', total: 200, cached: 200, completed: 200, failed: 0, percent: 100 });
+      if (url.pathname === '/api/health') return send({ status: 'ok', sessionId: 'isolated-rotation', appVersion: backendRequire('./package.json').version });
+      if (url.pathname === '/api/drive-cache/status') return send({ ready: true, phase: 'ready', destinationId: fixture.dataset.source.id, total: 200, cached: 200, completed: 200, failed: 0, percent: 100 });
       if (url.pathname.includes('runtime-performance')) return send({ mode: 'modern', totalMemoryBytes: 32 * 1024 ** 3, freeMemoryBytes: 8 * 1024 ** 3, cpuCount: 8 });
       if (url.pathname === '/api/drive-files/cache-status') {
         const ids = JSON.parse(body).fileIds; const missing = ids.filter(id => !fs.existsSync(path.join(cache, id + '.bin')));
@@ -68,19 +75,21 @@ async function main() {
         const expected = fixture.lists.filter(entry => entry.deckId === deckId);
         const deck = { ...fixture.dataset.decks.find(d => d.id === deckId), lists: expected.map(entry => entry.list) };
         const dataset = { ...fixture.dataset, decks: [deck] }, original = JSON.stringify(dataset);
+        const folderNames = TestExport.uniqueBatchFolderNames(expected.map(({ list }) => ({ deck, list })), dataset);
+        if (new Set(folderNames).size !== expected.length) throw Error('Colliding list folders');
         let inspected = [], imageCount = 0, archiveCount = 0;
         const outcome = await TestExport.exportBatch({ dataset, selectedListIds: new Set(deck.lists.map(list => list.id)), quality: 'optimized', format: 'png', skipImageErrors: true,
           onArchive: async (blob, name, exportResult) => {
             archiveCount++; const zip = await TestExport.JSZip.loadAsync(await blob.arrayBuffer(), { checkCRC32: true });
             if (exportResult.skippedLists.length) throw new Error(JSON.stringify(exportResult.skippedLists));
-            for (const { list } of expected) {
-              const prefix = TestExport.batchFolderName(deckId, TestExport.parseListSetIndex(list), dataset) + '/';
+            for (const [entryIndex, { list, expectedPartnerNames }] of expected.entries()) {
+              const prefix = folderNames[entryIndex] + '/';
               const names = Object.keys(zip.files).filter(name => name.startsWith(prefix) && !zip.files[name].dir);
               const xlsxName = names.find(name => name.endsWith('.xlsx')); if (!xlsxName) throw new Error('Missing workbook: ' + list.id);
               const xlsx = await TestExport.JSZip.loadAsync(await zip.file(xlsxName).async('uint8array'), { checkCRC32: true });
               const xml = await xlsx.file('xl/worksheets/sheet1.xml').async('string');
               const partnerNames = Array.from(new DOMParser().parseFromString(xml, 'application/xml').getElementsByTagName('t'), el => el.textContent);
-              const expectedNames = [...new Set(list.pages.flatMap(page => page.items || []).filter(item => item.isPartner).map(item => String(item.rawName || item.name).replace(/^[^:]{1,30}:\s*/, '').trim()))];
+              const expectedNames = expectedPartnerNames || [...new Set(list.pages.flatMap(page => page.items || []).filter(item => item.isPartner).map(item => String(item.rawName || item.name).replace(/^[^:]{1,30}:\s*/, '').trim()))];
               if (JSON.stringify([...partnerNames].sort()) !== JSON.stringify([...expectedNames].sort())) throw new Error('Partner mismatch ' + list.id + ': ' + JSON.stringify({ partnerNames, expectedNames }));
               const photos = names.filter(name => /\.(png|jpg|webp)$/i.test(name));
               const textOnly = deckId === 'threads-mix-text', imagePackage = ['threads-food-local', 'threads-cafe-local', 'threads-mix-local'].includes(deckId);
@@ -93,6 +102,8 @@ async function main() {
               }
               inspected.push({ id: list.id, partners: partnerNames, photos: photos.length });
             }
+            const archivedPhotos = Object.keys(zip.files).filter(name => /\.(png|jpg|webp)$/i.test(name)).length;
+            if (archivedPhotos !== imageCount) throw Error(`ZIP overwrote images: ${archivedPhotos}/${imageCount}`);
             await fetch('/artifact?deck=' + deckId, { method: 'POST', body: blob });
           }
         }, { setStatus: text => document.getElementById('status').textContent = text });
@@ -100,12 +111,14 @@ async function main() {
         return { deckId, outcome, inspected, imageCount, archiveCount };
       }, deckId);
       results.push(result); fs.writeFileSync(path.join(output, 'report.json'), JSON.stringify(results, null, 2));
-      assert.equal(result.outcome.success, true, JSON.stringify(result)); assert.equal(result.archiveCount, 1); assert.equal(result.inspected.length, 4);
-      console.log('PASS export', deckId, '4 XLSX; images:', result.imageCount);
+      assert.equal(result.outcome.success, true, JSON.stringify(result)); assert.equal(result.archiveCount, 1);
+      assert.equal(result.inspected.length, fixture.lists.filter(entry => entry.deckId === deckId).length);
+      console.log('PASS export', deckId, result.inspected.length, 'XLSX; images:', result.imageCount);
     }
     const extra = await page.evaluate(async () => {
       const fixture = await (await fetch('/fixture')).json();
-      const deck = { ...fixture.dataset.decks.find(d => d.id === 'summary-note'), lists: fixture.lists.filter(e => e.deckId === 'summary-note').slice(0, 2).map(e => structuredClone(e.list)) };
+      const id = fixture.dataset.decks.some(d => d.id === 'summary-note') ? 'summary-note' : 'grid-4';
+      const deck = { ...fixture.dataset.decks.find(d => d.id === id), lists: fixture.lists.filter(e => e.deckId === id).slice(0, 2).map(e => structuredClone(e.list)) };
       deck.lists[1].pages.forEach(page => page.items?.forEach(item => { item.isPartner = false; }));
       let jpgCount = 0, skippedReport;
       const outcome = await TestExport.exportBatch({ dataset: { ...fixture.dataset, decks: [deck] }, selectedListIds: new Set(deck.lists.map(list => list.id)), quality: 'optimized', format: 'jpg', skipImageErrors: true,
@@ -116,9 +129,9 @@ async function main() {
           await fetch('/artifact?deck=partial-jpg', { method: 'POST', body: blob });
         }
       }, { setStatus: text => document.getElementById('status').textContent = text });
-      return { outcome, jpgCount, skippedReport, expectedSkippedId: deck.lists[1].id };
+      return { outcome, jpgCount, skippedReport, expectedSkippedId: deck.lists[1].id, expectedJpgCount: deck.lists[0].pages.length };
     });
-    assert.equal(extra.outcome.success, true); assert.equal(extra.outcome.exportedLists.length, 1); assert.equal(extra.outcome.skippedLists.length, 1); assert.equal(extra.jpgCount, 1);
+    assert.equal(extra.outcome.success, true); assert.equal(extra.outcome.exportedLists.length, 1); assert.equal(extra.outcome.skippedLists.length, 1); assert.equal(extra.jpgCount, extra.expectedJpgCount);
     assert.ok(JSON.stringify(extra.skippedReport).includes(extra.expectedSkippedId));
     fs.writeFileSync(path.join(output, 'partial-jpg.json'), JSON.stringify(extra, null, 2));
     console.log('PASS JPG/partial export: partner-free list skipped with named report; valid list still exported.');
@@ -128,8 +141,8 @@ async function main() {
       const zip = await JSZip.loadAsync(fs.readFileSync(path.join(output, name)), { checkCRC32: true });
       for (const file of Object.values(zip.files).filter(file => /\.(png|jpg|webp)$/i.test(file.name))) { await sharp(await file.async('nodebuffer')).raw().toBuffer(); decoded++; }
     }
-    assert.equal(results.reduce((sum, result) => sum + result.inspected.length, 0), 48);
-    console.log('PASS: 48 lists exported in 12 actual browser batches; reopened CRC-checked ZIP/XLSX, exact partners, TXT, decoded images:', decoded, 'OUTPUT=' + output);
+    assert.equal(results.reduce((sum, result) => sum + result.inspected.length, 0), fixture.expectedCount || 48);
+    console.log('PASS:', fixture.lists.length, 'lists exported in', results.length, 'actual browser batches; reopened CRC-checked ZIP/XLSX, exact partners, TXT, decoded images:', decoded, 'OUTPUT=' + output);
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
