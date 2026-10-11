@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
+import { pipeline } from 'node:stream/promises';
 import { getAppConfig, resolveBackendDataDir, resolveBackendRoot } from '../../config';
 import { getRuntimeSession } from '../../runtime-session';
 import { GuideService } from './guide.service';
@@ -305,22 +306,32 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     if (run.exportedLists && !run.exportedLists.length) throw new ConflictException('Không có list xuất thành công; không nhận ZIP rỗng.');
     const stamp = this.fileStamp(run.startedAt || run.createdAt);
     const runDir = path.join(run.outputDir, `${stamp}-${this.safeName(run.scheduleName)}-${run.id.slice(-8)}`);
+    const createdRunDir = !fs.existsSync(runDir);
     fs.mkdirSync(runDir, { recursive: true });
     const finalPath = path.join(runDir, run.outputFileName || `${stamp}.zip`);
-    const temporaryPath = `${finalPath}.partial-${process.pid}`;
+    const temporaryPath = `${finalPath}.partial-${process.pid}-${crypto.randomBytes(8).toString('hex')}`;
     let bytes = 0;
+    let ownsTemporary = false;
     try {
-      await new Promise<void>((resolve, reject) => {
-        const output = fs.createWriteStream(temporaryPath, { flags: 'wx' });
-        request.on('data', (chunk: Buffer) => {
-          bytes += chunk.length;
-          if (bytes > 2 * 1024 * 1024 * 1024) request.destroy(new Error('ZIP vượt giới hạn 2 GiB.'));
-        });
-        request.once('error', reject);
-        output.once('error', reject);
-        output.once('finish', resolve);
-        request.pipe(output);
-      });
+      if (fs.existsSync(finalPath)) throw new Error('File ZIP của lượt này đã tồn tại; không ghi đè file đã xuất.');
+      const descriptor = fs.openSync(temporaryPath, 'wx');
+      ownsTemporary = true;
+      const output = fs.createWriteStream(temporaryPath, { fd: descriptor });
+      const countBytes = (chunk: Buffer) => {
+        bytes += chunk.length;
+        if (bytes > 2 * 1024 * 1024 * 1024) request.destroy(new Error('ZIP vượt giới hạn 2 GiB.'));
+      };
+      const abortUpload = () => request.destroy(new Error('Truyền ZIP bị ngắt; hãy xuất lại.'));
+      request.on('data', countBytes);
+      request.once('aborted', abortUpload);
+      try {
+        // pipeline destroys both streams on error/premature close and waits
+        // for the file handle to close before Windows cleanup can unlink it.
+        await pipeline(request, output);
+      } finally {
+        request.removeListener('data', countBytes);
+        request.removeListener('aborted', abortUpload);
+      }
       if (bytes < 100) throw new Error('ZIP nhận được rỗng hoặc không đầy đủ.');
       this.assertZipArchive(temporaryPath, bytes);
       fs.renameSync(temporaryPath, finalPath);
@@ -334,8 +345,15 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       this.persist();
       return { outputPath: finalPath, bytes };
     } catch (error) {
-      try { if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath); } catch { /* best effort */ }
-      throw error;
+      let cleanup = 'Không có file xuất dở được lưu.';
+      if (ownsTemporary && fs.existsSync(temporaryPath)) {
+        try { fs.unlinkSync(temporaryPath); cleanup = 'Đã xóa file ZIP xuất dở của lượt này.'; }
+        catch { cleanup = `Chưa xóa được file ZIP xuất dở: ${temporaryPath}. Hãy kiểm tra quyền ghi hoặc phần mềm đang giữ file.`; }
+      }
+      if (createdRunDir) { try { fs.rmdirSync(runDir); } catch { /* Never remove a nonempty folder or recurse into user files. */ } }
+      const message = `${error instanceof Error ? error.message : String(error)} ${cleanup}`;
+      if (!['completed', 'partial'].includes(run.status)) this.failRun(run, `Xuất file thất bại: ${message}`);
+      throw new Error(message);
     }
   }
 
@@ -367,6 +385,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
 
   reportExportFailure(runId: string, token: string, message: string): void {
     const run = this.authorizeExport(runId, token);
+    if (!ACTIVE_STATUSES.has(run.status)) return;
     this.failRun(run, `Xuất file thất bại: ${String(message || 'Không rõ lỗi.').slice(0, 500)}`);
   }
 
@@ -505,6 +524,10 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
           for (const item of response.lists || []) {
             run.generated.push({ deckId: template.deckId, listId: item.listId });
             run.listIds.push(item.listId);
+            if (item.warnings?.length) {
+              run.warnings ||= [];
+              run.warnings.push(...item.warnings.map(message => ({ deckId: template.deckId, listId: item.listId, message })));
+            }
           }
           if (response.failCount || response.successCount < template.count) {
             run.errors.push({ deckId: template.deckId, requested: template.count, completed: response.successCount, message: (response.errors || []).map((item) => item.message).join('; ') || `Chỉ tạo được ${response.successCount}/${template.count} list.` });

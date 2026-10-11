@@ -1213,7 +1213,8 @@ export function createListPicker(initialUsedIds: Set<string> = new Set()): PickF
     });
     return selected;
   };
-  pick.isUsed = (item: GuideItem) => hasItemKey(localUsedIds, item) || hasItemKey(softUsedIds, item);
+  // A scarce partner can be reused across lists, never twice within one list.
+  pick.isUsed = (item: GuideItem) => hasItemKey(localUsedIds, item) || (!item.isPartner && hasItemKey(softUsedIds, item));
   return pick;
 }
 
@@ -5400,13 +5401,6 @@ export function buildDecks(
       title: 'Bộ trang spotlight 1 địa điểm',
       description: 'Mẫu mới gồm cover, 8 trang mỗi trang một địa điểm nổi bật, thêm 1 trang dịch vụ và 1 trang homestay dạng danh sách 7 mục.',
       lists: [buildDeckList('spotlight-guide', 'main', 'List chính', 'List spotlight Đà Lạt', 'Danh sách ảnh chính cho mẫu spotlight một dữ liệu mỗi trang.', buildPagesForDeck('spotlight-guide', common.itemsBySection, common.imageUrls, common.libraryEntries, 'spotlight-guide-main', common.globalUsedItemIds, common.globalUsedImageUrls, common.coverImageUrls))],
-    },
-    {
-      id: 'spotlight-partner',
-      navTitle: 'Spotlight Đối tác',
-      title: 'Bộ trang spotlight cho 1 đối tác',
-      description: 'Mẫu dành riêng cho đối tác: cover + mỗi ảnh Drive của đối tác là 1 trang spotlight + trang list đối tác liên quan. Chọn đối tác từ danh sách để sinh mẫu.',
-      lists: buildSpotlightPartnerSampleLists(common.itemsBySection, common.imageUrls, common.libraryEntries, common.coverImageUrls),
     },
     // pov-3-v2: gỡ khỏi danh sách mẫu hiển thị — cùng lý do (ảnh ngang không
     // chỉnh được), giữ nguyên logic build trong deck-builder-v2, chỉ lọc ra ở đây.

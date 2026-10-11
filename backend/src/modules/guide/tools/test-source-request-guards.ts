@@ -15,7 +15,7 @@ const guide: any = {
 const controller = new GuideController(guide, {} as any, { assertUserMutationAllowed() {}, isDataSyncBusy: () => false } as any);
 for (const call of [() => controller.generateBatchLists({ deckId: 'threads-food-local' }), () => controller.generateDeckFromCaption({ deckId: 'itinerary-note-dark' })]) assert.throws(call, /Đà Lạt Threads/);
 assert.equal(queueCalls, 0);
-sourceId = 'dalat-threads'; assert.throws(() => controller.generatePartnerSpotlight({}), /chỉ dành cho Threads và Note/);
+sourceId = 'dalat-threads'; assert.throws(() => controller.generatePartnerSpotlight({}), /đã ngừng sử dụng/);
 assert.equal(queueCalls, 0);
 controller.generateBatchLists({ deckId: 'threads-food-local', count: 4 });
 sourceId = 'dalat'; assert.throws(() => queued!(), /Nguồn dữ liệu đã thay đổi/); assert.equal(generations, 0);

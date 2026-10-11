@@ -67,7 +67,7 @@ export default function TemplateGalleryPanel({
 }) {
   const [query, setQuery] = useState('');
   const [group, setGroup] = useState('');
-  const decks = (dataset?.decks || []).filter(deck => `${deck.navTitle} ${deck.title}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')) && (!group || (group === 'Spotlight' ? deck.id.includes('spotlight') : group === 'Note' ? deck.id.includes('note') || deck.id === 'threads-toplist-dalat' : group === 'Lưới' ? deck.id.includes('grid') : deck.id.includes('itinerary') || deck.id.includes('budget'))));
+  const decks = (dataset?.decks || []).filter(deck => !deck.creationDisabled && deck.id !== 'spotlight-partner').filter(deck => `${deck.navTitle} ${deck.title}`.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi')) && (!group || (group === 'Spotlight' ? deck.id.includes('spotlight') : group === 'Note' ? deck.id.includes('note') || deck.id === 'threads-toplist-dalat' : group === 'Lưới' ? deck.id.includes('grid') : deck.id.includes('itinerary') || deck.id.includes('budget'))));
 
   return (
     <section className="template-gallery-shell">

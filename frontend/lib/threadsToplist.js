@@ -1,4 +1,4 @@
-import { escapeHtml, sanitizeFilePart } from './utils';
+import { escapeHtml, sanitizeFilePart } from './utils.js';
 
 export function renderThreadsToplistCover(page, index, listId) {
   return `<article class="story-page threads-toplist-cover" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="01-top-list-da-lat.png">

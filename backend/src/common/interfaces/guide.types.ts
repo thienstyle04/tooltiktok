@@ -211,6 +211,8 @@ export interface ListPage {
 export type DeckPage = CoverPage | ListPage;
 
 export interface GuideDeckList {
+  partnerRotationVersion?: 1;
+  warnings?: string[];
   spotlightDesignRevision?: 1;
   coverReview?: { topic: string | null; warnings: string[]; approvedSourceIds: string[] };
   photoPreset?: 'iphone-color-edit-v1';
@@ -237,6 +239,8 @@ export interface GuideDeckList {
 
 export interface GuideDeck {
   id: string;
+  /** Saved lists remain accessible, but this template cannot create new lists. */
+  creationDisabled?: boolean;
   navTitle: string;
   title: string;
   description: string;
@@ -361,6 +365,7 @@ export interface GenerateCaptionDeckRequest {
 }
 
 export interface GenerateCaptionDeckResponse {
+  warnings?: string[];
   deckId: string;
   listId: string;
   navTitle: string;
@@ -396,7 +401,7 @@ export interface GenerateBatchListsProgress {
 
 export interface GenerateBatchListsResponse {
   deckId: string;
-  lists: Array<{ listId: string; navTitle: string; tone: string }>;
+  lists: Array<{ listId: string; navTitle: string; tone: string; warnings?: string[] }>;
   successCount: number;
   failCount: number;
   errors?: Array<{ index: number; tone: string; message: string }>;
@@ -409,6 +414,7 @@ export interface GeneratePartnerSpotlightRequest {
 }
 
 export interface GeneratePartnerSpotlightResponse {
+  warnings?: string[];
   deckId: string;
   listId: string;
   navTitle: string;
@@ -509,8 +515,16 @@ export interface DeckBuildPools {
 }
 
 export interface GeneratedListsStore {
+  partnerRotation?: Record<string, PartnerRotationHistory>;
   diaryUsedLines?: Record<string, string[]>;
   version: number;
   savedAt: string;
   decks: Record<string, GuideDeckList[]>;
 }
+
+export type PartnerRotationHistory = Record<string, {
+  position: number;
+  lastPhotos: string[];
+  usedPhotos: string[];
+  cycle: number;
+}>;

@@ -53,8 +53,9 @@ assert.equal(scheduler.validateTemplates([{deckId:'spotlight-v5',count:4,photoPr
 assert.equal(scheduler.validateTemplates([{deckId:'spotlight-v6',count:4}])[0].photoPreset,undefined);
 assert.throws(()=>scheduler.validateTemplates([{deckId:'spotlight-v5',count:4,photoPreset:'bad'}]),/không được hỗ trợ/);
 const service:any=Object.create(GuideService.prototype);
+service.activeDestinationId='dalat'; // Template-source validation requires a real source even when the preset is rejected.
 Promise.all([
  assert.rejects(()=>service.generateDeckFromCaption({deckId:'spotlight-v5',photoPreset:'bad'}),/không được hỗ trợ/),
  assert.rejects(()=>service.generateBatchLists({deckId:'spotlight-v6',photoPreset:'bad'}),/không được hỗ trợ/),
- assert.rejects(()=>service.generatePartnerSpotlight({photoPreset:'bad'}),/không được hỗ trợ/),
+ assert.rejects(()=>service.generatePartnerSpotlight({photoPreset:'bad'}),/đã ngừng sử dụng/),
 ]).then(()=>console.log('PASS preset validation before generation; migration/backup/restore/idempotency/conflicts; scheduled presets.')).catch(error=>{console.error(error);process.exitCode=1;});

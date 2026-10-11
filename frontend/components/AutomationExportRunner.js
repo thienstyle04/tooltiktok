@@ -17,6 +17,7 @@ async function readError(response, fallback) {
 export default function AutomationExportRunner({ runId, token }) {
   const [label, setLabel] = useState('Đang chuẩn bị phiên xuất tự động...');
   const [progress, setProgress] = useState(0);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let stopped = false;
@@ -81,6 +82,8 @@ export default function AutomationExportRunner({ runId, token }) {
         });
         if (!result?.success) throw new Error(result?.error || 'Luồng xuất không hoàn tất.');
       } catch (error) {
+        stopped = true;
+        setFailed(true);
         const message = error instanceof Error ? error.message : String(error);
         setLabel(`Lỗi: ${message}`);
         await fetch(endpoint('/export-failure'), {
@@ -96,10 +99,10 @@ export default function AutomationExportRunner({ runId, token }) {
     <main className="automation-runner" aria-live="polite">
       <section>
         <span className="automation-runner-mark">ĐL</span>
-        <h1>Đang xuất tự động</h1>
+        <h1>{failed ? 'Xuất tự động đã dừng' : 'Đang xuất tự động'}</h1>
         <p>{label}</p>
-        <div><i style={{ width: `${progress}%` }} /></div>
-        <strong>{Math.round(progress)}%</strong>
+        {!failed && <><div><i style={{ width: `${progress}%` }} /></div><strong>{Math.round(progress)}%</strong></>}
+        {failed && <p>Hãy khắc phục lỗi rồi chạy lại lịch xuất trong tool.</p>}
       </section>
     </main>
   );

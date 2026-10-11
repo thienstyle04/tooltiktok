@@ -47,7 +47,7 @@ export const THREADS_NOTE_DECK_IDS = Object.keys(THREADS_NOTE_DECK_LABELS);
 const OTHER_DECK_IDS = [
   'itinerary-3n2d', 'budget-3n2d', 'budget-72h-summary', 'budget-3n2d-story',
   'itinerary-4n3d', 'itinerary-4n2d-grid8', 'grid-6', 'grid-6-zigzag', 'grid-8',
-  'grid-4', 'grid-4-mutant', 'grid-5', 'spotlight-guide', 'spotlight-partner',
+  'grid-4', 'grid-4-mutant', 'grid-5', 'spotlight-guide',
   'grid-6-quaytung', 'grid-8-feed', 'grid-8-quaytung', 'spotlight-v2', 'spotlight-v3',
   'spotlight-v4', 'spotlight-v5', 'spotlight-v6', 'spotlight-v6-green', 'spotlight-v6-dark',
   'spotlight-v6-persimmon', 'spotlight-v6-maps', 'spotlight-v6-diary',
@@ -124,6 +124,7 @@ export function isDeckAllowedForSource(id: DestinationId, deckId: string): boole
 }
 
 export function sourceTemplateError(id: DestinationId, deckId: string): string {
+  if (deckId === 'spotlight-partner') return 'Mẫu Spotlight Đối tác đã ngừng sử dụng. Hãy chọn mẫu khác; list đã lưu vẫn được giữ nguyên.';
   const name = THREADS_NOTE_DECK_LABELS[deckId] || deckId;
   return THREADS_NOTE_DECK_IDS.includes(deckId)
     ? `Mẫu ${name} chỉ được tạo trên nguồn Đà Lạt Threads. Hãy chọn Đà Lạt Threads và tải dữ liệu trước.`

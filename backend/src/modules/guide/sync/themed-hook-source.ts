@@ -69,7 +69,7 @@ async function fetchHookDocument(docId: string, options: ThemedHookSourceOptions
 export class ThemedHookSourceStore {
   private readonly statePath: string;
   private state: ThemedHookState | null;
-  private readonly reservations = new Map<string, { key: string; revision: string }>();
+  private readonly reservations = new Map<string, { key: string; revision: string; resetCycle: boolean }>();
   private syncPromise: Promise<void> | null = null;
 
   constructor(
@@ -139,16 +139,18 @@ export class ThemedHookSourceStore {
         .filter((entry) => entry.revision === state.revision)
         .map((entry) => entry.key),
     );
-    let candidates = state.hooks.filter((hook) => !state.usedKeys.includes(keyOf(hook)) && !reservedKeys.has(keyOf(hook)));
+    let resetCycle = state.hooks.every(hook => state.usedKeys.includes(keyOf(hook)))
+      && [...this.reservations.values()].some(entry => entry.revision === state.revision && entry.resetCycle);
+    let candidates = state.hooks.filter((hook) => (resetCycle || !state.usedKeys.includes(keyOf(hook))) && !reservedKeys.has(keyOf(hook)));
     if (!candidates.length && reservedKeys.size === 0) {
-      state.usedKeys = [];
+      resetCycle = true;
       candidates = state.hooks;
     }
     if (!candidates.length) throw new Error(`Các ${this.options.label} còn lại đang được request khác giữ chỗ. Vui lòng thử lại.`);
     const index = Math.min(candidates.length - 1, Math.floor(Math.max(0, this.random()) * candidates.length));
     const hook = candidates[index];
     const token = crypto.randomUUID();
-    this.reservations.set(token, { key: keyOf(hook), revision: state.revision });
+    this.reservations.set(token, { key: keyOf(hook), revision: state.revision, resetCycle });
     return { token, hook, sourceId: state.docId, sourceRevision: state.revision };
   }
 
@@ -158,10 +160,11 @@ export class ThemedHookSourceStore {
     if (!pending) return;
     try {
       if (!this.state || this.state.revision !== reservation.sourceRevision || pending.revision !== this.state.revision) return;
-      if (this.state.usedKeys.includes(pending.key)) return;
+      const usedKeys = pending.resetCycle && this.state.hooks.every(hook => this.state!.usedKeys.includes(keyOf(hook))) ? [] : this.state.usedKeys;
+      if (usedKeys.includes(pending.key)) return;
       const next = {
         ...this.state,
-        usedKeys: [...this.state.usedKeys, pending.key],
+        usedKeys: [...usedKeys, pending.key],
         updatedAt: new Date().toISOString(),
       };
       this.persist(next);
