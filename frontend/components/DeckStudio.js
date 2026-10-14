@@ -159,6 +159,7 @@ export default function DeckStudio({ initialDataset = null }) {
     return () => { disposed = true; clearInterval(timer); };
   }, [manualSyncDestination, manualSyncTerminal]);
   const [dismissedCacheDestinationId, setDismissedCacheDestinationId] = useState(null);
+  const [dismissedSyncWarning, setDismissedSyncWarning] = useState('');
   const currentSelectionRef = useRef({ activeDeckId: initialDeck?.id || null, activeListId: initialList?.id || null, selectedPageIndex: 0 });
   const v2CatalogRefreshAttemptedRef = useRef(false);
   const selectionHistoryRef = useRef([]);
@@ -1729,6 +1730,12 @@ export default function DeckStudio({ initialDataset = null }) {
         <div className="cache-ready-notice" role="status">
           <strong>Dữ liệu đã sẵn sàng</strong>
           <span>Bạn có thể tạo và xuất list.</span>
+        </div>
+      ) : null}
+      {driveCacheStatus.ready && driveCacheStatus.syncWarning && dismissedSyncWarning !== driveCacheStatus.syncWarning ? (
+        <div className="sync-warning-notice" role="status">
+          <span>{driveCacheStatus.syncWarning}</span>
+          <button type="button" className="toolbar-button" onClick={() => setDismissedSyncWarning(driveCacheStatus.syncWarning)}>Đã hiểu</button>
         </div>
       ) : null}
 

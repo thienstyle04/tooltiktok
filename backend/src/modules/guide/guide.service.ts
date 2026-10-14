@@ -102,6 +102,7 @@ import { THREADS_BUDGET_ID, threadsBudgetCaption } from './logic/itinerary-note-
 import { THREADS_TOPLIST_ID, THREADS_TOPLIST_CAPTION } from './logic/threads-toplist';
 import { isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_MIX_ID, THREADS_MIX_TEXT_ID, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from './logic/threads-food-local';
 import { CaptionTone, isSpotlightV5Deck, isTextNoteDeck } from './deck-kinds';
+import { isUpdateLocked } from '../../runtime-update-lock';
 const isNonAiDeck = (deckId: string): boolean => Boolean(findLocalTemplate(deckId)) || isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || isSpotlightV5Deck(deckId) || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -134,6 +135,8 @@ export interface DriveCacheWarmStatus {
   failed: number;
   percent: number;
   message: string;
+  /** Lượt cập nhật gần nhất lỗi/bị ngắt nhưng vẫn dùng được dữ liệu đã công bố trước đó. */
+  syncWarning?: string;
 }
 
 @Injectable()
@@ -300,6 +303,8 @@ export class GuideService implements OnApplicationBootstrap {
       initialized: id => Object.keys(readSheetDriveManifest(this.dataRoot, id).items).length > 0,
       automaticEligible: id => !isIsolatedSheetSource(id) || Boolean(this.loadPreferredWorkbookSource(id)),
       busy: () => this.syncMustWait(),
+      // Sau khi trình cập nhật đóng băng tool, không mở lượt đêm mới để nó không bị cắt ngang.
+      holdAutomatic: () => isUpdateLocked(),
       run: (id, done, mark, progress) => syncNightSource(getDestinationConfig(id), done, mark, {
         progress,
         dataRoot: this.dataRoot,
@@ -611,8 +616,14 @@ export class GuideService implements OnApplicationBootstrap {
   getDriveCacheWarmStatus(): DriveCacheWarmStatus {
     const sync = this.getNightSyncStatus();
     const sourceSync = sync.sources.find(source => source.id === this.activeDestinationId);
-    if (sync.running === this.activeDestinationId || sync.queued.includes(this.activeDestinationId)
-      || sourceSync?.phase === 'error' || (sourceSync?.phase === 'partial' && !sourceSync.result)) {
+    const syncPending = sync.running === this.activeDestinationId || sync.queued.includes(this.activeDestinationId);
+    const syncIncomplete = sourceSync?.phase === 'error' || (sourceSync?.phase === 'partial' && !sourceSync.result);
+    // Dữ liệu đã công bố trước đó vẫn hợp lệ cho tới khi lượt mới công bố thay thế
+    // (publish là thao tác nguyên tử). Lượt sau đang chạy, bị ngắt (tắt tool/cập nhật
+    // phiên bản) hoặc lỗi mạng không được khóa tạo list; chỉ nguồn chưa từng có dữ
+    // liệu mới phải chờ cập nhật.
+    const publishedBefore = Boolean(sourceSync?.initialized && sourceSync.lastPublishedAt);
+    if ((syncPending || syncIncomplete) && !publishedBefore) {
       return { ...this.driveCacheWarmStatus, ready: false, destinationId: this.activeDestinationId,
         phase: sourceSync?.phase === 'error' || sourceSync?.phase === 'partial' ? 'error' : 'warming',
         message: sourceSync?.error || (sourceSync?.phase === 'partial'
@@ -627,10 +638,13 @@ export class GuideService implements OnApplicationBootstrap {
     const sourceIsReady = Boolean(this.workbookSource);
     // A completed sync publishes a validated dataset even when some images failed.
     // Generation independently filters every candidate against valid local cache.
-    const syncPublished = sourceSync?.initialized && Boolean(sourceSync.result)
-      && (sourceSync.phase === 'complete' || sourceSync.phase === 'partial');
+    const syncPublished = Boolean(sourceSync?.initialized && sourceSync.result
+      && (sourceSync.phase === 'complete' || sourceSync.phase === 'partial')) || publishedBefore;
     const cacheIsReady = syncPublished || (this.driveCacheWarmStatus.ready
       && this.driveCacheWarmStatus.phase === 'ready');
+    const syncWarning = syncIncomplete
+      ? `${sourceSync?.error ? `Lượt cập nhật gần nhất lỗi: ${sourceSync.error}` : 'Lượt cập nhật gần nhất bị ngắt giữa chừng.'} Đang dùng dữ liệu đã cập nhật lúc ${new Date(sourceSync!.lastPublishedAt!).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}; tool tự thử lại trong 23:00–06:00, hoặc cập nhật thủ công trong Dữ liệu & Cài đặt.`
+      : undefined;
     if (this.destinationDataLoading && !(sourceIsReady && cacheIsReady)) {
       return {
         ...this.driveCacheWarmStatus,
@@ -662,6 +676,7 @@ export class GuideService implements OnApplicationBootstrap {
         destinationId: this.activeDestinationId,
         percent: 100,
         localInventory,
+        syncWarning,
         message: this.driveCacheWarmStatus.failed > 0
           ? `Đã hoàn tất cache ảnh; ${this.driveCacheWarmStatus.failed} ảnh Drive không tải được đã bị loại khỏi pool tạo list.`
           : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',

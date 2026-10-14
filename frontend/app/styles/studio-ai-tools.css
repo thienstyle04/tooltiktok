@@ -325,6 +325,30 @@
   font-size: 0.8rem;
 }
 
+/* Không chặn thao tác: lượt cập nhật sau lỗi/bị ngắt, vẫn dùng dữ liệu đã công bố. */
+.sync-warning-notice {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(520px, calc(100vw - 40px));
+  padding: 12px 14px;
+  border: 1px solid rgba(217, 160, 60, 0.5);
+  border-radius: 12px;
+  background: #3a2c12;
+  color: #fbf1dc;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.sync-warning-notice .toolbar-button {
+  flex: none;
+}
+
 .ai-block {
   border: 0;
   border-bottom: 1px solid var(--studio-line);

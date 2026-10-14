@@ -47,8 +47,9 @@ if not exist "%~dp0backend\.env" (
     copy /y "%~dp0backend\.env.example" "%~dp0backend\.env" >nul
   )
 )
+rem Trong khoi lenh, duong dan phai nam trong ngoac kep: thu muc ten co ngoac don se lam vo khoi.
 if not exist "%~dp0backend\.env" (
-  echo [LOI] Khong tao duoc file cau hinh: %~dp0backend\.env
+  echo [LOI] Khong tao duoc file cau hinh: "%~dp0backend\.env"
   pause
   exit /b 1
 )
@@ -62,18 +63,15 @@ if exist "backend\data\generated-caption-lists.json" (
 )
 
 echo Dang khoi dong Backend va Frontend cung luc...
-echo Sau khi san sang, tool se mo cua so rieng tren Chrome; neu khong co Chrome se dung Edge.
+echo Tool mo ngay cua so rieng tren Chrome (khong co Chrome se dung Edge) va hien tien do khoi dong.
 echo Tool dung co dinh backend 3000 va frontend 3001 de tranh lech phien.
-echo (Ban co the nhan Ctrl+C de tat tool khi khong su dung)
+echo (Dong cua so nay hoac nhan Ctrl+C de tat tool khi khong su dung)
 echo.
 
 set DALAT_OPEN_BROWSER=1
 
-if exist "frontend\.next" (
-  echo Dang xoa cache Next.js cu de tranh loi khi doi may...
-  rmdir /s /q "frontend\.next"
-)
-
+rem Cache giao dien (frontend\.next) duoc scripts\dev.js kiem tra: chi xoa khi doi
+rem phien ban/may hoac lan truoc chua khoi dong xong, va chi sau khi phien cu da tat.
 call npm run dev
 if errorlevel 1 (
   echo.
