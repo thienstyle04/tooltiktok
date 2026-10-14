@@ -14,7 +14,7 @@ export default function CaptionTools({
   photoPreset, photoPresets, onPhotoPresetChange, dataset, activeDeck, activeList,
   selectedListId, tone, setTone, caption, setCaption, busy, cacheReady, partners,
   onDeckSelect, onListSelect, onGeneratedListSelect, onRequestCaption,
-  onCreateList, onCreateBatchLists, onCreatePartnerSpotlight, onCopy,
+  onCreateList, onCreateBatchLists, onCreatePartnerSpotlight, onCopy, onSyncLocalTemplate,
 }) {
   const [batchCount, setBatchCount] = useState(5);
   const [partnerQuery, setPartnerQuery] = useState('');
@@ -25,7 +25,7 @@ export default function CaptionTools({
   const sourceLists = mainLists.length ? mainLists : allLists.slice(0, 1);
   const selectedCaptionList = sourceLists.find(list => list.id === activeList?.id) || sourceLists[0];
   const isPartner = activeDeck?.id === 'spotlight-partner';
-  const isDataTemplate = DATA_TEMPLATES.has(activeDeck?.id) || activeDeck?.id?.startsWith('itinerary-note-threads-');
+  const isDataTemplate = Boolean(activeDeck?.localTemplate) || DATA_TEMPLATES.has(activeDeck?.id) || activeDeck?.id?.startsWith('itinerary-note-threads-');
   const needsPhotoCache = activeDeck?.id !== 'threads-toplist-dalat'
     && activeDeck?.id !== 'itinerary-note-timed' && !activeDeck?.id?.startsWith('itinerary-note-threads-');
   const creationDisabled = busy || !activeDeck || (needsPhotoCache && !cacheReady);
@@ -86,12 +86,19 @@ export default function CaptionTools({
         </div>
         <div className="list-create-submit">
           <p>{isPartner ? 'Chọn đối tác bên dưới để tạo một bộ Spotlight riêng.'
+            : activeDeck?.localTemplate ? 'Dùng bộ nội dung đã đồng bộ và dữ liệu của nguồn đang chọn. Không cần nhập caption.'
             : isDataTemplate ? 'Dùng dữ liệu và hook có sẵn theo mẫu. Không cần nhập caption.'
             : 'Tự tạo nội dung theo mẫu. Caption riêng nằm trong phần tùy chọn bên dưới.'}</p>
           {!isPartner ? <button id="createDeckFromCaptionBtn" className="toolbar-button secondary list-create-primary"
             type="button" disabled={creationDisabled} onClick={create}>{busy ? 'Đang tạo…' : `Tạo ${batchCount} list`}<span aria-hidden="true">→</span></button> : null}
         </div>
         {needsPhotoCache && !cacheReady ? <p className="list-create-notice" role="status">Đang chuẩn bị ảnh Drive. Bạn có thể chọn cấu hình trước; nút tạo sẽ mở khi ảnh sẵn sàng.</p> : null}
+        {activeDeck?.localTemplate ? <div className="list-create-notice">
+          <p>Mẫu riêng trên máy này · Nội dung tự luân phiên theo bộ.</p>
+          <p>{activeDeck.localTemplate.status?.syncedAt ? `Đồng bộ nội dung: ${new Date(String(activeDeck.localTemplate.status.syncedAt)).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}` : 'Chưa có nội dung; hãy đồng bộ trước khi tạo.'}</p>
+          {activeDeck.localTemplate.status?.error ? <p role="alert">{String(activeDeck.localTemplate.status.error)}</p> : null}
+          <button type="button" className="toolbar-button" disabled={busy} onClick={onSyncLocalTemplate}>Đồng bộ nội dung mẫu riêng</button>
+        </div> : null}
 
         {isPartner ? <section className="list-create-partners">
           <label className="list-create-label" htmlFor="createPartnerSearch">Tìm đối tác</label>

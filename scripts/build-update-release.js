@@ -35,6 +35,16 @@ async function main() {
   if (changedCode.length) throw Error(`Chưa commit code của bản phát hành: ${changedCode.slice(0, 8).join(', ')}`);
   const files = git('ls-tree', '-r', '--name-only', 'HEAD').toString('utf8').split(/\r?\n/).filter(included);
   if (!files.includes('scripts/update-client.js') || !files.includes('scripts/update-protocol.js')) throw Error('Commit chưa có trình cập nhật.');
+  // Không phát hành khi test unit lỗi. Chỉ bỏ qua khi chủ động đặt DALAT_RELEASE_SKIP_TESTS=1.
+  if (process.env.DALAT_RELEASE_SKIP_TESTS === '1') {
+    console.warn('CẢNH BÁO: bỏ qua npm test theo DALAT_RELEASE_SKIP_TESTS=1.');
+  } else {
+    try {
+      execFileSync(process.execPath, [path.join(__dirname, 'run-tests.js'), 'unit'], { cwd: root, stdio: 'inherit' });
+    } catch {
+      throw Error('npm test lỗi; đã dừng đóng gói bản phát hành.');
+    }
+  }
   const zip = new JSZip();
   for (const file of files) {
     const source = git('show', `HEAD:${file}`);

@@ -2,7 +2,7 @@
  * Audit offline tất cả fix user yêu cầu (không cần API).
  * Chạy: cd backend && node src/modules/guide/tools/test-all-user-fixes-audit.mjs
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -27,7 +27,10 @@ const {
   ITINERARY_TIMELINE_TEMPLATE_VERSION,
 } = require(join(guideDir, 'logic/deck-builder-v2.ts'));
 
-const markup = readFileSync(join(root, 'frontend/lib/pageMarkup.js'), 'utf8');
+// pageMarkup.js là điểm vào; phần lớn hàm nằm ở frontend/lib/markup/*.js.
+const markupDir = join(root, 'frontend/lib/markup');
+const markup = [join(root, 'frontend/lib/pageMarkup.js'), ...readdirSync(markupDir).filter(name => name.endsWith('.js')).map(name => join(markupDir, name))]
+  .map(file => readFileSync(file, 'utf8')).join('\n');
 const storyPhoto = readFileSync(join(root, 'frontend/app/styles/story-photo.css'), 'utf8');
 const templateV2 = readFileSync(join(root, 'frontend/app/styles/template-variants-v2.css'), 'utf8');
 const gridCss = readFileSync(join(root, 'frontend/app/styles/grid-templates.css'), 'utf8');

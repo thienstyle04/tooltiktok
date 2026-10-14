@@ -149,7 +149,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
 
   const decks = useMemo(() => {
     const entries = new Map((dataset?.decks || [])
-      .filter((deck) => deck.id !== 'spotlight-partner' && (deck.lists || []).some((list) => listIsMain(list)))
+      .filter((deck) => deck.id !== 'spotlight-partner' && (deck.localTemplate || (deck.lists || []).some((list) => listIsMain(list))))
       .map((deck) => [deck.id, deck]));
     for (const deck of [...BASE_SCHEDULE_DECKS, ...DALAT_EXTRA_DECKS]) if (!entries.has(deck.id)) entries.set(deck.id, deck);
     return filterSourceTemplates([...entries.values()], targetSource)

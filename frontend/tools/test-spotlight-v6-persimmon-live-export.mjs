@@ -17,11 +17,12 @@ if (!list || list.pages?.length < 9 || list.pages?.length > 11) {
   process.exit(0);
 }
 
-let source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8')
-  .replace('function downloadBlobFile(', 'function originalDownloadBlobFile(');
-source += '\nfunction downloadBlobFile(blob, name) { window.__downloads.push({ blob, name }); return true; }\nexport { JSZip };';
+const exportTest = require('./exportClientTestHelper.cjs');
 const bundle = await esbuild.build({
-  stdin: { contents: source, resolveDir: path.join(root, 'lib') },
+  ...exportTest.bundleOptions({
+    overrides: { downloadBlobFile: 'downloadBlobFile = function (blob, name) { window.__downloads.push({ blob, name }); return true; };' },
+    extra: "export { default as JSZip } from 'jszip';",
+  }),
   bundle: true,
   platform: 'browser',
   format: 'iife',

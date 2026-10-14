@@ -30,15 +30,18 @@ async function serveColorEdit(route, url) {
   return true;
 }
 if (process.env.AUDIT_SKIP_FIRST) generation.decks = generation.decks.slice(Number(process.env.AUDIT_SKIP_FIRST));
-let source = fs.readFileSync(path.join(front, 'lib/exportClient.js'), 'utf8')
-  .replace('function downloadBlobFile(', 'function originalDownloadBlobFile(')
-  + '\nfunction downloadBlobFile(blob,name){window.__downloads.push({blob,name});return true;}\nexport {JSZip,collectPartnerNames,addListMetadataFiles};';
+const exportTest = require('./exportClientTestHelper.cjs');
+const overrides = { downloadBlobFile: 'downloadBlobFile = function (blob, name) { window.__downloads.push({ blob, name }); return true; };' };
 // Optional small raster proof: same layout/images/export flow, lower output
 // resolution only. XLSX/TXT bytes and partner collection are not changed.
-if (process.env.AUDIT_FAST_RENDER === '1') source = source.replace('function exportQualityProfile(', 'function originalExportQualityProfile(')
-  + '\nfunction exportQualityProfile(...args){return {...originalExportQualityProfile(...args),pixelRatio:0.65,sourceImageMaxDimension:640};}';
+if (process.env.AUDIT_FAST_RENDER === '1') overrides.exportQualityProfile = 'const originalExportQualityProfile = exportQualityProfile;\n'
+  + 'exportQualityProfile = function (...args) { return { ...originalExportQualityProfile(...args), pixelRatio: 0.65, sourceImageMaxDimension: 640 }; };';
 const suffix = process.env.AUDIT_SKIP_FIRST ? '-remaining' : '';
-const bundle = await esbuild.build({ stdin: { contents: source, resolveDir: path.join(front, 'lib') }, bundle: true, write: false, format: 'iife', globalName: 'Audit' });
+const bundle = await esbuild.build({ ...exportTest.bundleOptions({
+  names: ['addListMetadataFiles'],
+  overrides,
+  extra: "export { default as JSZip } from 'jszip'; export { collectPartnerNames } from './partnerNames.mjs';",
+}), bundle: true, write: false, format: 'iife', globalName: 'Audit' });
 const css = [...fs.readFileSync(path.join(front, 'app/globals.css'), 'utf8').matchAll(/@import url\("(.+?)"\)/g)].map(m => fs.readFileSync(path.join(front, 'app', m[1]), 'utf8')).join('\n');
 const executablePath = [process.env.PROGRAMFILES + '/Google/Chrome/Application/chrome.exe', process.env['PROGRAMFILES(X86)'] + '/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
 const browser = await chromium.launch({ headless: true, executablePath });

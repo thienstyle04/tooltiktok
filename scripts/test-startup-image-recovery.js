@@ -21,8 +21,8 @@ async function main() {
     assert.deepEqual(paths, ['/api/health']);
   } finally { server.close(); }
 
-  const client = fs.readFileSync(path.join(__dirname, '../frontend/lib/exportClient.js'), 'utf8');
-  const fn = client.slice(client.indexOf('async function fetchImageBlob('), client.indexOf('async function blobLooksLikeDriveFallback('));
+  const { declarationSource } = require('../frontend/tools/exportClientTestHelper.cjs');
+  const fn = declarationSource('fetchImageBlob');
   for (const recovers of [true, false]) {
     let calls = 0;
     const context = vm.createContext({

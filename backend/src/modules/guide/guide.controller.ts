@@ -1,4 +1,5 @@
 import { photoPresetsCatalog } from './photo-presets';
+import { listLocalTemplates, localTemplateAsset, localTemplateBuilder } from './local-templates';
 import {
   Body,
   BadRequestException,
@@ -72,6 +73,29 @@ export class GuideController {
 
   @Get('api/photo-presets')
   getPhotoPresets() { return photoPresetsCatalog(); }
+
+  @Get('api/local-templates')
+  getLocalTemplates() {
+    return listLocalTemplates().map(manifest => ({
+      id: manifest.id, version: manifest.version, name: manifest.name,
+      description: manifest.description, allowedSourceIds: manifest.allowedSourceIds,
+      status: localTemplateBuilder(manifest).status?.() || {},
+    }));
+  }
+
+  @Post('api/local-templates/:id/sync')
+  syncLocalTemplate(@Param('id') id: string) {
+    this.automationScheduler.assertUserMutationAllowed();
+    return this.guideService.syncLocalTemplate(id);
+  }
+
+  @Get('api/local-templates/:id/:version/assets/:name')
+  getLocalTemplateAsset(@Param('id') id: string, @Param('version') version: string, @Param('name') name: string, @Res() response: any) {
+    try {
+      const asset = localTemplateAsset(id, Number(version), name);
+      this.sendBinaryAsset(response, asset.body, asset.type, 'private, max-age=3600');
+    } catch (error) { throw new BadRequestException(error instanceof Error ? error.message : 'Thiếu tài nguyên mẫu local.'); }
+  }
 
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')

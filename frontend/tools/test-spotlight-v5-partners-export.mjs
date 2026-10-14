@@ -7,12 +7,14 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const esbuild = require('esbuild');
 const root = path.resolve(import.meta.dirname, '..');
-const source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8');
+const exportTest = require('./exportClientTestHelper.cjs');
+const internalNames = ['createHorizontalXlsx', 'assertPartnerExportReady'];
 const bundle = await esbuild.build({
   stdin: {
-    contents: `${source}\nexport { collectPartnerNames, createHorizontalXlsx, JSZip, assertPartnerExportReady };`,
-    resolveDir: path.join(root, 'lib'),
+    contents: exportTest.bundleContents(internalNames, "export { collectPartnerNames } from './partnerNames.mjs'; export { default as JSZip } from 'jszip';"),
+    resolveDir: exportTest.libDir,
   },
+  plugins: [exportTest.internalsPlugin(internalNames)],
   bundle: true,
   platform: 'browser',
   format: 'iife',

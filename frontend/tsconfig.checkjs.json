@@ -1,0 +1,19 @@
+{
+  "//": "Chỉ dùng cho `npm run typecheck:frontend` (JSDoc + checkJs). Không đặt tên tsconfig.json để Next.js không tự áp dụng.",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "skipLibCheck": true,
+    "types": [],
+    "resolveJsonModule": true
+  },
+  "include": ["lib/**/*.js", "lib/**/*.mjs"],
+  "exclude": ["lib/__test-layout-markup.mjs", "lib/test-layout-fixes.mjs", "lib/*.test.mjs"]
+}

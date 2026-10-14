@@ -111,11 +111,11 @@ export default function PageInspector({
           ) : null}
           {!hideSubtitleEditor ? (
             <label className="inspector-field">
-              <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/220</span></span>
-              <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
+              <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/{page.localRender ? 4000 : 220}</span></span>
+              <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={page.localRender ? 4000 : 220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
             </label>
           ) : null}
-          {(page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') ? items.map((item, i) => (
+          {(page.localRender || page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') ? items.map((item, i) => (
             <div className="inspector-field" key={i}>
               <span>{isThreadsToplist ? 'Địa điểm' : 'Hoạt động'} {i + 1}</span>
               <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />

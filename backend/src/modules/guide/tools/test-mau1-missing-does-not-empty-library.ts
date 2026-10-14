@@ -30,5 +30,7 @@ const library = getV2DeckDefinitions({
 });
 assert.ok(library.length > 5, 'Thư viện V2 phải vẫn có nhiều mẫu');
 assert.equal(library.some((deck) => deck.id === 'carousel-mau-1'), false, 'Mẫu 1 phải được ẩn khỏi thư viện');
-assert.ok(library.every((deck) => deck.lists.length > 0), 'Các mẫu còn hiển thị phải có list chính');
+// Since 74bd3a74 a template with incomplete data stays listed without a main list, with the reason.
+assert.ok(library.filter((deck) => deck.lists.length > 0).length > 5, 'Thư viện phải vẫn có nhiều mẫu có list chính');
+assert.ok(library.every((deck) => deck.lists.length > 0 || /Chưa thể dựng list mẫu/.test(deck.description)), 'Mẫu thiếu dữ liệu phải ghi rõ lý do');
 console.log('PASS carousel-mau-1 hidden: other templates remain available');

@@ -108,6 +108,7 @@ export interface GuideItem {
   sectionTitle: string;
   name: string;
   address: string;
+  streetAddress?: string;
   type: string;
   openHours: string;
   style: string;
@@ -140,6 +141,7 @@ export interface GuideItem {
 }
 
 export interface PageItem {
+  rotationGroup?: string;
   label: string;
   id?: string;
   sourceKey?: string;
@@ -169,6 +171,7 @@ export type TitlePlacement =
 export type MutantContentStyle = 'strip' | 'center-card';
 
 export interface CoverPage {
+  localRender?: LocalRenderModel;
   coverApproval?: string;
   spotlightDesignRevision?: 1;
   photoPreset?: 'iphone-color-edit-v1';
@@ -187,6 +190,7 @@ export interface CoverPage {
 }
 
 export interface ListPage {
+  localRender?: LocalRenderModel;
   threadsPartnerPolicy?: 'balanced-local-v1';
   spotlightDesignRevision?: 1;
   photoPreset?: 'iphone-color-edit-v1';
@@ -211,6 +215,7 @@ export interface ListPage {
 export type DeckPage = CoverPage | ListPage;
 
 export interface GuideDeckList {
+  localTemplate?: { id: string; version: number; recipeId: string; contentSnapshot: unknown; replacementTopics: string[] };
   partnerRotationVersion?: 1;
   warnings?: string[];
   spotlightDesignRevision?: 1;
@@ -238,6 +243,7 @@ export interface GuideDeckList {
 }
 
 export interface GuideDeck {
+  localTemplate?: { version: number; automaticContent: boolean; pageCount?: number; previewImageUrl?: string; status: Record<string, unknown> };
   id: string;
   /** Saved lists remain accessible, but this template cannot create new lists. */
   creationDisabled?: boolean;
@@ -515,6 +521,7 @@ export interface DeckBuildPools {
 }
 
 export interface GeneratedListsStore {
+  localTemplateState?: Record<string, Record<string, unknown>>;
   partnerRotation?: Record<string, PartnerRotationHistory>;
   diaryUsedLines?: Record<string, string[]>;
   version: number;
@@ -528,3 +535,17 @@ export type PartnerRotationHistory = Record<string, {
   usedPhotos: string[];
   cycle: number;
 }>;
+
+// A data-only drawing model. Remote copy is plain text, never executable HTML.
+export interface LocalRenderModel {
+  templateId: string; version: number; width: number; height: number;
+  fonts: Array<{ family: string; weight: number; url: string }>;
+  nodes: Array<{
+    kind: 'text' | 'image' | 'shape';
+    x: number; y: number; width: number; height: number;
+    text?: string; field?: string; src?: string; label?: string;
+    itemIndices?: number[]; fields?: string[]; separator?: string;
+    style?: Record<string, string | number>;
+    required?: boolean;
+  }>;
+}

@@ -70,7 +70,10 @@ async function api(pathname, options = {}) {
 
 async function main() {
   const report = { ok: true, failures: [], checks: [] };
-  const markupSrc = fs.readFileSync(path.join(root, 'frontend/lib/pageMarkup.js'), 'utf8');
+  // pageMarkup.js là điểm vào; phần lớn hàm nằm ở frontend/lib/markup/*.js.
+  const markupDir = path.join(root, 'frontend/lib/markup');
+  const markupSrc = [path.join(root, 'frontend/lib/pageMarkup.js'), ...fs.readdirSync(markupDir).filter(name => name.endsWith('.js')).map(name => path.join(markupDir, name))]
+    .map(file => fs.readFileSync(file, 'utf8')).join('\n');
   const photoCss = fs.readFileSync(path.join(root, 'frontend/app/styles/story-photo.css'), 'utf8');
   const veilCss = fs.readFileSync(path.join(root, 'frontend/app/styles/no-black-veils.css'), 'utf8');
   const globals = fs.readFileSync(path.join(root, 'frontend/app/globals.css'), 'utf8');

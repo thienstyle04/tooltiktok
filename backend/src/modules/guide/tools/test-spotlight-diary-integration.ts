@@ -6,30 +6,36 @@ import { GuideService } from '../guide.service';
 import { parseWorkbookBuffer } from '../sync/workbook-source';
 import { setActiveDestinationLocalize } from '../sync/destination-localize';
 import { getCachedSpotlightV3Hooks, setCachedSpotlightV3Hooks } from '../sync/spotlight-hook-source';
-import { diaryDescriptionLines, diaryIdentity, diaryImageId, DIARY_ORDER } from '../logic/spotlight-diary';
+import { diaryDescriptionLines, diaryIdentity, diaryImageId, DIARY_ORDER, DIARY_PARTNER_COUNT } from '../logic/spotlight-diary';
 import { getDriveImageProxyUrl, hasDriveFileDiskCache } from '../sync/drive-images';
+import { publishedSourcePaths } from '../sync/published-source';
+import { loadWorkbookItems } from '../workbook-items';
+import type { DestinationId } from '../sync/destination-config';
 
 async function main() {
   const data = path.resolve('data');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-diary-test-'));
-  const manifest = JSON.parse(fs.readFileSync(path.join(data, 'sheet-drive-images.dalat.json'), 'utf8'));
-  const workbook = parseWorkbookBuffer(fs.readFileSync(path.join(data, 'workbook-cache.dalat.xlsx')), {
-    workbookName: 'workbook-cache.dalat.xlsx', destinationId: 'dalat', sourceUrl: '', sourceType: 'runtime-xlsx',
+  const sourceArg = process.argv.indexOf('--source');
+  const sourceId: DestinationId = sourceArg >= 0 ? process.argv[sourceArg + 1] : 'dalat';
+  assert.ok(['dalat', 'dalat-test'].includes(sourceId));
+  const published = publishedSourcePaths(data, sourceId);
+  const manifest = JSON.parse(fs.readFileSync(published?.manifest || path.join(data, `sheet-drive-images.${sourceId}.json`), 'utf8'));
+  const workbook = parseWorkbookBuffer(fs.readFileSync(published?.workbook || path.join(data, `workbook-cache.${sourceId}.xlsx`)), {
+    workbookName: `workbook-cache.${sourceId}.xlsx`, destinationId: sourceId, sourceUrl: '', sourceType: 'runtime-xlsx',
   }).workbook;
   setActiveDestinationLocalize('dalat');
   setCachedSpotlightV3Hooks(JSON.parse(fs.readFileSync(path.join(data, 'spotlight-v3-hooks.json'), 'utf8')).hooks);
-  const reader = new GuideService() as any;
-  const items = reader.loadWorkbookItems(workbook, [], { version: 1, instructions: [], mappings: [] }, [], manifest);
+  const items = loadWorkbookItems(sourceId, path.resolve('..'), workbook, [], { version: 1, instructions: [], mappings: [] }, [], manifest);
   const cached = (url: string) => Boolean(diaryImageId(url) && hasDriveFileDiskCache(diaryImageId(url)));
-  for (const group of ['quan_an','cafe']) {
+  for (const group of ['quan_an','cafe','check_in'] as const) {
     for (const item of items[group]) {
       const urls = [item.imageUrl, ...(item.candidateImageUrls || [])].filter(cached);
       item.imageUrl = urls[0] || ''; item.candidateImageUrls = urls;
-      item.diaryImageUrls = item.diaryImageUrls.filter(cached);
+      item.diaryImageUrls = (item.diaryImageUrls || []).filter(cached);
     }
-    const valid = items[group].filter((item: any) => item.isPartner && item.imageUrl && diaryDescriptionLines(item.diaryDescriptionRaw).length);
+    const valid = items[group].filter((item: any) => (group === 'check_in' || item.isPartner) && item.diaryImageUrls.length && diaryDescriptionLines(item.diaryDescriptionRaw).length);
     console.log(group, 'eligible cached partners:', new Set(valid.map((item: any) => diaryIdentity(item.name))).size);
-    assert.ok(valid.some((item: any) => /[\r\n]/.test(item.diaryDescriptionRaw)), 'Parser must preserve description newlines');
+    if (group !== 'check_in') assert.ok(valid.some((item: any) => /[\r\n]/.test(item.diaryDescriptionRaw)), 'Parser must preserve description newlines');
   }
   const random = (manifest.coverImageGroups?.random || []).map((entry: any) => getDriveImageProxyUrl(entry.fileId)).filter(cached);
   const deck = { id: 'spotlight-v6-diary', navTitle: 'Spotlight Nhật ký Đà Lạt', title: '', description: '', lists: [] };
@@ -37,14 +43,15 @@ async function main() {
   const service = () => {
     const s = new GuideService() as any;
     Object.defineProperty(s, 'dataRoot', { value: root });
-    s.activeDestinationId = 'dalat';
+    s.activeDestinationId = sourceId;
     s.prepareWorkbookForDataset = async () => {};
     // Isolated fixture is already limited to verified disk-cache images.
     s.assertDriveCacheReady = () => {};
     s.buildDatasetContext = () => structuredClone(context);
     s.ensureWorkbookDerivedContext = () => context;
     s.warmSpotlightV3Hooks = async () => {};
-    s.festivalHookSources = { reserve: () => null, commit: () => {}, rollback: () => {} };
+    // festivalHookSources is a getter since 3e4e61ed; shadow it on the instance.
+    Object.defineProperty(s, 'festivalHookSources', { value: { reserve: () => null, commit: () => {}, rollback: () => {} } });
     return s;
   };
   const s = service();
@@ -67,12 +74,16 @@ async function main() {
       assert.deepEqual(list.pages.slice(3).map((p: any) => p.items[0].sourceSectionKey), DIARY_ORDER);
       assert.ok(getCachedSpotlightV3Hooks().includes(list.pages[0].title));
       for (const p of list.pages.slice(3)) {
-        const item = items[p.items[0].sourceSectionKey].find((i: any) => i.id === p.items[0].id);
-        assert.ok(item, `Snapshot source missing: ${JSON.stringify(p.items[0])}; available IDs: ${items[p.items[0].sourceSectionKey].map((i: any) => i.id).join(',')}`);
-        assert.ok(item.isPartner);
-        assert.ok(diaryDescriptionLines(item.diaryDescriptionRaw).includes(p.title));
+        const section = p.items[0].sourceSectionKey as keyof typeof items;
+        const item = items[section].find((i: any) => i.id === p.items[0].id);
+        assert.ok(item, `Snapshot source missing: ${JSON.stringify(p.items[0])}; available IDs: ${items[section].map((i: any) => i.id).join(',')}`);
+        assert.equal(p.items[0].isPartner, Boolean(item.isPartner));
+        if (item.sectionKey !== 'check_in') assert.ok(item.isPartner);
+        assert.ok(diaryDescriptionLines(item.diaryDescriptionRaw || '').includes(p.title));
         assert.equal(p.items[0].metaPrimary, item.address);
       }
+      assert.ok(list.pages.slice(3).filter((p: any) => p.items[0].isPartner).length >= DIARY_PARTNER_COUNT);
+      assert.equal(new Set(list.pages.slice(3).map((p: any) => diaryIdentity(p.items[0].rawName))).size, 9);
     }
     s.updatePageText(deck.id, first.id, 3, { title: '', subtitle: '', diaryFontSize: 10.5, titlePlacement: 'bottom-center', items: [{ name: '', metaPrimary: '' }] });
     s.updatePageText(deck.id, first.id, 3, { textFontSize: 12.5, textScale: 75, title: '', subtitle: '', items: [{ name: '', metaPrimary: '' }] });
@@ -105,6 +116,21 @@ async function main() {
     const automationLists = s.generatedListsByDeckId.get(deck.id).filter((list: any) => list.automationRunId === batchRequest.automationRunId);
     assert.equal(automationLists.length, 3);
     assert.equal(new Set(automationLists.map((list: any) => list.automationPosition)).size, 3);
+    const prior = new Map<string, { position: number; image: string }>();
+    for (const list of s.generatedListsByDeckId.get(deck.id)) {
+      assert.equal(list.pages.length, 12);
+      assert.deepEqual(list.pages.slice(3).map((p: any) => p.items[0].sourceSectionKey), DIARY_ORDER);
+      for (const [index, page] of list.pages.slice(3).entries()) {
+        const item = page.items[0];
+        if (!item.isPartner) continue;
+        const key = diaryIdentity(item.rawName), previous = prior.get(key);
+        if (previous) {
+          assert.notEqual(index + 1, previous.position, `${key}: must move from last position`);
+          assert.notEqual(diaryImageId(item.imageUrl), previous.image, `${key}: must not repeat last photo`);
+        }
+        prior.set(key, { position: index + 1, image: diaryImageId(item.imageUrl) });
+      }
+    }
     const outputArg = process.argv.indexOf('--output');
     if (process.argv.includes('--stress')) {
       for (let i = 0; i < 25; i++) await s.generateDeckFromCaption(request);
@@ -122,7 +148,7 @@ async function main() {
       fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.writeFileSync(target, JSON.stringify({ lists, automationLists, source: 'cached Dalat workbook + cached Drive assets' }));
     }
-    console.log('PASS diary integration: two source-data lists; exact 4/3, source text/address, disk failure rollback, restart, empty overrides, snapshot refresh and concurrent automation request for three lists.');
+    console.log(`PASS diary integration (${sourceId}): five lists; 4 food/4 cafe partners + 1 Check-in, unique venues, position/photo rotation, source text/address, failed-save rollback, restart, overrides, snapshot preservation and queued batch.`);
   } finally {
     // Only this test's mkdtemp directory, never user data.
     assert.ok(root.startsWith(path.join(os.tmpdir(), 'dalat-diary-test-')));

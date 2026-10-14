@@ -11,6 +11,7 @@
 @import url("./styles/itinerary-timeline-templates.css");
 @import url("./styles/studio-layout.css");
 @import url("./styles/studio-export-progress.css");
+@import url("./styles/local-templates.css");
 @import url("./styles/studio-preview.css");
 @import url("./styles/studio-inspector.css");
 @import url("./styles/studio-navigation.css");
@@ -35,4 +36,4 @@
 @import url("./styles/studio-workflow.css");
 @import url("./styles/spotlight-design.css");
 @import url("./styles/studio-list-create.css");
-@import './styles/app-update.css';
+@import url("./styles/app-update.css");

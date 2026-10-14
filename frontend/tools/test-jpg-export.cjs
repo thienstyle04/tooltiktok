@@ -5,8 +5,8 @@ const esbuild = require('../../backend/node_modules/esbuild');
 const puppeteer = require('../../backend/node_modules/puppeteer-core');
 const root = path.resolve(__dirname, '../..');
 (async () => {
- const source = fs.readFileSync(path.join(root, 'frontend/lib/exportClient.js'), 'utf8');
- const bundle = esbuild.buildSync({stdin:{contents:source+'\nexport {exportQualityProfile,renderPageBlobWithRetry,exportNameWithExtension};',resolveDir:path.join(root,'frontend/lib')},bundle:true,write:false,format:'iife',globalName:'JpgTest'});
+ const exportTest = require('./exportClientTestHelper.cjs');
+ const bundle = esbuild.buildSync({...exportTest.bundleOptions({names:['exportQualityProfile','renderPageBlobWithRetry','exportNameWithExtension']}),bundle:true,write:false,format:'iife',globalName:'JpgTest'});
  const browser = await puppeteer.launch({executablePath:process.env.TEST_BROWSER_PATH,headless:true});
  try {
   const page = await browser.newPage();

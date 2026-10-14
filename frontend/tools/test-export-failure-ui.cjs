@@ -6,22 +6,22 @@ const { createRequire } = require('node:module');
 const front = path.resolve(__dirname, '..');
 const backRequire = createRequire(path.resolve(front, '../backend/package.json'));
 const esbuild = backRequire('esbuild'), { chromium } = require('playwright');
+const { internalsPlugin } = require('./exportClientTestHelper.cjs');
 
 async function main() {
-  const instrumented = fs.readFileSync(path.join(front, 'lib/exportClient.js'), 'utf8') + `
+  // Gài lỗi vào đúng file đang khai báo renderPageBlobWithRetry (lib/exporter/...).
+  const plugin = internalsPlugin([], { renderPageBlobWithRetry: `
+    import { ExportImageError as InjectedExportImageError } from '../exportImageValidation';
     const actualCapture = renderPageBlobWithRetry;
     renderPageBlobWithRetry = async (node, options) => {
       if (window.injectLateFailure && node.dataset.listId === 'summary-note-caption-01-bad' && Number(node.dataset.pageIndex) === 1)
-        throw new ExportImageError('Ảnh bị hỏng ở trang thứ hai (kiểm thử)');
+        throw new InjectedExportImageError('Ảnh bị hỏng ở trang thứ hai (kiểm thử)');
       return actualCapture(node, options);
     };
-    export { JSZip };
-  `;
-  const plugin = { name: 'isolated-export-fault', setup(build) {
-    build.onLoad({ filter: /[\\/]exportClient\.js$/ }, () => ({ contents: instrumented, loader: 'js', resolveDir: path.join(front, 'lib') }));
-  } };
+  ` });
   const bundle = await esbuild.build({ stdin: { contents: `
-    export { exportBatch, exportActiveList, exportSelectedPagePng, JSZip } from './exportClient';
+    export { exportBatch, exportActiveList, exportSelectedPagePng } from './exportClient';
+    export { default as JSZip } from 'jszip';
     import React from 'react'; import { createRoot } from 'react-dom/client';
     import useExportProgress from '../components/useExportProgress';
     import ProgressBar from '../components/ProgressBar';

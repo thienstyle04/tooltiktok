@@ -82,11 +82,9 @@ service.persistGeneratedLists = () => undefined;
 service.buildDatasetContext();
 
 const refreshed = service.generatedListsByDeckId.get('budget-3n2d')[0].pages[0].items[0];
-assert.equal(refreshed.imageSource, 'manual');
-assert.equal(refreshed.imageMapped, true);
-assert.equal(refreshed.imageUrl, sourceItem.imageUrl);
-assert.deepEqual(refreshed.candidateImageUrls, sourceItem.candidateImageUrls);
+// Since deaef30c saved lists are snapshots: reloading source data must not rewrite them.
+assert.deepEqual(refreshed, fallbackItem);
 
-console.log('PASS: list đã lưu được phục hồi ảnh thật khi cache nguồn đã sẵn sàng.');
+console.log('PASS: list đã lưu giữ nguyên snapshot khi nạp lại dữ liệu nguồn.');
 configureDriveFileDiskCache('');
 fs.rmSync(tempCacheDir, { recursive: true, force: true });

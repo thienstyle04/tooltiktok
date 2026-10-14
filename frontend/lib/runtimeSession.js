@@ -29,7 +29,7 @@ export async function verifyRuntimeSession(options = {}) {
   storeSession(health.sessionId);
   if (previous && previous !== health.sessionId) {
     reloadForSession(health.sessionId);
-    const error = runtimeError('Phiên tool đã thay đổi; giao diện đang tải lại bản mới.');
+    const error = /** @type {Error & { runtimeReloading?: boolean }} */ (runtimeError('Phiên tool đã thay đổi; giao diện đang tải lại bản mới.'));
     error.runtimeReloading = true;
     throw error;
   }
@@ -39,6 +39,7 @@ export async function verifyRuntimeSession(options = {}) {
 }
 
 async function verifyExportRoutes(assetFileId = '') {
+  /** @type {Array<[string, () => Promise<Response>]>} */
   const checks = [
     ['trạng thái cache Drive', () => apiFetch('/api/drive-cache/status', { cache: 'no-store' })],
     ['kiểm tra file cache', () => fetch('/api/drive-files/cache-status', {
@@ -80,7 +81,7 @@ function reloadForSession(sessionId) {
 }
 
 function runtimeError(message) {
-  const error = new Error(message);
+  const error = /** @type {Error & { runtimeSessionError?: boolean, runtimeReloading?: boolean }} */ (new Error(message));
   error.runtimeSessionError = true;
   return error;
 }

@@ -1,6 +1,7 @@
 import { fitItineraryNote, fitItineraryNoteTimed } from '../lib/itineraryNote';
 import { fitSpotlightDiary } from '../lib/spotlightDiary';
 import { fitThreadsToplist } from '../lib/threadsToplist';
+import { checkLocalTemplateLayout } from '../lib/localTemplates';
 import { applyPageTextScale, resetPageTextScale } from '../lib/pageTextScale';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { renderCoverPage, renderListPage } from '../lib/pageMarkup';
@@ -107,6 +108,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     applyPageTextScale(root);
     if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root);
     fitThreadsToplist(root);
+    checkLocalTemplateLayout(root);
   });
 
   useEffect(() => {
@@ -119,7 +121,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
-    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); fitThreadsToplist(root); };
+    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); fitThreadsToplist(root); checkLocalTemplateLayout(root); };
     fitNotes();
     const noteFitFrame = window.requestAnimationFrame(fitNotes);
     const noteFitTimer = window.setTimeout(fitNotes, 120);

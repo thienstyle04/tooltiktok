@@ -1,301 +1,38 @@
 'use client';
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET } from '../lib/photoPresets.mjs';
-import { canReadPublishedDataset, canApplyPublishedDataset } from '../lib/publishedDataset.mjs';
-import { templateAllowed } from '../lib/sourceTemplatePolicy.mjs';
-import { exportActiveList, exportBatch, exportSelectedPagePng, formatSkippedListSummary } from '../lib/exportClient';
+import { COLOR_EDIT_PRESET, DEFAULT_PHOTO_PRESETS, supportsPhotoPreset } from '../lib/photoPresets.mjs';
 import { apiFetch, fetchGuideDataset, formatApiError } from '../lib/apiClient';
-import {
-  clearCachedDataset,
-  markDatasetBackgroundChecked,
-  readCachedDataset,
-  shouldCheckDatasetInBackground,
-  writeCachedDataset,
-} from '../lib/datasetCache';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
-import { RETIRED_DECK_IDS, SELECTION_STORAGE_KEY, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY, budget72HListHasLegacyScheduleCosts, budget72HTableMatchesMain, listIsMain, sanitizeDataset } from '../lib/utils';
-import { setSpotlightV2CoverImagePool } from '../lib/pageMarkup';
-import { coverReviewError, coverReviewWarnings } from '../lib/spotlightCoverReview.mjs';
-import { verifyRuntimeSession } from '../lib/runtimeSession';
-import { diagnoseUnconfirmedSheetSync } from '../lib/sheetSyncDiagnostic';
-import CaptionTools from './CaptionTools';
-import DataStatsPanel from './DataStatsPanel';
-import { queuedGeneration } from '../lib/manualGenerationQueue';
-import InspectorScrollArea from './InspectorScrollArea';
-import DeleteListsModal from './DeleteListsModal';
-import ExportImageErrorsModal from './ExportImageErrorsModal';
-import ExportModal from './ExportModal';
-import PageInspector from './PageInspector';
-import PreviewDashboardPanel from './PreviewDashboardPanel';
-import ProgressBar from './ProgressBar';
 import useExportProgress from './useExportProgress';
+import { queuedGeneration } from '../lib/manualGenerationQueue';
+import { SELECTION_STORAGE_KEY, listIsMain, sanitizeDataset } from '../lib/utils';
+import { templateAllowed } from '../lib/sourceTemplatePolicy.mjs';
+import { setSpotlightV2CoverImagePool } from '../lib/pageMarkup';
+import { clearCachedDataset, markDatasetBackgroundChecked, readCachedDataset, shouldCheckDatasetInBackground, writeCachedDataset } from '../lib/datasetCache';
+import { canApplyPublishedDataset, canReadPublishedDataset } from '../lib/publishedDataset.mjs';
+import { diagnoseUnconfirmedSheetSync } from '../lib/sheetSyncDiagnostic';
+import { verifyRuntimeSession } from '../lib/runtimeSession';
+import { exportActiveList, exportBatch, exportSelectedPagePng, formatSkippedListSummary } from '../lib/exportClient';
 import Sidebar from './Sidebar';
-import StudioListLibrary from './StudioListLibrary';
-import SettingsPanel from './SettingsPanel';
+import StudioStatusBar from './StudioStatusBar';
+import ProgressBar from './ProgressBar';
 import UpdateNotice from './UpdateNotice';
+import { coverReviewError, coverReviewWarnings } from '../lib/spotlightCoverReview.mjs';
+import StudioListLibrary from './StudioListLibrary';
 import TemplateGalleryPanel from './TemplateGalleryPanel';
+import DataStatsPanel from './DataStatsPanel';
+import SettingsPanel from './SettingsPanel';
 import AutomationSchedulerPanel from './AutomationSchedulerPanel';
-
-const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
-const SPOTLIGHT_PARTNER_DECK_ID = 'spotlight-partner';
-const BUILTIN_DESTINATION_FALLBACKS = [
-  { id: 'dalat', label: 'Đà Lạt', shortLabel: 'ĐL' },
-  { id: 'greenland', label: 'Green Land', shortLabel: 'GL' },
-];
-
-function mergeDestinations(...lists) {
-  const merged = new Map();
-  for (const list of lists) {
-    for (const entry of list || []) {
-      if (!entry?.id) continue;
-      merged.set(entry.id, { ...(merged.get(entry.id) || {}), ...entry });
-    }
-  }
-  return [...merged.values()];
-}
-
-async function readApiPayload(response) {
-  const text = await response.text();
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { message: text };
-  }
-}
-
-function apiErrorMessage(payload, fallback) {
-  if (payload?.message) return payload.message;
-  if (payload?.detail) return payload.detail;
-  return fallback;
-}
-
-function stripVietnameseMarks(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D');
-}
-
-function normalizeCaptionNameKey(value) {
-  return stripVietnameseMarks(value).toLowerCase();
-}
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function collectCaptionForbiddenNames(list) {
-  const names = new Map();
-  const addName = (value) => {
-    const name = String(value || '').replace(/\s+/g, ' ').trim();
-    if (name.length < 3) return;
-    names.set(normalizeCaptionNameKey(name), name);
-  };
-
-  for (const page of list?.pages || []) {
-    if (page.type !== 'list') continue;
-    for (const item of page.items || []) {
-      addName(item.rawName);
-      addName(item.name);
-      addName(String(item.name || '').split(/:\s*/).slice(1).join(': '));
-    }
-  }
-
-  return [...names.values()].sort((a, b) => b.length - a.length);
-}
-
-function getPlaceNameCandidates(name) {
-  const normalized = String(name || '').replace(/\s+/g, ' ').trim();
-  const unaccented = stripVietnameseMarks(normalized);
-  return [...new Set([normalized, unaccented].filter((value) => value.length >= 3))];
-}
-
-function hasForbiddenPlaceName(value, forbiddenPlaceNames) {
-  return forbiddenPlaceNames.some((name) => getPlaceNameCandidates(name).some((candidate) => {
-    const escaped = escapeRegExp(candidate).replace(/\s+/g, '\\s+');
-    return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(value);
-  }));
-}
-
-function bodyListsStops(value, forbiddenPlaceNames) {
-  if (hasForbiddenPlaceName(value, forbiddenPlaceNames)) return true;
-
-  const dayMarkers = value.match(/\b(?:ngày\s*(?:đầu|một|hai|ba|bốn|1|2|3|4)|sáng|trưa|chiều|tối)\b/giu) || [];
-  const stopVerbs = value.match(/\b(?:ghé|qua|đi|lượn|chạy|săn|ăn|uống|check-?in|chụp)\b/giu) || [];
-  return dayMarkers.length >= 2 && stopVerbs.length >= 2;
-}
-
-function sanitizeCaptionBody(body, list) {
-  const clean = String(body || '').replace(/\s+/g, ' ').trim();
-  if (!clean) return '';
-
-  const forbiddenPlaceNames = collectCaptionForbiddenNames(list);
-  return bodyListsStops(clean, forbiddenPlaceNames) ? GENERIC_CAPTION_BODY : clean;
-}
-
-const V2_TEMPLATE_DECK_IDS = [
-  'grid-6-quaytung',
-  'grid-8-feed',
-  'grid-8-quaytung',
-  'spotlight-v2',
-  'spotlight-v3',
-  'spotlight-v4',
-  'spotlight-v5',
-  'spotlight-v6',
-  'spotlight-v6-green',
-  'spotlight-v6-dark',
-  'spotlight-v6-persimmon',
-  'spotlight-v6-maps',
-  'spotlight-v6-diary',
-  'summary-note',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
-  'itinerary-note-timed',
-  'one-way-story',
-  'itinerary-4n3d-stack',
-  'itinerary-timeline',
-];
-
-const DALAT_ONLY_CATALOG_DECK_IDS = new Set([
-  'spotlight-v5',
-  'spotlight-v6-green',
-  'spotlight-v6-dark',
-  'spotlight-v6-persimmon',
-  'spotlight-v6-maps',
-  'spotlight-v6-diary',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
-  'itinerary-note-timed',
-  'one-way-story',
-]);
-
-const REQUIRED_CATALOG_DECK_IDS = [
-  'grid-5',
-  ...V2_TEMPLATE_DECK_IDS,
-];
-
-function hasEmptySpotlightPartnerDeck(dataset) {
-  const deck = (dataset?.decks || []).find((item) => item.id === SPOTLIGHT_PARTNER_DECK_ID);
-  return Boolean(deck && (deck.lists || []).length === 0);
-}
-
-function missingCatalogDecks(dataset) {
-  const deckIds = new Set((dataset?.decks || []).map((deck) => deck.id));
-  const destinationId = String(dataset?.source?.contentDestinationId || dataset?.source?.destinationId || 'dalat');
-  return REQUIRED_CATALOG_DECK_IDS.filter((deckId) => (
-    templateAllowed(dataset?.source, deckId)
-    &&
-    !deckIds.has(deckId)
-    && !(destinationId !== 'dalat' && DALAT_ONLY_CATALOG_DECK_IDS.has(deckId))
-  ));
-}
-
-function hasRetiredCatalogDecks(dataset) {
-  return (dataset?.decks || []).some((deck) => RETIRED_DECK_IDS.has(deck.id));
-}
-
-function needsSpotlightCoverRefresh(dataset) {
-  if (!templateAllowed(dataset?.source, 'spotlight-v2')) return false;
-  const coverCount = dataset?.source?.coverImageCount;
-  if (typeof coverCount !== 'number' || coverCount < 4) return true;
-  const deck = (dataset?.decks || []).find((item) => item.id === 'spotlight-v2');
-  const cover = deck?.lists?.[0]?.pages?.find((page) => page.type === 'cover');
-  const images = Array.isArray(cover?.coverImages) ? cover.coverImages.filter(Boolean) : [];
-  return new Set(images).size < 4;
-}
-
-function needsGrid6QuaytungCatalogRefresh(dataset) {
-  if (!templateAllowed(dataset?.source, 'grid-6-quaytung')) return false;
-  const deck = (dataset?.decks || []).find((item) => item.id === 'grid-6-quaytung');
-  if (!deck) return true;
-  const main = (deck.lists || []).find((list) => listIsMain(list));
-  if (!main) return true;
-  if (Number(main.templateVersion || 0) < 6) return true;
-  if ((main.pages || []).length < 8) return true;
-  const cover = main.pages.find((page) => page.type === 'cover');
-  return cover?.layoutVariant !== 'grid-6-quaytung-cover';
-}
-
-function needsGrid8QuaytungCatalogRefresh(dataset) {
-  if (!templateAllowed(dataset?.source, 'grid-8-quaytung')) return false;
-  const deck = (dataset?.decks || []).find((item) => item.id === 'grid-8-quaytung');
-  if (!deck) return true;
-  const main = (deck.lists || []).find((list) => listIsMain(list));
-  if (!main) return true;
-  if (Number(main.templateVersion || 0) < 3) return true;
-  if ((main.pages || []).length < 7) return true;
-  const cover = main.pages.find((page) => page.type === 'cover');
-  return cover?.layoutVariant !== 'grid-8-quaytung-cover';
-}
-
-const GRID_5_MIN_TEMPLATE_VERSION = 4;
-
-function needsGrid5CatalogRefresh(dataset) {
-  if (!templateAllowed(dataset?.source, 'grid-5')) return false;
-  const deck = (dataset?.decks || []).find((item) => item.id === 'grid-5');
-  if (!deck) return true;
-  const main = (deck.lists || []).find((list) => listIsMain(list));
-  if (!main) return true;
-  if (Number(main.templateVersion || 0) < GRID_5_MIN_TEMPLATE_VERSION) return true;
-  if ((main.pages || []).length < 8) return true;
-  const cover = main.pages.find((page) => page.type === 'cover');
-  return cover?.layoutVariant !== 'grid-5';
-}
-
-const BUDGET_72H_SUMMARY_MIN_TEMPLATE_VERSION = 7;
-
-function isStaleBudget72HSummaryList(list, deck = null) {
-  if (!list) return true;
-  if (Number(list.templateVersion || 0) < BUDGET_72H_SUMMARY_MIN_TEMPLATE_VERSION) return true;
-  if (budget72HListHasLegacyScheduleCosts(list)) return true;
-  if (!listIsMain(list) && deck) {
-    const mainList = (deck.lists || []).find((entry) => listIsMain(entry));
-    if (mainList && budget72HTableMatchesMain(list, mainList)) return true;
-  }
-  return false;
-}
-
-function needsBudget72HSummaryCatalogRefresh(dataset) {
-  if (!templateAllowed(dataset?.source, 'budget-72h-summary')) return false;
-  const deck = (dataset?.decks || []).find((item) => item.id === 'budget-72h-summary');
-  if (!deck) return true;
-  return (deck.lists || []).some((list) => isStaleBudget72HSummaryList(list, deck));
-}
-
-function storedCatalogRevision() {
-  if (typeof window === 'undefined') return '';
-  try {
-    return String(window.localStorage.getItem(STUDIO_CATALOG_REVISION_KEY) || '').trim();
-  } catch {
-    return '';
-  }
-}
-
-function markCatalogRevisionStored() {
-  if (typeof window === 'undefined') return;
-  const value = STUDIO_CATALOG_REVISION;
-  for (const storage of [window.localStorage, window.sessionStorage].filter(Boolean)) {
-    try {
-      storage.setItem(STUDIO_CATALOG_REVISION_KEY, value);
-    } catch {
-      // Ignore quota errors.
-    }
-  }
-}
-
-function needsTemplateCatalogRefresh(dataset) {
-  if (!Array.isArray(dataset?.source?.allowedDeckIds)) return true;
-  if (storedCatalogRevision() !== STUDIO_CATALOG_REVISION) return true;
-  return hasEmptySpotlightPartnerDeck(dataset)
-    || hasRetiredCatalogDecks(dataset)
-    || missingCatalogDecks(dataset).length > 0
-    || needsSpotlightCoverRefresh(dataset)
-    || needsGrid6QuaytungCatalogRefresh(dataset)
-    || needsGrid8QuaytungCatalogRefresh(dataset)
-    || needsGrid5CatalogRefresh(dataset)
-    || needsBudget72HSummaryCatalogRefresh(dataset);
-}
+import CaptionTools from './CaptionTools';
+import PreviewDashboardPanel from './PreviewDashboardPanel';
+import InspectorScrollArea from './InspectorScrollArea';
+import PageInspector from './PageInspector';
+import ExportModal from './ExportModal';
+import ExportImageErrorsModal from './ExportImageErrorsModal';
+import DeleteListsModal from './DeleteListsModal';
+import { BUILTIN_DESTINATION_FALLBACKS, SPOTLIGHT_PARTNER_DECK_ID, apiErrorMessage, mergeDestinations, readApiPayload } from './studio/shared';
+import { markCatalogRevisionStored, needsTemplateCatalogRefresh } from './studio/catalog';
+import { sanitizeCaptionBody } from './studio/captionGuards';
 
 export default function DeckStudio({ initialDataset = null }) {
   const initialDeck = initialDataset?.decks?.[0] || null;
@@ -388,7 +125,7 @@ export default function DeckStudio({ initialDataset = null }) {
     try {
       return await queuedGeneration(kind, JSON.parse(options.body), dataset?.source?.destinationId || 'dalat',
         { mode: hookSourcesInfo?.mode || 'normal', sourceId: hookSourcesInfo?.activeSourceId || '' },
-        job => { setManualJob(job); setStatus(job.status === 'queued' ? 'Đã xếp hàng — chờ lượt hiện tại hoàn tất. Không chạy tác vụ nặng song song.' : 'Đang tạo list từ yêu cầu đã xếp hàng...'); });
+        job => { setManualJob(job); if (['queued', 'running'].includes(job.status)) setStatus(job.status === 'queued' ? 'Đã xếp hàng — chờ lượt hiện tại hoàn tất. Không chạy tác vụ nặng song song.' : 'Đang tạo list từ yêu cầu đã xếp hàng...'); });
     } finally { setManualJob(null); }
   }, [dataset?.source?.destinationId, hookSourcesInfo]);
   const [driveCacheReadyNotice, setDriveCacheReadyNotice] = useState(false);
@@ -1179,7 +916,7 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && (page.localRender || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
@@ -1232,6 +969,7 @@ export default function DeckStudio({ initialDataset = null }) {
           ...(activePage.type === 'cover' && activePage.spotlightDesignRevision === 1 ? { coverImages: activePage.coverImages?.length ? activePage.coverImages : [activePage.backgroundImage], coverApproval: activePage.coverApproval || '', titlePlacement: activePage.titlePlacement } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { diaryFontSize: activePage.diaryFontSize ?? 13 } : {}),
           subtitle: activePage.subtitle || '',
+          ...(activePage.localRender && activePage.type === 'list' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { titlePlacement: activePage.titlePlacement, items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { chipText: activePage.chipText || '' } : {}),
           ...((activePage.layoutVariant === 'itinerary-note-day' || activePage.layoutVariant === 'itinerary-note-dark-day' || activePage.layoutVariant === 'itinerary-note-threads-day' || activePage.layoutVariant === 'threads-toplist-page') ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
@@ -1315,7 +1053,7 @@ export default function DeckStudio({ initialDataset = null }) {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
-    const isNonAiTemplate = activeDeck.id === 'threads-food-local'
+    const isNonAiTemplate = Boolean(activeDeck.localTemplate) || activeDeck.id === 'threads-food-local'
       || activeDeck.id === 'threads-cafe-local'
       || activeDeck.id === 'threads-mix-local'
       || activeDeck.id === 'threads-mix-text'
@@ -1899,7 +1637,7 @@ export default function DeckStudio({ initialDataset = null }) {
     <main className="app-shell studio-workflow" data-studio-theme={studioTheme} data-editor-pane={editorPane}
       onClickCapture={event => {
         const control = event.target.closest('button');
-        if (!editorOriginalDataset.current || !control || control.closest('.right-panel') || control.classList.contains('studio-theme-toggle') || control.closest('.studio-pane-switch')) return;
+        if (!editorOriginalDataset.current || !control || control.closest('.right-panel') || control.closest('[data-app-update-ui]') || control.classList.contains('studio-theme-toggle') || control.closest('.studio-pane-switch')) return;
         if (!window.confirm('Trang có thay đổi chưa lưu. Bỏ thay đổi để tiếp tục?')) { event.preventDefault(); event.stopPropagation(); return; }
         datasetRef.current = editorOriginalDataset.current;
         setDataset(editorOriginalDataset.current);
@@ -1994,27 +1732,6 @@ export default function DeckStudio({ initialDataset = null }) {
         </div>
       ) : null}
 
-      {activeList?.spotlightDesignRevision === 1 && (coverReviewError(activeList) || coverReviewWarnings(activeList).length) ? <div className="automation-lock-banner" role="status">
-        <span>{coverReviewError(activeList) || coverReviewWarnings(activeList).join(' ')}</span>
-      </div> : null}
-      {activeList?.warnings?.length > 0 ? <details className="automation-lock-banner">
-        <summary>{activeList.warnings.length} lưu ý của list này</summary>
-        {activeList.warnings.map((message, index) => <div key={index}>{message}</div>)}
-      </details> : null}
-      {manualJob?.status === 'queued' ? <div className="automation-lock-banner" role="status">
-        <span>Đã xếp hàng — chờ lượt hiện tại hoàn tất.</span>
-        <button type="button" onClick={async () => {
-          const response = await apiFetch(`/api/automation/manual-generation/${manualJob.id}/cancel`, { method: 'POST' });
-          if (!response.ok) setStatus('Yêu cầu đã bắt đầu hoặc không thể hủy.');
-        }}>Hủy yêu cầu đang chờ</button>
-      </div> : null}
-      {automationState.locked && manualJob?.status !== 'queued' ? (
-        <div className="automation-lock-banner" role="status">
-          <strong>Đang chạy lịch tự động</strong>
-          <span>{automationState.runs?.find((run) => run.id === automationState.activeRunId)?.phase || 'Các thao tác thay đổi dữ liệu đang tạm khóa.'}</span>
-        </div>
-      ) : null}
-
       <Sidebar
         dataset={dataset}
         activeView={activeView}
@@ -2054,18 +1771,27 @@ export default function DeckStudio({ initialDataset = null }) {
           <button type="button" className="toolbar-button studio-theme-toggle" onClick={toggleStudioTheme} aria-label="Đổi giao diện sáng tối">{studioTheme === 'dark' ? '☀ Sáng' : '☾ Tối'}</button>
         </header>
 
-        <div className="status-strip">
-          <span className="status-dot" />
-          <p id="statusText" className="status-text">{status}</p>
-        </div>
+        <StudioStatusBar status={status} job={manualJob} automationState={automationState} onError={setStatus}
+          onCancel={async id => {
+            const response = await apiFetch(`/api/automation/manual-generation/${encodeURIComponent(id)}/cancel`, { method: 'POST', signal: AbortSignal.timeout(10000) });
+            if (!response.ok) throw new Error(await formatApiError(response, 'Yêu cầu đã bắt đầu hoặc không thể hủy.'));
+          }} />
         <ProgressBar progress={progress} />
-        <UpdateNotice />
+        <UpdateNotice hasUnsavedChanges={editorSaveState !== 'saved'} />
 
         {['templates','caption','preview'].includes(activeView) && <nav className="studio-workflow-steps" aria-label="Quy trình làm bài">
           {[[openTemplatesView,'templates','1 · Chọn mẫu'],[openCaptionView,'caption','2 · Tạo list'],[openPreviewView,'preview','3 · Chỉnh sửa'],[openExportView,'export','4 · Xuất file']].map(([action,id,label])=><button key={id} type="button" aria-current={activeView===id?'step':undefined} onClick={action}>{label}</button>)}
         </nav>}
         {['settings','data'].includes(activeView) && <nav className="studio-workflow-steps" aria-label="Dữ liệu và cài đặt"><button type="button" aria-current={activeView==='settings'?'page':undefined} onClick={openSettingsView}>Nguồn, hook & cache</button><button type="button" aria-current={activeView==='data'?'page':undefined} onClick={openDataView}>Thống kê dữ liệu</button></nav>}
         {activeView === 'preview' && <nav className="studio-pane-switch" aria-label="Vùng chỉnh sửa"><button type="button" onClick={()=>setEditorPane('preview')}>Xem preview</button><button type="button" onClick={()=>setEditorPane('editor')}>Chỉnh sửa nội dung</button></nav>}
+
+        {activeList?.spotlightDesignRevision === 1 && (coverReviewError(activeList) || coverReviewWarnings(activeList).length) ? <div className="automation-lock-banner" role="status">
+          <span>{coverReviewError(activeList) || coverReviewWarnings(activeList).join(' ')}</span>
+        </div> : null}
+        {activeList?.warnings?.length > 0 ? <details className="automation-lock-banner">
+          <summary>{activeList.warnings.length} lưu ý của list này</summary>
+          {activeList.warnings.map((message, index) => <div key={index}>{message}</div>)}
+        </details> : null}
 
         {activeView === 'lists' ? <StudioListLibrary dataset={dataset} selected={selectedListsForExport} setSelected={setSelectedListsForExport}
           onEdit={(deck,list)=>{handleDeckSelect(deck);handleListSelect(list);openPreviewView();}}
@@ -2152,6 +1878,17 @@ export default function DeckStudio({ initialDataset = null }) {
               onGeneratedListSelect={previewGeneratedList}
               onRequestCaption={requestCaption}
               onCreateList={createDeckFromCaption}
+              onSyncLocalTemplate={async () => {
+                if (!activeDeck?.localTemplate || busy) return;
+                setBusy(true);
+                try {
+                  const response = await apiFetch(`/api/local-templates/${encodeURIComponent(activeDeck.id)}/sync`, { method: 'POST' });
+                  if (!response.ok) throw new Error(await formatApiError(response, 'Không đồng bộ được nội dung mẫu riêng'));
+                  await loadDataset('Đang cập nhật nội dung mẫu riêng...', { activeDeckId, activeListId });
+                  setStatus('Đã đồng bộ nội dung mẫu riêng; các list đã tạo được giữ nguyên.');
+                } catch (error) { setStatus(error.message || String(error)); }
+                finally { setBusy(false); }
+              }}
               onCreateBatchLists={createBatchLists}
               onCreatePartnerSpotlight={createPartnerSpotlight}
               partners={partners}
@@ -2169,7 +1906,7 @@ export default function DeckStudio({ initialDataset = null }) {
                 <div className="list-create-context">
                   <dl>
                     <dt>Nguồn dữ liệu</dt><dd>{dataset?.source?.destinationLabel || (dataset?.source?.destinationId === 'greenland' ? 'Green Land' : 'Đà Lạt')}</dd>
-                    <dt>Trang / list mẫu</dt><dd>{captionSourceList?.pages?.length || 0}</dd>
+                    <dt>Trang / list mẫu</dt><dd>{captionSourceList?.pages?.length || activeDeck?.localTemplate?.pageCount || 0}</dd>
                     <dt>Màu ảnh</dt><dd>{supportsPhotoPreset(activeDeck?.id) ? photoPresets.find(p => p.id === selectedPhotoPreset)?.label || 'Ảnh gốc' : 'Mẫu chỉ chữ'}</dd>
                   </dl>
                   <p>Tạo xong, mở list để kiểm tra nội dung ở bước 3. Chọn bước 4 khi sẵn sàng xuất file.</p>

@@ -2249,7 +2249,7 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
   },
   'spotlight-v6-diary': {
     nav: 'Spotlight Nhật ký Đà Lạt', title: 'Spotlight Nhật ký Đà Lạt — Thử nghiệm',
-    description: '12 trang khổ 3:4: 3 ảnh Random, 5 đối tác Quán ăn và 4 đối tác Cafe; mỗi địa điểm một câu mô tả nguồn.',
+    description: '12 trang khổ 3:4: 3 ảnh Random, 4 đối tác Quán ăn, 4 đối tác Cafe và 1 Check-in; mỗi địa điểm một câu mô tả nguồn.',
     listName: 'Spotlight Nhật ký Đà Lạt',
   },
   'itinerary-note-2days': { nav: 'Lịch trình Note 2 ngày', title: 'Lịch trình Note 2 ngày', description: 'Hai trang ghi chú, mỗi trang một ngày với 7 hoạt động đa dạng.', listName: 'Lịch trình Note 2 ngày' },

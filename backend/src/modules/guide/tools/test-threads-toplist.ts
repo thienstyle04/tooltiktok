@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { buildThreadsToplistPages, buildThreadsToplistExample, THREADS_TOPLIST_ID } from '../logic/threads-toplist';
 import { getV2DeckDefinitions, V2_DECK_IDS } from '../logic/deck-builder-v2';
+import { setActiveDestinationLocalize } from '../sync/destination-localize';
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 
 const itemsBySection = {} as WorkbookItemsBySection;
@@ -36,8 +37,12 @@ const examples = buildThreadsToplistExample();
 assert.equal(examples.length, 4);
 assert(examples.slice(1).every(page => page.type === 'list' && page.subtitle.includes('MINH HỌA')));
 const emptySections = Object.fromEntries((['quan_an', 'cafe', 'homestay', 'check_in', 'dich_vu', 'choi_dem', 'hoat_dong', 'dia_diem_lich_su', 'khu_du_lich'] as SectionKey[]).map(key => [key, []])) as unknown as WorkbookItemsBySection;
-const emptyCatalog = getV2DeckDefinitions({ itemsBySection: emptySections, imageUrls: [], libraryEntries: [], coverImageUrls: [] });
-const deck = emptyCatalog.find(item => item.id === THREADS_TOPLIST_ID);
+const coldCatalog = () => getV2DeckDefinitions({ itemsBySection: emptySections, imageUrls: [], libraryEntries: [], coverImageUrls: [] });
+// Since f248f0cb the Threads templates are exclusive to the Đà Lạt Threads source.
+assert(!coldCatalog().some(item => item.id === THREADS_TOPLIST_ID), 'Regular Đà Lạt source must not show Threads templates');
+setActiveDestinationLocalize('dalat-threads');
+const deck = coldCatalog().find(item => item.id === THREADS_TOPLIST_ID);
+setActiveDestinationLocalize('dalat');
 assert(deck, 'Cold catalog must show the new template');
 assert.equal(deck.lists[0]?.pages.length, 4);
 console.log('PASS threads toplist: cold catalog, 4 pages, 15 unique text-only places, no usage mutation');

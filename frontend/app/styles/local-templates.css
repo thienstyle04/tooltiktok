@@ -1,0 +1,6 @@
+/* Native local canvases must not inherit the legacy 397px slide flex-basis.
+   The studio wrapper scales the whole canvas; shrinking its box crops content. */
+.story-page.local-template-page { position:relative; flex:0 0 auto; max-width:none; min-height:0; padding:0; border-radius:0; overflow:hidden; isolation:isolate; background:#fff; }
+.story-page.local-template-page::before,.story-page.local-template-page::after { display:none; }
+.story-page.local-template-page img { max-width:none; border:0; }
+.page-grid .story-page.local-template-page,.template-compare-focus-stage .story-page.local-template-page { zoom:.37; }

@@ -20,4 +20,17 @@ for (const variant of ['spotlight-v6-map-place', 'spotlight-v6-diary-page', 'iti
   store.decks[variant]['test-main']['0'].textFontSize = null;
   assert.equal(inheritPageTypography(deck, [fresh], store)[0].textFontSize, null);
 }
+// Declarative local pages use node styles for defaults, but saved absolute
+// typography must override them without rewriting the layout or source data.
+{
+  const model = { templateId: 'local-typography-fixture', version: 1, width: 1080, height: 1440, fonts: [], nodes: [{ kind: 'text', text: 'New hook', style: { fontSize: 60 } }] };
+  const main: any = { id: 'local-typography-fixture-main', pages: [{ type: 'cover', title: 'Mother hook', backgroundImage: 'mother.jpg', localRender: model }] };
+  const deck: any = { id: 'local-typography-fixture', lists: [main] };
+  const child: any = { type: 'cover', title: 'Child hook', backgroundImage: 'child.jpg', localRender: structuredClone(model) };
+  const store: any = { decks: { [deck.id]: { [main.id]: { '0': { title: 'Mother edit', textFontSize: 45, textScale: 90 } } } } };
+  const inherited = inheritPageTypography(deck, [child], store)[0];
+  assert.equal(inherited.textFontSize, 45); assert.equal(inherited.textScale, 90);
+  assert.equal(inherited.title, 'Child hook'); assert.equal(inherited.backgroundImage, 'child.jpg');
+  assert.deepEqual(inherited.localRender, model); assert.equal(child.textFontSize, undefined);
+}
 console.log('PASS typography inheritance: Maps, Diary, Note, Grid, future template; new data preserved; immutable children; reset; additional pages');
