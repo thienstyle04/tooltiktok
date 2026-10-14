@@ -9,12 +9,12 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const esbuild = require('esbuild');
 const root = path.resolve(import.meta.dirname, '..');
-const source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8');
+const exportTest = require('./exportClientTestHelper.cjs');
 const bundle = await esbuild.build({
-  stdin: {
-    contents: `${source}\nexport { createHorizontalXlsx, addThreadsFoodFiles, JSZip };`,
-    resolveDir: path.join(root, 'lib'),
-  },
+  ...exportTest.bundleOptions({
+    names: ['createHorizontalXlsx'],
+    extra: "export { addThreadsFoodFiles } from './threadsFoodExport.mjs'; export { default as JSZip } from 'jszip';",
+  }),
   bundle: true,
   platform: 'browser',
   format: 'iife',

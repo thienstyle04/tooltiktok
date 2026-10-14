@@ -1,3 +1,4 @@
+import { localTemplateAllowedIds, findLocalTemplate } from '../local-templates';
 export type DestinationId = string;
 export type DestinationSourceType = 'xlsx' | 'google-sheet';
 
@@ -116,7 +117,7 @@ export function isIsolatedSheetSource(id: DestinationId): boolean {
 
 export function getAllowedDeckIds(id: DestinationId): string[] {
   if (!DESTINATIONS[id]) return [];
-  return [...(isDalatThreadsSource(id) ? THREADS_NOTE_DECK_IDS : OTHER_DECK_IDS)];
+  return [...(isDalatThreadsSource(id) ? THREADS_NOTE_DECK_IDS : OTHER_DECK_IDS), ...localTemplateAllowedIds(id)];
 }
 
 export function isDeckAllowedForSource(id: DestinationId, deckId: string): boolean {
@@ -124,6 +125,8 @@ export function isDeckAllowedForSource(id: DestinationId, deckId: string): boole
 }
 
 export function sourceTemplateError(id: DestinationId, deckId: string): string {
+  const local = findLocalTemplate(deckId);
+  if (local) return `Mẫu ${local.name} chỉ được tạo trên nguồn ${local.allowedSourceIds.map(id => DESTINATIONS[id]?.label || id).join(', ')} và máy đã cài gói mẫu riêng.`;
   if (deckId === 'spotlight-partner') return 'Mẫu Spotlight Đối tác đã ngừng sử dụng. Hãy chọn mẫu khác; list đã lưu vẫn được giữ nguyên.';
   const name = THREADS_NOTE_DECK_LABELS[deckId] || deckId;
   return THREADS_NOTE_DECK_IDS.includes(deckId)

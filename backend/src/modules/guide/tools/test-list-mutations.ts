@@ -20,14 +20,16 @@ async function testAtomicDelete(): Promise<void> {
 
 async function testBatchIdempotency(): Promise<void> {
   const service = new GuideService() as any;
+  // generateBatchLists chỉ nhận mẫu được phép trên nguồn đang chọn.
+  service.activeDestinationId = 'dalat';
   let calls = 0;
   service.generateBatchListsOnce = async () => {
     calls += 1;
     await new Promise((resolve) => setTimeout(resolve, 10));
-    return { deckId: 'deck-a', requestedCount: 2, successCount: 2, failCount: 0, lists: [] };
+    return { deckId: 'spotlight-v4', requestedCount: 2, successCount: 2, failCount: 0, lists: [] };
   };
 
-  const request = { deckId: 'deck-a', count: 2, requestId: 'same-click' };
+  const request = { deckId: 'spotlight-v4', count: 2, requestId: 'same-click' };
   const [first, second] = await Promise.all([
     service.generateBatchLists(request),
     service.generateBatchLists(request),

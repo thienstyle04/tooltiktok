@@ -4,6 +4,8 @@ import { aiProvider, AiError } from '../ai-provider';
 
 async function main() {
   const service: any = Object.create(GuideService.prototype);
+  // Object.create bỏ qua field initializer; assertTemplateAllowed cần nguồn đang chọn.
+  service.activeDestinationId = 'dalat';
   service.assertDriveCacheReady = () => {};
   service.ensureGeneratedListsLoaded = () => {};
   service.generatedListsByDeckId = new Map();

@@ -11,10 +11,11 @@ const { getColorEditAsset } = br(path.join(backend, 'src/modules/guide/color-edi
 const sharp = br('sharp');
 const fixture = JSON.parse(fs.readFileSync(path.join(root, 'generation.json'))), deck = fixture.decks.find(d=>d.id===(process.env.AUDIT_DECK || fixture.decks[0].id)), list = deck.lists.find(l=>l.photoPreset) || deck.lists[0];
 const v5 = deck.id === 'spotlight-v5-color-edit' || deck.id === 'spotlight-v5';
-const source = fs.readFileSync(path.join(front, 'lib/exportClient.js'), 'utf8')
-  .replace('function downloadBlobFile(', 'function originalDownloadBlobFile(')
-  + '\nfunction downloadBlobFile(blob,name){window.__downloads.push({blob,name});return true;}\nexport {renderPageMarkupForExport, assertPartnerExportReady};';
-const bundle = await esbuild.build({ stdin: { contents: source, resolveDir: path.join(front, 'lib') }, bundle: true, write: false, format: 'iife', globalName: 'Test' });
+const exportTest = require('./exportClientTestHelper.cjs');
+const bundle = await esbuild.build({ ...exportTest.bundleOptions({
+  names: ['renderPageMarkupForExport', 'assertPartnerExportReady'],
+  overrides: { downloadBlobFile: 'downloadBlobFile = function (blob, name) { window.__downloads.push({ blob, name }); return true; };' },
+}), bundle: true, write: false, format: 'iife', globalName: 'Test' });
 const css = [...fs.readFileSync(path.join(front, 'app/globals.css'), 'utf8').matchAll(/@import url\("(.+?)"\)/g)]
   .map(m => fs.readFileSync(path.join(front, 'app', m[1]), 'utf8')).join('\n');
 const executablePath = [process.env.PROGRAMFILES + '/Google/Chrome/Application/chrome.exe', process.env['PROGRAMFILES(X86)'] + '/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);

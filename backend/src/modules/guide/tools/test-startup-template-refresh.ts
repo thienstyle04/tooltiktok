@@ -32,7 +32,7 @@ assert.ok(service.getUsedCaptionTitles('spotlight-v3', baseDecks).includes('Tiê
 service.workbookDerivedCache = { baseDecks };
 assert.ok(service.getUsedCaptionTitles('spotlight-v3').includes('Tiêu đề mẫu'));
 
-for (const deckId of ['itinerary-note-dark', 'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d',
+for (const deckId of ['spotlight-v3', 'itinerary-note-dark', 'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d',
   'itinerary-note-threads-budget', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text',
   'spotlight-v4', 'spotlight-v6', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-diary', 'spotlight-v6-maps']) {
   const s = fixture();
@@ -45,11 +45,11 @@ for (const deckId of ['itinerary-note-dark', 'itinerary-note-threads-3n2d', 'iti
 }
 
 const s = fixture();
-const currentVersion = s.templateVersionForDeck('spotlight-v3');
-const old = list('old-v3', currentVersion - 1);
-const current = list('current-v3', currentVersion);
+const currentVersion = s.templateVersionForDeck('grid-6');
+const old = list('old-grid6', currentVersion - 1);
+const current = list('current-grid6', currentVersion);
 const dark = list('dark-version-3', 3);
-s.generatedListsByDeckId.set('spotlight-v3', [old, current]);
+s.generatedListsByDeckId.set('grid-6', [old, current]);
 s.generatedListsByDeckId.set('itinerary-note-dark', [dark]);
 assert.equal(s.hasGeneratedListsNeedingTemplateRefresh(), true);
 let builds = 0, saves = 0;
@@ -61,7 +61,7 @@ try {
   s.refreshGeneratedLists({}, [], [], [], s.createUsageScope(), baseDecks);
   assert.equal(builds, 1, 'Only the outdated eligible list should rebuild');
   assert.equal(saves, 1);
-  assert.equal(s.generatedListsByDeckId.get('spotlight-v3')[1], current);
+  assert.equal(s.generatedListsByDeckId.get('grid-6')[1], current);
   assert.equal(s.generatedListsByDeckId.get('itinerary-note-dark')[0], dark);
   assert.equal(s.hasGeneratedListsNeedingTemplateRefresh(), false);
   s.refreshGeneratedLists({}, [], [], [], s.createUsageScope(), baseDecks);
@@ -75,4 +75,4 @@ assert.throws(() => guard.rebuildWorkbookDerivedCacheNow(), /dataset lồng nhau
 assert.equal(guard.workbookDerivedCacheBuilding, false, 'Release guard after errors');
 guard.buildWorkbookDerivedCacheNow = () => ({ ready: true });
 assert.deepEqual(guard.rebuildWorkbookDerivedCacheNow(), { ready: true });
-console.log('PASS startup refresh: read-only titles, old snapshots unchanged, only stale V3 refreshes once, re-entry blocked and errors recover.');
+console.log('PASS startup refresh: read-only titles, old snapshots unchanged, only stale grid-6 refreshes once, re-entry blocked and errors recover.');

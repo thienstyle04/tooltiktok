@@ -3,91 +3,30 @@ import 'dotenv/config';
 import { applyListPhotoPreset, validatePhotoPreset } from './photo-presets';
 import { migrateColorEditStores, LEGACY_COLOR_DECKS } from './color-edit-migration';
 import { prepareSpotlightDesign, SPOTLIGHT_DESIGN_DECKS } from './logic/spotlight-design';
-import { getColorEditAsset, COLOR_EDIT_PRESET } from './color-edit';
 import { aiProvider, AiError } from './ai-provider';
 import { verifyDriveFileCache } from './sync/drive-images';
 import { inheritPageTypography } from './logic/inherit-page-typography';
 import { BadRequestException, Injectable, NotFoundException, OnApplicationBootstrap, ServiceUnavailableException } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { isUpdateLocked } from '../../runtime-update-lock';
 import * as XLSX from 'xlsx';
 import { enableNightSyncPolicy, hasSyncPermit, withLocalDataOnly } from './sync/night-sync-policy';
 import { NightSyncCoordinator } from './sync/night-sync-coordinator';
 import { syncNightSource } from './sync/night-sync-source';
-import { publishedSourcePaths, publishSourceSnapshot } from './sync/published-source';
+import { publishSourceSnapshot } from './sync/published-source';
 
-import {
-  CaptionBlocks,
-  AddDestinationRequest,
-  AddDestinationResponse,
-  AddXlsxDestinationRequest,
-  CoverPage,
-  DatasetBuildContext,
-  DeckPage,
-  DeepSeekCaptionRequest,
-  DeepSeekCaptionResponse,
-  DeleteGeneratedListsResponse,
-  GenerateBatchListsRequest,
-  GenerateBatchListsResponse,
-  GenerateCaptionDeckRequest,
-  GenerateCaptionDeckResponse,
-  GeneratePartnerSpotlightRequest,
-  GeneratePartnerSpotlightResponse,
-  GeneratedListsStore,
-  PartnerRotationHistory,
-  GuideDeck,
-  GuideDeckList,
-  GuideDataset,
-  GuideItem,
-  HinhNenImageUrlPools,
-  ImageLibraryFolderEntry,
-  ImageMappingFile,
-  ListPage,
-  PageItem,
-  ReferenceSet,
-  SectionKey,
-  UpdateGeneratedListCoverRequest,
-  UpdateGeneratedListCoverResponse,
-  UpdatePageTextRequest,
-  UpdatePageTextResponse,
-  PageTextOverrideStore,
-  WorkbookItemsBySection,
-  DestinationId,
-  DestinationListResponse,
-  DestinationSummary,
-  HookSourcesResponse,
-  SetHookModeRequest,
-  SetDestinationRequest,
-  SetDestinationResponse,
-} from '../../common/interfaces/guide.types';
+import { CaptionBlocks, AddDestinationRequest, AddDestinationResponse, AddXlsxDestinationRequest, CoverPage, DatasetBuildContext, DeckPage, DeepSeekCaptionRequest, DeepSeekCaptionResponse, DeleteGeneratedListsResponse, GenerateBatchListsRequest, GenerateBatchListsResponse, GenerateCaptionDeckRequest, GenerateCaptionDeckResponse, GeneratePartnerSpotlightRequest, GeneratePartnerSpotlightResponse, PartnerRotationHistory, GuideDeck, GuideDeckList, GuideDataset, GuideItem, HinhNenImageUrlPools, ImageLibraryFolderEntry, ImageMappingFile, ListPage, PageItem, ReferenceSet, SectionKey, UpdateGeneratedListCoverRequest, UpdateGeneratedListCoverResponse, UpdatePageTextRequest, UpdatePageTextResponse, PageTextOverrideStore, WorkbookItemsBySection, DestinationId, DestinationListResponse, DestinationSummary, HookSourcesResponse, SetHookModeRequest, SetDestinationRequest, SetDestinationResponse } from '../../common/interfaces/guide.types';
 
-import { SECTION_CONFIG } from '../../common/constants/guide.constants';
 
-import {
-  buildImageLibraryEntries,
-  composeAddress,
-  createListImageResolver,
-  getConfiguredLibraryRoots,
-  getImageLibraryRoot,
-  imageUrlsForDirectory,
-  normalizeText,
-  readAssetFromBase,
-  resolveMappedImage,
-  safeRelative,
-  stableHash,
-  firstValue,
-  itemMappingKey,
-  normalizeWorkbookHeaders,
-} from './logic/image-resolver';
+import { buildImageLibraryEntries, getImageLibraryRoot, imageUrlsForDirectory, normalizeText, stableHash } from './logic/image-resolver';
 
-import { DataAllocator, itemUsageKey } from './logic/data-allocator';
-import { bootstrapPartnerHistory, restrictRotationPhotos, rotatePartnerList, visiblePartnerCount, rotationPhotoShortage, requiredPartnerCount, validateRotationStore, partnerSlotCount } from './logic/partner-rotation';
-import { applyCaptionToPages, BUDGET_3N2D_STORY_TEMPLATE_VERSION, BUDGET_3N2D_TEMPLATE_VERSION, BUDGET_72H_SUMMARY_TEMPLATE_VERSION, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, displayPrice, finalizePov3V2Tagline, GRID_4_MUTANT_TEMPLATE_VERSION, GRID_4_TEMPLATE_VERSION, GRID_5_TEMPLATE_VERSION, GRID_6_TEMPLATE_VERSION, GRID_6_ZIGZAG_TEMPLATE_VERSION, GRID_8_TEMPLATE_VERSION, ITINERARY_3N2D_TEMPLATE_VERSION, ITINERARY_4N2D_GRID8_TEMPLATE_VERSION, ITINERARY_4N3D_TEMPLATE_VERSION, metaText, POV_3_DAY_TEMPLATE_VERSION, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_GUIDE_TEMPLATE_VERSION, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncateGrid8CoverSubtitle, truncateGrid8FeedCoverSubtitle, truncatePov3V2StackTagline, truncateSpotlightV2CoverSubtitle } from './logic/deck-builder';
-import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, GRID_6_QUAYTUNG_TEMPLATE_VERSION, GRID_8_FEED_TEMPLATE_VERSION, GRID_8_QUAYTUNG_TEMPLATE_VERSION, ITINERARY_4N3D_STACK_TEMPLATE_VERSION, ITINERARY_TIMELINE_TEMPLATE_VERSION, normalizeGrid8FeedPostCaption, ONE_WAY_STORY_TEMPLATE_VERSION, POV_3_V2_TEMPLATE_VERSION, SPOTLIGHT_V2_TEMPLATE_VERSION, SPOTLIGHT_V3_TEMPLATE_VERSION, SPOTLIGHT_V4_TEMPLATE_VERSION, SPOTLIGHT_V5_TEMPLATE_VERSION, SPOTLIGHT_V6_DARK_TEMPLATE_VERSION, SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION, SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION, SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION, SPOTLIGHT_V6_TEMPLATE_VERSION, spotlightV4VenueAvailability, SUMMARY_NOTE_TEMPLATE_VERSION, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext, tuneSpotlightV2Cover } from './logic/deck-builder-v2';
+import { DataAllocator } from './logic/data-allocator';
+import { bootstrapPartnerHistory, restrictRotationPhotos, rotatePartnerList, rotationPhotoShortage, requiredPartnerCount, partnerSlotCount, sourcePhotoId } from './logic/partner-rotation';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncatePov3V2StackTagline } from './logic/deck-builder';
+import { spotlightV4VenueAvailability, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext } from './logic/deck-builder-v2';
 import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
-import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, fetchDriveFileAsset, filterKnownAvailableDriveProxyUrls, filterVerifiedAccessibleDriveProxyUrls, getDriveImageProxyUrl, hasDriveFileDiskCache, isKnownUnavailableDriveProxyUrl, listUncachedDriveFileIds, setCachedDriveFileAccessibility, uniqueCachedDriveFileIdsByVisualContent, warmDriveFileDiskCache } from './sync/drive-images';
+import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, hasDriveFileDiskCache, listUncachedDriveFileIds, setCachedDriveFileAccessibility, uniqueCachedDriveFileIdsByVisualContent, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
 import {
   DEFAULT_DESTINATION_ID,
@@ -111,20 +50,28 @@ import {
 } from './sync/destination-config';
 import { migrateThreadsSourceStores } from './threads-source-migration';
 
-import { resolveSectionKeyFromSheetName } from './sync/sheet-section';
 import { FestivalHookSourceStore, HookReservation, HookSourceUpload } from './sync/festival-hook-source';
 import { GreenHookReservation, GreenHookSourceStore } from './sync/green-hook-source';
 import { DarkHookReservation, DarkHookSourceStore } from './sync/dark-hook-source';
 import { PersimmonHookReservation, PersimmonHookSourceStore } from './sync/persimmon-hook-source';
-import { localizeDecks, localizeText, setActiveDestinationLocalize, getMarketingCopy, buildCaptionHashtags, getDeckHashtagExtras, resolveDeckIdFromListId, cityLabel } from './sync/destination-localize';
-import {
-  fetchWorkbookFromSheet,
-  MAX_WORKBOOK_FILE_BYTES,
-  parseWorkbookBuffer,
-  SheetWorkbookSource,
-} from './sync/workbook-source';
+import { localizeDecks, setActiveDestinationLocalize, buildCaptionHashtags } from './sync/destination-localize';
+import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
 import { RuntimePerformanceService } from './runtime-performance.service';
+import * as fileIo from './guide-file-io';
+import { GuideAssetService } from './guide-asset.service';
+import * as pageText from './page-text-overrides';
+import * as captionText from './caption-text';
+import { GenerationGate } from './generation-gate';
+import * as listDisplay from './list-display';
+import * as workbookStore from './workbook-store';
+import * as workbookItems from './workbook-items';
+import * as listStore from './generated-list-store';
+import { findLocalTemplate, listLocalTemplates, localTemplateAssetUrl, localTemplateBuilder, localTemplateDecks, validateLocalTemplateResources } from './local-templates';
+import { syncFetch, withSyncPermit } from './sync/night-sync-policy';
+import * as crypto from 'node:crypto';
+import type { LocalWorkbookUpload } from './workbook-store';
+export type { LocalWorkbookUpload } from './workbook-store';
 
 const HOOK_DOC_ID = '1E1erto0ZzdOO3NLC5ss1_cj8Dr_E46BY1OVk_UW70Lc';
 const HOOK_SECTION_BY_DECK: Record<string, { key: string; headingIncludes: string[] }> = {
@@ -147,31 +94,18 @@ const isSectionedGoogleDocHookDeck = (deckId: string): boolean => Boolean(HOOK_S
 const isGoogleDocHookDeck = (deckId: string): boolean =>
   deckId === 'spotlight-v6-diary' || isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
-import { ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION, ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_TEMPLATE_VERSION, ITINERARY_NOTE_DARK_CAPTION } from './logic/itinerary-note';
-import { DIARY_TEMPLATE_VERSION, DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
-import { ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
+import { ITINERARY_NOTE_CAPTION, ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_CAPTION } from './logic/itinerary-note';
+import { DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
+import { ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
 import { threadsNoteCaption } from './logic/itinerary-note-threads';
-import { THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION, threadsBudgetCaption } from './logic/itinerary-note-threads-budget';
-import { THREADS_TOPLIST_ID, THREADS_TOPLIST_TEMPLATE_VERSION, THREADS_TOPLIST_CAPTION } from './logic/threads-toplist';
-import { isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_CAFE_TEMPLATE_VERSION, THREADS_FOOD_ID, THREADS_FOOD_TEMPLATE_VERSION, THREADS_MIX_ID, THREADS_MIX_TEMPLATE_VERSION, THREADS_MIX_TEXT_ID, THREADS_MIX_TEXT_TEMPLATE_VERSION, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from './logic/threads-food-local';
-const isTextNoteDeck = (deckId: string): boolean => deckId === THREADS_TOPLIST_ID || deckId === 'summary-note' || deckId === ITINERARY_NOTE_DARK_ID || (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) || deckId === 'itinerary-note-timed';
-const isNonAiDeck = (deckId: string): boolean => isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || isSpotlightV5Deck(deckId) || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
+import { THREADS_BUDGET_ID, threadsBudgetCaption } from './logic/itinerary-note-threads-budget';
+import { THREADS_TOPLIST_ID, THREADS_TOPLIST_CAPTION } from './logic/threads-toplist';
+import { isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_MIX_ID, THREADS_MIX_TEXT_ID, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from './logic/threads-food-local';
+import { CaptionTone, isSpotlightV5Deck, isTextNoteDeck } from './deck-kinds';
+const isNonAiDeck = (deckId: string): boolean => Boolean(findLocalTemplate(deckId)) || isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || isSpotlightV5Deck(deckId) || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
-function isSpotlightV5Deck(deckId: string): boolean {
-  return deckId === 'spotlight-v5' || deckId === 'spotlight-v5-color-edit';
-}
-
-const RECENT_LIST_IMAGE_WINDOW = 1;
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
 const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
-type CaptionTone = DeepSeekCaptionResponse['tone'];
-
-export interface LocalWorkbookUpload {
-  buffer: Buffer;
-  originalname: string;
-  size: number;
-  mimetype?: string;
-}
 
 // Phần dữ liệu "nặng" (đọc Google Sheet, dò ảnh, build 22 mẫu deck) — chỉ cần build lại khi
 // Sheet/ảnh thật sự đổi. Tách riêng khỏi list AI để CRUD list không bao giờ phải chờ rebuild.
@@ -200,12 +134,6 @@ export interface DriveCacheWarmStatus {
   failed: number;
   percent: number;
   message: string;
-}
-
-/** Sleep đồng bộ ngắn (không await) dùng cho retry ghi file — an toàn vì chỉ chờ tối đa vài trăm ms. */
-function sleepSyncMs(ms: number): void {
-  const view = new Int32Array(new SharedArrayBuffer(4));
-  Atomics.wait(view, 0, 0, ms);
 }
 
 @Injectable()
@@ -254,6 +182,7 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
   private partnerRotation: Record<string, PartnerRotationHistory> = {};
+  private localTemplateState: Record<string, Record<string, unknown>> = {};
   private usedAllocator = new DataAllocator();
   private inventoryLoaded = false;
 
@@ -294,8 +223,6 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly SESSION_STICKY_DATASET = !['0', 'false', 'no'].includes(String(process.env.DALAT_SESSION_STICKY_DATASET ?? 'true').trim().toLowerCase());
   private readonly AUTO_WARM_DRIVE_CACHE = !['0', 'false', 'no'].includes(String(process.env.DALAT_AUTO_WARM_DRIVE_CACHE ?? 'true').trim().toLowerCase());
   private driveCacheWarmToken = 0;
-  private generationQueue: Promise<void> = Promise.resolve();
-  private generationQueueDepth = 0;
   private driveCacheWarmStatus: DriveCacheWarmStatus = {
     phase: this.AUTO_WARM_DRIVE_CACHE ? 'checking' : 'ready',
     ready: !this.AUTO_WARM_DRIVE_CACHE,
@@ -324,27 +251,26 @@ export class GuideService implements OnApplicationBootstrap {
     console.log(`[drive-cache] Disk cache dir: ${cacheDir}`);
   }
 
-  async enqueueGeneration<T>(task: () => Promise<T>): Promise<T> {
-    this.generationQueueDepth += 1;
-    const previous = this.generationQueue;
-    let release: () => void = () => undefined;
-    this.generationQueue = new Promise<void>((resolve) => { release = resolve; });
-    await previous;
-    try {
-return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() => withLocalDataOnly(task)));
-    } finally {
-      this.generationQueueDepth = Math.max(0, this.generationQueueDepth - 1);
-      release();
-    }
+  // ─── Hàng đợi tạo list & cờ bận: generation-gate.ts ──────────────────────
+  private generationGateInstance?: GenerationGate;
+  // Tạo lười: nhiều test dựng service bằng Object.create (không chạy constructor).
+  private get generationGate(): GenerationGate {
+    return this.generationGateInstance ??= new GenerationGate({
+      runTask: (task) => aiProvider.run(() => this.runtimePerformance.runGenerationTask(() => withLocalDataOnly(task))),
+      isDataLoading: () => this.destinationDataLoading,
+    });
+  }
+
+  enqueueGeneration<T>(task: () => Promise<T>): Promise<T> {
+    return this.generationGate.enqueue(task);
   }
 
   isGenerationBusy(): boolean {
-    return this.generationQueueDepth > 0;
+    return this.generationGate.isGenerationBusy();
   }
 
   isUserOperationBusy(): boolean {
-    for (const [id, expires] of this.exportLeases) if (expires <= Date.now()) this.exportLeases.delete(id);
-    return this.isGenerationBusy() || this.exportLeases.size > 0 || this.destinationDataLoading;
+    return this.generationGate.isUserOperationBusy();
   }
 
   private driveCacheConcurrency(configured: number, max: number): number {
@@ -364,17 +290,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private nightSync?: NightSyncCoordinator;
-  private syncBusyProbe: () => boolean = () => false;
-  private exportLeases = new Map<string, number>();
-  setSyncBusyProbe(probe: () => boolean): void { this.syncBusyProbe = probe; }
-  updateExportLease(id: string, active: boolean): void {
-    if (!/^[\w-]{1,100}$/.test(id)) throw new BadRequestException('Mã tác vụ xuất không hợp lệ.');
-    if (active) this.exportLeases.set(id, Date.now() + 90000); else this.exportLeases.delete(id);
-  }
-  private syncMustWait(): boolean {
-    for (const [id, expires] of this.exportLeases) if (expires <= Date.now()) this.exportLeases.delete(id);
-    return this.isUserOperationBusy() || this.syncBusyProbe() || isUpdateLocked();
-  }
+  setSyncBusyProbe(probe: () => boolean): void { this.generationGate.setSyncBusyProbe(probe); }
+  updateExportLease(id: string, active: boolean): void { this.generationGate.updateExportLease(id, active); }
+  private syncMustWait(): boolean { return this.generationGate.syncMustWait(); }
   private getNightSync(): NightSyncCoordinator {
     return this.nightSync ||= new NightSyncCoordinator({
       file: path.join(this.dataRoot, 'night-sync.json'),
@@ -389,9 +307,13 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
         validate: source => this.validateWorkbookData(source),
         save: source => this.saveWorkbookSnapshot(source, true),
         syncHooks: async manifest => {
-          if (!isDalatContentSource(id) || isDalatThreadsSource(id)) return [];
-          const stores = this.hooksForSource(id);
           const errors: string[] = [];
+          for (const m of listLocalTemplates().filter(m => m.allowedSourceIds.includes(id))) {
+            try { await this.syncLocalTemplate(m.id, false); }
+            catch (error) { errors.push(`${m.name}: ${error instanceof Error ? error.message : error}`); }
+          }
+          if (!isDalatContentSource(id) || isDalatThreadsSource(id)) return errors;
+          const stores = this.hooksForSource(id);
           for (const [key, label, store] of [
             ['green', 'Hook Mảng xanh', stores.green],
             ['dark', 'Hook Tone đen', stores.dark],
@@ -761,188 +683,45 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
   // ──────────────────────────────────────────────────────────────────────────
 
-  // ─── Static file serving ──────────────────────────────────────────────────
+  // ─── Static file & asset serving (GuideAssetService) ──────────────────────
 
-  getToolTextFile(fileName: string): string {
-    const target = path.join(this.toolRoot, fileName);
-    if (!safeRelative(this.toolRoot, target) || !fs.existsSync(target) || !fs.statSync(target).isFile()) {
-      throw new NotFoundException(`Tool file not found: ${fileName}`);
-    }
-    return fs.readFileSync(target, 'utf-8');
+  private assetService?: GuideAssetService;
+  // Tạo lười: nhiều test dựng service bằng Object.create (không chạy constructor).
+  private get assets(): GuideAssetService {
+    return this.assetService ??= new GuideAssetService({
+      toolRoot: () => this.toolRoot,
+      frontendRoot: () => this.frontendRoot,
+      workspaceRoot: () => this.workspaceRoot,
+      dataRoot: () => this.dataRoot,
+      dalatImageDir: () => this.dalatImageDir,
+      tiktokReferenceDir: () => this.tiktokReferenceDir,
+      loadImageMapping: (allowLegacyAssets) => this.loadImageMapping(allowLegacyAssets),
+      getDriveFileAsset: (fileId) => this.getDriveFileAsset(fileId),
+      driveCacheConcurrency: (configured, max) => this.driveCacheConcurrency(configured, max),
+      runDriveTask: (concurrency, task) => this.runtimePerformance.runDriveTask(concurrency, task),
+    });
   }
 
-  getToolBinaryFile(fileName: string): Buffer {
-    const target = path.join(this.toolRoot, fileName);
-    if (!safeRelative(this.toolRoot, target) || !fs.existsSync(target) || !fs.statSync(target).isFile()) {
-      throw new NotFoundException(`Tool file not found: ${fileName}`);
-    }
-    return fs.readFileSync(target);
-  }
+  getToolTextFile(fileName: string): string { return this.assets.getToolTextFile(fileName); }
+  getToolBinaryFile(fileName: string): Buffer { return this.assets.getToolBinaryFile(fileName); }
+  getFrontendTextFile(fileName: string): string { return this.assets.getFrontendTextFile(fileName); }
+  getFrontendBinaryFile(fileName: string): Buffer { return this.assets.getFrontendBinaryFile(fileName); }
+  guessMime(fileName: string): string { return this.assets.guessMime(fileName); }
+  getDalatAsset(fileName: string): Buffer { return this.assets.getDalatAsset(fileName); }
+  getTiktokAsset(folderName: string, fileName: string): Buffer { return this.assets.getTiktokAsset(folderName, fileName); }
+  getWorkspaceAsset(relativePath: string): Buffer { return this.assets.getWorkspaceAsset(relativePath); }
+  getLibraryAsset(relativePath: string, rootKey = 'main'): Buffer { return this.assets.getLibraryAsset(relativePath, rootKey); }
+  getDriveFileAsset(fileId: string): Promise<DriveFileAsset> { return this.assets.getDriveFileAsset(fileId); }
+  getColorEditedAsset(source: string, preset: string): Promise<Buffer> { return this.assets.getColorEditedAsset(source, preset); }
+  getDriveFilesCacheStatus(fileIds: string[]) { return this.assets.getDriveFilesCacheStatus(fileIds); }
+  prefetchDriveFiles(fileIds: string[]) { return this.assets.prefetchDriveFiles(fileIds); }
 
   private ensureDataRoot(): void {
     fs.mkdirSync(this.dataRoot, { recursive: true });
   }
 
-  /**
-   * Ghi file JSON qua file tạm rồi rename (atomic hơn) + retry ngắn khi gặp lỗi
-   * khoá file thoáng qua trên Windows (Defender/OneDrive quét file lúc đang ghi
-   * ra "UNKNOWN: unknown error, open ..." hoặc EBUSY). Tránh việc create/delete
-   * list bị 500 giữa chừng do va lỗi ghi đè cùng lúc.
-   */
   private writeJsonFileSafe(targetPath: string, data: unknown): void {
-    const json = JSON.stringify(data, null, 2);
-    const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const maxAttempts = 5;
-    let lastError: unknown;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        fs.writeFileSync(tmpPath, json, 'utf-8');
-        fs.renameSync(tmpPath, targetPath);
-        return;
-      } catch (error) {
-        lastError = error;
-        try { fs.unlinkSync(tmpPath); } catch { /* file tạm có thể chưa được tạo, bỏ qua */ }
-        if (attempt < maxAttempts) sleepSyncMs(50 * attempt);
-      }
-    }
-    throw lastError;
-  }
-
-  getFrontendTextFile(fileName: string): string {
-    const target = path.join(this.frontendRoot, fileName);
-    if (!safeRelative(this.frontendRoot, target) || !fs.existsSync(target) || !fs.statSync(target).isFile()) {
-      throw new NotFoundException(`Frontend file not found: ${fileName}`);
-    }
-    return fs.readFileSync(target, 'utf-8');
-  }
-
-  getFrontendBinaryFile(fileName: string): Buffer {
-    const target = path.join(this.frontendRoot, fileName);
-    if (!safeRelative(this.frontendRoot, target) || !fs.existsSync(target) || !fs.statSync(target).isFile()) {
-      throw new NotFoundException(`Frontend file not found: ${fileName}`);
-    }
-    return fs.readFileSync(target);
-  }
-
-  guessMime(fileName: string): string {
-    const mimeByExtension: Record<string, string> = {
-      '.css': 'text/css; charset=utf-8',
-      '.gif': 'image/gif',
-      '.html': 'text/html; charset=utf-8',
-      '.js': 'application/javascript; charset=utf-8',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.jfif': 'image/jpeg',
-      '.png': 'image/png',
-      '.svg': 'image/svg+xml',
-      '.ttf': 'font/ttf',
-      '.woff': 'font/woff',
-      '.woff2': 'font/woff2',
-      '.webp': 'image/webp',
-    };
-    return mimeByExtension[path.extname(fileName).toLowerCase()] ?? 'application/octet-stream';
-  }
-
-  // ─── Asset serving ────────────────────────────────────────────────────────
-
-  getDalatAsset(fileName: string): Buffer {
-    return readAssetFromBase(this.dalatImageDir, fileName);
-  }
-
-  getTiktokAsset(folderName: string, fileName: string): Buffer {
-    return readAssetFromBase(path.join(this.tiktokReferenceDir, folderName), fileName);
-  }
-
-  getWorkspaceAsset(relativePath: string): Buffer {
-    if (!relativePath) throw new NotFoundException('Asset path is required.');
-    return readAssetFromBase(this.workspaceRoot, relativePath);
-  }
-
-  getLibraryAsset(relativePath: string, rootKey = 'main'): Buffer {
-    // Preserve immutable library assets referenced by saved custom-source lists;
-    // the Test generation pool still excludes this library.
-    const imageMapping = this.loadImageMapping(true);
-    const libraryRoot = getConfiguredLibraryRoots(imageMapping, this.workspaceRoot).find((e) => e.key === rootKey)?.path ?? '';
-    if (!libraryRoot) throw new NotFoundException('Image library root not found.');
-    if (!relativePath) throw new NotFoundException('Asset path is required.');
-    return readAssetFromBase(libraryRoot, relativePath);
-  }
-
-  async getDriveFileAsset(fileId: string): Promise<DriveFileAsset> {
-    const normalizedFileId = String(fileId ?? '').trim();
-    if (!normalizedFileId) {
-      throw new NotFoundException('Drive file id is required.');
-    }
-    return withLocalDataOnly(() => fetchDriveFileAsset(normalizedFileId));
-  }
-
-  async getColorEditedAsset(source: string, preset: string): Promise<Buffer> {
-    if (preset !== COLOR_EDIT_PRESET) throw new BadRequestException('Bộ màu không được hỗ trợ.');
-    if (!source?.startsWith('/assets/') || source.startsWith('//')) throw new BadRequestException('Ảnh phải nằm trong cache cục bộ.');
-    const url = new URL(source, 'http://localhost');
-    let body: Buffer;
-    if (url.pathname === '/assets/drive-file') {
-      const asset = await this.getDriveFileAsset(url.searchParams.get('id') || '');
-      if (asset.isFallback) throw new BadRequestException('Không thể chỉnh màu: ảnh gốc chưa có cache hợp lệ.');
-      body = asset.body;
-    } else if (url.pathname === '/assets/library') body = this.getLibraryAsset(url.searchParams.get('path') || '', url.searchParams.get('root') || 'main');
-    else if (url.pathname === '/assets/workspace') body = this.getWorkspaceAsset(url.searchParams.get('path') || '');
-    else if (/^\/assets\/dalat\/[^/]+$/.test(url.pathname)) body = this.getDalatAsset(decodeURIComponent(url.pathname.split('/')[3]));
-    else if (/^\/assets\/tiktok\/[^/]+\/[^/]+$/.test(url.pathname)) body = this.getTiktokAsset(decodeURIComponent(url.pathname.split('/')[3]), decodeURIComponent(url.pathname.split('/')[4]));
-    else throw new BadRequestException('Nguồn ảnh không được hỗ trợ cho bộ màu.');
-    try { return await getColorEditAsset(body, this.dataRoot, preset); }
-    catch { throw new BadRequestException('Không thể xử lý ảnh Color Edit. Hãy kiểm tra ảnh và thử lại; ảnh gốc vẫn được giữ nguyên.'); }
-  }
-
-  /**
-   * Kiểm tra nhanh disk cache (không tải mạng) — FE dùng để bỏ prefetch khi đã đủ ảnh.
-   */
-  async getDriveFilesCacheStatus(fileIds: string[]) {
-    const ids = [...new Set((fileIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
-    const images = await verifyDriveFileCache(ids);
-    const missing = images.filter(image => image.status !== 'valid').map(image => image.id);
-    return {
-      total: ids.length,
-      cached: ids.length - missing.length,
-      missing,
-      images,
-    };
-  }
-
-  /**
-   * Máy mới / trước khi xuất: tải trước các fileId cần dùng vào disk cache
-   * với concurrency thấp (tránh storm Drive lúc render hàng loạt).
-   */
-  async prefetchDriveFiles(fileIds: string[]): Promise<{
-    total: number;
-    skipped: number;
-    ok: number;
-    fail: number;
-    cancelled: boolean;
-  }> {
-    const ids = [...new Set((fileIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
-    if (!ids.length) {
-      return { total: 0, skipped: 0, ok: 0, fail: 0, cancelled: false };
-    }
-    await verifyDriveFileCache(ids);
-    const missing = listUncachedDriveFileIds(ids);
-    if (!missing.length) {
-      console.log(`[drive-cache] Prefetch bỏ qua — đủ cache disk (${ids.length}/${ids.length}).`);
-      return { total: ids.length, skipped: ids.length, ok: 0, fail: 0, cancelled: false };
-    }
-    const concurrency = this.driveCacheConcurrency(Number(process.env.DALAT_DRIVE_CACHE_CONCURRENCY || 3), 5);
-    console.log(`[drive-cache] Prefetch ${missing.length}/${ids.length} ảnh còn thiếu (concurrency=${concurrency})...`);
-    const warmed = await warmDriveFileDiskCache(missing, {
-      concurrency,
-      runTask: (task) => this.runtimePerformance.runDriveTask(concurrency, task),
-    });
-    return {
-      total: ids.length,
-      skipped: ids.length - missing.length + warmed.skipped,
-      ok: warmed.ok,
-      fail: warmed.fail,
-      cancelled: warmed.cancelled,
-    };
+    fileIo.writeJsonFileSafe(targetPath, data);
   }
 
   // ─── Dataset ──────────────────────────────────────────────────────────────
@@ -1507,74 +1286,27 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     }
     this.ensureGeneratedListsLoaded();
     const derived = this.ensureWorkbookDerivedContext();
-    const baseList = derived.baseDecks.find((deck) => deck.id === deckId)?.lists.find((list) => list.id === listId);
+    // Local main lists belong to the machine-local catalog, not the workbook's
+    // derived baseDecks. Resolve them through the same source-scoped catalog
+    // used for display, then persist edits in the existing override store.
+    const baseDeck = derived.baseDecks.find((deck) => deck.id === deckId)
+      || localTemplateDecks(this.activeDestinationId).find((deck) => deck.id === deckId);
+    const baseList = baseDeck?.lists.find((list) => list.id === listId);
     const generatedList = (this.generatedListsByDeckId.get(deckId) ?? []).find((list) => list.id === listId);
     const list = generatedList || baseList;
     if (!list) throw new NotFoundException(`Khong tim thay list: ${listId}`);
     const page = list.pages?.[pageIndex];
     if (!page) throw new NotFoundException(`Khong tim thay trang: ${pageIndex + 1}`);
 
-    const titleLimit = page.spotlightDesignRevision === 1 && page.type === 'cover' ? 220 : page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
-      ? 110
-      : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
-        ? 220
-        : page.type === 'cover' ? 60 : 90;
-    const title = this.normalizeEditablePageText(request.title ?? page.title).slice(0, titleLimit);
-    const subtitle = (page.layoutVariant === 'one-way-story-road'
-      ? this.normalizeEditablePageMultilineText(request.subtitle ?? page.subtitle)
-      : this.normalizeEditablePageText(request.subtitle ?? page.subtitle)).slice(0, 220);
-
     const store = this.loadPageTextOverrides();
     store.decks[deckId] ||= {};
     store.decks[deckId][listId] ||= {};
-    const previousItems = store.decks[deckId][listId][String(pageIndex)]?.items;
-    let items = previousItems;
-    const isEditableNoteRows = (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-toplist-page')
-      || page.layoutVariant === 'itinerary-note-timed-day'
-      || page.layoutVariant === 'spotlight-v6-map-place'
-      || page.layoutVariant === 'spotlight-v6-diary-page'
-      || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page');
-    if (isEditableNoteRows && page.type === 'list' && request.items !== undefined) {
-      if (!Array.isArray(request.items) || request.items.length !== page.items.length) throw new BadRequestException(`Cần giữ đủ ${page.items.length} dòng dữ liệu.`);
-      items = request.items.map(item => ({
-        name: this.normalizeEditablePageText(item.name ?? ''),
-        metaPrimary: this.normalizeEditablePageText(item.metaPrimary ?? ''),
-        ...(page.layoutVariant === 'itinerary-note-threads-budget' ? { metaSecondary: this.normalizeEditablePageText(item.metaSecondary ?? '').slice(0, 80) } : {}),
-        ...(page.layoutVariant === 'itinerary-note-timed-day' ? { scheduleTime: this.normalizeEditablePageText(item.scheduleTime ?? '').slice(0, 24) } : {}),
-      }));
-    }
-    const chipText = page.layoutVariant === 'itinerary-note-timed-day'
-      ? this.normalizeEditablePageText(request.chipText ?? page.chipText).slice(0, 40)
-      : undefined;
-    const editableSpotlightCover = page.type === 'cover' && page.spotlightDesignRevision === 1;
-    const priorCover = store.decks[deckId][listId][String(pageIndex)];
-    const rawCoverImages = editableSpotlightCover ? request.coverImages ?? priorCover?.coverImages : undefined;
-    const coverImages = Array.isArray(rawCoverImages) ? rawCoverImages.map(url => typeof url === 'string' ? url.trim() : url).filter(url => url !== '') : rawCoverImages;
-    const coverApproval = editableSpotlightCover ? request.coverApproval ?? priorCover?.coverApproval : undefined;
-    if (coverImages !== undefined && (!Array.isArray(coverImages) || coverImages.length !== (deckId === 'spotlight-v2' ? 4 : 1)
-      || new Set(coverImages).size !== coverImages.length || coverImages.some(url => !derived.coverImageUrls.includes(url)))) {
-      throw new BadRequestException('Ảnh bìa phải khác nhau và thuộc kho ảnh nền hiện tại.');
-    }
-    if (coverApproval !== undefined && (typeof coverApproval !== 'string' || coverApproval.length > 4000)) throw new BadRequestException('Xác nhận ảnh bìa không hợp lệ.');
-    const titlePlacement = page.layoutVariant === 'spotlight-v6-diary-page' || editableSpotlightCover
-      ? request.titlePlacement ?? store.decks[deckId][listId][String(pageIndex)]?.titlePlacement ?? page.titlePlacement
-      : undefined;
-    if (titlePlacement && !['top-left', 'top-center', 'top-right', 'mid-left', 'mid-right', 'bottom-left', 'bottom-center', 'bottom-right', 'center'].includes(titlePlacement)) throw new BadRequestException('Vị trí chữ không hợp lệ.');
-    if (page.layoutVariant === 'spotlight-v6-diary-page' && titlePlacement && !['top-center', 'center', 'bottom-center'].includes(titlePlacement)) throw new BadRequestException('Vị trí chữ không hợp lệ.');
-    const textScale = request.textScale ?? store.decks[deckId][listId][String(pageIndex)]?.textScale ?? page.textScale ?? 100;
-    const textFontSize = request.textFontSize !== undefined ? request.textFontSize : store.decks[deckId][listId][String(pageIndex)]?.textFontSize ?? page.textFontSize ?? null;
-    if (textFontSize !== null && (typeof textFontSize !== 'number' || !Number.isFinite(textFontSize) || textFontSize < 8 || textFontSize > 72 || textFontSize * 2 !== Math.round(textFontSize * 2))) throw new BadRequestException('Cỡ chữ phải từ 8 đến 72px, bước 0.5px.');
-    if (typeof textScale !== 'number' || !Number.isFinite(textScale) || textScale < 50 || textScale > 100 || textScale % 5 !== 0) throw new BadRequestException('Cỡ chữ phải từ 50 đến 100%, bước 5%.');
-    const diaryFontSize = page.layoutVariant === 'spotlight-v6-diary-page'
-      ? request.diaryFontSize ?? store.decks[deckId][listId][String(pageIndex)]?.diaryFontSize ?? page.diaryFontSize ?? 13
-      : undefined;
-    if (diaryFontSize !== undefined && (typeof diaryFontSize !== 'number' || !Number.isFinite(diaryFontSize) || diaryFontSize < 9 || diaryFontSize > 13 || diaryFontSize * 2 !== Math.round(diaryFontSize * 2))) throw new BadRequestException('Cỡ chữ Nhật ký phải từ 9 đến 13px, bước 0.5px.');
-    store.decks[deckId][listId][String(pageIndex)] = { title, subtitle, textScale, textFontSize, ...(coverImages ? { coverImages } : {}), ...(coverApproval !== undefined ? { coverApproval } : {}), ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
+    const override = pageText.buildPageTextOverride(deckId, page, request, store.decks[deckId][listId][String(pageIndex)], derived.coverImageUrls);
+    store.decks[deckId][listId][String(pageIndex)] = override;
     store.savedAt = new Date().toISOString();
-    this.ensureDataRoot();
-    this.writeJsonFileSafe(this.getDestinationDataPath('page-text-overrides'), store);
+    this.savePageTextOverrides(store);
 
-    return { deckId, listId, pageIndex, title, subtitle, textScale, textFontSize, ...(coverImages ? { coverImages } : {}), ...(coverApproval !== undefined ? { coverApproval } : {}), ...(diaryFontSize !== undefined ? { diaryFontSize } : {}), ...(titlePlacement ? { titlePlacement } : {}), ...(chipText !== undefined ? { chipText } : {}), ...(items ? { items } : {}) };
+    return { deckId, listId, pageIndex, ...override };
   }
 
   async generateDeckFromCaption(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
@@ -1584,10 +1316,93 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     return aiProvider.run(() => this.generateDeckFromCaptionWithAi(request));
   }
 
+  async syncLocalTemplate(id: string, manual = true): Promise<unknown> {
+    const manifest = findLocalTemplate(id);
+    if (!manifest) throw new NotFoundException('Chưa cài mẫu local này.');
+    if (manual) {
+      this.assertTemplateAllowed(id);
+      if (this.syncMustWait()) throw new BadRequestException('Tool đang tạo/xuất list; hãy đồng bộ nội dung sau khi hoàn tất.');
+    }
+    const sync = localTemplateBuilder(manifest).sync;
+    if (!sync) throw new BadRequestException('Mẫu local không hỗ trợ đồng bộ nội dung.');
+    const run = () => sync({ fetch: syncFetch, readWorkbook: body => {
+      const book = XLSX.read(body, { type: 'buffer' });
+      return Object.fromEntries(book.SheetNames.map(name => [name, XLSX.utils.sheet_to_json<unknown[]>(book.Sheets[name], { header: 1, raw: false, defval: '' })]));
+    } });
+    try {
+      return manual ? await withSyncPermit({ manual: true, signal: AbortSignal.timeout(90000),
+        waitForIdle: async () => { if (this.syncMustWait()) throw new Error('Tool đang bận; dữ liệu nội dung cũ được giữ nguyên.'); } }, run) : await run();
+    } catch (error) {
+      throw new BadRequestException(`${manifest.name}: ${error instanceof Error ? error.message : error}. Giữ nội dung hợp lệ trước đó; hãy thử đồng bộ lại.`);
+    } finally { this.invalidateDatasetCache({ immediate: true }); }
+  }
+
+  private async generateLocalTemplate(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
+    const m = findLocalTemplate(String(request.deckId))!;
+    await this.prepareWorkbookForDataset(false);
+    const context = await this.buildLocallyVerifiedGenerationContext(false);
+    const existing = this.generatedListsByDeckId.get(m.id) || [];
+    const sources = this.cloneJson(context.itemsBySection);
+    const priorHistory = bootstrapPartnerHistory(existing, m.id, Object.values(sources).flat(), this.partnerRotation[m.id]);
+    const eligible = restrictRotationPhotos(sources, priorHistory, true);
+    const state = this.cloneJson(this.localTemplateState[m.id] || {});
+    const coverUrls = [...new Set([...context.coverImageUrls, ...Object.values(context.hinhNenImagePools).flat()].filter(Boolean))];
+    const distinctCoverIds = new Set(uniqueCachedDriveFileIdsByVisualContent(coverUrls.map(extractDriveFileIdFromProxyUrl).filter(Boolean)));
+    const coverImages = [...new Map(coverUrls.filter(url => {
+      const id = extractDriveFileIdFromProxyUrl(url);
+      return id && distinctCoverIds.has(id);
+    }).map(url => [sourcePhotoId(url), { id: sourcePhotoId(url), url }])).values()];
+    const savedCoverImageIds = existing.map(list => sourcePhotoId(list.pages.find(page => page.type === 'cover')?.backgroundImage || '')).filter(Boolean);
+    const builder = localTemplateBuilder(m);
+    let prepared: ReturnType<typeof builder.build> | undefined;
+    let rotated: ReturnType<typeof rotatePartnerList> | undefined;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      try {
+        const seed = `${m.id}:${existing.length}:${crypto.randomUUID()}:${attempt}`;
+        prepared = builder.build({ sourceId: this.activeDestinationId, itemsBySection: eligible, seed,
+          state, history: priorHistory, coverImages, savedCoverImageIds, assetUrl: name => localTemplateAssetUrl(m, name) });
+        rotated = rotatePartnerList(prepared.list, m.id, sources, priorHistory, seed, 1);
+        if (!this.renderedPartnerNames(rotated.list).length) throw new Error(`${m.name}: thiếu đối tác thực sự hiển thị để ghi XLSX.`);
+        break;
+      } catch (error) { lastError = error; prepared = undefined; rotated = undefined; }
+    }
+    if (!prepared || !rotated) throw new BadRequestException(`${m.name}: ${lastError instanceof Error ? lastError.message : lastError}`);
+    const list = rotated.list;
+    // Local builders bypass the workbook generation branch. Snapshot the
+    // mother's saved typography here as well, without copying its copy/photos
+    // or re-applying future template edits to already-approved children.
+    const parentDeck = localTemplateDecks(this.activeDestinationId).find(deck => deck.id === m.id);
+    if (parentDeck) list.pages = inheritPageTypography(parentDeck, list.pages, this.loadPageTextOverrides());
+    list.id = `${m.id}-caption-${crypto.randomUUID()}`;
+    list.navTitle = `Mẫu ${String(existing.length + 1).padStart(2, '0')} · ${list.localTemplate?.recipeId || ''}`;
+    list.canvasPreset = 'tiktok-3x4';
+    if (request.automationRunId) list.automationRunId = String(request.automationRunId).slice(0, 100);
+    if (request.automationPosition) list.automationPosition = String(request.automationPosition).slice(0, 100);
+    applyListPhotoPreset(list, request.photoPreset);
+    try {
+      await validateLocalTemplateResources(list);
+      await this.assertGeneratedImageCache(list.pages, m.id);
+    } catch (error) { throw new BadRequestException(`${m.name}: ${error instanceof Error ? error.message : error}`); }
+    const oldHistory = this.partnerRotation[m.id], oldState = this.localTemplateState[m.id];
+    this.generatedListsByDeckId.set(m.id, [...existing, list]);
+    this.partnerRotation[m.id] = rotated.history;
+    this.localTemplateState[m.id] = prepared.state;
+    try { this.persistGeneratedLists(); }
+    catch (error) {
+      this.generatedListsByDeckId.set(m.id, existing);
+      if (oldHistory) this.partnerRotation[m.id] = oldHistory; else delete this.partnerRotation[m.id];
+      if (oldState) this.localTemplateState[m.id] = oldState; else delete this.localTemplateState[m.id];
+      throw new BadRequestException(`${m.name}: không lưu được list; đã giữ nguyên vòng nội dung/ảnh. ${error instanceof Error ? error.message : error}`);
+    }
+    return { deckId: m.id, listId: list.id, navTitle: list.navTitle, title: list.title, warnings: list.warnings };
+  }
+
   private async generateDeckFromCaptionWithAi(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     this.assertTemplateAllowed(request.deckId);
     this.ensureGeneratedListsLoaded();
     const deckId = String(request.deckId ?? '').trim();
+    if (findLocalTemplate(deckId)) return this.generateLocalTemplate(request);
     if (deckId !== THREADS_TOPLIST_ID && deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
       this.assertDriveCacheReady();
     }
@@ -1810,7 +1625,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
           if (!failed.size) break;
           const allowed = (url: string) => !failed.has(extractDriveFileIdFromProxyUrl(url));
           context.hinhNenImagePools.random = context.hinhNenImagePools.random.filter(allowed);
-          for (const key of ['quan_an', 'cafe'] as const) {
+          for (const key of ['quan_an', 'cafe', 'check_in'] as const) {
             for (const item of context.itemsBySection[key] || []) {
               const urls = [item.imageUrl, ...(item.candidateImageUrls || [])].filter(allowed);
               item.imageUrl = urls[0] || '';
@@ -2638,7 +2453,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     // Danh sách AI (tạo/xoá/sửa cover) luôn đọc trực tiếp từ generatedListsByDeckId (bộ nhớ, luôn mới
     // nhất) nên bước merge này luôn nhanh (không đụng tới Sheet/ảnh) và không cần cache riêng.
     const referenceSets = this.buildReferenceSets();
-    const decks = this.mergeGeneratedLists(derived.baseDecks, derived.coverImageUrls);
+    const decks = this.mergeGeneratedLists([...derived.baseDecks, ...localTemplateDecks(this.activeDestinationId)], derived.coverImageUrls);
 
     return {
       imageUrls: derived.imageUrls,
@@ -2696,39 +2511,20 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private normalizeEditablePageText(value: unknown): string {
-    return String(value ?? '')
-      .normalize('NFC')
-      .replace(/[\u0000-\u001f\u007f]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return pageText.normalizeEditablePageText(value);
   }
 
   private normalizeEditablePageMultilineText(value: unknown): string {
-    return String(value ?? '')
-      .normalize('NFC')
-      .replace(/\r\n?/g, '\n')
-      .replace(/[\u0000-\u0009\u000b\u000c\u000e-\u001f\u007f]/g, ' ')
-      .split('\n')
-      .map((line) => line.replace(/[ \t]+/g, ' ').trim())
-      .join('\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+    return pageText.normalizeEditablePageMultilineText(value);
   }
 
   private loadPageTextOverrides(): PageTextOverrideStore {
-    const empty: PageTextOverrideStore = { version: 1, savedAt: '', decks: {} };
-    const filePath = this.resolveDestinationDataPath('page-text-overrides');
-    if (!fs.existsSync(filePath)) return empty;
-    try {
-      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Partial<PageTextOverrideStore>;
-      return {
-        version: 1,
-        savedAt: String(parsed.savedAt || ''),
-        decks: parsed.decks && typeof parsed.decks === 'object' ? parsed.decks : {},
-      };
-    } catch {
-      return empty;
-    }
+    return pageText.readPageTextOverrides(this.resolveDestinationDataPath('page-text-overrides'));
+  }
+
+  private savePageTextOverrides(store: PageTextOverrideStore): void {
+    this.ensureDataRoot();
+    this.writeJsonFileSafe(this.getDestinationDataPath('page-text-overrides'), store);
   }
 
   private applyPageTextOverrides(
@@ -2736,34 +2532,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     lists: GuideDeckList[],
     store: PageTextOverrideStore,
   ): GuideDeckList[] {
-    const deckOverrides = store.decks[deckId];
-    if (!deckOverrides) return lists;
-    return lists.map((list) => {
-      const listOverrides = deckOverrides[list.id];
-      if (!listOverrides) return list;
-      const pages = list.pages.map((page, pageIndex) => {
-        const ownOverride = listOverrides?.[String(pageIndex)];
-        if (!ownOverride) return page;
-        return { ...page, title: ownOverride.title, subtitle: ownOverride.subtitle,
-          ...(ownOverride.textScale !== undefined ? { textScale: ownOverride.textScale } : {}),
-          ...(ownOverride.textFontSize !== undefined ? { textFontSize: ownOverride.textFontSize } : {}),
-          ...((page.layoutVariant === 'spotlight-v6-diary-page' || page.spotlightDesignRevision === 1) && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
-          ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && ownOverride.coverImages ? { coverImages: ownOverride.coverImages, backgroundImage: ownOverride.coverImages[0] } : {}),
-          ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && ownOverride.coverApproval !== undefined ? { coverApproval: ownOverride.coverApproval } : {}),
-          ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.diaryFontSize !== undefined ? { diaryFontSize: ownOverride.diaryFontSize } : {}),
-          ...(page.layoutVariant === 'itinerary-note-timed-day' && ownOverride.chipText !== undefined ? { chipText: ownOverride.chipText } : {}),
-          ...(page.type === 'list' && ((page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (deckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) && ownOverride.items ? {
-            items: page.items.map((item, index) => ({ ...item, ...ownOverride.items?.[index] })),
-          } : {}),
-        };
-      });
-      const coverOverride = pages[0]?.type === 'cover'
-        ? listOverrides?.['0']
-        : undefined;
-      return coverOverride
-        ? { ...list, title: coverOverride.title, coverTitle: coverOverride.title, pages }
-        : { ...list, pages };
-    });
+    return pageText.applyPageTextOverrides(deckId, lists, store);
   }
 
   private applyMainTemplateFieldStructure(deck: GuideDeck, pages: DeckPage[]): DeckPage[] {
@@ -2772,184 +2541,86 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     if (deck.id === 'spotlight-v6-maps') return pages;
     if (deck.id === 'spotlight-v6-diary') return pages;
     if (isSpotlightV5Deck(deck.id) || isTextNoteDeck(deck.id)) return pages;
-    const mainList = deck.lists.find((list) => (
-      /-main$/i.test(String(list.id || ''))
-      || String(list.id || '').toLowerCase() === 'main'
-      || String(list.navTitle || '').trim().toLowerCase() === 'list chính'
-    ));
-    if (!mainList) return pages;
-
-    const templateOverrides = this.loadPageTextOverrides().decks[deck.id]?.[mainList.id];
-    return pages.map((page, pageIndex) => {
-      // Trang bìa: tiêu đề là hook riêng của từng list (AI/pool), không đồng bộ/ghi đè
-      // theo override của list mẫu (main) — nếu không mọi list mới sẽ bị ép về cùng 1 câu.
-      if (page.type === 'cover') return page;
-      const templatePage = mainList.pages?.[pageIndex];
-      if (!templatePage) return page;
-      const override = templateOverrides?.[String(pageIndex)];
-      if (override) {
-        return {
-          ...page,
-          title: override.title,
-          subtitle: override.subtitle,
-        };
-      }
-      const templateTitle = templatePage.title;
-      const templateSubtitle = templatePage.subtitle;
-      return {
-        ...page,
-        ...(String(templateTitle ?? '').trim() ? {} : { title: '' }),
-        ...(String(templateSubtitle ?? '').trim() ? {} : { subtitle: '' }),
-      };
-    });
+    return pageText.applyMainTemplateFieldStructure(deck, pages, () => this.loadPageTextOverrides());
   }
 
   private deletePageTextOverrides(deckId: string, listId: string): void {
     const store = this.loadPageTextOverrides();
-    const deck = store.decks[deckId];
-    if (!deck?.[listId]) return;
-    delete deck[listId];
-    if (Object.keys(deck).length === 0) delete store.decks[deckId];
-    store.savedAt = new Date().toISOString();
-    this.ensureDataRoot();
-    this.writeJsonFileSafe(this.getDestinationDataPath('page-text-overrides'), store);
+    if (pageText.removeListOverrides(store, deckId, listId)) this.savePageTextOverrides(store);
   }
 
+  // ─── list-display.ts ─────────────────────────────────────────────
   private applyRecentImageReuseGuard(lists: GuideDeckList[]): GuideDeckList[] {
-    const recentListImageSets: Array<Set<string>> = [];
-
-    return lists.map((list) => {
-      if (list.partnerRotationVersion || list.photoPreset || list.id.startsWith('spotlight-v6-diary-')) return list;
-      const recentImageUrls = this.mergeRecentImageSets(recentListImageSets);
-      const currentListVisualImageUrls = new Set<string>();
-      const currentListItemImageUrls = new Set<string>();
-      const guardedList: GuideDeckList = {
-        ...list,
-        pages: list.pages.map((page) => {
-          if (page.backgroundImage) currentListVisualImageUrls.add(page.backgroundImage);
-          if (page.type !== 'list') return page;
-
-          const currentPageImageUrls = new Set<string>();
-          return {
-            ...page,
-            items: page.items.map((item) => {
-              const nextImageUrl = this.pickFreshCandidateImage(
-                item.imageUrl,
-                item.candidateImageUrls,
-                recentImageUrls,
-                currentListItemImageUrls,
-                currentPageImageUrls,
-              );
-              if (nextImageUrl) currentListVisualImageUrls.add(nextImageUrl);
-              return nextImageUrl && nextImageUrl !== item.imageUrl
-                ? { ...item, imageUrl: nextImageUrl }
-                : item;
-            }),
-          };
-        }),
-      };
-
-      recentListImageSets.push(currentListVisualImageUrls);
-      while (recentListImageSets.length > RECENT_LIST_IMAGE_WINDOW) recentListImageSets.shift();
-      return guardedList;
-    });
-  }
-
-  private mergeRecentImageSets(imageSets: Array<Set<string>>): Set<string> {
-    const merged = new Set<string>();
-    for (const imageSet of imageSets) {
-      imageSet.forEach((url) => merged.add(url));
-    }
-    return merged;
-  }
-
-  private pickFreshCandidateImage(
-    currentUrl: string | undefined,
-    candidateUrls: string[] | undefined,
-    recentImageUrls: Set<string>,
-    currentListImageUrls: Set<string>,
-    currentPageImageUrls: Set<string>,
-  ): string {
-    const current = String(currentUrl ?? '').trim();
-    const candidates = [...new Set([...(candidateUrls ?? []), current].map((url) => String(url ?? '').trim()).filter(Boolean))];
-    if (current && !recentImageUrls.has(current) && !currentListImageUrls.has(current) && !currentPageImageUrls.has(current)) {
-      currentListImageUrls.add(current);
-      currentPageImageUrls.add(current);
-      return current;
-    }
-
-    const freshCandidate = candidates.find((url) => !recentImageUrls.has(url) && !currentListImageUrls.has(url) && !currentPageImageUrls.has(url));
-    const pageFreshCandidate = candidates.find((url) => !recentImageUrls.has(url) && !currentPageImageUrls.has(url));
-    const pageUniqueCandidate = candidates.find((url) => !currentPageImageUrls.has(url));
-    const currentPageUnique = current && !currentPageImageUrls.has(current) ? current : '';
-    const picked = freshCandidate || pageFreshCandidate || pageUniqueCandidate || currentPageUnique || current;
-    if (picked) {
-      currentListImageUrls.add(picked);
-      currentPageImageUrls.add(picked);
-    }
-    return picked;
+    return listDisplay.applyRecentImageReuseGuard(lists);
   }
 
   private templateVersionForDeck(deckId: string): number | undefined {
-    if (deckId === 'spotlight-v6-diary') return DIARY_TEMPLATE_VERSION;
-    if (deckId === 'itinerary-3n2d') return ITINERARY_3N2D_TEMPLATE_VERSION;
-    if (deckId === 'budget-3n2d') return BUDGET_3N2D_TEMPLATE_VERSION;
-    if (deckId === 'budget-72h-summary') return BUDGET_72H_SUMMARY_TEMPLATE_VERSION;
-    if (deckId === 'budget-3n2d-story') return BUDGET_3N2D_STORY_TEMPLATE_VERSION;
-    if (deckId === 'itinerary-4n3d') return ITINERARY_4N3D_TEMPLATE_VERSION;
-    if (deckId === 'itinerary-4n2d-grid8') return ITINERARY_4N2D_GRID8_TEMPLATE_VERSION;
-    if (deckId === 'pov-3-day') return POV_3_DAY_TEMPLATE_VERSION;
-    if (deckId === 'grid-4') return GRID_4_TEMPLATE_VERSION;
-    if (deckId === 'grid-4-mutant') return GRID_4_MUTANT_TEMPLATE_VERSION;
-    if (deckId === 'grid-5') return GRID_5_TEMPLATE_VERSION;
-    if (deckId === 'grid-6-zigzag') return GRID_6_ZIGZAG_TEMPLATE_VERSION;
-    if (deckId === 'grid-6') return GRID_6_TEMPLATE_VERSION;
-    if (deckId === 'grid-8') return GRID_8_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-guide') return SPOTLIGHT_GUIDE_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-partner') return SPOTLIGHT_PARTNER_TEMPLATE_VERSION;
-    if (deckId === 'grid-8-feed') return GRID_8_FEED_TEMPLATE_VERSION;
-    if (deckId === 'grid-6-quaytung') return GRID_6_QUAYTUNG_TEMPLATE_VERSION;
-    if (deckId === 'grid-8-quaytung') return GRID_8_QUAYTUNG_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v2') return SPOTLIGHT_V2_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v3') return SPOTLIGHT_V3_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v4') return SPOTLIGHT_V4_TEMPLATE_VERSION;
-    if (isSpotlightV5Deck(deckId)) return SPOTLIGHT_V5_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v6-color-edit') return 1;
-    if (deckId === 'spotlight-v6') return SPOTLIGHT_V6_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v6-green') return SPOTLIGHT_V6_GREEN_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v6-dark') return SPOTLIGHT_V6_DARK_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v6-persimmon') return SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION;
-    if (deckId === 'spotlight-v6-maps') return SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION;
-    if (deckId === THREADS_BUDGET_ID) return THREADS_BUDGET_TEMPLATE_VERSION;
-    if (deckId === THREADS_FOOD_ID) return THREADS_FOOD_TEMPLATE_VERSION;
-    if (deckId === THREADS_CAFE_ID) return THREADS_CAFE_TEMPLATE_VERSION;
-    if (deckId === THREADS_MIX_ID) return THREADS_MIX_TEMPLATE_VERSION;
-    if (deckId === THREADS_MIX_TEXT_ID) return THREADS_MIX_TEXT_TEMPLATE_VERSION;
-    if (deckId === ITINERARY_NOTE_DARK_ID) return ITINERARY_NOTE_DARK_TEMPLATE_VERSION;
-    if (deckId === THREADS_TOPLIST_ID) return THREADS_TOPLIST_TEMPLATE_VERSION;
-    if (isTextNoteDeck(deckId)) return deckId === 'itinerary-note-timed' ? ITINERARY_NOTE_TIMED_TEMPLATE_VERSION : (deckId === 'itinerary-note-2days' || deckId.startsWith('itinerary-note-threads-')) ? ITINERARY_NOTE_TEMPLATE_VERSION : SUMMARY_NOTE_TEMPLATE_VERSION;
-    if (deckId === 'carousel-mau-1') return CAROUSEL_MAU_1_TEMPLATE_VERSION;
-    if (deckId === 'pov-3-v2') return POV_3_V2_TEMPLATE_VERSION;
-    if (deckId === 'itinerary-4n3d-stack') return ITINERARY_4N3D_STACK_TEMPLATE_VERSION;
-    if (deckId === 'itinerary-timeline') return ITINERARY_TIMELINE_TEMPLATE_VERSION;
-    if (deckId === 'one-way-story') return ONE_WAY_STORY_TEMPLATE_VERSION;
-    if (deckId === 'budget-4n3d-wallet') return BUDGET_4N3D_WALLET_TEMPLATE_VERSION;
-    return undefined;
+    return listDisplay.templateVersionForDeck(deckId);
   }
 
   private normalizeCaptionTone(value?: string): CaptionTone {
-    const allowed: CaptionTone[] = ['gen_z', 'tinh_te', 'review_chan_that', 'ban_hang_nhe', 'lich_trinh_huu_ich'];
-    return allowed.includes(value as CaptionTone) ? value as CaptionTone : 'lich_trinh_huu_ich';
+    return listDisplay.normalizeCaptionTone(value);
   }
 
   private budget3N2DCoverCaption(caption: CaptionBlocks): CaptionBlocks {
-    // Tiêu đề cover 3 mẫu budget giờ lấy từ pool hook tĩnh (resolvePremadeHookCoverTitle),
-    // không còn ghi đè bằng pool tiêu đề theo tone cũ ở đây nữa.
-    // Người dùng đã quyết định bỏ hẳn mô tả (body) khỏi app — không còn pool body mặc định cho 3 mẫu budget nữa.
-    return {
-      ...caption,
-      body: '',
-    };
+    return listDisplay.budget3N2DCoverCaption(caption);
+  }
+
+  private canRefreshGeneratedTemplate(deckId: string): boolean {
+    return listDisplay.canRefreshGeneratedTemplate(deckId);
+  }
+
+  private sanitizeGeneratedListForDisplay(
+    list: GuideDeckList,
+    coverImageUrls: string[] = [],
+    usedCoverUrls?: Set<string>,
+    deckId?: string,
+  ): GuideDeckList {
+    return listDisplay.sanitizeGeneratedListForDisplay(this.activeDestinationId, list, coverImageUrls, usedCoverUrls, deckId);
+  }
+
+  private sanitizeBaseListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
+    return listDisplay.sanitizeBaseListForDisplay(this.activeDestinationId, list, coverImageUrls);
+  }
+
+  private findPartnerItemForGeneratedList(list: GuideDeckList, itemsBySection: WorkbookItemsBySection): GuideItem | undefined {
+    return listDisplay.findPartnerItemForGeneratedList(list, itemsBySection);
+  }
+
+  private normalizeDisplayName(value: string): string {
+    return listDisplay.normalizeDisplayName(value);
+  }
+
+  private pageItemSectionKey(pageItem: PageItem): SectionKey | '' {
+    return listDisplay.pageItemSectionKey(pageItem);
+  }
+
+  private pageItemSourceName(pageItem: PageItem): string {
+    return listDisplay.pageItemSourceName(pageItem);
+  }
+
+  private refreshedPageItemName(pageItem: PageItem, sourceName: string): string {
+    return listDisplay.refreshedPageItemName(pageItem, sourceName);
+  }
+
+  private mergeTimelineDayMetaSecondary(existing: string, freshMeta: string): string {
+    return listDisplay.mergeTimelineDayMetaSecondary(existing, freshMeta);
+  }
+
+  private pageItemMetaFromSource(item: GuideItem): [string, string] {
+    return listDisplay.pageItemMetaFromSource(item);
+  }
+
+  private spotlightV3ItemMetaFromSource(item: GuideItem, chipText = ''): [string, string] {
+    return listDisplay.spotlightV3ItemMetaFromSource(item, chipText);
+  }
+
+  private budgetGalleryItemMetaFromSource(item: GuideItem): [string, string] {
+    return listDisplay.budgetGalleryItemMetaFromSource(item);
+  }
+
+  private captionBodyFallback(): string {
+    return listDisplay.captionBodyFallback(this.activeDestinationId);
   }
 
   private hasGeneratedListsNeedingTemplateRefresh(): boolean {
@@ -2960,379 +2631,6 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
       if (lists.some((list) => list.templateVersion !== templateVersion)) return true;
     }
     return false;
-  }
-
-  private canRefreshGeneratedTemplate(deckId: string): boolean {
-    // Snapshot templates retain approved content, even when their template version changes.
-    return !isThreadsLocalDeck(deckId) && !isTextNoteDeck(deckId)
-      && !['spotlight-guide', 'spotlight-v2', 'spotlight-v3', 'spotlight-v4', 'spotlight-v5', 'spotlight-v5-color-edit', 'spotlight-v6', 'spotlight-v6-color-edit', 'spotlight-v6-green',
-        'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-diary', 'spotlight-v6-maps'].includes(deckId);
-  }
-
-  private sanitizeGeneratedListForDisplay(
-    list: GuideDeckList,
-    coverImageUrls: string[] = [],
-    usedCoverUrls?: Set<string>,
-    deckId?: string,
-  ): GuideDeckList {
-    if (list.partnerRotationVersion || list.photoPreset || SPOTLIGHT_DESIGN_DECKS.includes(deckId || '') || THREADS_NOTE_DECK_IDS.includes(deckId || '')) return this.cloneJson(list);
-    const cleanList = this.sanitizeGeneratedListText(list, deckId);
-    if (isThreadsLocalDeck(deckId || '') || deckId === 'spotlight-v6-diary') return cleanList;
-    if (!/caption-/i.test(cleanList.id)) return cleanList;
-
-    const safeDescription = this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanList.description, cleanList.pages));
-    const pages = cleanList.pages.map((page) => this.sanitizeGeneratedPageForDisplay(page, cleanList, safeDescription));
-    const enrichedPages = tuneSpotlightV2Cover(pages, coverImageUrls, `${cleanList.id}|cover-grid`);
-    const portableCoverImage = this.coverImageForList(cleanList, coverImageUrls, usedCoverUrls);
-    return {
-      ...cleanList,
-      description: safeDescription,
-      pages: enrichedPages.map((page, pageIndex) => {
-        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
-          return page;
-        }
-        const pageBackgroundImage = this.backgroundImageForPage(cleanList, page, pageIndex, coverImageUrls);
-        if (page.type === 'cover') {
-          const grid = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
-          if (grid.length > 0) return { ...page, backgroundImage: grid[0] };
-          return { ...page, backgroundImage: portableCoverImage };
-        }
-        return { ...page, backgroundImage: pageBackgroundImage };
-      }),
-    };
-  }
-
-  private sanitizeBaseListForDisplay(list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
-    // Threads/Note builders own their backgrounds, including the fixed Top list cover.
-    // Generic cover rotation must not replace these assets while displaying saved lists.
-    if (THREADS_NOTE_DECK_IDS.some(id => list.id.startsWith(`${id}-`))) return this.cloneJson(list);
-    const spotlightId = SPOTLIGHT_DESIGN_DECKS.find(id => list.id === `${id}-main`);
-    if (spotlightId) return prepareSpotlightDesign(this.cloneJson(list), spotlightId, coverImageUrls);
-    if (list.id.startsWith(THREADS_FOOD_ID) || list.id.startsWith(THREADS_CAFE_ID) || list.id.startsWith(THREADS_MIX_ID) || list.id.startsWith(THREADS_MIX_TEXT_ID)) return this.cloneJson(list);
-    if (list.id.startsWith('spotlight-v6-diary-')) return this.cloneJson(list);
-    const pages = list.pages.map((page) => this.sanitizeBasePageForDisplay(page, list));
-    const enrichedPages = tuneSpotlightV2Cover(pages, coverImageUrls, `${list.id}|cover-grid`);
-    return {
-      ...list,
-      pages: enrichedPages.map((page, pageIndex) => {
-        if (String(page.layoutVariant || '').startsWith('one-way-story-') || (String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
-          return page;
-        }
-        if (page.type === 'cover') {
-          const coverImages = Array.isArray(page.coverImages) ? page.coverImages.filter(Boolean) : [];
-          return { ...page, backgroundImage: coverImages[0] || this.backgroundImageForPage(list, page, pageIndex, coverImageUrls) };
-        }
-        return { ...page, backgroundImage: this.backgroundImageForPage(list, page, pageIndex, coverImageUrls) };
-      }),
-    };
-  }
-
-  private sanitizeBasePageForDisplay(page: DeckPage, list: GuideDeckList): DeckPage {
-    const cleanPage = this.sanitizeDeckPageText(page);
-    if (cleanPage.type === 'cover' && (cleanPage.layoutVariant === 'spotlight-v2' || cleanPage.layoutVariant === 'spotlight-v3' || cleanPage.layoutVariant === 'spotlight-v4-cover' || cleanPage.layoutVariant === 'spotlight-v5-cover' || cleanPage.layoutVariant === 'spotlight-v6-cover' || cleanPage.layoutVariant === 'carousel-mau-1-cover')) {
-      return { ...cleanPage, subtitle: '' };
-    }
-    if (cleanPage.type !== 'list' || cleanPage.layoutVariant !== 'journey-4n3d') {
-      if (cleanPage.type === 'list' && cleanPage.layoutVariant === 'grid-8-quaytung-menu') {
-        return this.enforceGrid8QuaytungMenuPage({
-          ...cleanPage,
-          items: cleanPage.items.map((item) => this.sanitizePageItemText(item, cleanPage)),
-        });
-      }
-      return cleanPage;
-    }
-
-    const rawSubtitle = String(cleanPage.subtitle ?? '').trim();
-    const pageSubtitle = rawSubtitle ? this.sanitizeContentText(sanitizeCaptionBodyForPages(cleanPage.subtitle, [cleanPage])) : '';
-    const shouldUseContextualSubtitle =
-      !rawSubtitle ||
-      this.samePlainText(pageSubtitle, this.captionBodyFallback());
-
-    return {
-      ...cleanPage,
-      subtitle: shouldUseContextualSubtitle
-        ? this.sanitizeContentText(this.contextualGeneratedPageSubtitle(cleanPage, list))
-        : localizeText(pageSubtitle, this.activeDestinationId),
-    };
-  }
-
-  private coverImageForList(list: GuideDeckList, coverImageUrls: string[], usedCoverUrls?: Set<string>): string {
-    const pool = coverImageUrls.filter((url) => this.isPortableImageUrl(url));
-    if (pool.length === 0) return '';
-    const seed = `${list.id}|${list.title}|${list.description}|cover`;
-    const ordered = [...pool].sort((left, right) => stableHash(`${seed}:${left}`) - stableHash(`${seed}:${right}`));
-    const picked = ordered.find((url) => !usedCoverUrls?.has(url)) || ordered[0] || '';
-    if (picked) usedCoverUrls?.add(picked);
-    return picked;
-  }
-
-  private backgroundImageForPage(
-    list: GuideDeckList,
-    page: DeckPage,
-    pageIndex: number,
-    coverImageUrls: string[],
-  ): string {
-    const pool = coverImageUrls.filter((url) => this.isPortableImageUrl(url));
-    if (pool.length === 0) return '';
-    const seed = `${list.id}|${pageIndex}|${page.type}|${page.layoutVariant || ''}|background`;
-    return [...pool].sort(
-      (left, right) => stableHash(`${seed}:${left}`) - stableHash(`${seed}:${right}`),
-    )[0] || '';
-  }
-
-  private isPortableImageUrl(value?: string): boolean {
-    const url = String(value ?? '').trim();
-    return /^https?:\/\//i.test(url) || url.startsWith('/assets/drive-file');
-  }
-
-  private firstPortableImageForPages(pages: DeckPage[]): string {
-    for (const page of pages) {
-      if (this.isPortableImageUrl(page.backgroundImage)) return page.backgroundImage;
-      if (page.type !== 'list') continue;
-      for (const item of page.items) {
-        if (this.isPortableImageUrl(item.imageUrl)) return item.imageUrl;
-        const candidate = item.candidateImageUrls?.find((url) => this.isPortableImageUrl(url));
-        if (candidate) return candidate;
-      }
-    }
-    return '';
-  }
-
-  private sanitizeGeneratedPageForDisplay(page: DeckPage, list: GuideDeckList, safeDescription: string): DeckPage {
-    if (page.type === 'cover') {
-      const layout = String(page.layoutVariant || '');
-      if (layout === 'spotlight-v3' || layout === 'spotlight-v4-cover' || layout === 'spotlight-v5-cover' || layout === 'spotlight-v6-cover' || layout === 'carousel-mau-1-cover') {
-        return { ...page, subtitle: '' };
-      }
-      if (layout === 'spotlight-v2') {
-        return {
-          ...page,
-          title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
-          subtitle: '',
-        };
-      }
-      if (layout === 'grid-8-feed') {
-        const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
-        return {
-          ...page,
-          title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
-          subtitle: this.sanitizeContentText(truncateGrid8FeedCoverSubtitle(rawSubtitle)),
-        };
-      }
-      if (layout === 'grid-8' || layout === 'journey-4n2d-grid8') {
-        const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
-        return {
-          ...page,
-          title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
-          subtitle: this.sanitizeContentText(truncateGrid8CoverSubtitle(rawSubtitle)),
-        };
-      }
-      // Use page's own subtitle if available, otherwise use the list description (body).
-      // Truncate to ~150 chars, cutting at sentence boundary for natural reading — không thêm "...".
-      const rawSubtitle = String(page.subtitle ?? '').trim() || safeDescription;
-      let coverSubtitle = rawSubtitle;
-      if (rawSubtitle.length > 150) {
-        // Try to cut at sentence end (. ! ?) within first 150 chars
-        const truncated = rawSubtitle.slice(0, 150);
-        const lastSentenceEnd = Math.max(
-          truncated.lastIndexOf('. '),
-          truncated.lastIndexOf('! '),
-          truncated.lastIndexOf('? '),
-          truncated.lastIndexOf('.\n'),
-        );
-        if (lastSentenceEnd > 60) {
-          coverSubtitle = rawSubtitle.slice(0, lastSentenceEnd + 1).trim();
-        } else {
-          const lastSpace = truncated.lastIndexOf(' ');
-          coverSubtitle = (lastSpace > 60 ? truncated.slice(0, lastSpace) : truncated).trim();
-        }
-      }
-      return {
-        ...page,
-        title: this.sanitizeContentText(sanitizeDeckHeadline(list.coverTitle || list.title || page.title)),
-        subtitle: this.sanitizeContentText(coverSubtitle),
-      };
-    }
-
-    if (String(page.layoutVariant || '').startsWith('one-way-story-')) {
-      return this.sanitizeDeckPageText(page);
-    }
-
-    if ((String(page.layoutVariant || '').startsWith('spotlight-v4-') || String(page.layoutVariant || '').startsWith('spotlight-v5-') || String(page.layoutVariant || '').startsWith('spotlight-v6-') || (String(page.layoutVariant || '').startsWith('summary-note-') || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))) {
-      return {
-        ...page,
-        title: this.sanitizeContentText(sanitizeDeckHeadline(page.title)),
-        subtitle: page.layoutVariant === 'itinerary-note-timed-day'
-          ? this.sanitizeContentText(page.subtitle)
-          : '',
-        items: page.items.map((item) => this.sanitizePageItemText(item, page)),
-      };
-    }
-
-    const rawSubtitle = String(page.subtitle ?? '').trim();
-    const pageSubtitle = this.sanitizeContentText(sanitizeCaptionBodyForPages(page.subtitle, [page]));
-    const shouldUseContextualSubtitle =
-      !rawSubtitle ||
-      page.layoutVariant === 'grid-8' ||
-      this.samePlainText(pageSubtitle, safeDescription) ||
-      this.samePlainText(pageSubtitle, this.captionBodyFallback());
-    const sanitizedPage = {
-      ...page,
-      title: this.sanitizeContentText(sanitizeDeckHeadline(page.title)),
-      chipText: this.sanitizeContentText(page.chipText),
-      items: page.items.map((item) => this.sanitizePageItemText(item, page)),
-      subtitle: shouldUseContextualSubtitle
-        ? this.sanitizeContentText(this.contextualGeneratedPageSubtitle(page, list))
-        : localizeText(pageSubtitle, this.activeDestinationId),
-    };
-    if (page.layoutVariant === 'grid-8-quaytung-menu') {
-      return this.enforceGrid8QuaytungMenuPage(sanitizedPage);
-    }
-    return sanitizedPage;
-  }
-
-  private samePlainText(left: string, right: string): boolean {
-    return normalizeText(left) === normalizeText(right);
-  }
-
-  private contextualGeneratedPageSubtitle(page: DeckPage, list: GuideDeckList): string {
-    if (page.type !== 'list') return '';
-
-    const kind = this.generatedPageKind(page);
-    const variants = this.generatedSubtitleVariants(kind);
-    return localizeText(variants[this.generatedListVariantIndex(list, variants.length, kind)] || variants[0] || '', this.activeDestinationId);
-  }
-
-  private generatedPageKind(page: DeckPage): string {
-    if (page.type !== 'list') return 'generic';
-
-    const key = normalizeText(`${page.chipText} ${page.title}`);
-    if (page.layoutVariant === 'journey-4n3d') {
-      if (key.includes('day_01') || key.includes('ngay_1') || key.includes('vao_pho')) return 'journey_day1';
-      if (key.includes('day_02') || key.includes('ngay_2') || key.includes('san_anh')) return 'journey_day2';
-      if (key.includes('day_03') || key.includes('ngay_3') || key.includes('di_sau')) return 'journey_day3';
-      if (key.includes('day_04') || key.includes('ngay_4') || key.includes('cham_roi')) return 'journey_day4';
-    }
-    if (key.includes('quan_an') || key.includes('mon_ngon')) return 'food';
-    if (key.includes('cafe') || key.includes('ca_phe')) return 'cafe';
-    if (key.includes('check_in')) return 'checkin';
-    if (key.includes('choi_dem')) return 'nightlife';
-    if (key.includes('dich_vu') || key.includes('luu_y')) return 'service';
-    if (key.includes('homestay') || key.includes('luu_tru')) return 'stay';
-    if (key.includes('hoat_dong')) return 'activity';
-    if (key.includes('khu_du_lich')) return 'tourism';
-    return 'generic';
-  }
-
-  private generatedListVariantIndex(list: GuideDeckList, variantCount: number, salt: string): number {
-    if (variantCount <= 1) return 0;
-
-    const captionMatch = list.id.match(/caption-(\d+)/i);
-    if (captionMatch) return Math.max(0, Number(captionMatch[1]) - 1) % variantCount;
-
-    return stableHash(`${list.id}|${list.title}|${salt}`) % variantCount;
-  }
-
-  private generatedSubtitleVariants(kind: string): string[] {
-    const variants: Record<string, string[]> = {
-      journey_day1: [
-        'Ngày đầu đi nhẹ trong phố: ăn sáng, cafe, check-in và một điểm ghé vừa đủ nhịp.',
-        'Khởi động lịch bằng các điểm dễ đi, ít vòng xa, hợp để quen nhịp Đà Lạt.',
-        'Một ngày mở màn gọn gàng: có bữa sáng, có cafe, có góc chụp và thời gian nghỉ.',
-        'Day 01 ưu tiên các điểm gần nhau để đi chậm, dễ chọn và không bị cuốn lịch quá dày.',
-      ],
-      journey_day2: [
-        'Ngày thứ hai ưu tiên ảnh đẹp, quán dễ nghỉ chân và các điểm đi trong cùng cung.',
-        'Một ngày dành cho check-in nhiều hơn, xen kẽ cafe và bữa ăn để lịch không bị đuối.',
-        'Day 02 gom các điểm lên hình ổn, phù hợp khi đã bắt nhịp và muốn đi sâu hơn.',
-        'Lịch ngày hai rõ cung hơn: chọn điểm chính trước, rồi thêm quán nghỉ chân vừa đủ.',
-      ],
-      journey_day3: [
-        'Ngày giữa chuyến đi sâu hơn một chút, thêm điểm trải nghiệm và bữa tối rõ ràng.',
-        'Day 03 dành cho các điểm cần nhiều thời gian hơn, có chỗ ăn và chỗ dừng hợp nhịp.',
-        'Một ngày để đổi mood: bớt vội, thêm trải nghiệm, vẫn giữ các điểm ăn nghỉ dễ theo.',
-        'Lịch ngày ba cân bằng giữa điểm chơi, bữa ăn và vài nơi đáng ghé trước khi tối xuống.',
-      ],
-      journey_day4: [
-        'Ngày cuối đi chậm, chốt vài điểm dễ ghé rồi dành thời gian nghỉ và mua quà.',
-        'Day 04 giữ lịch nhẹ để còn trả phòng, mua quà và không bị gấp trước lúc về.',
-        'Một ngày kết chuyến vừa đủ: ít điểm hơn, dễ xoay giờ và có khoảng trống nghỉ chân.',
-        'Lịch ngày cuối ưu tiên những điểm thuận đường, không nhồi quá nhiều để về nhẹ nhàng.',
-      ],
-      food: [
-        'Nhóm quán ăn được gom riêng để người xem chọn bữa nhanh, dễ scan trước khi đi.',
-        'Một trang chỉ dành cho đồ ăn, ưu tiên chỗ dễ gọi món và tiện ghé theo lịch.',
-        'Ghim sẵn các quán ăn để lúc đói chỉ cần mở list, chọn nhanh, khỏi lướt lại.',
-        'Các quán được lọc riêng để dễ đổi bữa mà không làm rối lịch di chuyển.',
-        'Trang này gom các quán đáng thử, hợp để chốt bữa chính hoặc bữa phụ trong ngày.',
-        'Một cụm địa chỉ ăn ngon, gọn mắt, dành cho lúc cần quyết nhanh trong chuyến đi.',
-      ],
-      cafe: [
-        'Các quán cafe nên lưu riêng để chọn điểm ngồi chill, nghỉ chân hoặc chụp ảnh.',
-        'Trang cafe này ưu tiên chỗ có không khí dễ chịu, hợp để dừng lại giữa lịch đi.',
-        'Ghim trước vài quán cafe để có điểm nghỉ, lên ảnh đẹp và không phải tìm phút cuối.',
-        'Một cụm cafe để đổi nhịp chuyến đi: ngồi lâu được, chụp ổn, di chuyển vừa phải.',
-        'Các điểm cafe được gom riêng cho lúc muốn chậm lại mà vẫn có ảnh đẹp mang về.',
-        'Trang này dành cho mood cafe: chọn nhanh một chỗ ngồi, rồi để Đà Lạt tự dịu lại.',
-      ],
-      checkin: [
-        'Một trang scan nhanh các điểm check-in, ưu tiên tên ngắn và hình ảnh rõ.',
-        'Các góc lên hình được tách riêng để dễ chọn điểm chụp theo cung đường trong ngày.',
-        'Ghim sẵn các điểm check-in để lúc trời đẹp chỉ cần mở list và đi thẳng.',
-        'Trang này gom các điểm nhìn phát hiểu ngay, hợp cho lịch cần ảnh đẹp mà không vòng vèo.',
-        'Một cụm điểm chụp dễ scan, giúp bạn chọn nhanh nơi đáng ghé nhất trong buổi đó.',
-        'Các địa điểm lên ảnh ổn được xếp riêng để chuyến đi có vài khung hình chắc tay.',
-      ],
-      nightlife: [
-        'Các điểm đi buổi tối, ăn đêm và nghe nhạc được tách riêng để dễ lưu sau 20h.',
-        'Trang này dành cho buổi tối: chọn chỗ ăn, nghe nhạc hoặc đổi không khí sau lịch ngày.',
-        'Ghim riêng các điểm chơi đêm để tối đến không phải lục lại cả list dài.',
-        'Một cụm lựa chọn sau hoàng hôn, hợp để kéo dài lịch mà vẫn dễ quyết.',
-        'Các điểm buổi tối được gom riêng để lịch đêm có nhịp, có món, có chỗ ngồi.',
-        'Trang này giúp chốt nhanh phần sau 20h: ăn nhẹ, đi nghe nhạc hoặc ghé một nơi có vibe.',
-      ],
-      service: [
-        'Các dịch vụ hỗ trợ chuyến đi được gom riêng để người xem dễ liên hệ nhanh.',
-        'Trang dịch vụ này để lưu những thứ cần chốt trước: xe, đồ, quà hoặc hỗ trợ tại chỗ.',
-        'Ghim riêng nhóm dịch vụ để lúc cần liên hệ không phải trộn với quán ăn và điểm chơi.',
-        'Một trang thực dụng cho chuyến đi: các mục cần chuẩn bị, đặt trước hoặc lưu số.',
-        'Các dịch vụ quan trọng được tách riêng để lịch đi trơn hơn và ít phải xử lý gấp.',
-        'Trang này gom những thứ hậu cần nên có sẵn trước khi bắt đầu chạy lịch.',
-      ],
-      stay: [
-        'Các chỗ nghỉ nên xem riêng để dễ chốt phòng, không trộn với dịch vụ khác.',
-        'Trang lưu trú này giúp so nhanh vài lựa chọn trước khi quyết chỗ ở cho chuyến đi.',
-        'Ghim riêng homestay để lúc chốt phòng có ngay nhóm lựa chọn sạch và dễ xem.',
-        'Một cụm chỗ nghỉ để cân vị trí, vibe và lịch di chuyển trước khi đặt.',
-        'Các lựa chọn lưu trú được tách riêng để không lẫn với điểm chơi trong ngày.',
-        'Trang này dành cho bước chốt nơi ở: xem nhanh, so nhanh, rồi quay lại lịch đi.',
-      ],
-      activity: [
-        'Các hoạt động và điểm ghé được gom riêng để đổi nhịp cho lịch đi.',
-        'Trang hoạt động này thêm lựa chọn trải nghiệm, hợp khi muốn chuyến đi bớt chỉ check-in.',
-        'Ghim các hoạt động riêng để dễ chen vào lịch khi còn dư thời gian hoặc muốn đổi mood.',
-        'Một cụm trải nghiệm để ngày đi có thêm việc đáng làm, không chỉ chụp ảnh rồi đi tiếp.',
-        'Các hoạt động được tách riêng để bạn chọn nhịp vui hơn cho từng buổi.',
-        'Trang này dành cho những lúc muốn làm gì đó khác hơn: ghé, thử, chơi, rồi đi tiếp.',
-      ],
-      tourism: [
-        'Các khu du lịch được tách riêng khỏi trang check-in để người xem cân lịch dễ hơn.',
-        'Trang khu du lịch này hợp để chọn điểm đi dài hơi, cần cân thời gian hơn điểm ghé nhanh.',
-        'Ghim riêng các khu du lịch để dễ quyết nơi nào đáng dành hẳn một buổi.',
-        'Một cụm điểm lớn hơn, phù hợp khi muốn có lịch rõ thay vì chỉ ghé chụp nhanh.',
-        'Các khu du lịch được gom riêng để bạn xem trước độ xa, độ rộng và thời gian cần dành.',
-        'Trang này giúp chọn các điểm đi chính trong ngày, trước khi thêm cafe hay điểm ăn.',
-      ],
-      generic: [
-        'Trang này gom riêng các mục cùng nhóm để scan nhanh và lưu trước khi đi.',
-        'Một trang phụ được tách riêng để list dễ đọc hơn và không phải quyết từ một đống hỗn hợp.',
-        'Các mục cùng nhóm được đặt chung để người xem chọn nhanh theo đúng nhu cầu lúc đó.',
-        'Trang này giúp list gọn hơn: mở ra là hiểu nhóm nào, dùng lúc nào, lưu vì sao.',
-        'Một cụm lựa chọn riêng để chuyến đi dễ xoay nhịp mà không bị loãng thông tin.',
-        'Các gợi ý được gom thành một trang rõ ý, hợp để scan nhanh trước khi chốt lịch.',
-      ],
-    };
-    return variants[kind] || variants.generic;
   }
 
   private refreshGeneratedLists(
@@ -3500,275 +2798,28 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     if (changed) this.persistGeneratedLists();
   }
 
-  private findPartnerItemForGeneratedList(list: GuideDeckList, itemsBySection: WorkbookItemsBySection): GuideItem | undefined {
-    const allItems = Object.values(itemsBySection).flat().filter((item) => item.isPartner);
-    const sourceKeys = new Set<string>();
-    const names = new Set<string>();
-    for (const page of list.pages) {
-      if (page.type !== 'list') continue;
-      for (const item of page.items) {
-        if (item.sourceKey) sourceKeys.add(item.sourceKey);
-        if (item.rawName) names.add(normalizeText(item.rawName));
-        if (item.metaPrimary) names.add(normalizeText(item.metaPrimary));
-      }
-    }
-    const listName = normalizeText(list.navTitle || list.title || list.coverTitle || '');
-    return allItems.find((item) =>
-      sourceKeys.has(itemUsageKey(item)) ||
-      names.has(normalizeText(item.name)) ||
-      normalizeText(item.name) === listName,
-    );
-  }
-
-  private normalizeDisplayName(value: string): string {
-    const clean = String(value ?? '').normalize('NFC').replace(/\s+/g, ' ').trim();
-    if (normalizeText(clean).startsWith('quoa_dac_san')) {
-      return clean.replace(/^[^-]+/, 'Quà');
-    }
-    return clean;
-  }
-
-  private pageItemSectionKey(pageItem: PageItem): SectionKey | '' {
-    if (pageItem.sourceSectionKey && SECTION_CONFIG[pageItem.sourceSectionKey]) {
-      return pageItem.sourceSectionKey;
-    }
-    const id = String(pageItem.id ?? '');
-    const matchedKey = Object.keys(SECTION_CONFIG).find((key) => id.startsWith(`${key}-`));
-    return (matchedKey as SectionKey | undefined) ?? '';
-  }
-
-  private pageItemSourceName(pageItem: PageItem): string {
-    const rawName = String(pageItem.rawName ?? '').trim();
-    if (rawName) return rawName;
-    const name = String(pageItem.name ?? '').replace(/^[^:]{1,30}:\s*/, '').trim();
-    return name || String(pageItem.name ?? '').trim();
-  }
-
-  private refreshedPageItemName(pageItem: PageItem, sourceName: string): string {
-    const normalizedSourceName = this.normalizeDisplayName(sourceName);
-    const currentName = String(pageItem.name ?? '').trim();
-    const rawName = String(pageItem.rawName ?? '').trim();
-    if (rawName && currentName.includes(rawName)) {
-      return currentName.replace(rawName, normalizedSourceName);
-    }
-    const prefixMatch = currentName.match(/^([^:]{1,30}:\s*)/);
-    return prefixMatch ? `${prefixMatch[1]}${normalizedSourceName}` : normalizedSourceName;
-  }
-
-  private mergeTimelineDayMetaSecondary(existing: string, freshMeta: string): string {
-    const activity = String(existing || '').trim();
-    const detail = String(freshMeta || '').trim();
-    if (!detail) return activity;
-    if (!activity || /Khung giờ:|Giá:/i.test(activity)) return detail;
-    return `${activity}${activity.endsWith(' ') ? '' : ' '}${detail}`;
-  }
-
-  private pageItemMetaFromSource(item: GuideItem): [string, string] {
-    if (item.sectionKey === 'homestay') {
-      const primary = item.address || 'Đang cập nhật địa chỉ';
-      const secondaryParts: string[] = [];
-      const price = displayPrice(item);
-      if (price) secondaryParts.push(`Giá: ${price}`);
-      if (item.phone) secondaryParts.push(`SĐT: ${item.phone}`);
-      return [primary, secondaryParts.join(' · ')];
-    }
-    if (item.sectionKey === 'dich_vu') {
-      const primary = item.address || 'Đang cập nhật địa chỉ';
-      return [primary, item.phone ? `SĐT: ${item.phone}` : ''];
-    }
-    return metaText(item);
-  }
-
-  /** Spotlight V3: Homestay/Dịch vụ chỉ hiện giá đầu người (không SĐT). */
-  private spotlightV3ItemMetaFromSource(item: GuideItem, chipText = ''): [string, string] {
-    const primary = item.address || 'Đang cập nhật địa chỉ';
-    const chip = String(chipText || '').trim();
-    const withPrice = chip === 'Homestay' || chip === 'Dịch vụ'
-      || item.sectionKey === 'homestay'
-      || item.sectionKey === 'dich_vu';
-    if (!withPrice) return [primary, ''];
-    const price = displayPrice(item);
-    const cleaned = String(price || '').trim();
-    const displayable = cleaned
-      && !/mien\s*phi|free/i.test(cleaned)
-      && !/^0+\s*(đ|d|vnd|vnđ)?$/i.test(cleaned);
-    return [primary, displayable ? `Giá: ${cleaned}` : ''];
-  }
-
-  private budgetGalleryItemMetaFromSource(item: GuideItem): [string, string] {
-    const openHours = String(item.openHours || '').replace(/\s+/g, ' ').trim();
-    return ['', openHours ? `Khung giờ: ${openHours}` : ''];
-  }
-
   private refreshGeneratedListImages(itemsBySection: WorkbookItemsBySection): void {
-    if (this.generatedListsByDeckId.size === 0) return;
-
-    const itemsByKey = new Map<string, GuideItem>();
-    const addItemKey = (key: string | undefined, item: GuideItem): void => {
-      const cleanKey = String(key ?? '').trim();
-      if (cleanKey && !itemsByKey.has(cleanKey)) itemsByKey.set(cleanKey, item);
-    };
-    Object.values(itemsBySection).forEach((items) => {
-      items.forEach((item) => {
-        addItemKey(item.id, item);
-        addItemKey(itemUsageKey(item), item);
-        addItemKey(item.imageMappingKey, item);
-        addItemKey(itemMappingKey(item.sectionKey, item.name, item.address), item);
-      });
-    });
-
-    const findSourceItem = (pageItem: PageItem): GuideItem | undefined => {
-      const sourceKey = String(pageItem.sourceKey ?? '').trim();
-      if (sourceKey && itemsByKey.has(sourceKey)) return itemsByKey.get(sourceKey);
-
-      const sectionKey = this.pageItemSectionKey(pageItem);
-      const sourceName = this.pageItemSourceName(pageItem);
-      const address = String(pageItem.metaPrimary ?? '').trim();
-      if (sectionKey && sourceName) {
-        const mappingKey = itemMappingKey(sectionKey, sourceName, address);
-        const normalizedMappingKey = itemMappingKey(sectionKey, this.normalizeDisplayName(sourceName), address);
-        if (itemsByKey.has(mappingKey)) return itemsByKey.get(mappingKey);
-        if (itemsByKey.has(normalizedMappingKey)) return itemsByKey.get(normalizedMappingKey);
-      }
-
-      const legacyId = String(pageItem.id ?? '').trim();
-      return legacyId ? itemsByKey.get(legacyId) : undefined;
-    };
-
-    let changed = false;
-    for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (SPOTLIGHT_DESIGN_DECKS.includes(deckId)) continue;
-      if (isThreadsLocalDeck(deckId)) continue;
-      // Maps lưu snapshot theo cặp: item của trang Maps phải giữ file Anh_GG_maps.
-      // Luồng refresh chung chỉ biết ảnh thật Link_drive và sẽ thay nhầm trang Maps
-      // thành ảnh địa điểm sau lần reload/getDataset đầu tiên.
-      if (deckId === 'spotlight-partner' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
-      const refreshedLists = lists.map((list) => list.partnerRotationVersion ? list : ({
-        ...list,
-        pages: list.pages.map((page) => {
-          if (page.type !== 'list') return page;
-          const mappedPage = {
-            ...page,
-            items: page.items.map((pageItem) => {
-              const sourceItem = findSourceItem(pageItem);
-              if (!sourceItem) return pageItem;
-              if (page.layoutVariant === 'budget-3n2d-table') {
-                return {
-                  ...pageItem,
-                  id: sourceItem.id,
-                  sourceKey: itemUsageKey(sourceItem),
-                  sourceSectionKey: sourceItem.sectionKey,
-                  name: this.refreshedPageItemName(pageItem, sourceItem.name),
-                  rawName: this.normalizeDisplayName(sourceItem.name),
-                  metaPrimary: pageItem.metaPrimary || sourceItem.address || 'Đang cập nhật',
-                  isPartner: sourceItem.isPartner,
-                };
-              }
-
-              const [metaPrimary, metaSecondaryRaw] = page.layoutVariant === 'budget-3n2d-gallery'
-                ? this.budgetGalleryItemMetaFromSource(sourceItem)
-                : page.layoutVariant === 'spotlight-v3'
-                  ? this.spotlightV3ItemMetaFromSource(sourceItem, page.chipText)
-                : (page.layoutVariant === 'spotlight-v4-page' || page.layoutVariant === 'spotlight-v5-place' || page.layoutVariant === 'spotlight-v6-page' || (page.layoutVariant === 'summary-note-page' || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') || page.layoutVariant === 'itinerary-note-timed-day'))
-                    ? [String(sourceItem.address || '').trim(), ''] as [string, string]
-                  : page.layoutVariant === 'carousel-mau-1-page'
-                    ? [String(sourceItem.address || '').trim(), ''] as [string, string]
-                  : this.pageItemMetaFromSource(sourceItem);
-              const metaSecondary = page.layoutVariant === 'itinerary-timeline-day'
-                ? this.mergeTimelineDayMetaSecondary(String(pageItem.metaSecondary || ''), metaSecondaryRaw)
-                : metaSecondaryRaw;
-              const isPov3V2Stack = page.layoutVariant === 'pov-3-v2-stack';
-              const isMenuTextOnly = page.layoutVariant === 'grid-8-quaytung-menu'
-                && !String(pageItem.imageUrl || '').trim();
-              const highlight = String(sourceItem.highlight || sourceItem.style || '')
-                .replace(/\s+/g, ' ')
-                .trim();
-              const mappingNote = sourceItem.imageSource === 'manual'
-                ? 'Ảnh đã map đúng địa điểm từ sheet'
-                : pageItem.imageNote;
-              const sourceItemDriveUrls = [...new Set(filterKnownAvailableDriveProxyUrls(
-                [...(sourceItem.candidateImageUrls || []), sourceItem.imageUrl].filter(Boolean),
-              ))].filter((url) => {
-                const fileId = String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || '';
-                return !fileId || !listUncachedDriveFileIds([fileId]).length;
-              });
-              const sourceItemHasReadyImage = sourceItem.imageSource === 'manual'
-                && sourceItemDriveUrls.length > 0;
-              const nextPageItem = {
-                ...pageItem,
-                id: sourceItem.id,
-                sourceKey: itemUsageKey(sourceItem),
-                sourceSectionKey: sourceItem.sectionKey,
-                name: this.refreshedPageItemName(pageItem, sourceItem.name),
-                rawName: this.normalizeDisplayName(sourceItem.name),
-                metaPrimary,
-                metaSecondary,
-                isPartner: sourceItem.isPartner,
-                label: isPov3V2Stack && highlight
-                  ? truncatePov3V2StackTagline(highlight)
-                  : pageItem.label,
-                imageNote: isPov3V2Stack && highlight
-                  ? truncatePov3V2StackTagline(highlight)
-                  : mappingNote,
-                candidateImageUrls: sourceItemHasReadyImage && !isMenuTextOnly
-                  ? sourceItemDriveUrls
-                  : pageItem.candidateImageUrls,
-                ...(sourceItemHasReadyImage && !isMenuTextOnly
-                  ? {
-                      imageUrl: sourceItemDriveUrls.includes(sourceItem.imageUrl)
-                        ? sourceItem.imageUrl
-                        : sourceItemDriveUrls[0],
-                      imageMapped: true,
-                      imageSource: 'manual' as const,
-                    }
-                  : {}),
-              };
-
-              if (JSON.stringify(pageItem) !== JSON.stringify(nextPageItem)) changed = true;
-              return nextPageItem;
-            }),
-          };
-          if (page.layoutVariant === 'grid-8-quaytung-menu') {
-            return this.enforceGrid8QuaytungMenuPage(mappedPage as ListPage);
-          }
-          return mappedPage;
-        }),
-      }));
-      const sanitizedLists = refreshedLists.map((list) => {
-        if (list.partnerRotationVersion) return list;
-        const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
-        if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
-        return sanitizedList;
-      });
-      this.generatedListsByDeckId.set(deckId, sanitizedLists);
-    }
-
-    if (changed) this.persistGeneratedLists();
+    if (listStore.refreshListImagesFromSource(this.activeDestinationId, this.generatedListsByDeckId, itemsBySection)) this.persistGeneratedLists();
   }
 
+  // ─── Kho list đã tạo: generated-list-store.ts ───────────────────────────────
   private ensureGeneratedListsLoaded(): void {
     if (this.generatedListsLoaded) return;
     this.generatedListsLoaded = true;
     this.generatedListsByDeckId.clear();
     this.diaryUsedLines = {};
     this.partnerRotation = {};
+    this.localTemplateState = {};
     if (!fs.existsSync(this.resolveDestinationDataPath('generated-caption-lists'))) return;
 
     try {
       const raw = fs.readFileSync(this.resolveDestinationDataPath('generated-caption-lists'), 'utf-8');
-      const parsed = JSON.parse(raw.replace(/^\uFEFF/, '')) as Partial<GeneratedListsStore>;
-      this.partnerRotation = validateRotationStore(parsed.partnerRotation);
-      this.diaryUsedLines = Object.fromEntries(Object.entries(parsed.diaryUsedLines || {})
-        .filter(([, lines]) => Array.isArray(lines) && lines.every(line => typeof line === 'string')));
-      const deckEntries = parsed.decks && typeof parsed.decks === 'object' ? parsed.decks : {};
-      Object.entries(deckEntries).forEach(([deckId, lists]) => {
-        if (!Array.isArray(lists)) return;
-        const normalizedLists = lists
-          .filter((item) => item && typeof item === 'object')
-          .map((item) => this.cloneJson(item as GuideDeckList))
-          .filter((item) => item.id && Array.isArray(item.pages));
-        if (normalizedLists.length > 0) this.generatedListsByDeckId.set(deckId, normalizedLists);
-      });
+      const content = listStore.parseGeneratedListStore(raw);
+      this.partnerRotation = content.partnerRotation;
+      this.diaryUsedLines = content.diaryUsedLines;
+      this.localTemplateState = content.localTemplateState || {};
+      // Giữ nguyên đối tượng Map: nơi khác có thể đang giữ tham chiếu tới nó.
+      content.lists.forEach((lists, deckId) => this.generatedListsByDeckId.set(deckId, lists));
       this.repairSpotlightV6MapsSnapshots();
       this.migrateGeneratedListTextStore();
     } catch (error) {
@@ -3780,11 +2831,9 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private persistGeneratedLists(): void {
-    const decks = Array.from(this.generatedListsByDeckId.entries()).reduce(
-      (carry, [deckId, lists]) => { carry[deckId] = this.cloneJson(lists); return carry; },
-      {} as Record<string, GuideDeckList[]>,
-    );
-    const payload: GeneratedListsStore = { version: 1, savedAt: new Date().toISOString(), decks, diaryUsedLines: this.diaryUsedLines, partnerRotation: this.partnerRotation };
+    const payload = listStore.buildGeneratedListStorePayload({
+      lists: this.generatedListsByDeckId, partnerRotation: this.partnerRotation, diaryUsedLines: this.diaryUsedLines, localTemplateState: this.localTemplateState,
+    }, new Date().toISOString());
     this.ensureDataRoot();
     this.writeJsonFileSafe(this.getDestinationDataPath('generated-caption-lists'), payload);
     // Không đụng tới cache Sheet ở đây: list AI được merge trực tiếp từ generatedListsByDeckId
@@ -3793,58 +2842,14 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
   /** Sửa một lần các list Maps tạo bởi bản cũ bị refresh item về ảnh Link_drive. */
   private repairSpotlightV6MapsSnapshots(): void {
-    const lists = this.generatedListsByDeckId.get('spotlight-v6-maps');
-    if (!lists?.length) return;
-    let changed = false;
-    const repaired = lists.map((list) => list.partnerRotationVersion ? list : ({
-      ...list,
-      pages: list.pages.map((page) => {
-        if (page.type !== 'list'
-          || (page.layoutVariant !== 'spotlight-v6-map-page' && page.layoutVariant !== 'spotlight-v6-map-place')
-          || !page.items[0]
-          || !String(page.backgroundImage || '').trim()) return page;
-        const expectedImage = String(page.backgroundImage).trim();
-        const firstItem = page.items[0];
-        if (firstItem.imageUrl === expectedImage
-          && firstItem.candidateImageUrls?.length === 1
-          && firstItem.candidateImageUrls[0] === expectedImage) return page;
-        changed = true;
-        return {
-          ...page,
-          items: [{
-            ...firstItem,
-            imageUrl: expectedImage,
-            candidateImageUrls: [expectedImage],
-            imageMapped: true,
-            imageSource: 'manual' as const,
-            ...(page.layoutVariant === 'spotlight-v6-map-page' ? { isPartner: false } : {}),
-          }, ...page.items.slice(1)],
-        };
-      }),
-    }));
-    if (!changed) return;
+    const repaired = listStore.repairSpotlightV6MapsLists(this.generatedListsByDeckId.get('spotlight-v6-maps'));
+    if (!repaired) return;
     this.generatedListsByDeckId.set('spotlight-v6-maps', repaired);
     this.persistGeneratedLists();
   }
 
   private migrateGeneratedListTextStore(): void {
-    if (this.generatedListsByDeckId.size === 0) return;
-
-    let changed = false;
-    for (const [deckId, lists] of this.generatedListsByDeckId.entries()) {
-      if (SPOTLIGHT_DESIGN_DECKS.includes(deckId)) continue;
-      if (isSpotlightV5Deck(deckId) || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId)) continue;
-      if (isThreadsLocalDeck(deckId)) continue;
-      const sanitizedLists = lists.map((list) => {
-        if (list.partnerRotationVersion || list.photoPreset) return list;
-        const sanitizedList = this.sanitizeGeneratedListText(list, deckId);
-        if (JSON.stringify(list) !== JSON.stringify(sanitizedList)) changed = true;
-        return sanitizedList;
-      });
-      this.generatedListsByDeckId.set(deckId, sanitizedLists);
-    }
-
-    if (changed) this.persistGeneratedLists();
+    if (listStore.migrateGeneratedListText(this.activeDestinationId, this.generatedListsByDeckId)) this.persistGeneratedLists();
   }
 
   // ─── Private: workbook loading ────────────────────────────────────────────
@@ -3886,39 +2891,19 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     return fs.existsSync(path.join(this.dataRoot, `drive-access-cache.${this.activeDestinationId}.json`));
   }
 
+  // ─── workbook-items.ts ─────────────────────────────────────────────
   private loadHinhNenImagePools(sheetDriveManifest: SheetDriveImageManifest): HinhNenImageUrlPools {
-    const coverLimit = Math.max(0, Number(process.env.DALAT_DRIVE_CACHE_COVER_LIMIT || 120));
-    const specialLimit = Math.max(
-      0,
-      Number(process.env.DALAT_DRIVE_CACHE_SPECIAL_COVER_LIMIT || 120),
-    );
-    const toProxyUrls = (entries: typeof sheetDriveManifest.coverImages, limit: number): string[] => {
-      const seen = new Set<string>();
-      return (entries || [])
-        .slice(0, limit)
-        .map((entry) => {
-          const fileId = String(entry?.fileId || '').trim();
-          // Giữ pool ổn định qua lỗi Drive tạm thời; warm/revalidate sẽ loại ID
-          // hỏng trước khi dataset được đánh dấu sẵn sàng.
-          return fileId ? getDriveImageProxyUrl(fileId) : '';
-        })
-        .filter((url) => {
-          if (!url || seen.has(url)) return false;
-          seen.add(url);
-          return true;
-        });
-    };
-    const grouped = sheetDriveManifest.coverImageGroups;
-    const defaultEntries = grouped?.default?.length
-      ? grouped.default
-      : sheetDriveManifest.coverImages || [];
-    return {
-      default: toProxyUrls(defaultEntries, coverLimit),
-      green: toProxyUrls(grouped?.green || [], specialLimit),
-      dark: toProxyUrls(grouped?.dark || [], specialLimit),
-      random: toProxyUrls(grouped?.random || [], specialLimit),
-      persimmon: toProxyUrls(grouped?.persimmon || [], specialLimit),
-    };
+    return workbookItems.loadHinhNenImagePools(sheetDriveManifest);
+  }
+
+  private loadWorkbookItems(
+    workbook: XLSX.WorkBook,
+    imageUrls: string[],
+    imageMapping: ImageMappingFile,
+    libraryEntries: ImageLibraryFolderEntry[],
+    sheetDriveManifest: SheetDriveImageManifest,
+  ): WorkbookItemsBySection {
+    return workbookItems.loadWorkbookItems(this.activeDestinationId, this.workspaceRoot, workbook, imageUrls, imageMapping, libraryEntries, sheetDriveManifest);
   }
 
   private async prepareSpotlightV6GreenResources(): Promise<Set<string>> {
@@ -4087,171 +3072,6 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     return { map: readyMap, real: readyReal };
   }
 
-  private loadWorkbookItems(
-    workbook: XLSX.WorkBook,
-    imageUrls: string[],
-    imageMapping: ImageMappingFile,
-    libraryEntries: ImageLibraryFolderEntry[],
-    sheetDriveManifest: SheetDriveImageManifest,
-  ): WorkbookItemsBySection {
-    const results = Object.keys(SECTION_CONFIG).reduce((carry, sectionKey) => {
-      carry[sectionKey as SectionKey] = [];
-      return carry;
-    }, {} as WorkbookItemsBySection);
-
-    let sequence = 0;
-    for (const sheetName of workbook.SheetNames) {
-      const sectionKey = resolveSectionKeyFromSheetName(sheetName);
-      if (!sectionKey) continue;
-
-      const sheet = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, { header: 1, raw: false, defval: '' });
-      if (rows.length === 0) continue;
-
-      const headers = normalizeWorkbookHeaders(rows[0] ?? []);
-      for (const rawRow of rows.slice(1)) {
-        const rowMap: Record<string, string> = {};
-        headers.forEach((header, index) => { rowMap[header] = String(rawRow[index] ?? '').trim(); });
-        sequence += 1;
-        const item = this.buildItem(sectionKey, rowMap, sequence, imageUrls, imageMapping, libraryEntries, sheetDriveManifest);
-        // Giữ cả dòng chưa map ảnh để title và địa chỉ vẫn đúng dữ liệu sheet.
-        if (item) {
-          results[sectionKey].push(item);
-        }
-      }
-    }
-
-    return results;
-  }
-
-  private buildItem(
-    sectionKey: SectionKey,
-    row: Record<string, string>,
-    sequence: number,
-    imageUrls: string[],
-    imageMapping: ImageMappingFile,
-    libraryEntries: ImageLibraryFolderEntry[],
-    sheetDriveManifest: SheetDriveImageManifest,
-  ): GuideItem | null {
-    const rawName = firstValue(row, 'ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten');
-    if (!rawName) return null;
-    const name = this.normalizeDisplayName(rawName);
-
-    const placeType = firstValue(row, 'mo_hinh', 'loai_dich_vu', 'phong_cach');
-    const rawAddress = firstValue(row, 'dia_chi');
-    const address = composeAddress(rawAddress, firstValue(row, 'ten_phuong'));
-    const openHours = firstValue(row, 'gio_mo_cua', 'gio_mo_cua_', 'gio_mo_cua_1');
-    const style = firstValue(row, 'phong_cach');
-    const highlight = firstValue(row, 'mo_ta', 'mota', 'mo_ta_dia_diem', 'mon_an_noi_bat', 'mon_noi_bat', 'noi_bat');
-    const theme = firstValue(row, 'chu_de', 'chude');
-    const partner = firstValue(row, 'doi_tac', 'doi_tac_cong_ty');
-    const phone = firstValue(row, 'sdt');
-    const headPrice = firstValue(row, 'gia_dau_nguoi', 'head_price', 'per_person_price');
-    const hasHeadPriceColumn = 'gia_dau_nguoi' in row
-      || 'head_price' in row
-      || 'per_person_price' in row;
-    const price = firstValue(row, 'gia');
-    const imageHint = firstValue(row, 'anh', 'hinh_anh', 'hinh', 'ten_anh', 'thu_muc_anh', 'folder_anh', 'link_anh', 'url', 'link');
-    const mappingKey = itemMappingKey(sectionKey, rawName, address);
-    const legacyMappingKey = rawAddress === address ? '' : itemMappingKey(sectionKey, rawName, rawAddress);
-    const displayMappingKey = itemMappingKey(sectionKey, name, address);
-    const legacyDisplayMappingKey = legacyMappingKey ? itemMappingKey(sectionKey, name, rawAddress) : '';
-    const sheetDriveEntry = sheetDriveManifest.items[mappingKey]
-      ?? sheetDriveManifest.items[displayMappingKey]
-      ?? (legacyMappingKey ? sheetDriveManifest.items[legacyMappingKey] : undefined)
-      ?? (legacyDisplayMappingKey ? sheetDriveManifest.items[legacyDisplayMappingKey] : undefined);
-    const rawSheetDriveCandidateUrls = sheetDriveEntry
-      ? (sheetDriveEntry.candidateImages && sheetDriveEntry.candidateImages.length > 0
-          ? sheetDriveEntry.candidateImages
-          : [{ fileId: sheetDriveEntry.fileId, fileName: sheetDriveEntry.fileName, viewUrl: '' }]
-        )
-          .filter((entry) => entry.fileId)
-          .map((entry) => getDriveImageProxyUrl(entry.fileId))
-      : [];
-    const sheetDriveCandidateUrls = filterKnownAvailableDriveProxyUrls(rawSheetDriveCandidateUrls);
-    const rawMapCandidateUrls = sheetDriveEntry
-      ? (sheetDriveEntry.mapCandidateImages?.length
-          ? sheetDriveEntry.mapCandidateImages
-          : sheetDriveEntry.mapFileId
-            ? [{ fileId: sheetDriveEntry.mapFileId, fileName: sheetDriveEntry.mapFileName || '', viewUrl: '' }]
-            : [])
-        .filter((entry) => entry.fileId)
-        .map((entry) => getDriveImageProxyUrl(entry.fileId))
-      : [];
-    const mapCandidateImageUrls = filterKnownAvailableDriveProxyUrls(rawMapCandidateUrls);
-    const sheetDriveUrlsBlocked = rawSheetDriveCandidateUrls.length > 0
-      && (sheetDriveCandidateUrls.length === 0
-        || rawSheetDriveCandidateUrls.every((url) => isKnownUnavailableDriveProxyUrl(url)));
-    const resolvedByName = () => resolveMappedImage(
-      sectionKey, placeType || SECTION_CONFIG[sectionKey].title, rawName, address,
-      imageUrls, sequence, imageMapping, libraryEntries, this.workspaceRoot,
-    );
-    const resolvedByHint = () => resolveMappedImage(
-      sectionKey, placeType || SECTION_CONFIG[sectionKey].title, imageHint, address,
-      imageUrls, sequence, imageMapping, libraryEntries, this.workspaceRoot,
-    );
-    const fallbackResolvedImage = (): ReturnType<typeof resolveMappedImage> => {
-      if (isIsolatedSheetSource(this.activeDestinationId)) return {
-        imageUrl: '', imageMapped: false, imageMappingKey: mappingKey, imageSource: 'fallback', candidateImageUrls: [],
-      };
-      const direct = resolvedByName();
-      if (!imageHint || normalizeText(imageHint) === normalizeText(rawName)) return direct;
-      const hinted = resolvedByHint();
-      return hinted.imageMapped || hinted.imageSource !== 'fallback'
-        ? { ...hinted, imageMappingKey: mappingKey }
-        : direct;
-    };
-    
-    const directImageUrls = imageHint ? imageHint.split(/[\n,;]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s)
-      && (!isIsolatedSheetSource(this.activeDestinationId) || !/^https?:\/\/(?:drive|docs)\.google\.com\//i.test(s))) : [];
-
-    // Item đã có ảnh Drive/link trực tiếp riêng của chính nó -> KHÔNG trộn thêm ảnh thư viện nền chung
-    // (resolveMappedImage so khớp mờ theo tên, dễ khớp nhầm sang địa điểm khác) vào candidateImageUrls.
-    // Chỉ dùng thư viện nền làm nguồn ảnh khi item không có ảnh thật nào.
-    const resolvedImage = sheetDriveEntry && sheetDriveCandidateUrls.length > 0 && !sheetDriveUrlsBlocked
-      ? {
-          imageUrl: sheetDriveCandidateUrls[0] || getDriveImageProxyUrl(sheetDriveEntry.fileId),
-          imageMapped: true,
-          imageMappingKey: mappingKey,
-          imageSource: 'manual' as const,
-          candidateImageUrls: Array.from(new Set(sheetDriveCandidateUrls)),
-        }
-      : (directImageUrls.length > 0
-          ? {
-              imageUrl: directImageUrls[0],
-              imageMapped: true,
-              imageMappingKey: mappingKey,
-              imageSource: 'manual' as const,
-              candidateImageUrls: directImageUrls,
-            }
-          : fallbackResolvedImage());
-
-    return {
-      id: `${sectionKey}-${sequence}`,
-      sectionKey,
-      sectionTitle: SECTION_CONFIG[sectionKey].title,
-      name, address,
-      type: placeType || SECTION_CONFIG[sectionKey].title,
-      openHours, style, highlight, theme,
-      diaryDescriptionRaw: String(row.mo_ta ?? row.mota ?? row.mo_ta_dia_diem ?? ''),
-      diaryImageUrls: [...sheetDriveCandidateUrls],
-      partnerFlag: partner,
-      classification: firstValue(row, 'phan_loai'),
-      isPartner: normalizeText(partner) === 'x',
-      headPrice,
-      hasHeadPriceColumn,
-      price, phone,
-      imageUrl: resolvedImage.imageUrl,
-      imageMapped: resolvedImage.imageMapped,
-      imageMappingKey: resolvedImage.imageMappingKey,
-      imageSource: resolvedImage.imageSource,
-      candidateImageUrls: resolvedImage.candidateImageUrls,
-      mapImageUrl: mapCandidateImageUrls[0] || '',
-      mapCandidateImageUrls: Array.from(new Set(mapCandidateImageUrls)),
-      mapSourceLink: String(sheetDriveEntry?.mapSourceLink || '').trim(),
-    };
-  }
-
   // ─── Private: image library loading (with cache) ──────────────────────────
 
   private ensureInventoryLoaded(): void {
@@ -4415,110 +3235,11 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     return pickSpotlightV3Hook(hooks, this.getUsedCaptionTitlesForPool(poolKey), seed);
   }
 
-  /** Cụm cover/caption mẫu — list mới không được dùng lại nguyên văn. */
+  // ─── Caption AI & làm sạch chữ: caption-text.ts ──────────────────────────────
+  // Hàm cần nguồn dữ liệu nhận nguồn đang chọn tại thời điểm gọi.
+
   private bannedSampleCaptionPhrases(): string[] {
-    return [
-      'ĐÀ LẠT 8 ĐIỂM / 1 TRANG',
-      'ĐÀ LẠT 8 ĐIỂM/1 TRANG',
-      '8 ĐIỂM / 1 TRANG',
-      '8 ĐIỂM/1 TRANG',
-      '4N3Đ ĐÀ LẠT 8 ĐIỂM MỖI TRANG',
-      '8 ĐIỂM MỖI TRANG',
-      'LƯU LIỀN 4 NGÀY ĐÀ LẠT',
-      'LƯU LIỀN 4 NGÀY',
-      'ĐÀ LẠT GỌN TRONG TỪNG LIST',
-      'ĐÀ LẠT GỌN TRONG 10 TRANG',
-      'GỌN TRONG TỪNG LIST',
-      'CẨM NANG ĐÀ LẠT GỌN NHẸ',
-      'ĐÀ LẠT NHẸ NHÀNG ĐÁNG GHÉ',
-      'NHẸ NHÀNG ĐÁNG GHÉ',
-      'ĐÀ LẠT NHỮNG ĐIỂM KHÔNG THỂ BỎ LỠ',
-      'NHỮNG ĐIỂM KHÔNG THỂ BỎ LỠ',
-      'CHECK-IN ĐÀ LẠT ĐỪNG BỎ LỠ',
-      'ĐÀ LẠT CÓ GÌ MÀ ĐI HOÀI',
-      'ĐÀ LẠT – GÓC NHỎ ĐÁNG LƯU',
-      'ĐÀ LẠT – CHILL TỪNG GÓC PHỐ',
-      '4 NGÀY ĐÀ LẠT NHẸ NHÀNG',
-      'Mẫu lưới dày để xem nhiều lựa chọn hơn trong một lần lướt.',
-      'Mẫu lưới dày để xem nhiều lựa chọn hơn trong một lần lướt',
-      'BỎ TÚI NGAY LIST NÀY RỦ BÉ BẠN XÁCH BA LÔ LÊN ĐÀ LẠT CHƠI LIỀN NÈ. CHIA THEO TỪNG LIST ĐỂ CHỌN NHANH, ĐỠ PHẢI LĂN TĂN.',
-      'BỎ TÚI NGAY LIST NÀY RỦ BÉ BẠN XÁCH BA LÔ LÊN ĐÀ LẠT CHƠI LIỀN NÈ',
-      'CHIA THEO TỪNG LIST ĐỂ CHỌN NHANH, ĐỠ PHẢI LĂN TĂN',
-    ];
-  }
-
-  private isBannedSampleCaptionText(value: string): boolean {
-    const normalized = normalizeText(value);
-    if (!normalized) return false;
-    if (/8\s*diem\s*\/?\s*1\s*trang/i.test(normalized)) return true;
-    if (/8\s*diem\s*moi\s*trang/i.test(normalized)) return true;
-    if (/mau\s*luoi\s*day/i.test(normalized)) return true;
-    if (/bo\s*tui\s*ngay\s*list\s*nay\s*ru\s*be\s*ban\s*xach\s*ba\s*lo/i.test(normalized)) return true;
-    // Title máy móc kiểu "LƯU LIỀN 4 NGÀY ĐÀ LẠT"
-    if (/^luu\s*(lien|ngay)\s*\d+\s*ngay(\s*da\s*lat)?$/i.test(normalized)) return true;
-    if (/^luu\s*(lien|ngay)\s*(lich\s*trinh|board|list)/i.test(normalized)) return true;
-    // Title meta về “list/trang” — kiểu "ĐÀ LẠT GỌN TRONG TỪNG LIST"
-    if (/gon\s*trong\s*(tung\s*)?(list|trang|\d+\s*trang)/i.test(normalized)) return true;
-    if (/trong\s*tung\s*list/i.test(normalized)) return true;
-    if (/cam\s*nang\s*.*\bgon\b/i.test(normalized)) return true;
-    if (/^da\s*lat\s+gon(\s|$)/i.test(normalized)) return true;
-    if (/nhe\s*nhang\s*dang\s*ghe/i.test(normalized)) return true;
-    return this.bannedSampleCaptionPhrases().some((phrase) => {
-      const banned = normalizeText(phrase);
-      return banned && (normalized === banned || normalized.includes(banned) || banned.includes(normalized));
-    });
-  }
-
-  private coverTitleMaxLen(deckId = ''): number {
-    // Nới thêm ~20% so với giới hạn prompt yêu cầu AI nhắm tới (35/48) làm vùng đệm an toàn —
-    // AI hay viết hơi dài hơn target, nới nhẹ giúp giảm tần suất phải cắt câu giữa chừng.
-    if (deckId === 'grid-8' || deckId === 'grid-8-feed' || deckId === 'itinerary-4n2d-grid8') return 56;
-    return 42;
-  }
-
-  /**
-   * Cắt chuỗi về đúng maxLen nhưng lùi về ranh giới từ gần nhất (AI hay bỏ qua giới hạn ký tự,
-   * nếu cắt cứng bằng slice() sẽ đứt ngang từ/dấu ngoặc giữa chừng, đọc rất kỳ trên trang cover thật).
-   */
-  private truncateCaptionText(value: string, maxLen: number): string {
-    const clean = String(value || '').trim();
-    if (clean.length <= maxLen) return clean;
-    const hardCut = clean.slice(0, maxLen);
-    const lastSpace = hardCut.lastIndexOf(' ');
-    const safeCut = lastSpace >= Math.floor(maxLen * 0.6) ? hardCut.slice(0, lastSpace) : hardCut;
-    return safeCut.replace(/["'“‘'"()\[{,;:\-–—]+$/u, '').trim();
-  }
-
-  private itineraryGrid8CoverTitleFallback(seed = ''): string {
-    const pool = [
-      'ĐÀ LẠT 4N3Đ – CHUYẾN ĐI KHÔNG MUỐN KẾT THÚC',
-      'BỐN NGÀY NHƯ MỘT BỨC TRANH',
-      'ĐÀ LẠT 4N3Đ – Ở LẠI THÊM MỘT CHÚT',
-      'ĐÀ LẠT – BỐN NGÀY GIỮ LẠI BẦU TRỜI',
-      'ĐÀ LẠT 4N3Đ – ĐI CHẬM ĐỂ NHỚ LÂU',
-    ].map((title) => localizeText(title, this.activeDestinationId));
-    const index = Math.abs(stableHash(`itinerary-grid8-title:${seed || Date.now()}`)) % pool.length;
-    return pool[index].slice(0, this.coverTitleMaxLen('itinerary-4n2d-grid8'));
-  }
-
-  /** Title cover lưới 8 / feed — thơ / cảm xúc, kiểu “Đà Lạt – …”. */
-  private grid8CoverTitleFallback(seed = ''): string {
-    const pool = [
-      'ĐÀ LẠT – MỖI GÓC PHỐ LÀ MỘT BỨC TRANH',
-      'ĐÀ LẠT – CHUYẾN ĐI MÀ MÌNH KHÔNG MUỐN KẾT THÚC',
-      'ĐÀ LẠT – NƠI LÒNG MUỐN Ở LẠI',
-      'ĐÀ LẠT – GÓC NHỎ LÀM MÌNH THƯƠNG',
-      'ĐÀ LẠT – ĐI MỘT LẦN NHỚ MÃI',
-      'ĐÀ LẠT – CHẬM LẠI MỘT NHỊP THỞ',
-    ].map((title) => localizeText(title, this.activeDestinationId));
-    const index = Math.abs(stableHash(`grid8-title:${seed || Date.now()}`)) % pool.length;
-    return pool[index].slice(0, this.coverTitleMaxLen('grid-8'));
-  }
-
-  private coverTitleFallbackForDeck(deckId: string, seed = ''): string {
-    if (deckId === 'itinerary-4n2d-grid8') return this.itineraryGrid8CoverTitleFallback(seed);
-    if (deckId === 'grid-8' || deckId === 'grid-8-feed') return this.grid8CoverTitleFallback(seed);
-    return localizeText('ĐI ĐÀ LẠT THÌ LƯU NGAY LIST NÀY', this.activeDestinationId).slice(0, 35);
+    return captionText.bannedSampleCaptionPhrases();
   }
 
   private buildDeepSeekPrompt(
@@ -4529,174 +3250,11 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     current: { coverTitle: string; headline: string; body: string; hashtags: string[] },
     usedTitles: string[] = [],
   ): string {
-    const pageLines = deckList.pages.map((page, index) => {
-      if (page.type === 'cover') {
-        // Không đưa tiêu đề/mô tả mẫu vào prompt — AI hay copy y hệt (vd. "ĐÀ LẠT 8 ĐIỂM / 1 TRANG").
-        return `Trang ${index + 1}: cover | tự viết coverTitle + body mới (KHÔNG copy tiêu đề/mô tả mẫu)`;
-      }
-      const itemLines = page.items.map((item, i) => `- ${i + 1}. ${item.name} | ${item.metaPrimary} | ${item.metaSecondary}`).join('\n');
-      return [`Trang ${index + 1}: list`, `Chủ đề: ${page.chipText}`, `Tiêu đề: ${page.title}`, `Mô tả: ${page.subtitle}`, 'Địa điểm:', itemLines].join('\n');
-    });
-
-    const toneInstructions: Record<DeepSeekCaptionResponse['tone'], string> = {
-      gen_z: 'Sử dụng ngôn ngữ trẻ trung, năng động, dùng từ lóng Gen Z phù hợp NGỮ CẢNH DU LỊCH (chill, đỉnh nóc, mlem, cháy, xịn, đu trend...), cấu trúc câu ngắn gọn, có thể dùng icon linh hoạt. TRÁNH dùng từ lóng mua sắm/sale không hợp cảnh (như "chốt đơn", "săn sale", "add to cart") vì đây là list ảnh du lịch để lưu lại, không phải sản phẩm để mua — dùng "lưu ngay", "note lại", "úp lên là đi" thay thế. Headline ví dụ: "ĐÀ LẠT PHÁ ĐẢO CÙNG BESTIE", "CHÁY PHỐ ĐÀ LẠT 0Đ", "TOP SPOT CHILL CỰC ĐỈNH".',
-      tinh_te: 'Giọng văn nhẹ nhàng, bay bổng, giàu cảm xúc và hình ảnh. Tập trung vào không gian, cảm giác yên bình và vẻ đẹp thơ mộng của Đà Lạt. Headline ví dụ: "ĐÀ LẠT VÀ NHỮNG BẢN TÌNH CA", "NƠI TÌM VỀ MIỀN KÝ ỨC", "CHÚT TÌNH GỬI GIÓ ĐÀ LẠT".',
-      review_chan_that: 'Giọng văn thực tế, đi thẳng vào vấn đề, chia sẻ trải nghiệm thật (khen chê rõ ràng nhưng vẫn giữ thái độ tích cực). Nhấn mạnh vào tính hữu ích. Headline ví dụ: "SỰ THẬT VỀ ĐÀ LẠT MÙA NÀY", "LIST QUÁN ĂN NGON BẤT BẠI", "ĐI ĐÀ LẠT ĐỪNG BỎ QUA NƠI NÀY".',
-      ban_hang_nhe: 'Giọng văn mời gọi nhưng không quá lộ liễu, khéo léo lồng ghép lợi ích khi sử dụng dịch vụ/địa điểm. Tập trung vào sự tiện lợi và chất lượng. Headline ví dụ: "TRẢI NGHIỆM ĐÀ LẠT KHÁC BIỆT", "DỊCH VỤ TOUR ĐÀ LẠT CHẤT LƯỢNG", "ƯU ĐÃI ĐỘC QUYỀN TẠI ĐÀ LẠT".',
-      lich_trinh_huu_ich: 'Cung cấp thông tin rõ ràng, logic, theo trình tự thời gian hoặc chủ đề. Giọng văn hướng dẫn, tận tâm như một hướng dẫn viên bản địa. Headline ví dụ: "LỊCH TRÌNH 3N2Đ TỐI ƯU NHẤT", "CẨM NANG DU LỊCH ĐÀ LẠT TỰ TÚC", "TỔNG HỢP ĐIỂM ĐẾN HOT NHẤT".',
-    };
-
-    const diversityAngles = [
-      'chon mot trai nghiem mo dau that cu the, gan voi cam giac di Da Lat trong ngay do',
-      'viet nhu mot loi nhac rieng cho ban than sap len lich di Da Lat',
-      'bat dau tu mot loi ich thuc te: de chon quan, de chon diem, de sap xep thoi gian',
-      'ke nhu mot review ngan sau khi vua di ve, co chi tiet that va khong qua quang cao',
-      'dung goc nhin tiet kiem cong suc: nguoi xem chi can luu lai va di theo',
-      'tao cam giac phat hien duoc vai diem dang thu trong list',
-      'viet gon nhu caption de dang copy dang TikTok, nhung van co chat rieng',
-      'uu tien nhac den nhom ban, cap doi hoac nguoi moi di Da Lat lan dau',
-    ];
-    const variationSeed = stableHash([
-      deck.id,
-      deckList.id,
-      tone,
-      target,
-      current.coverTitle,
-      current.headline,
-      current.body,
-      current.hashtags.join(','),
-      Date.now().toString(),
-      Math.random().toString(36).slice(2),
-    ].join('|'));
-    const diversityAngle = diversityAngles[variationSeed % diversityAngles.length];
-
-    const deckNotes = deck.id === 'itinerary-4n2d-grid8'
-      ? [
-        'Lưu ý đặc biệt: đây là lịch trình 4N3Đ (4 đêm 3 ngày), mỗi ngày một trang lưới 8 ô. Không gọi là 3N2Đ hay 4N2Đ trong caption.',
-        'KHÔNG BẮT BUỘC phải nhét "4N3Đ" vào coverTitle — chỉ thêm nếu ghép tự nhiên, gọn, TUYỆT ĐỐI không ghép gượng gạo kiểu "đà lạt 4n3đ đi trong 72 giờ của…" (sai ngữ pháp, nghe rất kỳ). Ưu tiên câu sạch, không số, hơn là câu có số nhưng gãy.',
-        'VD tốt (đúng văn phong casual chung — xem "Lưu ý văn phong chung" bên dưới): "4n3đ ở đà lạt thì nên đi đâu nè??", "đi đà lạt 4 ngày 3 đêm thì lịch trình sao cho hợp lý?".',
-      ].join(' ')
-      : '';
-
-    const globalStyleNote = [
-      'LƯU Ý VĂN PHONG CHUNG CHO MỌI MẪU (áp dụng thống nhất, người dùng đã duyệt qua thực tế theo đúng mẫu 3N2Đ, ưu tiên phong cách này hơn mọi phong cách khác đã đề cập trước đó trong prompt):',
-      'coverTitle viết CASUAL, viết THƯỜNG (không viết hoa chữ đầu từng từ, không viết hoa toàn bộ) — giống hệt văn phong 1 caption TikTok đời thường, tự nhiên như đang gõ chat, được phép dùng dấu "??" hoặc lặp chữ cuối câu cho cảm giác thật (vd "nhiềuuu", "đẹppp" khi hợp tone).',
-      'coverTitle nên là 1 câu hỏi ngắn, thân thiện, viết thường — ví dụ mẫu THẬT đã duyệt: "3n2d ở đà lạt thì nên đi đâu??".',
-      'QUAN TRỌNG: ví dụ trên CHỈ để học văn phong/độ dài/cách viết thường — TUYỆT ĐỐI KHÔNG chép lại y nguyên hay gần giống câu chữ của ví dụ. Mỗi lần sinh phải là câu HOÀN TOÀN MỚI, đổi cách hỏi/cách kể khác nhau, và phải hợp với chủ đề/địa điểm của TỪNG mẫu (không phải lúc nào cũng hỏi kiểu 3n2d, có thể kể/tâm sự/mời gọi tuỳ Tone yêu cầu).',
-      'LƯU Ý QUAN TRỌNG: người dùng đã quyết định KHÔNG dùng phần mô tả (body) nữa — trang cover chỉ còn tiêu đề. Chỉ cần tập trung chất lượng vào coverTitle (và headline để đăng bài). Xem thêm hướng dẫn body ở cuối prompt.',
-    ].join(' ');
-
-    const destinationLabel = cityLabel(this.activeDestinationId);
-    const coreHashtags = getMarketingCopy(this.activeDestinationId).hashtags.slice(0, 3).join(' ');
-    const deckHashtagExtras = getDeckHashtagExtras(deck.id, this.activeDestinationId).join(' ');
-
-    return [
-      `Tạo nội dung TikTok cho bộ ảnh du lịch ${destinationLabel} sau.`,
-      `Tên chủ đề: ${deck.title}`,
-      `Mô tả chung: ${deck.description}`,
-      globalStyleNote,
-      deckNotes,
-      `Danh sách địa điểm: ${deckList.title}`,
-      `Mô tả danh sách: ${deckList.description}`,
-      `Tone yêu cầu: ${tone}`,
-      `Hướng dẫn giọng văn: ${toneInstructions[tone]}`,
-      `Phần cần sinh: ${target}`,
-      `Goc trien khai bat buoc cho lan sinh nay: ${diversityAngle}.`,
-      current.coverTitle ? `Tiêu đề cover hiện tại: ${current.coverTitle}` : '',
-      current.headline ? `Caption đăng bài hiện tại: ${current.headline}` : '',
-      current.hashtags.length ? `Hashtags hiện tại: ${current.hashtags.join(' ')}` : '',
-      '',
-      (current.coverTitle || current.headline)
-        ? 'QUAN TRỌNG: Nội dung bạn sinh ra lần này PHẢI HOÀN TOÀN KHÁC với nội dung hiện tại ở trên. Không được dùng lại cùng ý, cùng cấu trúc câu, cùng từ mở đầu, hay cùng góc nhìn. Hãy đổi hoàn toàn cách tiếp cận, dùng từ vựng khác, mở đầu khác, và truyền tải thông điệp theo hướng mới.'
-        : '',
-      usedTitles.length > 0
-        ? `CÁC TIÊU ĐỀ ĐÃ DÙNG (TUYỆT ĐỐI KHÔNG ĐƯỢC LẶP LẠI BẤT KỲ CÁI NÀO DƯỚI ĐÂY):\n${usedTitles.map((t, i) => `${i + 1}. "${t}"`).join('\n')}\nHãy nghĩ ra tiêu đề và caption hoàn toàn mới, khác 100% so với danh sách trên.`
-        : '',
-      '',
-      'DỮ LIỆU ĐỊA ĐIỂM CHI TIẾT:',
-      ...pageLines,
-      '',
-      'VĂN PHONG MẪU THAM KHẢO (đây là các câu hook TikTok Đà Lạt thật, được người dùng chọn lọc — KHÔNG copy y nguyên bất kỳ câu nào dưới đây, chỉ học giọng văn: ngắn, đời thường, tự nhiên như người thật đang nói, có cảm xúc/lý do cụ thể, không sáo rỗng, không nghe như quảng cáo hay liệt kê máy móc):',
-      '- "Nhận đi Đà Lạt giùm cho ai đang nhớ Đà Lạt."',
-      '- "Đi Đà Lạt cả chục lần rồi, đây là những kinh nghiệm đáng tiền nhất."',
-      '- "Có cái list này là đi Đà Lạt khỏe hơn hẳn."',
-      '- "Nếu chỉ có 3 ngày ở Đà Lạt thì mình sẽ đi như thế này."',
-      '- "Sống ở Đà Lạt hơn 20 năm, đây là những quán mình vẫn quay lại."',
-      '- "Luỵ Đà Lạt mãi."',
-      '- "Đây không phải Pinterest. Đây là Đà Lạt."',
-      '- "POV: Chỉ còn 48 giờ ở Đà Lạt."',
-      '- "Đà Lạt tháng 7 có gì?"',
-      '- "Ai nói Đà Lạt hết đẹp?"',
-      '',
-      'YÊU CẦU BẮT BUỘC VỀ CHẤT LƯỢNG CÂU (áp dụng cho MỌI mẫu, không chỉ riêng lưới 8 — đây là lỗi hay gặp nhất, phải tuân thủ nghiêm):',
-      '- coverTitle và headline PHẢI là câu hoặc cụm từ HOÀN CHỈNH, đọc lên hiểu ngay, giống đúng giọng văn ở phần "VĂN PHONG MẪU THAM KHẢO" trên.',
-      '- TỰ KIỂM TRA bắt buộc trước khi trả lời: đọc lại coverTitle và headline, tự hỏi "câu này có nói được 1 ý CỤ THỂ không — 1 lý do, 1 cảm giác thật, 1 câu hỏi, hay 1 tình huống — hay chỉ là mỹ từ/số liệu không gắn với điều gì cả?". Nếu không trả lời được, viết lại.',
-      '- 9 KIỂU LỖI CẤM TUYỆT ĐỐI (đây là lỗi AI hay mắc nhất, ví dụ THẬT đã bị từ chối):',
-      '  (1) Nghe như slogan/quảng cáo du lịch chung: TRÁNH "ĐÀ LẠT – NÉT ĐẸP KHÔNG CẦN TỐN TIỀN", "ĐÀ LẠT — VẺ ĐẸP BẤT TẬN". Slogan không có góc nhìn cá nhân, ai viết cũng được, nghe rất sáo.',
-      '  (2) Chỉ liệt kê thông số như bảng specs, không có cảm xúc/lý do: TRÁNH "ĐÀ LẠT 72 GIỜ, GỌN VÍ 3TR", "ĐÀ LẠT 3N2Đ – 8 ĐIỂM 500K". Số giờ/số tiền/số điểm không tự nó tạo thành 1 câu có hồn.',
-      '  (3) Hoa mỹ/trừu tượng nhưng rỗng nghĩa, không nói được điều gì cụ thể: TRÁNH "CHẶNG DỪNG CHO TÂM HỒN", "ĐÀ LẠT VÀ NHỮNG SẮC MÀU", "ĐÀ LẠT CỦA RIÊNG BẠN", "ĐÀ LẠT TRONG TỪNG KHUNG HÌNH", "ĐÀ LẠT — GÓC NHÌN RIÊNG". Nếu dùng chữ "riêng"/"của bạn"/"góc nhìn" thì PHẢI nói rõ riêng cái gì, góc nhìn về cái gì cụ thể — không được để lửng.',
-      '  (4) Nhắc tên địa danh/quán cụ thể trong coverTitle: TRÁNH "Sáng 6h dậy đi Cầu Đất" (lộ tên "Cầu Đất" — vi phạm ngay quy tắc không nêu tên địa điểm cụ thể ở dưới). Chỉ được nói chung "Đà Lạt", không nêu tên đồi/hồ/quán/khu vực cụ thể nào.',
-      '  (5) Kết câu bằng 1 từ đơn lẻ mơ hồ, đọc xong không rõ nghĩa: TRÁNH kiểu "…, gửi chút lạc" (từ "lạc" đứng một mình không rõ là an lạc, lạc lối, hay gì khác). Nếu dùng từ trừu tượng/đa nghĩa, phải có từ đi kèm làm rõ nghĩa (vd. "an lạc", "lạc quan"), không để trơ một mình gây khó hiểu.',
-      '  (6) Lặp lại 1 từ để tạo vần/nhịp cho vui tai nhưng nghĩa không khớp với danh từ đi kèm: TRÁNH "Đà Lạt 8 spots xịn, ví cũng xịn luôn!" — "xịn" hợp với "spots" (đẹp/chất) nhưng vô nghĩa khi gắn với "ví" (ví không có khái niệm "xịn", nói vậy không ai hiểu ý là "không tốn tiền"). Muốn nói ví không hao tiền thì viết đúng nghĩa: "ví không hao", "ví vẫn dày", "đỡ tốn ví" — TUYỆT ĐỐI không tái dùng nguyên 1 từ khen sang vế sau nếu nghĩa không khớp, chỉ vì nghe vần.',
-      '  (7) Nêu SỐ LƯỢNG cụ thể trong coverTitle/headline — đây là lỗi RẤT hay tái phát, kiểm tra kỹ nhất: TRÁNH "8 điểm", "8 chỗ", "8 góc", "5 điểm", "6 điểm", "lưới 8 ô", "2 homestay", "4 địa điểm", hay bất kỳ số + danh từ nào nói về số lượng ảnh/địa điểm/ô lưới. Số lượng ô ảnh là thông tin về CẤU TRÚC LAYOUT, không phải nội dung cảm xúc — tuyệt đối không được xuất hiện trong coverTitle hay headline dưới bất kỳ danh từ nào đi kèm (kể cả từ đồng nghĩa với "điểm"). Cũng TRÁNH số tiền cụ thể kiểu "500k", "48h chỉ cần 500k" trong coverTitle. Ngoại lệ duy nhất: số 0 trong "0đ" (giá) và số ngày/giờ khi đúng là lịch trình theo ngày (ví dụ "4N3Đ", "72H") — những số đó KHÔNG bị cấm.',
-      '  (8) Câu quá chung chung, không gắn với NỘI DUNG CỤ THỂ của bộ ảnh này, đọc xong không biết bộ ảnh nói về cái gì: TRÁNH "mê đà lạt quá thì làm sao", "đà lạt vậy mà đáng đi nhỉ", "đà lạt sương mù chill cực xịn" — những câu này đúng ngữ pháp nhưng không gắn với chủ đề/nội dung riêng của bộ ảnh (ăn uống, lịch trình, quán cà phê, homestay...), đổi tên mẫu nào vào cũng dùng được thì coi như chưa đạt. coverTitle PHẢI cho biết mơ hồ được là bộ ảnh này giúp ích gì cụ thể (chọn quán, lên lịch, tìm góc chụp, tiết kiệm chi phí...).',
-      '  (9) Chèn cụm từ trong dấu ngoặc kép/nháy vào giữa câu để tạo hiệu ứng: TRÁNH "đà lạt đi chỗ này là \'ghiền\' liền", "ghi liền chỗ này để né \'đi lại vòng vòng\'" — cách chèn ngoặc kép giữa câu đọc kỳ, không tự nhiên như văn phong caption thật. Nếu muốn nhấn mạnh 1 từ thì viết thẳng vào câu, không cần đóng mở ngoặc kép.',
-      '- Thay vào đó hãy bám sát đúng dạng câu trong "VĂN PHONG MẪU THAM KHẢO": có 1 tình huống/cảm giác/lý do CỤ THỂ (ví dụ: nhớ Đà Lạt, sắp đi, vừa đi về, tiếc tiền oan, chỉ có ít ngày, sống lâu năm nên biết chỗ hay...).',
-      '- CẤM ghép từ gượng gạo, sai ngữ pháp, thiếu chủ ngữ/vị ngữ, hoặc nghe kỳ cục khi đọc thành tiếng.',
-      '- Ưu tiên 1 ý rõ ràng, câu ngắn hơn là câu dài mà lan man. Trước khi trả lời, tự đọc lại câu — nếu thấy tối nghĩa hoặc dài dòng thì viết lại đơn giản, ngắn gọn hơn.',
-      '- coverTitle phải NẰM TRONG giới hạn ký tự cho phép (xem mục "YÊU CẦU QUAN TRỌNG VỀ COVER TITLE" bên dưới) — trước khi trả lời, tự đếm số ký tự, nếu vượt quá giới hạn thì viết lại ngắn hơn thay vì viết dài rồi để bị cắt mất chữ cuối.',
-      '',
-      'YÊU CẦU QUAN TRỌNG VỀ COVER TITLE (TIÊU ĐỀ TRANG COVER):',
-      '- `coverTitle` là chữ in đậm ở trang bìa của bộ ảnh. Phải dễ scan, có hồn.',
-      '- BẮT BUỘC viết THƯỜNG, casual theo đúng "Lưu ý văn phong chung cho mọi mẫu" ở trên (giống mẫu 3N2Đ: "3n2d ở đà lạt thì nên đi đâu??"). TUYỆT ĐỐI KHÔNG viết hoa toàn bộ chữ, KHÔNG viết hoa chữ đầu từng từ (không phải "LỊCH TRÌNH 3N2Đ TỐI ƯU NHẤT", cũng không phải "Lịch Trình 3N2Đ Tối Ưu Nhất" — mà là "lịch trình 3n2đ thì nên đi đâu ta??" kiểu vậy) — viết hoa (dù toàn bộ hay từng chữ) đều đọc trịnh trọng/quảng cáo, không giống văn phong đời thường người dùng muốn.',
-      '- Có thể là câu hỏi (như ví dụ 3N2Đ), câu tâm sự, hoặc lời mời — miễn viết thường, tự nhiên, đúng 1 ý cụ thể.',
-      '- ĐA DẠNG CÁCH VIẾT — không phải lúc nào cũng là câu hỏi kết bằng "??" giống hệt mẫu 3N2Đ. Có thể đổi sang câu kể, câu rủ rê, câu tự trào, tuỳ Tone yêu cầu — miễn giữ đúng tinh thần viết thường/casual.',
-      deck.id === 'grid-8' || deck.id === 'grid-8-feed' || deck.id === 'itinerary-4n2d-grid8'
-        ? '- Với lưới 8 / lịch trình lưới 8: tối đa 48 ký tự.'
-        : '- Tuyệt đối KHÔNG vượt quá 35 ký tự (tính cả khoảng trắng).',
-      '- Bám sát "Tone yêu cầu". Không được trùng với "Caption đăng bài".',
-      '- Không dùng chữ "free" trong cover title. Thay bằng "0đ", "dễ đi", "nhẹ tiền" hoặc bỏ luôn.',
-      '- Với nội dung 0đ/miễn phí, ưu tiên cách nói dí dỏm kiểu "không tốn tiền, chỉ tốn thời gian thôi" thay vì chỉ nói cụt "không tốn 1 xu" — nghe có duyên và đúng thực tế hơn (vẫn cần bỏ thời gian đi, chỉ là không mất tiền).',
-      '- HẠN CHẾ TỐI ĐA số tiền cụ thể ("triệu", "tr", "3tr", "500k"...) trong coverTitle — nghe như quảng cáo giá, không giống văn phong đời thường. Nói về tiền thì dùng cảm giác thay số cụ thể, ĐỔI VÒNG nhiều cách khác nhau — không chỉ mỗi "ví": "nhẹ tiền", "giá mềm", "không lo chi phí", "chi tiêu thoải mái", "hợp túi" — chỉ giữ số tiền trong headline/body nếu cần, không phải trong coverTitle. Ngoại lệ: "0đ" vẫn được phép.',
-      '- TUYỆT ĐỐI không nhắc tên quán/địa điểm/khu vực cụ thể trong cover title (xem lỗi (4) ở trên) — chỉ dùng "đà lạt" chung.',
-      '- KHÔNG copy tiêu đề mẫu kiểu "… 8 điểm / 1 trang", hay bất kỳ tiêu đề nào trong danh sách đã dùng.',
-      deck.id === 'grid-8' || deck.id === 'grid-8-feed'
-        ? '- Với mẫu lưới 8: CẤM meta layout / listicle cứng.'
-        : '',
-      '',
-      'YÊU CẦU QUAN TRỌNG VỀ HEADLINE (CAPTION ĐĂNG BÀI):',
-      '- `headline` là caption người dùng copy để dán vào TikTok khi đăng bài.',
-      '- Chỉ viết DUY NHẤT 1 câu ngắn gọn (tối đa 80 ký tự), giọng văn bám sát "Tone yêu cầu".',
-      '- Câu phải có hook thu hút ngay, có thể thêm 1 emoji cuối câu (không quá 1 emoji).',
-      '- Không lặp lại nguyên văn cover title. Không dùng chữ "free" / "deck".',
-      '- Có thể mời người xem lưu lại bộ ảnh, nhưng tuyệt đối không gọi tên địa điểm/quán cụ thể.',
-      '- KHÔNG dùng lại caption mẫu kiểu "BỎ TÚI NGAY LIST NÀY RỦ BÉ BẠN XÁCH BA LÔ...".',
-      '- NHẮC LẠI lỗi (7) — RẤT hay tái phát ở headline dù coverTitle đã tránh được: TUYỆT ĐỐI không nêu số lượng cụ thể trong headline (TRÁNH "8 điểm check-in xịn mà không tốn một xu", "Ghé 4 homestay xinh như mơ" — đều lộ số lượng ô lưới/địa điểm). Kiểm tra riêng câu headline này một lần nữa trước khi trả lời — không chỉ kiểm tra coverTitle.',
-      '- Không dùng từ hiếm/mơ hồ mà người đọc phải đoán nghĩa (TRÁNH "góc ém", "chốn ẩn"...) — chỉ dùng từ phổ thông, ai đọc cũng hiểu ngay không cần suy nghĩ.',
-      '',
-      'CÁC YÊU CẦU KHÁC:',
-      '- TUYỆT ĐỐI không dùng từ "deck" trong nội dung. Thay vào đó hãy dùng: "hình", "ảnh", "bộ ảnh", "cẩm nang", "lịch trình", "bộ này", "tuyển tập này"...',
-      '- Không dùng từ "ảnh" để chỉ bộ nội dung — dùng "bộ", "cẩm nang", "tuyển tập" thay thế.',
-      '- HẠN CHẾ TỐI ĐA (không cấm tuyệt đối, nhưng KHÔNG lặp lại nhiều lần trong cùng 1 lần sinh) 3 từ đang bị dùng quá tay: "miễn phí", "list", "ví". Mỗi từ chỉ được xuất hiện tối đa 1 lần trong toàn bộ coverTitle+headline+body, và ưu tiên KHÔNG dùng nếu có cách nói khác:',
-      '  + Thay "miễn phí" bằng "0đ", "không tốn xu", "đỡ tốn tiền", hoặc dí dỏm kiểu "không tốn tiền, chỉ tốn thời gian thôi" — đổi cách nói mỗi lần, không lặp "miễn phí" ở cả coverTitle và headline.',
-      '  + Thay "list" bằng "bộ này", "cẩm nang này", "tuyển tập này", "loạt ảnh này" — không dùng "list" làm từ mặc định lặp đi lặp lại.',
-      '  + "ví" đang bị lặp CỰC NHIỀU vì hay bị gợi ý làm cách nói giảm về tiền — ĐỔI VÒNG các cách khác nhau mỗi lần, KHÔNG lặp lại "ví" nhiều lần liên tiếp giữa các mẫu: "nhẹ tiền", "không tốn kém", "giá mềm", "chi tiêu thoải mái", "dễ chịu về giá", "không lo chi phí", "hợp túi". Chỉ dùng "ví" như MỘT trong nhiều lựa chọn, không phải lựa chọn mặc định.',
-      '- (Nhắc lại lỗi (7) ở trên vì rất hay tái phát): coverTitle/headline TUYỆT ĐỐI không được có số lượng ô ảnh/địa điểm dưới bất kỳ hình thức nào.',
-      '- Không dùng các cụm diễn đạt nội bộ như "ảnh đã chọn", "bộ ảnh này", "ghim ảnh".',
-      '- Tránh lỗi chính tả: "đông đúc" (không phải "đông đúng"), "nơi đẹp mê ly" (không phải "nơi đẹp thẳng thừng").',
-      '- Không để câu bị cụt hoặc dư ký tự lạ ở cuối (như "ng", "c", "ghim").',
-      '- KHÔNG viết body/mô tả nữa — người dùng đã quyết định trang cover chỉ còn tiêu đề, không còn mô tả bên dưới. Trường "body" trong JSON trả về LUÔN LUÔN là chuỗi rỗng "".',
-      '- Dữ liệu địa điểm chỉ dùng để hiểu tinh thần bộ ảnh; không chép tên địa điểm/quán vào cover title hay headline.',
-      '- Khong mo ta bo cuc thiet ke hoac kich thuoc layout trong caption. Tranh cac cum: "2x3", "3x3", "2x4", "luoi", "layout", "grid", "o anh", "o hinh", "8 diem / 1 trang", "N diem / 1 trang".',
-      '- Moi lan bam sinh lai phai doi goc viet, doi nhip cau, doi dong tu mo dau; khong chi thay vai tu dong nghia.',
-      `- Hashtags: đúng 5 hashtag. 3 hashtag đầu BẮT BUỘC cố định: ${coreHashtags}. 2 hashtag cuối cố định theo mẫu "${deck.navTitle || deck.id}": ${deckHashtagExtras}. Không đổi thứ tự, không thay 3 hashtag đầu.`,
-      '- Trả về JSON object đúng schema (body LUÔN là chuỗi rỗng):',
-      '{"coverTitle":"...","headline":"...","body":"","hashtags":["#...","#...","#...","#...","#..."]}',
-    ].filter(Boolean).join('\n');
+    return captionText.buildDeepSeekPrompt(this.activeDestinationId, deck, deckList, tone, target, current, usedTitles);
   }
 
   private isPov3ImageMappingNote(value: string): boolean {
-    return /^(?:Ảnh (?:đã map|tự map|minh họa|đối tác)|Thông tin đối tác)/i.test(String(value || '').trim());
+    return captionText.isPov3ImageMappingNote(value);
   }
 
   private async enrichPov3V2StackTaglines(pages: DeckPage[]): Promise<DeckPage[]> {
@@ -4783,395 +3341,31 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private parseDeepSeekJson(content: string): Record<string, unknown> {
-    const direct = this.tryParseJson(content);
-    if (direct) return direct;
-    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fenced) { const p = this.tryParseJson(fenced[1]); if (p) return p; }
-    const firstBrace = content.indexOf('{');
-    const lastBrace = content.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const p = this.tryParseJson(content.slice(firstBrace, lastBrace + 1));
-      if (p) return p;
-    }
-    throw new BadRequestException('Không parse được JSON caption từ AI.');
+    return captionText.parseDeepSeekJson(content);
   }
 
   private collectCaptionForbiddenNames(deckList: GuideDeckList): string[] {
-    const names = new Map<string, string>();
-    const addName = (value?: string) => {
-      const name = String(value ?? '').replace(/\s+/g, ' ').trim();
-      if (name.length < 3) return;
-      names.set(this.normalizeCaptionNameKey(name), name);
-    };
-
-    for (const page of deckList.pages) {
-      if (page.type !== 'list') continue;
-      for (const item of page.items) {
-        addName(item.rawName);
-        addName(item.name);
-        addName(item.name.split(/:\s*/).slice(1).join(': '));
-      }
-    }
-
-    return [...names.values()].sort((a, b) => b.length - a.length);
+    return captionText.collectCaptionForbiddenNames(deckList);
   }
 
-  private removeForbiddenPlaceNames(value: string, forbiddenPlaceNames: string[]): string {
-    let clean = value;
-    for (const name of forbiddenPlaceNames) {
-      for (const candidate of this.getPlaceNameCandidates(name)) {
-        const escaped = this.escapeRegExp(candidate).replace(/\s+/g, '\\s+');
-        const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, 'giu');
-        clean = clean.replace(pattern, '$1một điểm trong list');
-      }
-    }
-
-    return clean
-      .replace(/một điểm trong list\s+(?:hay|hoặc|và)\s+một điểm trong list/giu, 'vài điểm trong list')
-      .replace(/một điểm trong list(?:\s*,\s*một điểm trong list)+/giu, 'vài điểm trong list')
-      .replace(/\s{2,}/g, ' ')
-      .replace(/\s+([,.!?])/g, '$1')
-      .trim();
-  }
-
-  private hasForbiddenPlaceName(value: string, forbiddenPlaceNames: string[]): boolean {
-    return forbiddenPlaceNames.some((name) => this.getPlaceNameCandidates(name).some((candidate) => {
-      const escaped = this.escapeRegExp(candidate).replace(/\s+/g, '\\s+');
-      return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(value);
-    }));
-  }
-
-  private getPlaceNameCandidates(name: string): string[] {
-    const normalized = name.replace(/\s+/g, ' ').trim();
-    const unaccented = this.stripVietnameseMarks(normalized);
-    return [...new Set([normalized, unaccented].filter((value) => value.length >= 3))];
-  }
-
-  private normalizeCaptionNameKey(value: string): string {
-    return this.stripVietnameseMarks(value).toLowerCase();
-  }
-
-  private stripVietnameseMarks(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd')
-      .replace(/Đ/g, 'D');
-  }
-
-  /**
-   * Post-processing sanitizer applied to ALL text content (both new AI output and old data).
-   * Fixes: wrong words, dangling chars, internal jargon, typos.
-   */
   private sanitizeContentText(value: string): string {
-    return String(value || '').normalize('NFC')
-      // Fix typos from feedback
-      .replace(/(^|[^\p{L}\p{N}])đông\s*đúng(?=$|[^\p{L}\p{N}])/giu, '$1đông đúc')
-      .replace(/(^|[^\p{L}\p{N}])nơi\s*đẹp\s*thẳng\s*thừng(?=$|[^\p{L}\p{N}])/giu, '$1nơi đẹp mê ly')
-      .replace(/(^|[^\p{L}\p{N}])mở\s*to\s*mắt(?=$|[^\p{L}\p{N}])/giu, '$1mở mang tầm mắt')
-      .replace(/(^|[^\p{L}\p{N}])Săn\s*ảnh\s*và\s*bắt\s*sáng(?=$|[^\p{L}\p{N}])/giu, '$1Săn ảnh và ăn sáng')
-      .replace(/(^|[^\p{L}\p{N}])3\s*ngày\s*chẳng\s*cần\s*chỉnh\s*sửa\s*gì(?=$|[^\p{L}\p{N}])/giu, '$13 ngày chẳng cần nghĩ ngợi gì')
-      .replace(/(^|[^\p{L}\p{N}])đủ\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1đủ bữa ăn')
-      .replace(/(^|[^\p{L}\p{N}])điểm\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1điểm ăn')
-      .replace(/(^|[^\p{L}\p{N}])địa\s*chỉ\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1địa chỉ ăn ngon')
-      .replace(/(^|[^\p{L}\p{N}])không\s*chỉ\s*ăn\s*uống\s*và\s*chụp\s*ảnh(?=$|[^\p{L}\p{N}])/giu, '$1không chỉ chụp ảnh rồi đi tiếp')
-      .replace(/(^|[^\p{L}\p{N}])trước\s*khi\s*thêm\s*cafe\s*hay\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1trước khi thêm cafe hay điểm ăn')
-      .replace(/(^|[^\p{L}\p{N}])mấy\s*chỗ\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1mấy chỗ ăn ngon')
-      .replace(/(^|[^\p{L}\p{N}])chọn\s*điểm\s*đi,\s*ăn\s*uống\s*và\s*chụp\s*hình(?=$|[^\p{L}\p{N}])/giu, '$1chọn điểm đi, quán ăn và góc chụp')
-      .replace(/(^|[^\p{L}\p{N}])từ\s*ăn\s*uống,\s*check-?in(?=$|[^\p{L}\p{N}])/giu, '$1từ quán ăn, check-in')
-      .replace(/(^|[^\p{L}\p{N}])nhóm\s*ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1nhóm quán ăn')
-      .replace(/(^|[^\p{L}\p{N}])Ăn\s*uống(?=$|[^\p{L}\p{N}])/gu, '$1Quán ăn')
-      .replace(/(^|[^\p{L}\p{N}])ăn\s*uống(?=$|[^\p{L}\p{N}])/giu, '$1quán ăn')
-      .replace(/(^|[^\p{L}\p{N}])Nhấn\s*lưu\s*liền\s*kẻo(?=$|[^\p{L}\p{N}])/giu, '$1Nhấn lưu liền kẻo quên nhé')
-      .replace(/(^|[^\p{L}\p{N}])lưu\s*lại(?=\s*$)/giu, '$1lưu lại ngay nhé')
-      .replace(/(^|[^\p{L}\p{N}])Đà\s*Lạt\s*ẩn\s*mình\s*sau\s*vách\s*núi(?=$|[^\p{L}\p{N}])/giu, '$1Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
-      .replace(/(^|[^\p{L}\p{N}])Đà\s*Lạt\s*đủ\s*để\s*đi\s*ngay(?=$|[^\p{L}\p{N}])/giu, '$1Đầy đủ kinh nghiệm cho chuyến đi Đà Lạt')
-      // Remove dangling chars at end of sentence (ng, c, ghim, g alone)
-      .replace(/\s+\b(ng|ghim|c|g)\b\s*([.!?…]*)$/gi, '$2')
-      // Remove internal jargon
-      .replace(/(^|[^\p{L}\p{N}])bộ\s*ảnh\s*này(?=$|[^\p{L}\p{N}])/giu, '$1list này')
-      .replace(/(^|[^\p{L}\p{N}])bộ\s*ảnh(?=$|[^\p{L}\p{N}])/giu, '$1list')
-      .replace(/(^|[^\p{L}\p{N}])ảnh\s*đã\s*chọn(?=$|[^\p{L}\p{N}])/giu, '$1các điểm đã chọn')
-      .replace(/(^|[^\p{L}\p{N}])ghim\s*ảnh(?=$|[^\p{L}\p{N}])/giu, '$1lưu lại')
-      .replace(/(^|[^\p{L}\p{N}])lưu\s*ảnh(?=$|[^\p{L}\p{N}])/giu, '$1lưu list')
-      .replace(/(^|[^\p{L}\p{N}])các\s*ảnh\s*đã\s*chọn(?=$|[^\p{L}\p{N}])/giu, '$1các điểm đã chọn')
-      // Clean up extra spaces
-      .replace(/\.{4,}/g, '...')
-      .replace(/\s{2,}/g, ' ')
-      .replace(/\s+([,.!?])/g, '$1')
-      .trim();
+    return captionText.sanitizeContentText(value);
   }
 
   private sanitizeGeneratedListText(list: GuideDeckList, deckId?: string): GuideDeckList {
-    const resolvedDeckId = deckId || resolveDeckIdFromListId(list.id);
-    // Diary text is an exact source snapshot, not marketing text to rewrite.
-    if (resolvedDeckId === 'spotlight-v6-diary') return this.cloneJson(list);
-    const pages = Array.isArray(list.pages)
-      ? list.pages.map((page) => this.sanitizeDeckPageText(page))
-      : [];
-    const isGrid8Feed = String(list.id || '').startsWith('grid-8-feed');
-    const postCaptionRaw = isGrid8Feed
-      ? normalizeGrid8FeedPostCaption(String(list.postCaption || ''))
-      : (list.postCaption ? this.sanitizeContentText(localizeText(list.postCaption, this.activeDestinationId)) : list.postCaption);
-    const postCaption = this.isBannedSampleCaptionText(String(postCaptionRaw || ''))
-      ? localizeText('Lưu list này rồi đi Đà Lạt cho đỡ mò từng nơi nhé.', this.activeDestinationId)
-      : postCaptionRaw;
-    const safeCoverFallback = this.coverTitleFallbackForDeck(resolvedDeckId || '', String(list.id || ''));
-    const safeBodyFallback = getMarketingCopy(this.activeDestinationId).captionBodyFallback;
-    let coverTitle = list.coverTitle
-      ? this.sanitizeContentText(sanitizeDeckHeadline(localizeText(list.coverTitle, this.activeDestinationId)))
-      : list.coverTitle;
-    if (this.isBannedSampleCaptionText(String(coverTitle || ''))) coverTitle = safeCoverFallback;
-    let title = this.sanitizeContentText(sanitizeDeckHeadline(localizeText(list.title || '', this.activeDestinationId)));
-    if (this.isBannedSampleCaptionText(title)) title = safeCoverFallback;
-    let description = this.sanitizeContentText(localizeText(list.description || '', this.activeDestinationId));
-    if (this.isBannedSampleCaptionText(description)) description = safeBodyFallback;
-    const isSummaryNote = isThreadsLocalDeck(resolvedDeckId || '') || isTextNoteDeck(resolvedDeckId || '');
-    const storedCaptionBody = isSummaryNote ? '' : (list.captionBody || (
-      list.postCaption || (Array.isArray(list.captionHashtags) && list.captionHashtags.length > 0)
-        ? list.description || safeBodyFallback
-        : ''
-    ));
-    const captionBody = storedCaptionBody
-      ? this.sanitizeContentText(localizeText(storedCaptionBody, this.activeDestinationId))
-      : storedCaptionBody;
-    const localized = {
-      ...list,
-      navTitle: this.sanitizeContentText(localizeText(list.navTitle || '', this.activeDestinationId)),
-      title,
-      description,
-      coverTitle,
-      postCaption,
-      captionBody,
-      captionHashtags: isSummaryNote
-        ? []
-        : Array.isArray(list.captionHashtags)
-          ? buildCaptionHashtags(
-            list.captionHashtags.map((tag) => String(tag || '').trim()).filter(Boolean),
-            'lich_trinh_huu_ich',
-            this.activeDestinationId,
-            resolvedDeckId,
-          )
-          : list.captionHashtags,
-      pages: pages.map((page) => {
-        if (page.type !== 'cover') return page;
-        let pageTitle = page.title;
-        let pageSubtitle = page.subtitle;
-        if (this.isBannedSampleCaptionText(pageTitle)) pageTitle = String(coverTitle || safeCoverFallback);
-        if (this.isBannedSampleCaptionText(pageSubtitle)) pageSubtitle = description || safeBodyFallback;
-        return { ...page, title: pageTitle, subtitle: pageSubtitle };
-      }),
-    };
-    return localized;
+    return captionText.sanitizeGeneratedListText(this.activeDestinationId, list, deckId);
   }
 
   private sanitizeDeckPageText(page: DeckPage): DeckPage {
-    if (page.type === 'cover') {
-      let subtitle = this.sanitizeContentText(localizeText(page.subtitle || '', this.activeDestinationId));
-      if (page.layoutVariant === 'grid-8-feed') {
-        subtitle = this.sanitizeContentText(truncateGrid8FeedCoverSubtitle(subtitle));
-      } else if (page.layoutVariant === 'spotlight-v2' || page.layoutVariant === 'spotlight-v4-cover' || page.layoutVariant === 'spotlight-v5-cover' || page.layoutVariant === 'spotlight-v6-cover') {
-        subtitle = '';
-      }
-      return {
-        ...page,
-        title: this.sanitizeContentText(sanitizeDeckHeadline(localizeText(page.title || '', this.activeDestinationId))),
-        subtitle,
-      };
-    }
-
-    const oneWayMultiline = page.layoutVariant === 'one-way-story-road';
-    const cleanPage: DeckPage = {
-      ...page,
-      ...(page.layoutVariant === 'itinerary-note-threads-budget' ? { backgroundImage: '' } : {}),
-      chipText: this.sanitizeContentText(localizeText(page.chipText || '', this.activeDestinationId)),
-      title: this.sanitizeContentText(sanitizeDeckHeadline(localizeText(page.title || '', this.activeDestinationId))),
-      subtitle: oneWayMultiline
-        ? this.normalizeEditablePageMultilineText(localizeText(page.subtitle || '', this.activeDestinationId))
-        : this.sanitizeContentText(localizeText(page.subtitle || '', this.activeDestinationId)),
-      items: Array.isArray(page.items)
-        ? page.items.map((item) => this.sanitizePageItemText(item, page))
-        : [],
-    };
-
-    return this.ensureBudgetTableTotalItem(cleanPage);
-  }
-
-  private ensureBudgetTableTotalItem(page: DeckPage): DeckPage {
-    if (page.type !== 'list' || page.layoutVariant !== 'budget-3n2d-table') return page;
-
-    const items = Array.isArray(page.items) ? page.items : [];
-    const totalIndex = items.findIndex((item) => {
-      const key = normalizeText(`${item.id || ''} ${item.label || ''} ${item.name || ''}`);
-      return key.includes('summary_total') || key.includes('tong_cong') || key.includes('tong_thanh_toan');
-    });
-
-    const categoryItems = items.filter((item) => {
-      const label = String(item.label || '');
-      if (!label.startsWith('Tổng|')) return false;
-      const key = normalizeText(`${item.id || ''} ${item.label || ''} ${item.name || ''}`);
-      return !key.includes('summary_total') && !key.includes('tong_cong') && !key.includes('tong_thanh_toan');
-    });
-
-    const computedTotal = categoryItems.length >= 4
-      ? this.sumBudgetSummaryCategories(categoryItems.map((item) => item.metaSecondary || ''))
-      : '';
-
-    if (totalIndex >= 0) {
-      const currentTotal = items[totalIndex];
-      const nextSecondary = computedTotal || currentTotal.metaSecondary;
-      if (nextSecondary === currentTotal.metaSecondary) return page;
-      const nextItems = [...items];
-      nextItems[totalIndex] = {
-        ...currentTotal,
-        label: currentTotal.label || 'Tổng|Tổng cộng',
-        name: currentTotal.name || 'Tổng cộng',
-        metaPrimary: currentTotal.metaPrimary || 'Tổng các khoản trên',
-        metaSecondary: nextSecondary,
-      };
-      return { ...page, items: nextItems };
-    }
-
-    const totalItem: PageItem = {
-      id: 'budget-3n2d-summary-total',
-      label: 'Tổng|Tổng cộng',
-      name: 'Tổng cộng',
-      metaPrimary: 'Tổng các khoản trên',
-      metaSecondary: computedTotal || '~0k',
-      imageUrl: '',
-      imageMapped: false,
-      imageNote: '',
-      imageSource: 'fallback',
-      candidateImageUrls: [],
-    };
-
-    return { ...page, items: [...items, totalItem] };
-  }
-
-  private sumBudgetSummaryCategories(amounts: string[]): string {
-    let min = 0;
-    let max = 0;
-    for (const amount of amounts) {
-      const range = this.parseBudgetCostRange(amount);
-      min += range.min;
-      max += range.max;
-    }
-    if (min <= 0 && max <= 0) return '';
-    if (min === max) return this.formatBudgetCostAmount(min);
-    if (Math.abs(max - min) <= Math.max(min, max) * 0.08) {
-      return this.formatBudgetCostAmount(Math.round((min + max) / 2));
-    }
-    return `${this.formatBudgetCostAmount(min)} - ${this.formatBudgetCostAmount(max)}`;
-  }
-
-  private parseBudgetCostRange(raw: string): { min: number; max: number } {
-    const cleaned = String(raw || '').replace(/\s+/g, ' ').trim().toLowerCase();
-    if (!cleaned || /đã tính|miễn phí|free|^0\s*đ?$/.test(cleaned)) {
-      return { min: 0, max: 0 };
-    }
-    const parseNum = (value: string) => {
-      const normalized = value.trim().replace(',', '.');
-      if (normalized.includes('.') && normalized.split('.')[1]?.length === 3) {
-        return Number(normalized.replace('.', '')) || 0;
-      }
-      return Number(normalized) || 0;
-    };
-    const trRange = cleaned.match(/([\d.,]+)\s*tr\s*-\s*([\d.,]+)\s*tr/);
-    if (trRange) {
-      return { min: parseNum(trRange[1]) * 1_000_000, max: parseNum(trRange[2]) * 1_000_000 };
-    }
-    const singleTr = cleaned.match(/~?\s*([\d.,]+)\s*tr/);
-    if (singleTr) {
-      const value = parseNum(singleTr[1]) * 1_000_000;
-      return { min: value, max: value };
-    }
-    const kRange = cleaned.match(/([\d.,]+)\s*k\s*-\s*([\d.,]+)\s*k/);
-    if (kRange) {
-      return { min: parseNum(kRange[1]) * 1_000, max: parseNum(kRange[2]) * 1_000 };
-    }
-    const singleK = cleaned.match(/~?\s*([\d.,]+)\s*k/);
-    if (singleK) {
-      const value = parseNum(singleK[1]) * 1_000;
-      return { min: value, max: value };
-    }
-    const plainVnd = cleaned.match(/([\d.,]+)\s*(?:đ|vnd|vnđ)/);
-    if (plainVnd) {
-      const value = parseNum(plainVnd[1]);
-      return { min: value, max: value };
-    }
-    return { min: 0, max: 0 };
-  }
-
-  private formatBudgetCostAmount(vnd: number): string {
-    if (vnd <= 0) return '';
-    if (vnd >= 1_000_000) {
-      const tr = vnd / 1_000_000;
-      const rounded = Math.round(tr * 10) / 10;
-      return `~${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}tr`;
-    }
-    return `~${Math.round(vnd / 1000)}k`;
+    return captionText.sanitizeDeckPageText(this.activeDestinationId, page);
   }
 
   private sanitizePageItemText(item: PageItem, page?: DeckPage): PageItem {
-    const isBudgetTableItem = page?.type === 'list' && (page.layoutVariant === 'budget-3n2d-table' || page.layoutVariant === 'itinerary-note-threads-budget');
-    const isPov3V2Stack = page?.type === 'list' && page.layoutVariant === 'pov-3-v2-stack';
-    const stackTagline = isPov3V2Stack
-      ? finalizePov3V2Tagline({ name: item.name, highlight: item.label || item.imageNote || '', sectionKey: item.sourceSectionKey } as GuideItem)
-      : '';
-    return {
-      ...item,
-      label: this.sanitizeContentText(isPov3V2Stack ? (stackTagline || item.label || '') : (item.label || '')),
-      name: this.sanitizeContentText(item.name || ''),
-      rawName: item.rawName ? this.sanitizeContentText(item.rawName) : item.rawName,
-      metaPrimary: this.sanitizeContentText(item.metaPrimary || ''),
-      metaSecondary: this.sanitizeContentText(item.metaSecondary || ''),
-      imageNote: this.sanitizeContentText(isPov3V2Stack ? (stackTagline || item.imageNote || '') : (item.imageNote || '')),
-      ...(isBudgetTableItem ? {
-        imageUrl: '',
-        imageMapped: false,
-        imageSource: 'fallback' as const,
-        imageNote: '',
-        candidateImageUrls: [],
-      } : {}),
-    };
-  }
-
-  private stripPageItemImage(item: PageItem): PageItem {
-    return {
-      ...item,
-      imageUrl: '',
-      imageMapped: false,
-      imageSource: 'fallback',
-      imageNote: '',
-      candidateImageUrls: undefined,
-    };
+    return captionText.sanitizePageItemText(item, page);
   }
 
   private enforceGrid8QuaytungMenuPage(page: ListPage): ListPage {
-    const photoKeptBySection = new Set<string>();
-    return {
-      ...page,
-      backgroundImage: '',
-      items: page.items.map((item) => {
-        const sectionKey = String(item.label || '').trim();
-        if (!String(item.imageUrl || '').trim()) return this.stripPageItemImage(item);
-        if (photoKeptBySection.has(sectionKey)) return this.stripPageItemImage(item);
-        photoKeptBySection.add(sectionKey);
-        return item;
-      }),
-    };
-  }
-
-  private escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  private tryParseJson(value: string): Record<string, unknown> | null {
-    try {
-      const parsed = JSON.parse(value.trim());
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
-      return null;
-    } catch { return null; }
+    return captionText.enforceGrid8QuaytungMenuPage(page);
   }
 
   private normalizeCaptionPayload(
@@ -5182,89 +3376,7 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     deckId = '',
     forbiddenPlaceNames: string[] = [],
   ): { coverTitle: string; headline: string; body: string; hashtags: string[] } {
-    const nextCoverTitle = String(
-      parsed.coverTitle ?? (parsed as Record<string, unknown>).cover_title ?? parsed.cover ?? '',
-    ).trim();
-    const nextHeadline = String(
-      parsed.headline ?? parsed.hook ?? (parsed as Record<string, unknown>).caption_text ?? '',
-    ).trim();
-    const nextBody = String(parsed.body ?? parsed.caption ?? '').trim();
-    const nextHashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags.map((h) => String(h).trim()).filter(Boolean) : [];
-
-    const removeLayoutTerms = (value: string): string => String(value || '')
-      .replace(/\b[234]\s*(?:x|×|by)\s*[234]\b/gi, '')
-      .replace(/\b(?:grid|layout)\b/gi, '')
-      .replace(/\b\d+\s*điểm\s*\/\s*\d+\s*trang\b/giu, '')
-      .replace(/\b\d+\s*diem\s*\/\s*\d+\s*trang\b/gi, '')
-      .replace(/(^|[\s([{])(?:lưới|luoi)(?=$|[\s,.;:!?)}\]])/gi, '$1')
-      .replace(/(^|[\s([{])(?:bố\s*cục|bo\s*cuc)(?=$|[\s,.;:!?)}\]])/gi, '$1')
-      .replace(/(^|[\s([{])(?:\d+\s*)?(?:ô|o)\s*(?:ảnh|anh|hình|hinh)(?=$|[\s,.;:!?)}\]])/gi, '$1')
-      .replace(/(^|[\s([{])(?:\d+\s*)?(?:khung|khuôn|khuon)\s*(?:ảnh|anh|hình|hinh)(?=$|[\s,.;:!?)}\]])/gi, '$1')
-      .replace(/\bcó\s+(đẹp|xinh|chill|ngon|hay|ổn|on)\b/gi, '$1')
-      .replace(/\s{2,}/g, ' ')
-      .replace(/\s+([,.!?])/g, '$1')
-      .trim();
-    const normalizeCoverTitle = (v: string) => {
-      const maxLen = this.coverTitleMaxLen(deckId);
-      const fallback = this.coverTitleFallbackForDeck(deckId, `${deckId}:${v}:${tone}`);
-      const withoutLayout = removeLayoutTerms(this.sanitizeContentText(sanitizeDeckHeadline(v || fallback)));
-      const clean = withoutLayout.replace(/\s+/g, ' ').trim();
-      // coverTitle luôn viết thường theo văn phong casual đã chốt — ép ở code thay vì chỉ nhờ AI tuân thủ.
-      const finalize = (text: string) => this.truncateCaptionText(text, maxLen).toLowerCase();
-      if (this.isBannedSampleCaptionText(clean)) return finalize(fallback);
-      return finalize(this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback);
-    };
-    const normalizeHeadline = (v: string) => {
-      const fallback = localizeText('Lưu list này rồi đi Đà Lạt cho đỡ mò từng nơi nhé.', this.activeDestinationId);
-      const withoutLayout = removeLayoutTerms(this.sanitizeContentText(v || fallback));
-      const withoutPlaces = this.removeForbiddenPlaceNames(withoutLayout, forbiddenPlaceNames);
-      const clean = this.sanitizeContentText(withoutPlaces).replace(/\s+/g, ' ').trim();
-      if (this.isBannedSampleCaptionText(clean)) return this.truncateCaptionText(fallback, 80);
-      return this.truncateCaptionText(this.hasForbiddenPlaceName(clean, forbiddenPlaceNames) ? fallback : clean || fallback, 80);
-    };
-    // Người dùng đã quyết định bỏ hẳn mô tả (body) khỏi app — ép cứng luôn rỗng bất kể AI trả về gì,
-    // không chỉ khi AI trả rỗng. Không dựa vào việc AI có tuân thủ hướng dẫn prompt hay không.
-    const normalizeBody = (_v: string) => '';
-    const normalizeHashtags = (values: string[]): string[] => buildCaptionHashtags(values, tone, this.activeDestinationId, deckId || undefined);
-
-    if (target === 'cover_title') {
-      return {
-        coverTitle: normalizeCoverTitle(nextCoverTitle || current.coverTitle),
-        headline: normalizeHeadline(current.headline),
-        body: normalizeBody(current.body),
-        hashtags: normalizeHashtags(current.hashtags),
-      };
-    }
-    if (target === 'headline') {
-      return {
-        coverTitle: normalizeCoverTitle(current.coverTitle),
-        headline: normalizeHeadline(nextHeadline),
-        body: normalizeBody(current.body),
-        hashtags: normalizeHashtags(current.hashtags),
-      };
-    }
-    if (target === 'body') {
-      return {
-        coverTitle: normalizeCoverTitle(current.coverTitle),
-        headline: normalizeHeadline(current.headline),
-        body: normalizeBody(nextBody),
-        hashtags: normalizeHashtags(current.hashtags),
-      };
-    }
-    if (target === 'hashtags') {
-      return {
-        coverTitle: normalizeCoverTitle(current.coverTitle),
-        headline: normalizeHeadline(current.headline),
-        body: normalizeBody(current.body),
-        hashtags: normalizeHashtags(nextHashtags),
-      };
-    }
-    return {
-      coverTitle: normalizeCoverTitle(nextCoverTitle),
-      headline: normalizeHeadline(nextHeadline),
-      body: normalizeBody(nextBody),
-      hashtags: normalizeHashtags(nextHashtags),
-    };
+    return captionText.normalizeCaptionPayload(this.activeDestinationId, parsed, current, target, tone, deckId, forbiddenPlaceNames);
   }
 
   private async prepareWorkbookForDataset(forceRefresh: boolean): Promise<void> {
@@ -5452,105 +3564,68 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
 
   // ─── Utility ──────────────────────────────────────────────────────────────
 
-  private captionBodyFallback(): string {
-    return getMarketingCopy(this.activeDestinationId).captionBodyFallback;
-  }
-
+  // ─── workbook-store.ts ─────────────────────────────────────────────
   private extractSheetId(value: string): string {
-    const match = String(value || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-    return match?.[1] || '';
+    return workbookStore.extractSheetId(value);
   }
 
   private parseGoogleSheetUrl(value: unknown): { sheetId: string; sheetUrl: string; exportUrl: string } {
-    const raw = String(value || '').trim();
-    let parsed: URL;
-    try {
-      parsed = new URL(raw);
-    } catch {
-      throw new BadRequestException('Link Google Sheet không hợp lệ.');
-    }
-    if (parsed.protocol !== 'https:' || parsed.hostname !== 'docs.google.com') {
-      throw new BadRequestException('Chỉ hỗ trợ link Google Sheet từ docs.google.com.');
-    }
-    const sheetId = this.extractSheetId(parsed.pathname);
-    if (!sheetId) {
-      throw new BadRequestException('Không tìm thấy mã Google Sheet trong link.');
-    }
-    const gid = parsed.searchParams.get('gid') || new URLSearchParams(parsed.hash.replace(/^#/, '')).get('gid');
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit${gid ? `?gid=${encodeURIComponent(gid)}#gid=${encodeURIComponent(gid)}` : ''}`;
-    const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
-    return { sheetId, sheetUrl, exportUrl };
+    return workbookStore.parseGoogleSheetUrl(value);
   }
 
   private createDestinationShortLabel(label: string): string {
-    const words = label.split(/\s+/).filter(Boolean);
-    const initials = words.map((word) => [...word][0] || '').join('');
-    const value = (initials.length >= 2 ? initials : label.slice(0, 2)).toLocaleUpperCase('vi-VN');
-    return value.slice(0, 3);
+    return workbookStore.createDestinationShortLabel(label);
   }
 
   private normalizeDestinationLabel(value: unknown): string {
-    const label = String(value || '').replace(/\s+/g, ' ').trim();
-    if (label.length < 2 || label.length > 60) {
-      throw new BadRequestException('Tên nguồn dữ liệu phải có từ 2 đến 60 ký tự.');
-    }
-    return label;
+    return workbookStore.normalizeDestinationLabel(value);
   }
 
   private validateWorkbookUpload(file: LocalWorkbookUpload | undefined): LocalWorkbookUpload {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException('Vui lòng chọn file XLSX.');
-    }
-    const originalname = path.basename(String(file.originalname || 'du-lieu.xlsx')).trim();
-    if (!/\.xlsx$/i.test(originalname)) {
-      throw new BadRequestException('Chỉ chấp nhận file có định dạng .xlsx.');
-    }
-    if (file.buffer.byteLength > MAX_WORKBOOK_FILE_BYTES || Number(file.size || 0) > MAX_WORKBOOK_FILE_BYTES) {
-      throw new BadRequestException('File XLSX vượt quá giới hạn 20 MB.');
-    }
-    return { ...file, originalname, size: file.buffer.byteLength };
+    return workbookStore.validateWorkbookUpload(file);
   }
 
   private createUploadedWorkbookSource(
     config: DestinationConfig,
     file: LocalWorkbookUpload,
   ): SheetWorkbookSource {
-    try {
-      return parseWorkbookBuffer(file.buffer, {
-        workbookName: file.originalname,
-        destinationId: config.id,
-        sourceUrl: this.workbookSnapshotPath(config.id),
-        sourceType: 'runtime-xlsx',
-      });
-    } catch (error) {
-      throw new BadRequestException(error instanceof Error ? error.message : String(error));
-    }
+    return workbookStore.createUploadedWorkbookSource(this.dataRoot, config, file);
   }
 
   private validateWorkbookData(source: SheetWorkbookSource): void {
-    let recognizedSheetCount = 0;
-    let dataRowCount = 0;
-    const nameFields = ['ten_quan', 'ten_dia_diem', 'hoat_dong', 'ten'];
-    for (const sheetName of source.workbook.SheetNames) {
-      if (!resolveSectionKeyFromSheetName(sheetName)) continue;
-      recognizedSheetCount += 1;
-      const rows = XLSX.utils.sheet_to_json<(string | number)[]>(source.workbook.Sheets[sheetName], {
-        header: 1,
-        raw: false,
-        defval: '',
-      });
-      const headers = (rows[0] || []).map((header) => normalizeText(header));
-      const nameIndexes = nameFields
-        .map((field) => headers.indexOf(field))
-        .filter((index) => index >= 0);
-      if (!nameIndexes.length) continue;
-      dataRowCount += rows.slice(1).filter((row) => nameIndexes.some((index) => String(row[index] || '').trim())).length;
-    }
-    if (!recognizedSheetCount || !dataRowCount) {
-      throw new BadRequestException(
-        'Workbook không có dữ liệu địa điểm hợp lệ. Cần có sheet đúng nhóm và cột tên địa điểm.',
-      );
-    }
+    return workbookStore.validateWorkbookData(source);
+  }
+
+  private readDestinationStats(id: DestinationId): Pick<DestinationSummary, 'totalItems' | 'syncedAt'> {
+    return workbookStore.readDestinationStats(this.dataRoot, id);
+  }
+
+  private writeDestinationStats(id: DestinationId, totalItems: number): void {
+    return workbookStore.writeDestinationStats(this.dataRoot, id, totalItems);
+  }
+
+  private workbookSnapshotPath(id: DestinationId): string {
+    return workbookStore.workbookSnapshotPath(this.dataRoot, id);
+  }
+
+  private applyStoredWorkbookMetadata(config: DestinationConfig): void {
+    return workbookStore.applyStoredWorkbookMetadata(this.dataRoot, config);
+  }
+
+  private writeWorkbookMetadata(id: DestinationId, workbookFileName: string): void {
+    return workbookStore.writeWorkbookMetadata(this.dataRoot, id, workbookFileName);
+  }
+
+  private bundledWorkbookPath(id: DestinationId): string | null {
+    return workbookStore.bundledWorkbookPath(this.toolRoot, id);
+  }
+
+  private loadPreferredWorkbookSource(id: DestinationId): SheetWorkbookSource | null {
+    return workbookStore.loadPreferredWorkbookSource(this.dataRoot, this.toolRoot, id);
+  }
+
+  private saveWorkbookSnapshot(source: SheetWorkbookSource, throwOnError = false): void {
+    return workbookStore.saveWorkbookSnapshot(this.dataRoot, source, throwOnError);
   }
 
   private async activateWorkbookSource(
@@ -5638,170 +3713,6 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
     };
   }
 
-  private destinationStatsPath(id: DestinationId): string {
-    return path.join(this.dataRoot, `destination-stats.${id}.json`);
-  }
-
-  private readDestinationStats(id: DestinationId): Pick<DestinationSummary, 'totalItems' | 'syncedAt'> {
-    const filePath = this.destinationStatsPath(id);
-    if (!fs.existsSync(filePath)) return {};
-    try {
-      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as { totalItems?: number; syncedAt?: string };
-      const totalItems = Number(parsed.totalItems);
-      return {
-        totalItems: Number.isFinite(totalItems) && totalItems >= 0 ? totalItems : undefined,
-        syncedAt: parsed.syncedAt ? String(parsed.syncedAt) : undefined,
-      };
-    } catch {
-      return {};
-    }
-  }
-
-  private writeDestinationStats(id: DestinationId, totalItems: number): void {
-    this.ensureDataRoot();
-    fs.writeFileSync(
-      this.destinationStatsPath(id),
-      JSON.stringify({ totalItems, syncedAt: new Date().toISOString() }, null, 2),
-      'utf-8',
-    );
-  }
-
-  private workbookSnapshotPath(id: DestinationId): string {
-    if (isIsolatedSheetSource(id)) {
-      const published = publishedSourcePaths(this.dataRoot, id);
-      if (published) return published.workbook;
-    }
-    return path.join(this.dataRoot, `workbook-cache.${id}.xlsx`);
-  }
-
-  private workbookMetadataPath(id: DestinationId): string {
-    return path.join(this.dataRoot, `workbook-source-meta.${id}.json`);
-  }
-
-  private applyStoredWorkbookMetadata(config: DestinationConfig): void {
-    const metadataPath = this.workbookMetadataPath(config.id);
-    if (!fs.existsSync(metadataPath)) return;
-    try {
-      const parsed = JSON.parse(fs.readFileSync(metadataPath, 'utf-8')) as { workbookFileName?: string };
-      const fileName = path.basename(String(parsed.workbookFileName || '')).trim();
-      if (/\.xlsx$/i.test(fileName)) {
-        config.workbookName = fileName;
-        config.workbookFileName = fileName;
-      }
-    } catch {
-      // Metadata chỉ dùng để hiển thị tên file; workbook vẫn đọc bình thường nếu file này hỏng.
-    }
-  }
-
-  private writeWorkbookMetadata(id: DestinationId, workbookFileName: string): void {
-    this.ensureDataRoot();
-    fs.writeFileSync(
-      this.workbookMetadataPath(id),
-      JSON.stringify({ workbookFileName, updatedAt: new Date().toISOString() }, null, 2),
-      'utf-8',
-    );
-  }
-
-  private bundledWorkbookPath(id: DestinationId): string | null {
-    const fileName = getDestinationConfig(id).bundledWorkbookFile;
-    if (!fileName) return null;
-    const target = path.join(this.toolRoot, 'resources', 'workbooks', fileName);
-    return safeRelative(path.join(this.toolRoot, 'resources', 'workbooks'), target) && fs.existsSync(target)
-      ? target
-      : null;
-  }
-
-  private loadPreferredWorkbookSource(id: DestinationId): SheetWorkbookSource | null {
-    return this.loadWorkbookSnapshot(id) || this.loadBundledWorkbook(id);
-  }
-
-  private loadWorkbookSnapshot(id: DestinationId): SheetWorkbookSource | null {
-    const snapshotPath = this.workbookSnapshotPath(id);
-    if (!fs.existsSync(snapshotPath)) return null;
-    try {
-      const workbookBuffer = fs.readFileSync(snapshotPath);
-      if (!workbookBuffer.length) return null;
-      const config = getDestinationConfig(id);
-      this.applyStoredWorkbookMetadata(config);
-      const stat = fs.statSync(snapshotPath);
-      const source = parseWorkbookBuffer(workbookBuffer, {
-        workbookName: config.workbookName,
-        destinationId: id,
-        fetchedAt: stat.mtimeMs,
-        sourceUrl: snapshotPath,
-        sourceType: 'runtime-xlsx',
-      });
-      this.validateWorkbookData(source);
-      console.log(`[xlsx] Dùng workbook cục bộ (${config.label}): ${snapshotPath}`);
-      return source;
-    } catch (error) {
-      console.warn(
-        `[xlsx] Không đọc được workbook cục bộ (${getDestinationConfig(id).label}), thử bản đóng kèm:`,
-        error instanceof Error ? error.message : error,
-      );
-      return null;
-    }
-  }
-
-  private loadBundledWorkbook(id: DestinationId): SheetWorkbookSource | null {
-    const bundledPath = this.bundledWorkbookPath(id);
-    if (!bundledPath) return null;
-    try {
-      const config = getDestinationConfig(id);
-      const body = fs.readFileSync(bundledPath);
-      const stat = fs.statSync(bundledPath);
-      const source = parseWorkbookBuffer(body, {
-        workbookName: config.workbookName,
-        destinationId: id,
-        fetchedAt: stat.mtimeMs,
-        sourceUrl: bundledPath,
-        sourceType: 'bundled-xlsx',
-      });
-      this.validateWorkbookData(source);
-      console.log(`[xlsx] Dùng workbook đóng kèm (${config.label}): ${bundledPath}`);
-      return source;
-    } catch (error) {
-      console.warn(
-        `[xlsx] Không đọc được workbook đóng kèm (${getDestinationConfig(id).label}):`,
-        error instanceof Error ? error.message : error,
-      );
-      return null;
-    }
-  }
-
-  private saveWorkbookSnapshot(source: SheetWorkbookSource, throwOnError = false): void {
-    const target = this.workbookSnapshotPath(source.destinationId);
-    const temporary = `${target}.tmp-${process.pid}-${Date.now()}`;
-    const backup = `${target}.bak`;
-    let movedOldFile = false;
-    try {
-      this.ensureDataRoot();
-      const body = source.workbookBuffer?.length
-        ? source.workbookBuffer
-        : XLSX.write(source.workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
-      fs.writeFileSync(temporary, body);
-      if (fs.existsSync(backup)) fs.rmSync(backup, { force: true });
-      if (fs.existsSync(target)) {
-        fs.renameSync(target, backup);
-        movedOldFile = true;
-      }
-      fs.renameSync(temporary, target);
-      if (movedOldFile && fs.existsSync(backup)) fs.rmSync(backup, { force: true });
-    } catch (error) {
-      if (fs.existsSync(temporary)) fs.rmSync(temporary, { force: true });
-      if (movedOldFile && !fs.existsSync(target) && fs.existsSync(backup)) {
-        fs.renameSync(backup, target);
-      }
-      console.warn(
-        `[xlsx] Không lưu được workbook cục bộ (${getDestinationConfig(source.destinationId).label}):`,
-        error instanceof Error ? error.message : error,
-      );
-      if (throwOnError) {
-        throw new ServiceUnavailableException('Không thể lưu file XLSX; dữ liệu cũ vẫn được giữ nguyên.');
-      }
-    }
-  }
-
   private loadActiveDestinationId(): DestinationId {
     if (!fs.existsSync(this.activeDestinationPath)) return DEFAULT_DESTINATION_ID;
     try {
@@ -5819,27 +3730,24 @@ return await aiProvider.run(() => this.runtimePerformance.runGenerationTask(() =
   }
 
   private getDestinationDataPath(baseName: string): string {
-    return path.join(this.dataRoot, `${baseName}.${this.activeDestinationId}.json`);
+    return fileIo.getDestinationDataPath(this.dataRoot, baseName, this.activeDestinationId);
   }
 
   private resolveDestinationDataPath(baseName: string): string {
-    const scopedPath = this.getDestinationDataPath(baseName);
-    if (fs.existsSync(scopedPath)) return scopedPath;
-    const legacyPath = path.join(this.dataRoot, `${baseName}.json`);
-    if (this.activeDestinationId === DEFAULT_DESTINATION_ID && fs.existsSync(legacyPath)) return legacyPath;
-    return scopedPath;
+    return fileIo.resolveDestinationDataPath(this.dataRoot, baseName, this.activeDestinationId);
   }
 
   private resetDestinationScopedState(): void {
     this.generatedListsLoaded = false;
     this.generatedListsByDeckId.clear();
     this.partnerRotation = {};
+    this.localTemplateState = {};
     this.inventoryLoaded = false;
     this.usedAllocator = new DataAllocator();
     this.driveAccessCacheLoadedFor = null;
   }
 
   private cloneJson<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value)) as T;
+    return fileIo.cloneJson(value);
   }
 }

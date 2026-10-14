@@ -69,6 +69,7 @@ async function main() {
    // Exercise the actual batch catch/stop path, without constructing the live service.
    (aiProvider as any).read=()=>({active:'deepseek',profiles:{deepseek:{model:'deepseek-chat'},gemini:{model:''}}});
    const service:any=Object.create(GuideService.prototype);
+   service.activeDestinationId='dalat';
    service.assertDriveCacheReady=()=>{};service.ensureGeneratedListsLoaded=()=>{};service.generatedListsByDeckId=new Map();
    service.prepareV4CaptionDeck=async()=>({id:'spotlight-v4',lists:[{id:'test',pages:[]}]});
    service.getUsedCaptionTitles=()=>[];service.buildDeepSeekPrompt=()=> 'test';

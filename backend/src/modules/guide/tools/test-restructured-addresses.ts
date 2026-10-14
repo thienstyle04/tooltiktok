@@ -2,10 +2,13 @@ import * as fs from 'node:fs';
 import * as XLSX from 'xlsx';
 import { composeAddress, firstValue, normalizeText, normalizeWorkbookHeaders } from '../logic/image-resolver';
 
-const workbookPaths = [
-  'C:/Users/thien/AppData/Local/Temp/dalat-sheet-audit-20260829/dalat.xlsx',
-  'C:/Users/thien/AppData/Local/Temp/dalat-sheet-audit-20260829/greenland.xlsx',
-];
+// Needs real post-restructure sheet exports (bundled resources/workbooks predate ten_phuong).
+// Usage: test-restructured-addresses.ts <dalat.xlsx> <greenland.xlsx>
+const workbookPaths = process.argv.slice(2);
+if (!workbookPaths.length) {
+  console.log('SKIP restructured-addresses: pass exported sheet workbooks as arguments (external fixture)');
+  process.exit(0);
+}
 
 for (const workbookPath of workbookPaths) {
   if (!fs.existsSync(workbookPath)) throw new Error(`Missing workbook: ${workbookPath}`);
@@ -37,5 +40,6 @@ for (const workbookPath of workbookPaths) {
     }
   }
 
+  if (!checked) throw new Error(`${workbookPath}: no dia_chi + ten_phuong rows; not a restructured workbook`);
   console.log(`PASS ${workbookPath}: checked ${checked} ward prefixes, inferred ${inferredWardColumns} columns`);
 }

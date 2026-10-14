@@ -18,12 +18,12 @@ const bundle = await esbuild.build({
   globalName: 'DarkNoteTest',
   write: false,
 });
-const exportSource = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8');
+const exportTest = require('./exportClientTestHelper.cjs');
 const exportBundle = await esbuild.build({
-  stdin: {
-    contents: `${exportSource}\nexport { addListMetadataFiles, assertItineraryNoteDarkPartnerExportReady, JSZip };`,
-    resolveDir: path.join(root, 'lib'),
-  },
+  ...exportTest.bundleOptions({
+    names: ['addListMetadataFiles', 'assertItineraryNoteDarkPartnerExportReady'],
+    extra: "export { default as JSZip } from 'jszip';",
+  }),
   bundle: true,
   platform: 'browser',
   format: 'iife',

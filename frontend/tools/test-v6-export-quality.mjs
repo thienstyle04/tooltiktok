@@ -6,8 +6,9 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const esbuild = require('esbuild');
 const root = path.resolve(import.meta.dirname, '..');
-const source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8');
-const bundle = await esbuild.build({ stdin: { contents: source + '\nexport { exportQualityProfile, prepareQualityLayout, resizeImageBlobForExport, fitImageBlobToElement, renderPageBlobWithRetry, mapExportWithSequentialRetry };', resolveDir: path.join(root, 'lib') }, bundle: true, platform: 'browser', format: 'iife', globalName: 'TestExport', write: false });
+const exportTest = require('./exportClientTestHelper.cjs');
+const internalNames = ['exportQualityProfile', 'prepareQualityLayout', 'resizeImageBlobForExport', 'fitImageBlobToElement', 'renderPageBlobWithRetry', 'mapExportWithSequentialRetry'];
+const bundle = await esbuild.build({ stdin: { contents: exportTest.bundleContents(internalNames), resolveDir: exportTest.libDir }, plugins: [exportTest.internalsPlugin(internalNames)], bundle: true, platform: 'browser', format: 'iife', globalName: 'TestExport', write: false });
 const executablePath = [process.env.PROGRAMFILES + '/Google/Chrome/Application/chrome.exe', process.env['PROGRAMFILES(X86)'] + '/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
 const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 try {

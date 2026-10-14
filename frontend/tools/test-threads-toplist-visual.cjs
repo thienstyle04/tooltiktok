@@ -10,9 +10,9 @@ const bundle = esbuild.buildSync({
   stdin: { contents: "export {renderCoverPage,renderListPage} from './frontend/lib/pageMarkup';", resolveDir: root },
   bundle: true, write: false, format: 'iife', globalName: 'ToplistTest',
 }).outputFiles[0].text;
-const exportSource = fs.readFileSync(path.join(root, 'frontend/lib/exportClient.js'), 'utf8');
+const exportTest = require('./exportClientTestHelper.cjs');
 const exportBundle = esbuild.buildSync({
-  stdin: { contents: exportSource + '\nexport {prepareQualityLayout,exportQualityProfile,renderPageBlobWithRetry};\nexport {fitThreadsToplist} from "./threadsToplist";', resolveDir: path.join(root, 'frontend/lib') },
+  ...exportTest.bundleOptions({ names: ['prepareQualityLayout', 'exportQualityProfile', 'renderPageBlobWithRetry'], extra: 'export {fitThreadsToplist} from "./threadsToplist";' }),
   bundle: true, write: false, format: 'iife', globalName: 'ToplistExportTest',
 }).outputFiles[0].text;
 const css = ['foundation.css', 'story-base.css', 'tiktok-classic-font.css', 'threads-toplist.css'].map(name =>

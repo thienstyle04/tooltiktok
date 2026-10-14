@@ -10,9 +10,11 @@ async function api(url, method = 'GET', body) {
   const text = await response.text();
   return text ? JSON.parse(text) : {};
 }
-let source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8').replace('function downloadBlobFile(', 'function unusedDownloadBlobFile(');
-source += '\nfunction downloadBlobFile(blob,name){window.downloads.push({blob,name});return true;} export {JSZip};';
-const bundle = await esbuild.build({ stdin: { contents: source, resolveDir: path.join(root, 'lib') }, bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'MixedTest' });
+const exportTest = require('./exportClientTestHelper.cjs');
+const bundle = await esbuild.build({ ...exportTest.bundleOptions({
+  overrides: { downloadBlobFile: 'downloadBlobFile = function (blob, name) { window.downloads.push({ blob, name }); return true; };' },
+  extra: "export { default as JSZip } from 'jszip';",
+}), bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'MixedTest' });
 const css = [...fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8').matchAll(/@import url\("(.+?)"\)/g)].map(m => fs.readFileSync(path.join(root, 'app', m[1]), 'utf8')).join('\n');
 const executablePath = [process.env.PROGRAMFILES + '/Google/Chrome/Application/chrome.exe', process.env['PROGRAMFILES(X86)'] + '/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
 const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });

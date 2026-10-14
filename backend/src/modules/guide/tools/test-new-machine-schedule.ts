@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { AutomationSchedulerService } from '../automation-scheduler.service';
+import { GuideService } from '../guide.service';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-new-schedule-'));
 const originalNow = Date.now;
@@ -11,7 +12,11 @@ Date.now = () => now;
 const open = () => {
   const s: any = Object.create(AutomationSchedulerService.prototype);
   s.dataRoot = root; s.statePath = path.join(root, 'automation-schedules.json');
-  s.guideService = { getDestinations: () => ({ destinations: [{ id: 'dalat' }] }) };
+  s.guideService = {
+    getDestinations: () => ({ destinations: [{ id: 'dalat' }] }),
+    // Dùng đúng luật cho phép mẫu thật; sourceId luôn được truyền nên không đọc `this`.
+    assertTemplateAllowed: (deckId: unknown, sourceId: string) => GuideService.prototype.assertTemplateAllowed.call({}, deckId, sourceId),
+  };
   s.state = s.load(); s.activeRunId = ''; s.runQueue = Promise.resolve();
   // Intercept only job execution: exercise real validation, persistence and due-time logic.
   s.enqueue = (run: any) => { s.state.runs.unshift(run); };

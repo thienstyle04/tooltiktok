@@ -8,7 +8,7 @@ export function coverSourceId(source) {
 }
 export function hookTopic(hook) {
   const text = String(hook || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
-  for (const [topic, pattern] of [['green', /dia diem xanh|rung thong|giua rung|mang xanh/], ['night', /choi dem|ve dem|di dem/], ['food', /an gi|quan an|an uong|mon ngon/], ['cafe', /ca phe|cafe|coffee/], ['stay', /homestay|luu tru|khach san/], ['city', /pho phuong|pho thi|giua pho/]]) if (pattern.test(text)) return topic;
+  for (const [topic, pattern] of /** @type {Array<[string, RegExp]>} */ ([['green', /dia diem xanh|rung thong|giua rung|mang xanh/], ['night', /choi dem|ve dem|di dem/], ['food', /an gi|quan an|an uong|mon ngon/], ['cafe', /ca phe|cafe|coffee/], ['stay', /homestay|luu tru|khach san/], ['city', /pho phuong|pho thi|giua pho/]])) if (pattern.test(text)) return topic;
   return null;
 }
 export function coverApprovalToken(page) { return JSON.stringify([page.title, (page.coverImages?.length ? page.coverImages : [page.backgroundImage]).map(coverSourceId)]); }

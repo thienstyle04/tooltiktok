@@ -6,8 +6,8 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const esbuild = require('esbuild');
 const root = path.resolve(import.meta.dirname, '..');
-const source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8');
-const bundle = await esbuild.build({ stdin: { contents: source + '\nexport {runAdaptiveExport, isResourceExportError, exportQualityProfile};', resolveDir: path.join(root, 'lib') }, bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'AdaptiveTest' });
+const exportTest = require('./exportClientTestHelper.cjs');
+const bundle = await esbuild.build({ ...exportTest.bundleOptions({ names: ['runAdaptiveExport', 'isResourceExportError', 'exportQualityProfile'] }), bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'AdaptiveTest' });
 const executablePath = [process.env.PROGRAMFILES + '/Google/Chrome/Application/chrome.exe', process.env['PROGRAMFILES(X86)'] + '/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
 const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 try {

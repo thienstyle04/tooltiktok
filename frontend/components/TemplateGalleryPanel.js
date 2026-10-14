@@ -42,6 +42,7 @@ function isPortableImageUrl(value) {
 }
 
 function deckCover(deck) {
+  if (deck?.localTemplate?.previewImageUrl) return deck.localTemplate.previewImageUrl;
   const lists = deck?.lists || [];
   let fallback = '';
   for (const list of lists) {
@@ -93,7 +94,7 @@ export default function TemplateGalleryPanel({
 
           return (
             <article key={deck.id} className={`template-card ${active ? 'active' : ''}`}>
-              <button className="template-cover-button" type="button" onClick={() => onPreviewDeck(deck)}>
+              <button className="template-cover-button" type="button" onClick={() => deck.localTemplate && !deck.lists.length ? onCaptionDeck(deck) : onPreviewDeck(deck)}>
                 {cover ? <img src={cover} alt="" /> : <span className="template-cover-fallback">{deck.navTitle}</span>}
                 <span className="template-cover-label">{deck.navTitle}</span>
               </button>
@@ -101,7 +102,7 @@ export default function TemplateGalleryPanel({
               <div className="template-card-copy">
                 <div>
                   <p className="template-card-kicker">
-                    {deck.lists.length} list · {pageCount} trang
+                    {deck.localTemplate && !deck.lists.length ? `${deck.localTemplate.pageCount || '—'} trang/list · Mẫu riêng` : `${deck.lists.length} list · ${pageCount} trang`}
                     {V2_DECK_IDS.has(deck.id) ? <span className="template-gallery-v2-badge">V2</span> : null}
                   </p>
                   <h4>{deck.title}</h4>
@@ -128,7 +129,7 @@ export default function TemplateGalleryPanel({
               </div>
 
               <div className="template-card-actions">
-                <button className="toolbar-button primary" type="button" onClick={() => onPreviewDeck(deck)}>Xem & chỉnh sửa</button>
+                <button className="toolbar-button primary" type="button" disabled={Boolean(deck.localTemplate && !deck.lists.length)} onClick={() => onPreviewDeck(deck)}>Xem & chỉnh sửa</button>
                 <button className="toolbar-button" type="button" onClick={() => onCaptionDeck(deck)}>Tạo list</button>
               </div>
             </article>

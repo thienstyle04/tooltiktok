@@ -5,8 +5,11 @@ import { hasItemKey, itemUsageKey } from './data-allocator';
 export const DIARY_TEMPLATE_VERSION = 1;
 export const DIARY_CAPTION = 'Một vài gợi ý quán ăn và cà phê ở Đà Lạt để mọi người lưu lại.';
 export const DIARY_INTRO = 'Gợi ý vài địa điểm ở Đà Lạt cho mọi người nè';
-export const DIARY_ORDER = ['quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an'] as const;
+export const DIARY_ORDER = ['quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an', 'cafe', 'quan_an', 'cafe', 'check_in'] as const;
 export const DIARY_PAGE_COUNT = 3 + DIARY_ORDER.length;
+export const DIARY_PARTNER_COUNT = 8;
+const DIARY_GROUPS = ['quan_an', 'cafe', 'check_in'] as const;
+const GROUP_LABELS = { quan_an: 'Quán ăn', cafe: 'Cafe', check_in: 'Check-in' };
 
 // A newline is the source author's boundary, not an uppercase letter in a name.
 export function diaryDescriptionLines(raw: string): string[] {
@@ -47,13 +50,14 @@ export function buildDiaryPages(input: DiaryInput): DeckPage[] {
   const sortImages = (a: string, b: string) => Number(usedImages.has(diaryImageId(a))) - Number(usedImages.has(diaryImageId(b))) || rank(a) - rank(b);
   const randomPool = [...new Map(input.randomImages.filter(diaryImageId).map(url => [diaryImageId(url), url])).values()].sort(sortImages);
   if (randomPool.length < 3) throw new Error(`Spotlight Nhật ký thiếu ảnh Random (${randomPool.length}/3).`);
-  const pools = Object.fromEntries(['quan_an', 'cafe'].map(section => [section,
-    (input.itemsBySection[section as 'quan_an' | 'cafe'] || []).filter(item => item.isPartner && item.name.trim() && item.imageSource !== 'fallback' && images(item).length && diaryDescriptionLines(item.diaryDescriptionRaw || '').length)
+  const pools = Object.fromEntries(DIARY_GROUPS.map(section => [section,
+    (input.itemsBySection[section] || []).filter(item => (section === 'check_in' || item.isPartner) && item.name.trim() && item.imageSource !== 'fallback' && images(item).length && diaryDescriptionLines(item.diaryDescriptionRaw || '').length)
       .sort((a, b) => Number(hasItemKey(input.usedPlaces || new Set(), a)) - Number(hasItemKey(input.usedPlaces || new Set(), b)) || rank(a.id) - rank(b.id)),
-  ])) as Record<'quan_an' | 'cafe', GuideItem[]>;
-  for (const [group, required] of [['quan_an', 5], ['cafe', 4]] as const) {
+  ])) as Record<typeof DIARY_GROUPS[number], GuideItem[]>;
+  for (const group of DIARY_GROUPS) {
+    const required = DIARY_ORDER.filter(section => section === group).length;
     const count = new Set(pools[group].map(identity)).size;
-    if (count < required) throw new Error(`Spotlight Nhật ký thiếu đối tác ${group === 'cafe' ? 'Cafe' : 'Quán ăn'} có ảnh và một dòng mô tả phù hợp (${count}/${required}).`);
+    if (count < required) throw new Error(`Spotlight Nhật ký thiếu ${group === 'check_in' ? 'địa điểm' : 'đối tác'} ${GROUP_LABELS[group]} có ảnh và một dòng mô tả phù hợp (${count}/${required}).`);
   }
   const selected: { item: GuideItem; image: string }[] = [];
   const names = new Set<string>(), imageIds = new Set<string>();
@@ -65,7 +69,7 @@ export function buildDiaryPages(input: DiaryInput): DeckPage[] {
     const state = [index, [...names].sort().join('|'), [...imageIds].sort().join('|')].join(':');
     if (deadEnds.has(state)) return false;
     // Prune shortage before exploring permutations of the same impossible selection.
-    for (const group of ['quan_an', 'cafe'] as const) {
+    for (const group of DIARY_GROUPS) {
       const need = DIARY_ORDER.slice(index).filter(key => key === group).length;
       const available = pools[group].filter(item => !names.has(identity(item)) && images(item).some(url => !imageIds.has(diaryImageId(url))));
       if (new Set(available.map(identity)).size < need) return false;
@@ -82,7 +86,7 @@ export function buildDiaryPages(input: DiaryInput): DeckPage[] {
     deadEnds.add(state);
     return false;
   };
-  if (!choose(0)) throw new Error('Spotlight Nhật ký không đủ 5 Quán ăn + 4 Cafe có địa điểm và ảnh không trùng.');
+  if (!choose(0)) throw new Error('Spotlight Nhật ký không đủ 4 đối tác Quán ăn + 4 đối tác Cafe + 1 Check-in có địa điểm và ảnh không trùng.');
   const backgrounds = randomPool.filter(url => !imageIds.has(diaryImageId(url))).slice(0, 3);
   const page = (image: string, title: string, items: ListPage['items'] = []): ListPage => ({
     type: 'list', title, subtitle: '', chipText: '', chipTone: 'slate', items, backgroundImage: image,
@@ -98,7 +102,7 @@ export function buildDiaryPages(input: DiaryInput): DeckPage[] {
       const line = (available.length ? available : lines).sort((a, b) => rank(a) - rank(b))[0];
       return page(image, line, [{ id: item.id, sourceKey: itemUsageKey(item), sourceSectionKey: item.sectionKey,
         label: '', name: item.name, rawName: item.name, metaPrimary: item.address || '', metaSecondary: '',
-        imageUrl: image, imageMapped: true, imageSource: item.imageSource, imageNote: '', candidateImageUrls: [image], isPartner: true }]);
+        imageUrl: image, imageMapped: true, imageSource: item.imageSource, imageNote: '', candidateImageUrls: [image], isPartner: Boolean(item.isPartner) }]);
     }),
   ];
 }

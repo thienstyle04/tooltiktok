@@ -47,6 +47,8 @@ async function run(): Promise<void> {
     internals.dataRoot = tempDataRoot;
     internals.toolRoot = tempBackendRoot;
     internals.customDestinationsPath = path.join(tempDataRoot, 'custom-destinations.json');
+    // No onModuleInit warm-up here: mark data ready so manual Sheet sync is not paused forever.
+    internals.destinationDataLoading = false;
 
     const bundled = internals.loadPreferredWorkbookSource('dalat') as SheetWorkbookSource | null;
     assert.equal(bundled?.sourceType, 'bundled-xlsx', 'Máy mới phải dùng XLSX đóng kèm khi chưa có runtime cache');

@@ -6,12 +6,14 @@ const root=path.resolve(import.meta.dirname,'..'),out=path.resolve(root,'../outp
 fs.mkdirSync(out,{recursive:true});
 const API='http://127.0.0.1:3000';
 async function api(url,method='GET',body){const r=await fetch(API+url,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(180000)});const s=await r.text();if(!r.ok)throw new Error(r.status+' '+s.slice(0,500));return s?JSON.parse(s):{};}
-let source=fs.readFileSync(path.join(root,'lib/exportClient.js'),'utf8').replace('function downloadBlobFile(', 'function originalDownloadBlobFile(');
-source=source.replace('export async function renderPageBlob(pageNode, options = {}) {',`export async function renderPageBlob(pageNode, options = {}) {
+const exportTest=require('./exportClientTestHelper.cjs');
+const bundle=await esbuild.build({...exportTest.bundleOptions({
+ replace:[{name:'renderPageBlob',find:'export async function renderPageBlob(pageNode, options = {}) {',with:`export async function renderPageBlob(pageNode, options = {}) {
  window.__fallbacks.push(...Array.from(pageNode.querySelectorAll('[data-export-fallback-src]')).map(n=>n.dataset.exportFallbackSrc));
-`);
-source+='\nfunction downloadBlobFile(blob,name){window.__downloads.push({blob,name});return true;}\nexport {JSZip};';
-const bundle=await esbuild.build({stdin:{contents:source,resolveDir:path.join(root,'lib')},bundle:true,write:false,platform:'browser',format:'iife',globalName:'TestApp'});
+`}],
+ overrides:{downloadBlobFile:'downloadBlobFile = function (blob, name) { window.__downloads.push({ blob, name }); return true; };'},
+ extra:"export { default as JSZip } from 'jszip';",
+}),bundle:true,write:false,platform:'browser',format:'iife',globalName:'TestApp'});
 const css=[...fs.readFileSync(path.join(root,'app/globals.css'),'utf8').matchAll(/@import url\("(.+?)"\)/g)].map(m=>fs.readFileSync(path.join(root,'app',m[1]),'utf8')).join('\n');
 const executablePath=[process.env.PROGRAMFILES+'/Google/Chrome/Application/chrome.exe',process.env['PROGRAMFILES(X86)']+'/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
 const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{})});

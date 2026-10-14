@@ -35,6 +35,14 @@
 .studio-workflow .studio-stat-row {display:none;}
 .studio-workflow .deck-subtitle {color:var(--studio-muted);max-width:75ch;}
 .studio-workflow .status-strip {margin:0 28px;padding:10px 14px;border:0;border-left:3px solid var(--studio-clay);background:var(--studio-surface);flex-shrink:0;}
+.studio-workflow .studio-status-bar {display:grid;grid-template-columns:10px minmax(0,1fr) 140px;align-items:center;gap:10px;height:64px;box-sizing:border-box;padding-block:8px;}
+.studio-workflow .studio-status-bar .status-text {margin:0;min-width:0;line-height:20px;overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+.studio-workflow .studio-status-bar .status-dot {margin:0;}
+.studio-workflow .studio-status-action {width:140px;min-width:0;display:flex;justify-content:flex-end;}
+.studio-workflow .studio-status-cancel {width:100%;min-height:36px;margin:0;font:inherit;font-size:12px;padding:6px 10px;border:1px solid var(--studio-line-strong);border-radius:8px;background:var(--studio-surface-2);color:var(--studio-ink);cursor:pointer;}
+.studio-workflow .studio-status-cancel:disabled {opacity:.65;cursor:wait;}
+@media(min-width:1024px){.studio-workflow>.app-sidebar{grid-column:1;grid-row:1;}.studio-workflow>.studio-shell{grid-column:2;grid-row:1;}}
+@media(max-width:600px){.studio-workflow .studio-status-bar{grid-template-columns:8px minmax(0,1fr) 112px;gap:8px;padding-inline:10px;}.studio-workflow .studio-status-action{width:112px;}}
 .studio-workflow .studio-workflow-steps,.studio-workflow .studio-pane-switch {display:flex;flex-wrap:wrap;gap:8px;padding:16px 28px;flex-shrink:0;}
 .studio-workflow .studio-workflow-steps button,.studio-workflow .studio-pane-switch button {font:inherit;font-size:14px;color:var(--studio-muted);background:transparent;border:1px solid transparent;border-radius:10px;padding:10px 14px;cursor:pointer;}
 .studio-workflow .studio-workflow-steps button[aria-current] {color:var(--studio-clay);border-color:var(--studio-line);background:var(--studio-surface-2);}

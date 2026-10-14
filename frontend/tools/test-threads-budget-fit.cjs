@@ -6,8 +6,8 @@ const esbuild = require('../../backend/node_modules/esbuild');
 const puppeteer = require('../../backend/node_modules/puppeteer-core');
 const root = path.resolve(__dirname, '../..');
 const bundle = esbuild.buildSync({ stdin: { contents: "export {renderListPage} from './frontend/lib/pageMarkup'; export {fitItineraryNote} from './frontend/lib/itineraryNote'; export {applyPageTextScale,resetPageTextScale} from './frontend/lib/pageTextScale';", resolveDir: root }, bundle: true, write: false, format: 'iife', globalName: 'BudgetTest' }).outputFiles[0].text;
-const exportSource = fs.readFileSync(path.join(root, 'frontend/lib/exportClient.js'), 'utf8');
-const exportBundle = esbuild.buildSync({ stdin: { contents: exportSource + '\nexport {prepareQualityLayout,exportQualityProfile,renderPageBlobWithRetry};', resolveDir: path.join(root, 'frontend/lib') }, bundle: true, write: false, format: 'iife', globalName: 'BudgetExportTest' }).outputFiles[0].text;
+const exportTest = require('./exportClientTestHelper.cjs');
+const exportBundle = esbuild.buildSync({ ...exportTest.bundleOptions({ names: ['prepareQualityLayout', 'exportQualityProfile', 'renderPageBlobWithRetry'] }), bundle: true, write: false, format: 'iife', globalName: 'BudgetExportTest' }).outputFiles[0].text;
 
 (async () => {
   const browserPath = process.env.TEST_BROWSER_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';

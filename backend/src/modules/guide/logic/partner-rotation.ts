@@ -1,6 +1,7 @@
 import type { DeckPage, GuideDeckList, GuideItem, ListPage, PageItem, PartnerRotationHistory, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { normalizeText, stableHash } from './image-resolver';
 import { extractDriveFileIdFromProxyUrl, getCachedDriveFileVisualFingerprint, uniqueCachedDriveFileIdsByVisualContent } from '../sync/drive-images';
+import { DIARY_PARTNER_COUNT } from './spotlight-diary';
 
 export const PARTNER_ROTATION_VERSION = 1;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -105,6 +106,7 @@ function extraPhotoRefs(pages: DeckPage[], source?: GuideItem, sources: GuideIte
 }
 
 function slotRole(item: PageItem, timed: boolean): string {
+  if (item.rotationGroup) return `local:${item.rotationGroup}`;
   if (!timed) return '';
   const text = normalizeText(`${item.label || ''} ${item.metaSecondary || ''}`);
   const meal = ['an_sang', 'an_trua', 'an_toi'].find(role => text.includes(role)) || '';
@@ -157,7 +159,10 @@ function unitsFor(pages: DeckPage[], deckId: string, sources: GuideItem[] = []):
         return page.layoutVariant === 'spotlight-v6-map-place' && prior?.type === 'list'
           && prior.layoutVariant === 'spotlight-v6-map-page' ? [index - 1, index] : [index];
       });
-      unit.group = `whole:${unit.wholePages.map(index => (pages[index] as ListPage).layoutVariant).join(',')}`;
+      // Trang Diary dùng chung layout nhưng DIARY_ORDER cố định nhóm của từng trang:
+      // chỉ đổi trang quán ăn với quán ăn, cafe với cafe.
+      const section = deckId === 'spotlight-v6-diary' ? `:${item.sourceSectionKey || unit.source?.sectionKey}` : '';
+      unit.group = `whole:${unit.wholePages.map(index => (pages[index] as ListPage).layoutVariant).join(',')}${section}`;
     } else {
       // Keep fixed activity/time/day slots. Only names/images move, never the slot's role.
       const threads = deckId.startsWith('threads-') && deckId !== 'threads-toplist-dalat';
@@ -236,7 +241,7 @@ export function partnerSlotCount(pages: DeckPage[]): number {
 export function requiredPartnerCount(deckId: string, items: WorkbookItemsBySection, baseline: DeckPage[]): number {
   if (['spotlight-v4', 'spotlight-v6', 'spotlight-v6-maps'].includes(deckId)) return 4;
   if (deckId === 'spotlight-v5') return 7;
-  if (deckId === 'spotlight-v6-diary') return 9;
+  if (deckId === 'spotlight-v6-diary') return DIARY_PARTNER_COUNT;
   if (['itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed'].includes(deckId)) return 7;
   if (deckId === 'threads-mix-local' || deckId === 'one-way-story') return 5;
   if (deckId === 'threads-mix-text') return 6;

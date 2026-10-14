@@ -23,8 +23,8 @@ backendRequire('ts-node').register({ project: path.join(backend, 'tsconfig.json'
 const { getColorEditAsset } = backendRequire('./src/modules/guide/color-edit');
 const sharp = backendRequire('sharp');
 async function main() {
-  const source = fs.readFileSync(path.join(front, 'lib/exportClient.js'), 'utf8');
-  const bundle = await esbuild.build({ stdin: { contents: source + '\nexport { JSZip, collectPartnerNames, batchFolderName, uniqueBatchFolderNames, parseListSetIndex };', resolveDir: path.join(front, 'lib') }, bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'TestExport' });
+  const exportTest = require('./exportClientTestHelper.cjs');
+  const bundle = await esbuild.build({ ...exportTest.bundleOptions({ names: ['batchFolderName', 'uniqueBatchFolderNames'], extra: "export { default as JSZip } from 'jszip'; export { collectPartnerNames } from './partnerNames.mjs'; export { parseListSetIndex } from './utils';" }), bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'TestExport' });
   const css = [...fs.readFileSync(path.join(front, 'app/globals.css'), 'utf8').matchAll(/@import url\("(.+?)"\)/g)].map(m => fs.readFileSync(path.join(front, 'app', m[1]), 'utf8')).join('\n');
   const server = http.createServer(async (req, res) => {
     try {

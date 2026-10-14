@@ -1,17 +1,19 @@
 import assert from 'node:assert/strict';
-import { buildDiaryPages, diaryDescriptionLines, diaryImageId, diaryIdentity, DIARY_ORDER } from '../logic/spotlight-diary';
+import { buildDiaryPages, diaryDescriptionLines, diaryImageId, diaryIdentity, DIARY_ORDER, DIARY_PARTNER_COUNT } from '../logic/spotlight-diary';
 import type { GuideItem, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { buildPagesForDeckV2, buildV2MainList, V2_DECK_IDS } from '../logic/deck-builder-v2';
 import { setActiveDestinationLocalize } from '../sync/destination-localize';
 import { setSpotlightV3BuildContext, clearSpotlightV3BuildContext } from '../sync/spotlight-hook-source';
 const image = (id: string) => '/assets/drive-file?id=' + id;
-const item = (id: string, sectionKey: 'quan_an' | 'cafe'): GuideItem => ({ id, name: id, sectionKey, isPartner: true, imageUrl: image(id), imageSource: 'manual', diaryDescriptionRaw: 'View Đà Lạt đẹp\r\nQuán xinh\n\nQuán xinh', address: '07 Trần Quang Diệu' } as GuideItem);
-const input = { destinationId: 'dalat', randomImages: ['r1','r2','r3'].map(image), hook: 'Hook chung', seed: 'test', itemsBySection: { quan_an: Array.from({length:5},(_,i)=>item('food'+i,'quan_an')), cafe: Array.from({length:4},(_,i)=>item('cafe'+i,'cafe')) } as WorkbookItemsBySection };
+const item = (id: string, sectionKey: 'quan_an' | 'cafe' | 'check_in'): GuideItem => ({ id, name: id, sectionKey, isPartner: sectionKey !== 'check_in', imageUrl: image(id), imageSource: 'manual', diaryDescriptionRaw: 'View Đà Lạt đẹp\r\nQuán xinh\n\nQuán xinh', address: '07 Trần Quang Diệu' } as GuideItem);
+const input = { destinationId: 'dalat', randomImages: ['r1','r2','r3'].map(image), hook: 'Hook chung', seed: 'test', itemsBySection: { quan_an: Array.from({length:4},(_,i)=>item('food'+i,'quan_an')), cafe: Array.from({length:4},(_,i)=>item('cafe'+i,'cafe')), check_in: [item('checkin', 'check_in')] } as WorkbookItemsBySection };
 const pages = buildDiaryPages(input);
 assert.equal(pages.length,12);
 assert.deepEqual(pages.slice(3).map(p=>(p as any).items[0].sourceSectionKey),DIARY_ORDER);
 assert.equal(new Set(pages.map(p=>diaryImageId(p.backgroundImage))).size,12);
-assert.ok(pages.slice(3).every(p=>(p as any).items[0].isPartner));
+assert.equal(pages.slice(3).filter(p=>(p as any).items[0].isPartner).length, DIARY_PARTNER_COUNT);
+assert.equal((pages[11] as any).items[0].isPartner, false, 'A regular Check-in must not become a partner in XLSX');
+assert.equal(new Set(pages.slice(3).map(p => diaryIdentity((p as any).items[0].name))).size, 9);
 assert.deepEqual(diaryDescriptionLines('View Đà Lạt đẹp\r\nQuán xinh\nQuán xinh\nMột câu. Hai câu'),['View Đà Lạt đẹp','Quán xinh']);
 assert.throws(()=>buildDiaryPages({...input,destinationId:'greenland'}),/Đà Lạt/);
 assert.throws(()=>buildDiaryPages({...input,randomImages:[]}),/Random/);
@@ -38,4 +40,13 @@ const coldPreview = buildV2MainList('spotlight-v6-diary', common);
 assert.equal(coldPreview?.pages.length, 12, 'Cold-start preview must not depend on async hook warmup');
 assert.ok(coldPreview?.pages[0].title.trim());
 assert.throws(() => buildDiaryPages({ ...input, hook: '' }), /hook chung/, 'Generated lists must still reject missing hooks');
-console.log('PASS diary core: 12 pages, 5/4 partners, distinct images, line boundaries, rotation and shortage errors.');
+assert.throws(() => buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection, check_in: [] } }), /Check-in.*0\/1/);
+assert.throws(() => buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection, check_in: [{ ...input.itemsBySection.check_in[0], name: 'food0' }] } }), /không trùng/);
+// A venue shared by food and cafe cannot count twice; use a fifth cafe candidate.
+const sharedVenue = buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection,
+  cafe: [{ ...item('food0', 'cafe'), imageUrl: image('shared-food-cafe') }, ...input.itemsBySection.cafe] } });
+assert.equal(new Set(sharedVenue.slice(3).map(p => diaryIdentity((p as any).items[0].name))).size, 9);
+const partnerCheckin = buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection,
+  check_in: [{ ...input.itemsBySection.check_in[0], isPartner: true }] } });
+assert.equal(partnerCheckin.slice(3).filter(p => (p as any).items[0].isPartner).length, 9, 'Preserve a Check-in partner flag when it really belongs to a partner');
+console.log('PASS diary core: 12 pages, 4 food/4 cafe partners + 1 Check-in, distinct venues/images, line boundaries, rotation and shortage errors.');

@@ -45,7 +45,9 @@ export default function FontSizeControl({ value, actualSizes = [], onChange, onR
     </div>
     <p id={`${id}-help`} className="font-size-help">Trang đang chọn · 8–72 px · bước 0,5<br />Nhập số rồi nhấn Enter hoặc rời ô để áp dụng.
       <br />Đang hiển thị: {actualSizes.length ? `${actualSizes.join(' / ')} px` : 'Chưa đo được chữ trên trang'}.
-      {value == null ? <><br />{actualSizes.length > 1 ? 'Ô số hiển thị cỡ lớn nhất của trang. Khi chỉnh, tất cả chữ trên trang dùng cỡ đã chọn.' : 'Đang dùng cỡ chữ của mẫu.'}</> : null}
+      {/* Keep this space after blur commits an override: otherwise Save moves
+          between pointer-down and pointer-up and the user's click is lost. */}
+      <br /><span aria-hidden={value != null} style={{ visibility: value == null ? 'visible' : 'hidden' }}>Đang dùng cỡ chữ của mẫu. Ô số hiển thị cỡ lớn nhất; khi chỉnh, tất cả chữ trên trang dùng cỡ đã chọn.</span>
     </p>
     <p id={`${id}-error`} className="font-size-error" role="status">{error}</p>
   </section>;

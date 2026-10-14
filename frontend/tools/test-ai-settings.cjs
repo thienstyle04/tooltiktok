@@ -38,7 +38,7 @@ const front=path.resolve(__dirname,'..');
   assert.equal(await page.evaluate(()=>window.state.active),'gemini');
   assert.equal(await page.evaluate(()=>window.calls.filter(c=>c.method==='PUT').length),2);
   for(const width of [600,1024]){await page.setViewport({width,height:800});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
-  await page.screenshot({path:path.resolve(front,'../outputs/ai-settings-test.png'),fullPage:true});
+  await page.screenshot({path:path.resolve(process.env.DALAT_TEST_OUTPUT_DIR||path.join(front,'../outputs'),'ai-settings-test.png'),fullPage:true});
   console.log('PASS: settings UI load, provider/model/key entry, test, manual activation, key cleared, 600/1024 widths. API mocked.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

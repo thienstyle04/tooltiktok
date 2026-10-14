@@ -14,12 +14,15 @@ const fixture = path.resolve(root, '../.test-runtime/diary/lists.json');
 assert.ok(fs.existsSync(fixture), 'Run backend diary integration --output ../.test-runtime/diary/lists.json first.');
 const { lists, automationLists } = JSON.parse(fs.readFileSync(fixture, 'utf8'));
 const list = lists[0];
-assert.equal(list.pages.length, 10);
-let source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8')
-  .replace('function downloadBlobFile(', 'function originalDownloadBlobFile(');
-source += '\nfunction downloadBlobFile(blob, name) { window.__downloads.push({ blob, name }); return true; }\nexport { JSZip, renderPagesForExport, fitSpotlightDiary };';
+assert.equal(list.pages.length, 12);
+const expectedPartnerCount = list.pages.slice(3).filter(page => page.items[0].isPartner).length;
+const exportTest = require('./exportClientTestHelper.cjs');
 const bundle = await esbuild.build({
-  stdin: { contents: source, resolveDir: path.join(root, 'lib') },
+  ...exportTest.bundleOptions({
+    names: ['renderPagesForExport'],
+    overrides: { downloadBlobFile: 'downloadBlobFile = function (blob, name) { window.__downloads.push({ blob, name }); return true; };' },
+    extra: "export { default as JSZip } from 'jszip'; export { fitSpotlightDiary } from './spotlightDiary';",
+  }),
   bundle: true,
   platform: 'browser',
   format: 'iife',
@@ -44,6 +47,9 @@ try {
     if (url.pathname === '/') return route.fulfill({ contentType: 'text/html', body: `<html><head><style>${css}</style></head><body></body></html>` });
     if (url.pathname === '/api/health') {
       return route.fulfill({ json: { status: 'ok', sessionId: 'diary-export-smoke', appVersion } });
+    }
+    if (url.pathname === '/api/night-sync/export-lease') {
+      return route.fulfill({ json: { ok: true } });
     }
     if (url.pathname === '/api/drive-cache/status') {
       return route.fulfill({ json: { phase: 'ready', ready: true, destinationId: 'dalat', total: 736, completed: 736, cached: 736, failed: 0, percent: 100 } });
@@ -81,7 +87,7 @@ try {
   });
   await page.goto('http://localhost:3001/');
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
-  for (const mode of ['modern', 'legacy', 'original']) {
+  for (const mode of process.argv.includes('--batch-only') ? [] : ['modern', 'legacy', 'original']) {
   const result = await page.evaluate(async ({ list, mode }) => {
     window.__downloads = [];
     const deck = { id: 'spotlight-v6-diary', lists: [list] };
@@ -115,8 +121,8 @@ try {
     const partnerCells = (sheetXml.match(/<c r="[A-Z]+1"/g) || []).length;
     const doc = new DOMParser().parseFromString(sheetXml, 'text/xml');
     const names = [...doc.querySelectorAll('t')].map(node => node.textContent).sort();
-    const expected = list.pages.slice(3).map(page => page.items[0].rawName).sort();
-    if (JSON.stringify(names) !== JSON.stringify(expected)) throw new Error('Excel names differ from the seven snapshot partners');
+    const expected = list.pages.slice(3).filter(page => page.items[0].isPartner).map(page => page.items[0].rawName).sort();
+    if (JSON.stringify(names) !== JSON.stringify(expected)) throw new Error('Excel names differ from the actual snapshot partners');
     const captionFile = Object.values(zip.files).find(file => /caption-set.*\.txt$/i.test(file.name));
     const caption = await captionFile.async('string');
     if (!caption.includes('Một vài gợi ý quán ăn và cà phê ở Đà Lạt') || !caption.includes('#dalattrip')) throw new Error('Missing diary caption');
@@ -128,7 +134,7 @@ try {
   fs.writeFileSync(path.join(path.dirname(fixture), `${mode}.png`), Buffer.from(await page.evaluate(() => Array.from(window.__diaryPreviewBuffer))));
   if (mode === 'modern') fs.writeFileSync(path.join(path.dirname(fixture), 'place.png'), Buffer.from(await page.evaluate(() => Array.from(window.__diaryPlaceBuffer))));
   assert.equal(result.opaqueCorners, list.pages.length);
-  assert.equal(result.partnerCells, 7);
+  assert.equal(result.partnerCells, expectedPartnerCount);
   assert.equal(result.captions, 1);
   assert.equal(external, 0, 'Unexpected network request');
   assert.equal(missing.size, 0, `Missing cache IDs: ${[...missing].join(', ')}`);
@@ -149,7 +155,7 @@ try {
     window.__downloads = [];
     const errors = [];
     const deck = { id: 'spotlight-v6-diary', lists };
-    const v6 = { id: 'spotlight-v6-caption-diary-regression', navTitle: 'V6', title: 'V6', pages: [{ ...list.pages[3], layoutVariant: 'spotlight-v6-page', canvasPreset: 'tiktok-9x16' }] };
+    const v6 = { id: 'spotlight-v6-caption-diary-regression', navTitle: 'V6', title: 'V6', pages: list.pages.slice(3, 7).map(page => ({ ...page, layoutVariant: 'spotlight-v6-page', canvasPreset: 'tiktok-9x16' })) };
     const v5 = { id: 'spotlight-v5-caption-diary-regression', navTitle: 'V5', title: 'V5', pages: [{ ...list.pages[3], layoutVariant: 'spotlight-v5-place', canvasPreset: 'tiktok-4x5' }] };
     const dataset = { source: { destinationId: 'dalat' }, decks: [deck, { id: 'spotlight-v6', lists: [v6] }, { id: 'spotlight-v5', lists: [v5] }] };
     await Smoke.exportSelectedPagePng({ deck, list, selectedPageIndex: 3, quality: 'optimized', dataset }, { failProgress: message => errors.push(message) });
@@ -170,7 +176,7 @@ try {
     }
     return { dimensions, overflowBlocked: blocked };
   }, { lists });
-  assert.deepEqual(checks.dimensions, { '1080x1440': 20, '1080x1920': 1, '1080x1350': 1 });
+  assert.deepEqual(checks.dimensions, { '1080x1440': lists.length * 12, '1080x1920': 4, '1080x1350': 1 });
   console.log('PASS single page, mixed batch CRC/dimensions, blank page and overflow', JSON.stringify(checks));
   const automatic = await page.evaluate(async ({ automationLists }) => {
     window.__downloads = [];
@@ -190,13 +196,15 @@ try {
       if (file.name.endsWith('.xlsx')) {
         const book = await Smoke.JSZip.loadAsync(await file.async('uint8array'), { checkCRC32: true });
         const xml = await book.file('xl/worksheets/sheet1.xml').async('string');
-        if ((xml.match(/<c r="[A-Z]+1"/g) || []).length !== 7) throw new Error('Wrong automation partner count');
+        const names = [...new DOMParser().parseFromString(xml, 'text/xml').querySelectorAll('t')].map(node => node.textContent).sort();
+        const expectedSets = automationLists.map(list => list.pages.slice(3).filter(page => page.items[0].isPartner).map(page => page.items[0].rawName).sort());
+        if (!expectedSets.some(expected => JSON.stringify(names) === JSON.stringify(expected))) throw new Error('Wrong automation partner names');
         workbooks++;
       }
     }
     return { pngCount, workbooks, bytes: download.blob.size };
   }, { automationLists });
-  assert.equal(automatic.pngCount, 30); assert.equal(automatic.workbooks, 3);
+  assert.equal(automatic.pngCount, automationLists.length * 12); assert.equal(automatic.workbooks, automationLists.length);
   console.log('PASS isolated automation generation/export payload', JSON.stringify(automatic));
 } finally {
   await browser.close();

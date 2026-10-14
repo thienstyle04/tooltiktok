@@ -11,9 +11,11 @@ if (decks[0].lists[0]?.pages.length !== 11 || decks[1].lists[0]?.pages.length !=
   console.log('SKIP cached V6 Green export: cần snapshot runtime V6 Green 11 trang và V6 14 trang.');
   process.exit(0);
 }
-let source = fs.readFileSync(path.join(root, 'lib/exportClient.js'), 'utf8').replace('function downloadBlobFile(', 'function originalDownloadBlobFile(');
-source += '\nfunction downloadBlobFile(blob, name) { window.__downloads.push({blob,name}); return true; }\nexport { JSZip };';
-const bundle = await esbuild.build({ stdin: { contents: source, resolveDir: path.join(root, 'lib') }, bundle: true, platform: 'browser', format: 'iife', globalName: 'Smoke', write: false });
+const exportTest = require('./exportClientTestHelper.cjs');
+const bundle = await esbuild.build({ ...exportTest.bundleOptions({
+  overrides: { downloadBlobFile: 'downloadBlobFile = function (blob, name) { window.__downloads.push({ blob, name }); return true; };' },
+  extra: "export { default as JSZip } from 'jszip';",
+}), bundle: true, platform: 'browser', format: 'iife', globalName: 'Smoke', write: false });
 const executablePath = [process.env.PROGRAMFILES + '/Google/Chrome/Application/chrome.exe', process.env['PROGRAMFILES(X86)'] + '/Microsoft/Edge/Application/msedge.exe'].find(fs.existsSync);
 const browser = await chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
 let external = 0, missing = new Set();
