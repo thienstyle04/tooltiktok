@@ -617,3 +617,103 @@
     width: 100%;
   }
 }
+
+/* Thêm nguồn: lựa chọn kiểu dữ liệu, loại nguồn và nội dung Đà Lạt. */
+.add-source-form {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: start;
+}
+
+.add-source-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.add-source-choice legend {
+  margin-bottom: 7px;
+  padding: 0;
+  color: var(--studio-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.add-source-choice label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.add-source-form .add-source-choice input[type=radio] {
+  width: auto;
+  min-height: 0;
+  padding: 0;
+}
+
+.add-source-choice small {
+  color: var(--studio-muted);
+  font-size: 0.68rem;
+}
+
+.first-source-dialog {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  text-align: left;
+  --studio-muted: rgba(247, 243, 235, 0.68);
+  --studio-line: rgba(255, 255, 255, 0.16);
+  --studio-ink: #f7f3eb;
+}
+
+.first-source-dialog .add-source-form {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.first-source-dialog .settings-add-button {
+  justify-self: start;
+}
+
+.first-source-dialog .settings-form-error,
+.first-source-dialog .settings-form-note {
+  margin-top: 10px;
+}
+
+.first-source-pending {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.first-source-pending-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-link-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.settings-link-form input {
+  flex: 1 1 260px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--studio-line);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--studio-ink);
+  font: inherit;
+}

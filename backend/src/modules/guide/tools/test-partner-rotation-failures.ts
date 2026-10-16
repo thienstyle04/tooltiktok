@@ -10,6 +10,8 @@ async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'partner-rotation-failures-'));
   Object.assign(process.env, { DALAT_DATA_DIR: path.join(root, 'data'), DALAT_DRIVE_FILE_CACHE_DIR: path.join(root, 'cache'), DALAT_AUTO_SYNC_SHEET: 'false', DALAT_AUTO_WARM_DRIVE_CACHE: 'false' });
   fs.mkdirSync(path.join(root, 'cache')); fs.mkdirSync(path.join(root, 'data'));
+  // Máy đang dùng: 4 nguồn dựng sẵn với link giả (code không chứa link thật).
+  require('../../../../../scripts/test-support/source-links-fixture.cjs').seedSourceLinks(process.env.DALAT_DATA_DIR as string);
   const { GuideService } = require('../guide.service');
   const { AutomationSchedulerService } = require('../automation-scheduler.service');
   const { buildPagesForDeck } = require('../logic/deck-builder');

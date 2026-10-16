@@ -207,6 +207,12 @@ export class GuideController {
     return this.guideService.replaceDestinationWorkbook(id, file);
   }
 
+  @Put('api/destinations/:id/sheet-link')
+  updateDestinationSheetLink(@Param('id') id: string, @Body() request: { sheetUrl?: string }): DestinationListResponse {
+    this.automationScheduler.assertUserMutationAllowed();
+    return this.guideService.updateDestinationSheetLink(id, request);
+  }
+
   @Post('api/destinations/:id/refresh-from-sheet')
   refreshDestinationFromSheet(@Param('id') id: string, @Query('background') background?: string) {
     if (background === '1') return this.guideService.startDestinationSync(id);
@@ -311,11 +317,11 @@ export class GuideController {
   }
 
   private enqueueSourceGeneration<T>(deckId: unknown, task: () => Promise<T>): Promise<T> {
-    const sourceId = this.guideService.getDestinations().active.id;
+    const sourceId = this.guideService.getDestinations().active?.id || '';
     this.guideService.assertTemplateAllowed(deckId, sourceId);
     this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.enqueueGeneration(() => {
-      if (this.guideService.getDestinations().active.id !== sourceId) {
+      if ((this.guideService.getDestinations().active?.id || '') !== sourceId) {
         throw new BadRequestException('Nguồn dữ liệu đã thay đổi khi yêu cầu đang chờ. Hãy chọn lại đúng nguồn và tạo lại; không tự chuyển tác vụ sang nguồn khác.');
       }
       this.guideService.assertTemplateAllowed(deckId, sourceId);

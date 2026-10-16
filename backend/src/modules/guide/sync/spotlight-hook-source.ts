@@ -6,8 +6,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isLocalDataOnly, syncFetch } from './night-sync-policy';
 import { BUNDLED_SECTION_HOOKS, BUNDLED_SPOTLIGHT_HOOKS } from './hook-fallbacks';
+import { hookDocId } from './source-links';
 
-const DEFAULT_DOC_ID = '1NGgDbpoUGDormMJKlMdYJoYWAt-nmVq_neDSH3PyueE';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 25_000;
 const USER_AGENT =
@@ -76,7 +76,7 @@ function readDiskCache(dataRoot: string, cacheFileName?: string): SpotlightHookC
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as SpotlightHookCache;
     if (!Array.isArray(parsed?.hooks) || parsed.hooks.length === 0) return null;
     return {
-      docId: String(parsed.docId || DEFAULT_DOC_ID),
+      docId: String(parsed.docId || ''),
       fetchedAt: Number(parsed.fetchedAt || 0),
       hooks: parsed.hooks.map(normalizeHookLine).filter(Boolean),
       sectionKey: String(parsed.sectionKey || ''),
@@ -117,7 +117,8 @@ export async function loadSpotlightV3Hooks(options: {
   fallbackKey?: string;
   fetchDocument?: (docId: string) => Promise<string>;
 }): Promise<string[]> {
-  const docId = String(options.docId || process.env.SPOTLIGHT_V3_HOOK_DOC_ID || DEFAULT_DOC_ID).trim() || DEFAULT_DOC_ID;
+  // Mã Doc nằm trong cấu hình của máy (source-links.json); máy chưa cấu hình dùng cache/hook đóng gói.
+  const docId = String(options.docId ?? (process.env.SPOTLIGHT_V3_HOOK_DOC_ID || hookDocId('spotlight'))).trim();
   const sectionKey = (options.sectionHeadingIncludes || []).map(normalizeHookLine).filter(Boolean).join('|').toLowerCase();
   const now = Date.now();
 
@@ -133,6 +134,7 @@ export async function loadSpotlightV3Hooks(options: {
 
   try {
     if (isLocalDataOnly()) throw new Error('Tạo list không cập nhật hook qua mạng');
+    if (!docId) throw new Error('Máy này chưa cấu hình Google Doc hook');
     const text = await (options.fetchDocument || fetchHookDocument)(docId);
     const hooks = sectionKey
       ? parseHookDocumentSection(text, options.sectionHeadingIncludes || [])
@@ -180,7 +182,7 @@ export function getCachedSpotlightV3Hooks(): string[] {
   return memoryCache?.hooks?.length ? [...memoryCache.hooks] : [];
 }
 
-export function setCachedSpotlightV3Hooks(hooks: string[], docId = DEFAULT_DOC_ID): void {
+export function setCachedSpotlightV3Hooks(hooks: string[], docId = hookDocId('spotlight')): void {
   memoryCache = {
     docId,
     fetchedAt: Date.now(),

@@ -38,8 +38,9 @@ import {
   registerDestination,
   unregisterDestination,
   toDestinationInfo,
-  DALAT_TEST_SHEET_ID,
-  DALAT_THREADS_SHEET_ID,
+  BUILTIN_SOURCES,
+  firstDestinationId,
+  SourceKind,
   contentDestinationId,
   isDalatContentSource,
   isIsolatedSheetSource,
@@ -70,13 +71,12 @@ import * as listDisplay from './list-display';
 import * as workbookStore from './workbook-store';
 import * as workbookItems from './workbook-items';
 import * as listStore from './generated-list-store';
-import { findLocalTemplate, listLocalTemplates, localTemplateAssetUrl, localTemplateBuilder, localTemplateDecks, validateLocalTemplateResources } from './local-templates';
+import { findLocalTemplate, listLocalTemplates, templateAllowsSource, localTemplateAssetUrl, localTemplateBuilder, localTemplateDecks, validateLocalTemplateResources } from './local-templates';
 import { syncFetch, withSyncPermit } from './sync/night-sync-policy';
 import * as crypto from 'node:crypto';
 import type { LocalWorkbookUpload } from './workbook-store';
 export type { LocalWorkbookUpload } from './workbook-store';
 
-const HOOK_DOC_ID = '1E1erto0ZzdOO3NLC5ss1_cj8Dr_E46BY1OVk_UW70Lc';
 const HOOK_SECTION_BY_DECK: Record<string, { key: string; headingIncludes: string[] }> = {
   'itinerary-3n2d': { key: 'hook-1', headingIncludes: ['Hook 1', '3N2Đ'] },
   'itinerary-timeline': { key: 'hook-1', headingIncludes: ['Hook 1', '3N2Đ'] },
@@ -107,6 +107,7 @@ import { THREADS_TOPLIST_ID, THREADS_TOPLIST_CAPTION } from './logic/threads-top
 import { isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_MIX_ID, THREADS_MIX_TEXT_ID, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from './logic/threads-food-local';
 import { CaptionTone, isSpotlightV5Deck, isTextNoteDeck } from './deck-kinds';
 import { isUpdateLocked } from '../../runtime-update-lock';
+import { applySourceLinks, hookDocId, updateBuiltinSourceLinks } from './sync/source-links';
 const isNonAiDeck = (deckId: string): boolean => deckId === CHERRY_ID || Boolean(findLocalTemplate(deckId)) || isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || isSpotlightV5Deck(deckId) || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -255,6 +256,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   constructor(private readonly runtimePerformance: RuntimePerformanceService = new RuntimePerformanceService()) {
     migrateColorEditStores(this.dataRoot);
+    applySourceLinks(this.dataRoot, this.toolRoot);
     this.loadCustomDestinations();
     migrateThreadsSourceStores(this.dataRoot);
     this.activeDestinationId = this.loadActiveDestinationId();
@@ -325,7 +327,7 @@ export class GuideService implements OnApplicationBootstrap {
         save: source => this.saveWorkbookSnapshot(source, true),
         syncHooks: async manifest => {
           const errors: string[] = [];
-          for (const m of listLocalTemplates().filter(m => m.allowedSourceIds.includes(id))) {
+          for (const m of listLocalTemplates().filter(m => templateAllowsSource(m, id))) {
             try { await this.syncLocalTemplate(m.id, false); }
             catch (error) { errors.push(`${m.name}: ${error instanceof Error ? error.message : error}`); }
           }
@@ -372,6 +374,14 @@ export class GuideService implements OnApplicationBootstrap {
   onModuleDestroy(): void { this.nightSync?.stop(); }
 
   private async warmUpDatasetCache(): Promise<void> {
+    if (!isDestinationId(this.activeDestinationId)) {
+      this.destinationDataLoading = false;
+      this.destinationDataError = '';
+      this.driveCacheWarmStatus = { ...this.driveCacheWarmStatus, phase: 'ready', ready: true, destinationId: '', total: 0, completed: 0, percent: 100,
+        message: 'Máy này chưa có nguồn dữ liệu. Hãy thêm link Google Sheet để bắt đầu.' };
+      console.log('[warmup] Chưa có nguồn dữ liệu trên máy này; chờ người dùng thêm nguồn.');
+      return;
+    }
     this.destinationDataLoading = true;
     this.destinationDataError = '';
     try {
@@ -395,7 +405,7 @@ export class GuideService implements OnApplicationBootstrap {
       console.log(`[warmup] Sẵn sàng phục vụ /api/guide-data (mất ${Date.now() - t0}ms). Session sticky=${this.SESSION_STICKY_DATASET}, autoSyncSheet=${this.AUTO_SYNC_ENABLED}.`);
     } catch (error) {
       console.error('[warmup] Làm nóng dữ liệu trước thất bại:', error);
-      if (this.activeDestinationId !== DEFAULT_DESTINATION_ID && !isIsolatedSheetSource(this.activeDestinationId)) {
+      if (this.activeDestinationId !== DEFAULT_DESTINATION_ID && isDestinationId(DEFAULT_DESTINATION_ID) && !isIsolatedSheetSource(this.activeDestinationId)) {
         const failedDestinationId = this.activeDestinationId;
         try {
           console.warn(`[warmup] Nguồn ${failedDestinationId} không sẵn sàng; tự quay về ${DEFAULT_DESTINATION_ID}.`);
@@ -425,7 +435,7 @@ export class GuideService implements OnApplicationBootstrap {
     if (!section) return [];
     return loadSpotlightV3Hooks({
       dataRoot: this.dataRoot,
-      docId: HOOK_DOC_ID,
+      docId: hookDocId('sections'),
       cacheFileName: `${section.key}-hooks.json`,
       sectionHeadingIncludes: section.headingIncludes,
       fallbackKey: section.key,
@@ -630,6 +640,11 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   getDriveCacheWarmStatus(): DriveCacheWarmStatus {
+    if (!isDestinationId(this.activeDestinationId)) {
+      // Máy chưa có nguồn: không có ảnh nào cần chờ; giao diện hiện màn thêm nguồn.
+      return { ...this.driveCacheWarmStatus, phase: 'ready', ready: true, destinationId: '', total: 0, completed: 0, percent: 100,
+        message: 'Máy này chưa có nguồn dữ liệu. Hãy thêm link Google Sheet để bắt đầu.' };
+    }
     const sync = this.getNightSyncStatus();
     const sourceSync = sync.sources.find(source => source.id === this.activeDestinationId);
     const syncPending = sync.running === this.activeDestinationId || sync.queued.includes(this.activeDestinationId);
@@ -766,7 +781,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   getDestinations(): DestinationListResponse {
     return {
-      active: this.getActiveDestinationSummary(),
+      active: isDestinationId(this.activeDestinationId) ? this.getActiveDestinationSummary() : null,
       destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
     };
   }
@@ -828,11 +843,19 @@ export class GuideService implements OnApplicationBootstrap {
     }
   }
 
+  private parseSourceKind(request: { kind?: unknown; dalatContent?: unknown } | undefined): { kind?: SourceKind; dalatContent: boolean } {
+    const raw = String(request?.kind ?? '').trim();
+    if (raw && raw !== 'standard' && raw !== 'threads') throw new BadRequestException('Loại nguồn chỉ có thể là Thường hoặc Threads.');
+    const dalatContent = request?.dalatContent === true || ['1', 'true', 'yes'].includes(String(request?.dalatContent ?? '').trim().toLowerCase());
+    return { ...(raw ? { kind: raw as SourceKind } : {}), dalatContent };
+  }
+
   async addDestination(request: AddDestinationRequest): Promise<AddDestinationResponse> {
     const label = String(request?.label || '').replace(/\s+/g, ' ').trim();
     if (label.length < 2 || label.length > 60) {
       throw new BadRequestException('Tên nguồn dữ liệu phải có từ 2 đến 60 ký tự.');
     }
+    const sourceKind = this.parseSourceKind(request);
 
     const sheet = this.parseGoogleSheetUrl(request?.sheetUrl);
     const duplicate = getDestinationList().find((entry) => this.extractSheetId(entry.sheetUrl) === sheet.sheetId);
@@ -851,20 +874,41 @@ export class GuideService implements OnApplicationBootstrap {
       workbookName: `Google Sheet - ${label}`,
       workbookFileName: `${label}.xlsx`,
       sourceType: 'google-sheet',
+      ...(sourceKind.kind ? { kind: sourceKind.kind } : {}),
+      ...(sourceKind.dalatContent ? { contentDestinationId: 'dalat' } : {}),
     };
     const previousDestinationId = this.activeDestinationId;
 
     let source: SheetWorkbookSource;
     try {
-      source = await fetchWorkbookFromSheet(config);
+      // Thêm nguồn là yêu cầu thủ công: được tải Sheet ngay, không chờ khung 23:00–06:00.
+      const permit = { manual: true, signal: AbortSignal.timeout(5 * 60 * 1000),
+        waitForIdle: async () => { while (this.syncMustWait()) await new Promise(resolve => setTimeout(resolve, 250)); } };
+      source = await withSyncPermit(permit, () => fetchWorkbookFromSheet(config));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new BadRequestException(
         `${message}. Hãy kiểm tra link và cấp quyền "Bất kỳ ai có đường liên kết đều có thể xem".`,
       );
     }
+    try {
+      this.validateWorkbookData(source);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
 
     registerDestination(config);
+    if (config.kind) {
+      // Nguồn tách biệt chỉ có dữ liệu sau một lượt cập nhật đầy đủ (Sheet + ảnh + công bố).
+      // Giao diện chạy “Tải dữ liệu & chuyển” ngay sau khi thêm.
+      this.persistCustomDestinations();
+      return {
+        active: isDestinationId(this.activeDestinationId) ? this.getActiveDestinationSummary() : null,
+        created: this.getDestinationSummary(id),
+        needsFirstSync: true,
+        destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
+      } as AddDestinationResponse;
+    }
     try {
       this.persistCustomDestinations();
       this.workbookSourceByDestination.set(id, source);
@@ -891,6 +935,7 @@ export class GuideService implements OnApplicationBootstrap {
     file: LocalWorkbookUpload | undefined,
   ): Promise<AddDestinationResponse> {
     const label = this.normalizeDestinationLabel(request?.label);
+    const sourceKind = this.parseSourceKind(request);
     const sheet = String(request?.sheetUrl || '').trim()
       ? this.parseGoogleSheetUrl(request.sheetUrl)
       : null;
@@ -905,6 +950,8 @@ export class GuideService implements OnApplicationBootstrap {
       workbookName: upload.originalname,
       workbookFileName: upload.originalname,
       sourceType: 'xlsx',
+      ...(sourceKind.kind ? { kind: sourceKind.kind } : {}),
+      ...(sourceKind.dalatContent ? { contentDestinationId: 'dalat' } : {}),
     };
     const source = this.createUploadedWorkbookSource(config, upload);
     this.validateWorkbookData(source);
@@ -1085,7 +1132,7 @@ export class GuideService implements OnApplicationBootstrap {
         setActiveDestinationLocalize(previousDestinationId);
         this.resetDestinationScopedState();
         this.workbookSource = this.workbookSourceByDestination.get(previousDestinationId)
-          || this.loadPreferredWorkbookSource(previousDestinationId);
+          || (isDestinationId(previousDestinationId) ? this.loadPreferredWorkbookSource(previousDestinationId) : null);
         if (this.workbookSource) {
           this.workbookSourceByDestination.set(previousDestinationId, this.workbookSource);
         }
@@ -1094,7 +1141,7 @@ export class GuideService implements OnApplicationBootstrap {
         this.workbookDerivedCacheTime = this.workbookDerivedCache ? Date.now() : 0;
         this.invalidateDatasetCache({ immediate: !this.workbookDerivedCache });
         this.destinationDataError = '';
-        this.scheduleWarmDriveFileDiskCache();
+        if (isDestinationId(previousDestinationId)) this.scheduleWarmDriveFileDiskCache();
       } else {
         this.destinationDataError = error instanceof Error ? error.message : String(error);
       }
@@ -1105,6 +1152,9 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   async getDataset(options: { refresh?: boolean } = {}): Promise<GuideDataset> {
+    if (!isDestinationId(this.activeDestinationId)) {
+      throw new ServiceUnavailableException({ code: 'NO_SOURCE', message: 'Máy này chưa có nguồn dữ liệu. Hãy thêm link Google Sheet để bắt đầu.' });
+    }
     const explicitRefresh = Boolean(options.refresh);
     if (explicitRefresh) {
       this.destinationDataLoading = true;
@@ -3950,8 +4000,12 @@ export class GuideService implements OnApplicationBootstrap {
         const sourceType = entry.sourceType === 'xlsx' ? 'xlsx' : 'google-sheet';
         if (!/^(sheet|xlsx)-[a-z0-9]+$/.test(id) || !label) continue;
         if (sourceType === 'google-sheet' && (!sheetUrl || !exportUrl)) continue;
-        const isTest = sheetUrl.includes(`/d/${DALAT_TEST_SHEET_ID}/`);
-        const isThreads = sheetUrl.includes(`/d/${DALAT_THREADS_SHEET_ID}/`);
+        const sheetId = this.extractSheetId(sheetUrl);
+        const sameSheetAs = (builtinId: string) => Boolean(sheetId) && isDestinationId(builtinId) && this.extractSheetId(getDestinationConfig(builtinId).sheetUrl) === sheetId;
+        const kind = entry.kind === 'standard' || entry.kind === 'threads' ? entry.kind : undefined;
+        // Sheet trùng nguồn dựng sẵn của máy (Test/Threads): nhận nguồn đó, giữ id và list cũ.
+        const isThreads = sameSheetAs('dalat-threads');
+        const isTest = !isThreads && sameSheetAs('dalat-test');
         if (isTest) unregisterDestination('dalat-test');
         if (isThreads) unregisterDestination('dalat-threads');
         registerDestination({
@@ -3964,7 +4018,9 @@ export class GuideService implements OnApplicationBootstrap {
           workbookFileName: String(entry.workbookFileName || entry.workbookName || `${label}.xlsx`),
           sourceType,
           partnerFirst: Boolean(entry.partnerFirst),
-          ...(isTest || isThreads ? { contentDestinationId: 'dalat', partnerFirst: false } : {}),
+          ...(kind ? { kind } : {}),
+          ...(entry.contentDestinationId === 'dalat' ? { contentDestinationId: 'dalat' } : {}),
+          ...(isTest || isThreads ? { contentDestinationId: 'dalat', partnerFirst: false, kind: isThreads ? 'threads' as const : 'standard' as const } : {}),
         });
       }
     } catch (error) {
@@ -3977,9 +4033,8 @@ export class GuideService implements OnApplicationBootstrap {
 
   private persistCustomDestinations(): void {
     this.ensureDataRoot();
-    const destinations = getDestinationList().filter(
-      (entry) => entry.id !== 'dalat' && entry.id !== 'greenland' && entry.id !== 'dalat-test' && entry.id !== 'dalat-threads',
-    );
+    // Nguồn dựng sẵn giữ link trong source-links.json; ở đây chỉ nguồn người dùng tự thêm.
+    const destinations = getDestinationList().filter((entry) => !BUILTIN_SOURCES[entry.id]);
     fs.writeFileSync(
       this.customDestinationsPath,
       JSON.stringify({ version: 1, destinations }, null, 2),
@@ -4007,15 +4062,38 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
+  /** Nguồn mở mặc định: chỉ nguồn đã có dữ liệu trên máy (nguồn vừa thêm chưa tải xong chờ ở màn thêm nguồn). */
+  private defaultActiveDestinationId(): DestinationId {
+    const ready = getDestinationList().map(entry => entry.id)
+      .filter(id => fs.existsSync(this.workbookSnapshotPath(id)) || Boolean(this.bundledWorkbookPath(id)));
+    const preferred = firstDestinationId();
+    return ready.includes(preferred) ? preferred : ready[0] || '';
+  }
+
   private loadActiveDestinationId(): DestinationId {
-    if (!fs.existsSync(this.activeDestinationPath)) return DEFAULT_DESTINATION_ID;
+    if (!fs.existsSync(this.activeDestinationPath)) return this.defaultActiveDestinationId();
     try {
       const parsed = JSON.parse(fs.readFileSync(this.activeDestinationPath, 'utf-8')) as { id?: string };
       const id = String(parsed.id ?? '').trim();
-      return isDestinationId(id) ? id : DEFAULT_DESTINATION_ID;
+      return isDestinationId(id) ? id : this.defaultActiveDestinationId();
     } catch {
-      return DEFAULT_DESTINATION_ID;
+      return this.defaultActiveDestinationId();
     }
+  }
+
+  /** Đổi link Google Sheet của một nguồn trên máy này (link không nằm trong code). */
+  updateDestinationSheetLink(idValue: string, request: { sheetUrl?: unknown }): DestinationListResponse {
+    const id = String(idValue || '').trim();
+    if (!isDestinationId(id)) throw new NotFoundException('Nguồn dữ liệu không tồn tại.');
+    const sheet = this.parseGoogleSheetUrl(request?.sheetUrl);
+    const duplicate = getDestinationList().find((entry) => entry.id !== id && this.extractSheetId(entry.sheetUrl) === sheet.sheetId);
+    if (duplicate) throw new BadRequestException(`Google Sheet này đang dùng cho nguồn "${duplicate.label}".`);
+    const config = getDestinationConfig(id);
+    config.sheetUrl = sheet.sheetUrl;
+    config.exportUrl = sheet.exportUrl;
+    if (BUILTIN_SOURCES[id]) updateBuiltinSourceLinks(this.dataRoot, this.toolRoot, id, { sheetUrl: sheet.sheetUrl, exportUrl: sheet.exportUrl });
+    else this.persistCustomDestinations();
+    return this.getDestinations();
   }
 
   private saveActiveDestinationId(id: DestinationId): void {

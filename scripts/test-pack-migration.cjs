@@ -31,6 +31,9 @@ try {
   assert.ok(userFiles.length >= 5, `user data present on this machine (${userFiles})`);
   for (const name of userFiles) assert.equal(hash(path.join(stagedData, name)), hash(path.join(dataDir, name)), `user file identical in package: ${name}`);
   if (fs.existsSync(path.join(dataDir, 'source-snapshots'))) assert.ok(fs.existsSync(path.join(stagedData, 'source-snapshots')), 'workbook snapshots travel');
+  // Link Sheet không còn trong code: gói mang cấu hình nguồn của máy này.
+  const packedLinks = JSON.parse(fs.readFileSync(path.join(stagedData, 'source-links.json'), 'utf8'));
+  for (const id of ['dalat', 'dalat-test', 'dalat-threads']) assert.ok(packedLinks.builtins[id]?.exportUrl, `link nguồn ${id} đi kèm gói`);
   const manifest = JSON.parse(fs.readFileSync(path.join(staging, 'build-manifest.json'), 'utf8'));
   assert.equal(manifest.version, fs.readFileSync(path.join(root, 'VERSION'), 'utf8').trim());
   assert.equal(manifest.userDataIncluded, true);

@@ -8,6 +8,8 @@ import type { GuideDeckList, GuideItem, PartnerRotationHistory, WorkbookItemsByS
 // (quán ăn/cafe) của từng trang. Xoay vòng đối tác chỉ được đổi trang cùng nhóm.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'partner-rotation-diary-'));
 process.env.DALAT_DATA_DIR = root;
+// Máy đang dùng: 4 nguồn dựng sẵn với link giả (code không chứa link thật).
+require('../../../../../scripts/test-support/source-links-fixture.cjs').seedSourceLinks(process.env.DALAT_DATA_DIR as string);
 process.env.DALAT_DRIVE_FILE_CACHE_DIR = path.join(root, 'cache');
 const { rotatePartnerList } = require('../logic/partner-rotation');
 const { DIARY_ORDER } = require('../logic/spotlight-diary');

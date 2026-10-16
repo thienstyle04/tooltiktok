@@ -7,19 +7,26 @@
 //
 //   node scripts/pack-migration.cjs [--with-image-cache] [--with-env] [--no-local-templates]
 //                                   [--out <thư mục>] [--staging-only] [--link-cache]
+//   node scripts/pack-migration.cjs --clean [--out <thư mục>] [--staging-only]
+// --clean       : gói bàn giao sạch cho người khác — chỉ code phát hành (như bản cập nhật),
+//                 KHÔNG dữ liệu, KHÔNG link Google Sheet, mẫu riêng, .env hay ảnh. Máy nhận tự
+//                 thêm nguồn bằng link Sheet của họ.
 // --staging-only: chỉ dựng thư mục gói (không nén) — dùng cho test.
 // --link-cache  : tạo hard link thay vì chép ảnh (chỉ dùng cho test cùng ổ đĩa).
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { included } = require('./release-files.cjs');
+const { scan, folderFiles } = require('./check-no-source-links.cjs');
 
 const root = path.resolve(__dirname, '..');
 const projectName = path.basename(root);
 const args = process.argv.slice(2);
 const flag = name => args.includes(name);
 const option = (name, fallback) => { const i = args.indexOf(name); return i >= 0 && args[i + 1] ? path.resolve(args[i + 1]) : fallback; };
-const withImageCache = flag('--with-image-cache'), withEnv = flag('--with-env'), withTemplates = !flag('--no-local-templates');
+const clean = flag('--clean');
+const withImageCache = !clean && flag('--with-image-cache'), withEnv = !clean && flag('--with-env'), withTemplates = !clean && !flag('--no-local-templates');
 const stagingOnly = flag('--staging-only'), linkCache = flag('--link-cache');
 const stamp = new Date(Date.now() + 7 * 3600000).toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 13);
 const outDir = option('--out', path.join(os.homedir(), 'Desktop'));
@@ -45,7 +52,7 @@ function dirSize(dir) {
 const gb = bytes => `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 
 // Dữ liệu thật: shared\data (bản cài có trình cập nhật) hoặc backend\data (bản clone).
-const dataDir = fs.realpathSync(fs.existsSync(path.join(root, 'shared', 'data')) ? path.join(root, 'shared', 'data') : path.join(root, 'backend', 'data'));
+const dataDir = clean ? '' : fs.realpathSync(fs.existsSync(path.join(root, 'shared', 'data')) ? path.join(root, 'shared', 'data') : path.join(root, 'backend', 'data'));
 const version = fs.readFileSync(path.join(root, 'VERSION'), 'utf8').trim();
 let commit = '', uncommitted = [];
 if (fs.existsSync(path.join(root, '.git'))) {
@@ -56,7 +63,7 @@ if (fs.existsSync(path.join(root, '.git'))) {
 }
 
 // A running tool may be writing lists/rotation: package a consistent, stopped state.
-if (!flag('--allow-running')) {
+if (!clean && !flag('--allow-running')) {
   const probe = run('powershell.exe', ['-NoProfile', '-Command', '[bool](Get-NetTCPConnection -LocalPort 3000,3001 -State Listen -ErrorAction SilentlyContinue)']);
   if (/True/i.test(probe.stdout || '')) {
     console.error('Tool đang chạy (cổng 3000/3001). Hãy tắt tool rồi đóng gói lại để dữ liệu không bị ghi dở.');
@@ -67,8 +74,12 @@ if (!flag('--allow-running')) {
 const stagingRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-migrate-'));
 const staging = path.join(stagingRoot, projectName);
 log('==============================================================');
-log(`  GÓI CHUYỂN MÁY - ${projectName} ${version}${commit ? ` (${commit.slice(0, 8)})` : ''}`);
+log(`  ${clean ? 'GÓI BÀN GIAO SẠCH' : 'GÓI CHUYỂN MÁY'} - ${projectName} ${version}${commit ? ` (${commit.slice(0, 8)})` : ''}`);
 log('==============================================================');
+if (clean) {
+  packClean();
+  process.exit(0);
+}
 log(`Dữ liệu: ${dataDir}`);
 if (uncommitted.length) log(`CẢNH BÁO: còn ${uncommitted.length} file code chưa commit — gói chứa code CHƯA phát hành. Nên commit + phát hành trước khi bàn giao.`);
 
@@ -81,6 +92,18 @@ robocopy(root, staging, codeDirs, ['.env', '*.log', 'dev-log*.txt', '__*-markup.
 log('[2/5] Chép dữ liệu người dùng (list, chỉnh sửa chữ, lịch sử dùng, hook, lịch hẹn giờ, workbook)...');
 const stagingData = path.join(staging, 'backend', 'data');
 robocopy(dataDir, stagingData, ['drive-file-cache*', 'photo-preset-cache'], ['*.log', 'drive-access-cache*.json']);
+// Link Sheet/Doc của máy này không nằm trong code. Máy mới không có bản phát hành cũ để
+// dò lại, nên gói phải mang source-links.json (tạo ngay nếu máy chưa chạy bản có file này).
+if (!fs.existsSync(path.join(stagingData, 'source-links.json'))) {
+  const backendRoot = path.join(root, 'backend');
+  const recover = run(process.execPath, ['-r', 'ts-node/register/transpile-only', '-e',
+    `const l=require('./src/modules/guide/sync/source-links');process.stdout.write('LINKS '+JSON.stringify(l.recoverSourceLinks(${JSON.stringify(dataDir)},${JSON.stringify(backendRoot)})));`],
+  { cwd: backendRoot, maxBuffer: 16 * 1024 * 1024 });
+  const value = (String(recover.stdout || '').match(/LINKS (.+)$/m) || [])[1];
+  if (recover.status !== 0 || !value) throw Error(`Không đọc được link nguồn của máy: ${recover.stderr || recover.stdout}`);
+  fs.writeFileSync(path.join(stagingData, 'source-links.json'), JSON.stringify(JSON.parse(value), null, 2));
+}
+log(`  Nguồn kèm link: ${Object.keys(JSON.parse(fs.readFileSync(path.join(stagingData, 'source-links.json'), 'utf8')).builtins).join(', ') || 'không có'}`);
 
 let imageNote = 'không kèm';
 if (withImageCache) {
@@ -174,3 +197,64 @@ if (size.bytes > 3.5 * 1024 ** 3) {
 }
 // Remove only the unique staging folder created above.
 if (/^dalat-migrate-[A-Za-z0-9]+$/.test(path.basename(stagingRoot))) fs.rmSync(stagingRoot, { recursive: true, force: true });
+
+function compress() {
+  fs.mkdirSync(outDir, { recursive: true });
+  const zip = path.join(outDir, `${projectName}-ban-giao-${stamp}.zip`);
+  const sevenZip = [path.join(process.env.ProgramFiles || '', '7-Zip', '7z.exe'), path.join(process.env['ProgramFiles(x86)'] || '', '7-Zip', '7z.exe')].find(p => p && fs.existsSync(p));
+  const r = sevenZip ? run(sevenZip, ['a', '-tzip', '-mx=7', zip, staging]) : run('tar', ['-a', '-c', '-f', zip, '-C', stagingRoot, projectName]);
+  if (r.status !== 0) throw Error(`Nén thất bại: ${r.stderr || r.stdout}`);
+  return zip;
+}
+
+// Gói sạch: đúng tập file của bản phát hành (code đang có trong cây làm việc), không dữ liệu.
+function packClean() {
+  if (uncommitted.length) log(`CẢNH BÁO: còn ${uncommitted.length} file code chưa commit — gói chứa code CHƯA phát hành.`);
+  log('[1/3] Chép code phát hành (không dữ liệu, không mẫu riêng, không .env, không ảnh)...');
+  const listed = String(run('git', ['-C', root, 'ls-files', '--cached', '--others', '--exclude-standard'], { maxBuffer: 64 * 1024 * 1024 }).stdout || '')
+    .split(/\r?\n/).filter(Boolean).filter(included);
+  let copied = 0;
+  for (const file of listed) {
+    const from = path.join(root, file);
+    if (!fs.existsSync(from) || !fs.statSync(from).isFile()) continue;
+    const to = path.join(staging, file);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(from, to);
+    copied++;
+  }
+  fs.mkdirSync(path.join(staging, 'backend', 'data'), { recursive: true });
+  fs.writeFileSync(path.join(staging, 'build-manifest.json'), JSON.stringify({ version, commit, userDataIncluded: false, clean: true,
+    packedAt: new Date().toISOString(), uncommittedCodeFiles: uncommitted.length }, null, 2));
+  fs.writeFileSync(path.join(staging, 'HUONG_DAN_MAY_MOI.txt'), [
+    'HUONG DAN CAI DAT', '=================', '',
+    `Phien ban: ${version}${commit ? ` (${commit.slice(0, 8)})` : ''}  -  Dong goi: ${stamp}`, '',
+    'CAN CO TREN MAY:',
+    '- Windows 10/11, o dia NTFS cuc bo (KHONG dat trong OneDrive / USB / o mang).',
+    '- Node.js LTS 22.12 tro len (nen dung 24): https://nodejs.org',
+    '- Chrome hoac Edge. Cong 3000 va 3001 con trong. Lan dau can Internet.', '',
+    'CACH CAI:',
+    `1. Giai nen ca thu muc "${projectName}" vao vi tri co dinh, vi du C:\\Tools\\${projectName}`,
+    '2. Chay start.bat. Lan dau tool tu cai thu vien (vai phut).',
+    '3. Khi hoi key DeepSeek: nhan Enter de bo qua, nhap key AI trong app (Du lieu & Cai dat > Nha cung cap AI).', '',
+    'THEM DU LIEU (tool KHONG kem du lieu hay link Google Sheet nao):',
+    '- Lan dau mo, tool hien man "Them nguon du lieu dau tien".',
+    '- Dan link Google Sheet cua ban (chia se "Bat ky ai co duong lien ket deu co the xem").',
+    '- Chon loai nguon: Thuong (carousel, lich trinh, spotlight) hoac Threads (mau Threads/Note).',
+    '- Chon noi dung co phai ve Da Lat khong (Co = mo chu, hook va mau rieng Da Lat).',
+    '- Tool tai du lieu va anh lan dau roi tu chuyen sang nguon moi. Them nguon khac trong Du lieu & Cai dat.', '',
+    'LUU Y: tool mo cong ra mang noi bo, khong co mat khau: chi dung tren mang tin cay.',
+  ].join('\r\n'), 'utf8');
+  log(`  ${copied} file code.`);
+  log('[2/3] Kiểm tra gói không chứa link Google Sheet/Docs/Drive...');
+  const hits = scan(folderFiles(staging));
+  if (hits.length) {
+    for (const hit of hits.slice(0, 20)) console.error(`  ${hit.file}:${hit.line}  ${hit.kind}`);
+    throw Error(`Gói còn ${hits.length} link/mã Google; dừng đóng gói.`);
+  }
+  const size = dirSize(staging);
+  log(`[3/3] Gói: ${size.files} file, ${gb(size.bytes)} — không có link Google.`);
+  if (stagingOnly) { log(`STAGING=${staging}`); return; }
+  const zip = compress();
+  log(`XONG: ${zip} (${gb(fs.statSync(zip).size)})`);
+  if (/^dalat-migrate-[A-Za-z0-9]+$/.test(path.basename(stagingRoot))) fs.rmSync(stagingRoot, { recursive: true, force: true });
+}

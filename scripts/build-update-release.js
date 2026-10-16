@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const JSZip = require('../frontend/node_modules/jszip');
+const { included, findSourceLinks } = require('./release-files.cjs');
 
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'outputs', 'update-release');
@@ -13,12 +14,6 @@ const privateKeyPath = process.env.DALAT_RELEASE_SIGNING_KEY
   || path.join(process.env.LOCALAPPDATA || '', 'DalatStudioReleaseSigning', 'private.pem');
 
 function git(...args) { return execFileSync('git', args, { cwd: root, maxBuffer: 64 * 1024 * 1024 }); }
-function included(file) {
-  if (file.startsWith('backend/src/modules/guide/tools/')) return false;
-  if (/^(?:backend\/data\/|backend\/node_modules\/|backend\/reports\/|backend\/test\/|frontend\/node_modules\/|frontend\/\.next\/|frontend\/tools\/|\.githooks\/|\.cursor\/|docs\/)/.test(file)) return false;
-  if (/\/(?:\.env|\.env\..+)$/.test(file) && !file.endsWith('.env.example')) return false;
-  return /^(?:backend\/(?:src\/|\.env\.example$|package(?:-lock)?\.json$|tsconfig(?:\.build)?\.json$)|frontend\/(?:app\/|components\/|lib\/|public\/|next\.config\.js$|package(?:-lock)?\.json$)|scripts\/|start\.bat$|VERSION$|package(?:-lock)?\.json$|README\.md$)/.test(file);
-}
 
 async function main() {
   if (process.platform !== 'win32') throw Error('Gói cập nhật Windows phải được đóng gói/kiểm thử trên Windows.');
@@ -45,6 +40,9 @@ async function main() {
       throw Error('npm test lỗi; đã dừng đóng gói bản phát hành.');
     }
   }
+  // Link Google Sheet/Docs thuộc cấu hình từng máy; bản phát hành không được mang theo.
+  const linkHits = files.flatMap(file => findSourceLinks(file, git('show', `HEAD:${file}`)));
+  if (linkHits.length) throw Error(`Code phát hành còn link Google: ${linkHits.slice(0, 8).map(hit => `${hit.file}:${hit.line}`).join(', ')}`);
   const zip = new JSZip();
   for (const file of files) {
     const source = git('show', `HEAD:${file}`);

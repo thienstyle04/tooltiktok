@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import AiSettingsPanel from './AiSettingsPanel';
+import AddSourceForm from './AddSourceForm';
 import { syncStatusLabel } from '../lib/syncStatusLabel.mjs';
 
 function formatCount(count) {
@@ -40,6 +41,7 @@ export default function SettingsPanel({
   onAddDestination,
   onReplaceDestinationWorkbook,
   onRefreshFromSheet,
+  onUpdateSheetLink,
   hookSourcesInfo,
   hookSourcesBusy,
   onCreateHookSource,
@@ -48,11 +50,9 @@ export default function SettingsPanel({
   onDeleteHookSource,
   onChangeHookMode,
 }) {
-  const [newSourceName, setNewSourceName] = useState('');
-  const [newSourceUrl, setNewSourceUrl] = useState('');
-  const [newSourceFile, setNewSourceFile] = useState(null);
-  const [addError, setAddError] = useState('');
-  const [adding, setAdding] = useState(false);
+  const [linkDraft, setLinkDraft] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
   const [replaceFile, setReplaceFile] = useState(null);
   const [replaceError, setReplaceError] = useState('');
   const [replacing, setReplacing] = useState(false);
@@ -97,25 +97,22 @@ export default function SettingsPanel({
     setReplaceFile(null);
     setReplaceError('');
     setRefreshError('');
+    setLinkDraft('');
+    setLinkError('');
   }, [activeDestinationId]);
 
-  const submitNewSource = async (event) => {
+  const submitSheetLink = async (event) => {
     event.preventDefault();
-    setAddError('');
-    setAdding(true);
+    if (!activeDestination?.id || !linkDraft.trim()) return;
+    setLinkError('');
+    setLinkSaving(true);
     try {
-      await onAddDestination({
-        label: newSourceName.trim(),
-        sheetUrl: newSourceUrl.trim(),
-        file: newSourceFile,
-      });
-      setNewSourceName('');
-      setNewSourceUrl('');
-      setNewSourceFile(null);
+      await onUpdateSheetLink(activeDestination.id, linkDraft.trim());
+      setLinkDraft('');
     } catch (error) {
-      setAddError(error?.message || 'Không thể thêm nguồn XLSX.');
+      setLinkError(error?.message || 'Không lưu được link Google Sheet.');
     } finally {
-      setAdding(false);
+      setLinkSaving(false);
     }
   };
 
@@ -231,57 +228,12 @@ export default function SettingsPanel({
         <article className="settings-card settings-add-source-card">
           <div>
             <p className="panel-kicker">Thêm nguồn mới</p>
-            <h3>Nhập workbook XLSX</h3>
+            <h3>Link Google Sheet hoặc file XLSX</h3>
             <p className="settings-help">
-              Mỗi nguồn mới cần tên hiển thị và file workbook. Link Google Sheet là tùy chọn để dùng làm dự phòng khi cần tải mới.
+              Link Sheet chỉ lưu trên máy này. Chọn Thường hoặc Threads và cho biết nội dung có phải về Đà Lạt không để tool mở đúng mẫu.
             </p>
           </div>
-          <form className="settings-source-form" onSubmit={submitNewSource}>
-            <label>
-              <span>Tên hiển thị</span>
-              <input
-                type="text"
-                value={newSourceName}
-                onChange={(event) => setNewSourceName(event.target.value)}
-                placeholder="Ví dụ: Nha Trang"
-                minLength={2}
-                maxLength={60}
-                disabled={busy || adding}
-                required
-              />
-            </label>
-            <label>
-              <span>File XLSX</span>
-              <input
-                type="file"
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                disabled={busy || adding}
-                required
-                onChange={(event) => setNewSourceFile(event.target.files?.[0] || null)}
-              />
-            </label>
-            <label>
-              <span>Link Google Sheet dự phòng</span>
-              <input
-                type="url"
-                value={newSourceUrl}
-                onChange={(event) => setNewSourceUrl(event.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/..."
-                disabled={busy || adding}
-              />
-            </label>
-            <button
-              type="submit"
-              className="toolbar-button primary settings-add-button"
-              disabled={busy || adding || !newSourceName.trim() || !newSourceFile}
-            >
-              {adding ? 'Đang kiểm tra workbook...' : 'Thêm và sử dụng'}
-            </button>
-          </form>
-          {addError ? <p className="settings-form-error" role="alert">{addError}</p> : null}
-          <p className="settings-form-note">
-            Chỉ nhận workbook hợp lệ tối đa 20 MB. Link dự phòng có thể để trống nếu bạn chỉ muốn dùng file cục bộ.
-          </p>
+          <AddSourceForm busy={busy} onSubmit={onAddDestination} />
         </article>
 
         <article className="settings-card settings-source-card">
@@ -353,7 +305,7 @@ export default function SettingsPanel({
 
           {!hookAvailable ? (
             <p className="settings-hook-lock">
-              Green Land luôn dùng Hook thường. Chuyển sang nguồn Đà Lạt để quản lý và bật Hook lễ.
+              Nguồn này không phải nội dung Đà Lạt nên luôn dùng Hook thường. Chuyển sang nguồn có nội dung Đà Lạt để quản lý và bật Hook lễ.
             </p>
           ) : null}
 
@@ -555,6 +507,22 @@ export default function SettingsPanel({
               ) : (
                 <p>Chưa cấu hình Google Sheet dự phòng.</p>
               )}
+              {activeDestination && onUpdateSheetLink ? (
+                <form className="settings-link-form" onSubmit={submitSheetLink}>
+                  <input
+                    type="url"
+                    value={linkDraft}
+                    onChange={(event) => setLinkDraft(event.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    aria-label={`Link Google Sheet mới cho ${activeDestination.label}`}
+                    disabled={busy || linkSaving}
+                  />
+                  <button type="submit" className="toolbar-button secondary" disabled={busy || linkSaving || !linkDraft.trim()}>
+                    {linkSaving ? 'Đang lưu...' : activeSheetUrl ? 'Đổi link Sheet' : 'Lưu link Sheet'}
+                  </button>
+                </form>
+              ) : null}
+              {linkError ? <p className="settings-form-error" role="alert">{linkError}</p> : null}
             </div>
 
             <form className="settings-replace-form" onSubmit={submitReplaceWorkbook}>

@@ -6,6 +6,8 @@ import type { GuideItem, GuideDeckList, PartnerRotationHistory, WorkbookItemsByS
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'partner-rotation-unit-'));
 process.env.DALAT_DATA_DIR = root;
+// Máy đang dùng: 4 nguồn dựng sẵn với link giả (code không chứa link thật).
+require('../../../../../scripts/test-support/source-links-fixture.cjs').seedSourceLinks(process.env.DALAT_DATA_DIR as string);
 process.env.DALAT_DRIVE_FILE_CACHE_DIR = path.join(root, 'cache');
 const { bootstrapPartnerHistory, rotatePartnerList, restrictRotationPhotos, partnerIdentity, sourcePhotoId } = require('../logic/partner-rotation');
 const item = (n: number, photos = 3, sectionKey = 'quan_an', partner = true): GuideItem => ({

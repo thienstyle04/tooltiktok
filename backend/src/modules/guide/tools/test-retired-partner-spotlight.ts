@@ -5,6 +5,8 @@ import path from 'node:path';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'retired-partner-spotlight-'));
 process.env.DALAT_DATA_DIR = root;
+// Máy đang dùng: 4 nguồn dựng sẵn với link giả (code không chứa link thật).
+require('../../../../../scripts/test-support/source-links-fixture.cjs').seedSourceLinks(process.env.DALAT_DATA_DIR as string);
 process.env.DALAT_DRIVE_FILE_CACHE_DIR = path.join(root, 'cache');
 const { GuideService } = require('../guide.service');
 const { AutomationSchedulerService } = require('../automation-scheduler.service');
@@ -47,7 +49,7 @@ async function main() {
       requestId: 'test', request: {} }), /đã ngừng sử dụng/);
     assert.throws(() => scheduler.assertTemplatesAllowed(source, [{ deckId: 'spotlight-partner', count: 1 }]), /đã ngừng sử dụng/);
   }
-  assert.equal(fs.readdirSync(root).length, 0, 'Rejected creation must not write history/list/hook');
+  assert.deepEqual(fs.readdirSync(root).filter(name => name !== 'source-links.json'), [], 'Rejected creation must not write history/list/hook');
   console.log('PASS retired Spotlight Đối tác: all sources/API/queue/scheduler blocked before work; saved snapshots preserved and still recognized for XLSX; no writes.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

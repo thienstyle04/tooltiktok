@@ -1,11 +1,10 @@
 import * as XLSX from 'xlsx';
 import { syncFetch } from './night-sync-policy';
 
-import { DestinationConfig, getDestinationConfig, DEFAULT_DESTINATION_ID, DestinationId } from './destination-config';
+import { BUILTIN_SOURCES, DestinationConfig, DEFAULT_DESTINATION_ID, DestinationId } from './destination-config';
 
-export const DALAT_FNB_SHEET_URL = getDestinationConfig('dalat').sheetUrl;
-export const DALAT_FNB_EXPORT_URL = getDestinationConfig('dalat').exportUrl;
-export const PREFERRED_WORKBOOK_NAME = getDestinationConfig(DEFAULT_DESTINATION_ID).workbookName;
+// Link Sheet nằm trong cấu hình của từng máy (source-links.json), không có hằng link ở đây.
+export const PREFERRED_WORKBOOK_NAME = BUILTIN_SOURCES[DEFAULT_DESTINATION_ID].workbookName;
 export const MAX_WORKBOOK_FILE_BYTES = 20 * 1024 * 1024;
 
 const SHEET_FETCH_TIMEOUT_MS = 30_000;

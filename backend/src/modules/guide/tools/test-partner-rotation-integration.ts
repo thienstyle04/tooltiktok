@@ -12,6 +12,8 @@ async function main() {
   fs.mkdirSync(data); fs.mkdirSync(cache);
   Object.assign(process.env, { DALAT_DATA_DIR: data, DALAT_DRIVE_FILE_CACHE_DIR: cache,
     DALAT_AUTO_SYNC_SHEET: 'false', DALAT_AUTO_WARM_DRIVE_CACHE: 'false' });
+    // Máy đang dùng: 4 nguồn dựng sẵn với link giả (code không chứa link thật).
+    require('../../../../../scripts/test-support/source-links-fixture.cjs').seedSourceLinks(process.env.DALAT_DATA_DIR as string);
   const { GuideService } = require('../guide.service');
   const { buildDecks } = require('../logic/deck-builder');
   const { setSpotlightV3BuildContext, clearSpotlightV3BuildContext } = require('../logic/deck-builder-v2');

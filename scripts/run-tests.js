@@ -13,6 +13,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { seedSourceLinks } = require('./test-support/source-links-fixture.cjs');
 
 const root = path.resolve(__dirname, '..');
 const backendRoot = path.join(root, 'backend');
@@ -86,6 +87,8 @@ const SCRIPTS_UNIT = [
   { file: 'scripts/test-ai-key-step.cjs', requires: isWindows },
   { file: 'scripts/test-update-apply.js', requires: hasSigningKey },
   { file: 'scripts/typecheck-frontend.js' },
+  { file: 'scripts/check-no-source-links.cjs' },
+  { file: 'scripts/test-pack-clean.cjs', requires: isWindows },
 ];
 // Mọi backend tools/test-*.ts đều thuộc tầng unit, trừ các file dưới đây.
 // Test unit chạy lâu (dựng hàng chục list cho mọi mẫu): 2,5–4 phút tùy máy bận.
@@ -137,6 +140,7 @@ const FRONTEND_BROWSER = [
   'tools/test-threads-budget-fit.cjs',
   'tools/test-threads-fit.cjs',
   'tools/test-threads-source-ui.cjs',
+  'tools/test-first-source-setup-ui.mjs',
   'tools/test-threads-toplist-visual.cjs',
   'tools/test-spotlight-v4-v6-partners-export.mjs',
   'tools/test-spotlight-v5-partners-export.mjs',
@@ -241,6 +245,8 @@ function runOne(test, verbose) {
     const skipReason = test.requires ? test.requires() : null;
     if (skipReason) return resolve({ test, status: 'skip', reason: skipReason, ms: 0, output: '' });
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-test-data-'));
+    // Máy đang dùng có source-links.json (link giả) để 4 nguồn dựng sẵn tồn tại như trước.
+    seedSourceLinks(dataDir);
     // Test ghi ảnh/báo cáo vào outputs/ khi chạy tay; qua runner thì ghi vào thư mục tạm rồi xóa.
     const outputDir = TEMP_OUTPUT_TESTS.has(path.basename(test.file)) ? fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-test-output-')) : '';
     // Hook ESM khiến Node nạp file .ts qua trình nạp ESM thay vì ts-node, nên

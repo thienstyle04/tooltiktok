@@ -70,11 +70,17 @@ export function listLocalTemplates(): LocalTemplateManifest[] {
 export function findLocalTemplate(id: string): LocalTemplateManifest | undefined {
   return listLocalTemplates().find(m => m.id === id);
 }
+// Nguồn tương đương do destination-config khai báo (vd. nguồn Thường nội dung Đà Lạt ≈ dalat-test).
+let sourceAliases: (sourceId: string) => string[] = sourceId => [sourceId];
+export function setLocalTemplateSourceAliases(resolve: (sourceId: string) => string[]): void { sourceAliases = resolve; }
+export function templateAllowsSource(m: LocalTemplateManifest, sourceId: string): boolean {
+  return sourceAliases(sourceId).some(id => m.allowedSourceIds.includes(id));
+}
 export function localTemplateAllowedIds(sourceId: string): string[] {
-  return listLocalTemplates().filter(m => m.allowedSourceIds.includes(sourceId)).map(m => m.id);
+  return listLocalTemplates().filter(m => templateAllowsSource(m, sourceId)).map(m => m.id);
 }
 export function localTemplateDecks(sourceId: string): GuideDeck[] {
-  return listLocalTemplates().filter(m => m.allowedSourceIds.includes(sourceId)).map(m => {
+  return listLocalTemplates().filter(m => templateAllowsSource(m, sourceId)).map(m => {
     const builder = localTemplateBuilder(m);
     const sample = builder.mainList?.();
     if (sample && (!Array.isArray(sample.pages) || !sample.pages.length || (m.pageCount && sample.pages.length !== m.pageCount)

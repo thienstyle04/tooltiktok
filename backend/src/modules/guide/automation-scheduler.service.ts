@@ -78,7 +78,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       if (job.status !== 'queued') return;
       this.manualActiveId = job.id;
       job.status = 'running';
-      const previousDestination = this.guideService.getDestinations().active.id;
+      const previousDestination = this.guideService.getDestinations().active?.id || '';
       const previousHook = this.guideService.getHookSources();
       try {
         job.result = await this.guideService.enqueueGeneration(async () => {
@@ -89,7 +89,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
             if (input.kind === 'caption') return await this.guideService.generateDeckFromCaption(request);
             return await this.guideService.generatePartnerSpotlight(request);
           } finally {
-            if (this.guideService.getDestinations().active.id !== previousDestination) await this.guideService.setActiveDestination({ id: previousDestination });
+            if ((this.guideService.getDestinations().active?.id || '') !== previousDestination && previousDestination) await this.guideService.setActiveDestination({ id: previousDestination });
             const currentHook = this.guideService.getHookSources();
             if (isDalatContentSource(previousDestination) && (currentHook.mode !== previousHook.mode || currentHook.activeSourceId !== previousHook.activeSourceId)) this.guideService.setHookMode({ mode: previousHook.mode, sourceId: previousHook.activeSourceId });
           }
@@ -496,7 +496,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       if (!this.findBrowser()) throw new Error('Không tìm thấy Chrome hoặc Edge để xuất tự động.');
       this.assertHookSelectionReady(run);
       await this.assertFrontendReady();
-      previousDestination = this.guideService.getDestinations().active.id;
+      previousDestination = this.guideService.getDestinations().active?.id || '';
       run.status = 'refreshing'; run.progress = 3; run.phase = 'Đang mở dữ liệu cục bộ của nguồn...'; this.touch(run);
       // A scheduled generation is not an explicit manual sync. Refreshing here
       // also deadlocks: the sync coordinator yields while this run is active.
@@ -560,7 +560,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       await this.closeBrowser();
       delete run.exportToken;
       this.touch(run);
-      if (previousDestination && previousDestination !== this.guideService.getDestinations().active.id) {
+      if (previousDestination && previousDestination !== this.guideService.getDestinations().active?.id) {
         await this.guideService.setActiveDestination({ id: previousDestination }).catch(() => undefined);
       }
       this.activeRunId = '';

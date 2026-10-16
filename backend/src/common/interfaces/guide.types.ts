@@ -8,6 +8,7 @@ export interface DestinationSummary {
   sourceType: 'xlsx' | 'google-sheet';
   workbookFileName: string;
   contentDestinationId?: DestinationId;
+  kind?: 'standard' | 'threads';
   allowedDeckIds: string[];
   hasLocalWorkbook: boolean;
   hasSheetFallback: boolean;
@@ -16,7 +17,8 @@ export interface DestinationSummary {
 }
 
 export interface DestinationListResponse {
-  active: DestinationSummary;
+  /** null khi máy chưa có nguồn dữ liệu nào. */
+  active: DestinationSummary | null;
   destinations: DestinationSummary[];
 }
 
@@ -32,15 +34,24 @@ export interface SetDestinationResponse {
 export interface AddDestinationRequest {
   label: string;
   sheetUrl: string;
+  /** Thường hoặc Threads. Bỏ trống = nguồn kiểu cũ dùng chung dữ liệu gốc. */
+  kind?: 'standard' | 'threads';
+  /** Nội dung Đà Lạt: mở chữ/hook Đà Lạt và mẫu riêng Đà Lạt. */
+  dalatContent?: boolean | string;
 }
 
 export interface AddXlsxDestinationRequest {
   label: string;
   sheetUrl?: string;
+  kind?: 'standard' | 'threads';
+  dalatContent?: boolean | string;
 }
 
 export interface AddDestinationResponse extends SetDestinationResponse {
   destinations: DestinationSummary[];
+  /** Nguồn tách biệt vừa thêm: chưa có dữ liệu, giao diện chạy cập nhật đầu tiên rồi mới chuyển sang. */
+  created?: DestinationSummary;
+  needsFirstSync?: boolean;
 }
 
 export type HookMode = 'normal' | 'festival';

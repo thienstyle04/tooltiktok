@@ -18,14 +18,14 @@ try {
   const page = await browser.newPage();
   let active = 'dalat', photosPolls = -1;
   const counts = { guideAfterAdd: 0, partnersAfterAdd: 0 };
-  let added = false;
+  let added = false, addBody = '';
   await page.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
     if (request.isNavigationRequest()) return route.fulfill({ contentType: 'text/html', body: '<div id="root"></div>' });
     if (url.pathname.includes('guide-data')) { if (added) counts.guideAfterAdd++; return route.fulfill({ json: datasetFor(active, active === 'dalat' ? 'Đà Lạt' : 'Nha Trang thử') }); }
     let body = {};
     if (url.pathname === '/api/destinations/xlsx' && request.method() === 'POST') {
-      active = 'xlsx-nt'; added = true; photosPolls = 0;
+      active = 'xlsx-nt'; added = true; photosPolls = 0; addBody = request.postData() || '';
       body = { active: { id: 'xlsx-nt', label: 'Nha Trang thử', totalItems: 271 }, dataset: datasetFor('xlsx-nt', 'Nha Trang thử'), destinations: [{ id: 'dalat', label: 'Đà Lạt', allowedDeckIds: ['grid-6'] }, { id: 'xlsx-nt', label: 'Nha Trang thử', allowedDeckIds: ['grid-6'] }] };
       return route.fulfill({ status: 201, json: body });
     }
@@ -50,14 +50,21 @@ try {
   if (process.env.DEBUG_UI) { await page.waitForTimeout(2000); console.log((await page.locator('body').innerText()).slice(0, 1500)); }
   const form = page.locator('.settings-source-form');
   await form.waitFor();
+  // Mặc định thêm bằng link Sheet; chọn File XLSX để hiện ô chọn file.
+  assert.equal(await form.locator('input[type=file]').count(), 0);
+  await form.getByRole('radio', { name: 'File XLSX' }).check();
   assert.equal(await form.locator('input[type=file]').getAttribute('accept'), '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'File picker only offers .xlsx (backend rejects .xls)');
   await form.locator('input[placeholder="Ví dụ: Nha Trang"]').fill('Nha Trang thử');
   await form.locator('input[type=file]').setInputFiles({ name: 'nha-trang.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('PK test') });
+  assert.equal(await form.getByRole('button', { name: 'Thêm và sử dụng' }).isDisabled(), true, 'phải trả lời nội dung có phải Đà Lạt không');
+  await form.getByRole('radio', { name: /^Không/ }).check();
   await form.getByRole('button', { name: 'Thêm và sử dụng' }).click();
   // Photos become ready after a few polls: catalog and partners reload once.
   await page.waitForFunction(() => true);
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline && (counts.guideAfterAdd < 1 || counts.partnersAfterAdd < 2)) await page.waitForTimeout(250);
+  assert.match(addBody, /name="kind"\r?\n\r?\nstandard/, 'gửi loại nguồn');
+  assert.match(addBody, /name="dalatContent"\r?\n\r?\nfalse/, 'gửi lựa chọn nội dung Đà Lạt');
   assert.ok(counts.guideAfterAdd >= 1, `catalog reloaded after photos were ready (${counts.guideAfterAdd})`);
   assert.ok(counts.partnersAfterAdd >= 2, `partners reloaded after photos were ready (${counts.partnersAfterAdd})`);
   const settled = { ...counts };

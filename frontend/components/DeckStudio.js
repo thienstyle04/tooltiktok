@@ -23,6 +23,7 @@ import StudioListLibrary from './StudioListLibrary';
 import TemplateGalleryPanel from './TemplateGalleryPanel';
 import DataStatsPanel from './DataStatsPanel';
 import SettingsPanel from './SettingsPanel';
+import FirstSourceSetup from './FirstSourceSetup';
 import AutomationSchedulerPanel from './AutomationSchedulerPanel';
 import CaptionTools from './CaptionTools';
 import PreviewDashboardPanel from './PreviewDashboardPanel';
@@ -525,7 +526,7 @@ export default function DeckStudio({ initialDataset = null }) {
     }
   }, [applyDestinationMutation, destinationInfo?.active?.id, switchingDestination]);
 
-  const addDestination = useCallback(async ({ label, sheetUrl, file }) => {
+  const addDestination = useCallback(async ({ label, sheetUrl, file, kind, dalatContent }) => {
     if (switchingDestination) return;
     setSwitchingDestination(true);
     setRefreshing(true);
@@ -534,6 +535,8 @@ export default function DeckStudio({ initialDataset = null }) {
       const body = new FormData();
       body.set('label', label);
       if (sheetUrl) body.set('sheetUrl', sheetUrl);
+      if (kind) body.set('kind', kind);
+      if (dalatContent !== undefined) body.set('dalatContent', dalatContent ? 'true' : 'false');
       if (file) body.set('file', file);
       const response = await apiFetch('/api/destinations/xlsx', {
         method: 'POST',
@@ -665,6 +668,45 @@ export default function DeckStudio({ initialDataset = null }) {
     }
   }, [applyDestinationMutation, destinationInfo?.active?.id, switchingDestination]);
 
+  // Link Google Sheet do người dùng nhập; tool không kèm link nào. Nguồn Thường/Threads
+  // mới chỉ có dữ liệu sau lượt cập nhật đầu tiên, rồi mới chuyển sang.
+  const addSource = useCallback(async ({ label, sheetUrl, file, kind, dalatContent }) => {
+    if (file) return addDestination({ label, sheetUrl, file, kind, dalatContent });
+    if (switchingDestination) return null;
+    setStatus(`Đang kiểm tra Google Sheet ${label}...`);
+    const response = await apiFetch('/api/destinations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label, sheetUrl, kind, dalatContent }),
+      cache: 'no-store',
+    });
+    const payload = await readApiPayload(response);
+    if (!response.ok) throw new Error(apiErrorMessage(payload, `Không thêm được Google Sheet: HTTP ${response.status}`));
+    if (payload?.needsFirstSync && payload?.created?.id) {
+      setDestinationInfo((previous) => ({
+        active: previous?.active || payload.active || null,
+        destinations: mergeDestinations(previous?.destinations, payload.destinations),
+      }));
+      setStatus(`Đã thêm ${payload.created.label}. Đang tải dữ liệu và ảnh lần đầu...`);
+      return refreshDestinationFromSheet(payload.created.id);
+    }
+    return applyDestinationMutation(payload);
+  }, [addDestination, applyDestinationMutation, refreshDestinationFromSheet, switchingDestination]);
+
+  const updateSheetLink = useCallback(async (destinationId, sheetUrl) => {
+    const response = await apiFetch(`/api/destinations/${encodeURIComponent(destinationId)}/sheet-link`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheetUrl }),
+      cache: 'no-store',
+    });
+    const payload = await readApiPayload(response);
+    if (!response.ok) throw new Error(apiErrorMessage(payload, `Không lưu được link Google Sheet: HTTP ${response.status}`));
+    setDestinationInfo(payload);
+    setStatus('Đã lưu link Google Sheet trên máy này.');
+    return payload;
+  }, []);
+
   useEffect(() => {
     const stored = readStoredSelection();
     currentSelectionRef.current = stored;
@@ -683,6 +725,12 @@ export default function DeckStudio({ initialDataset = null }) {
         destinations = await loadDestinations();
       } catch (error) {
         console.error(error);
+      }
+      if (destinations && !destinations.active) {
+        // Máy chưa có nguồn: không đọc dữ liệu cũ trong trình duyệt, chờ người dùng thêm nguồn.
+        clearCachedDataset();
+        if (!cancelled) setStatus('Máy này chưa có nguồn dữ liệu. Hãy thêm link Google Sheet để bắt đầu.');
+        return;
       }
 
       const cached = initialDataset ? null : readCachedDataset();
@@ -1677,7 +1725,8 @@ export default function DeckStudio({ initialDataset = null }) {
     activeView === 'scheduler' ? 'scheduler-mode' : '',
   ].filter(Boolean).join(' ');
 
-  const activeDestinationId = destinationInfo?.active?.id || dataset?.source?.destinationId || 'dalat';
+  const activeDestinationId = destinationInfo?.active?.id || dataset?.source?.destinationId || '';
+  const needsFirstSource = Boolean(destinationInfo) && !destinationInfo.active;
   const destinationOptions = mergeDestinations(
     BUILTIN_DESTINATION_FALLBACKS,
     destinationInfo?.destinations,
@@ -1732,7 +1781,17 @@ export default function DeckStudio({ initialDataset = null }) {
           </section>
         </div>
       ) : null}
-      {showCacheWarmOverlay && !manualSyncVisible ? (
+      {needsFirstSource && !manualSyncVisible ? (
+        <FirstSourceSetup
+          destinations={destinationInfo?.destinations || []}
+          busy={switchingDestination || refreshing}
+          onAddDestination={addSource}
+          onSyncDestination={(destinationId) => {
+            refreshDestinationFromSheet(destinationId).catch((error) => setStatus(error.message));
+          }}
+        />
+      ) : null}
+      {showCacheWarmOverlay && !manualSyncVisible && !needsFirstSource ? (
         <div className="cache-warm-overlay" role="dialog" aria-modal="true" aria-labelledby="cacheWarmTitle">
           <section className="cache-warm-dialog">
             <div className="cache-warm-icon" aria-hidden="true">{cacheDestinationShortLabel}</div>
@@ -1909,9 +1968,10 @@ export default function DeckStudio({ initialDataset = null }) {
               onDestinationChange={(destinationId) => {
                 switchDestination(destinationId).catch((error) => setStatus(error.message));
               }}
-              onAddDestination={addDestination}
+              onAddDestination={addSource}
               onReplaceDestinationWorkbook={(destinationId, file) => replaceDestinationWorkbook(destinationId, file)}
               onRefreshFromSheet={(destinationId) => refreshDestinationFromSheet(destinationId)}
+              onUpdateSheetLink={updateSheetLink}
               onCreateHookSource={createHookSource}
               onUpdateHookSource={updateHookSource}
               onRefreshHookSource={refreshHookSource}
