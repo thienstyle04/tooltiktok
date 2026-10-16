@@ -31,6 +31,8 @@ const stagingOnly = flag('--staging-only'), linkCache = flag('--link-cache');
 const stamp = new Date(Date.now() + 7 * 3600000).toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 13);
 const outDir = option('--out', path.join(os.homedir(), 'Desktop'));
 const log = message => console.log(message);
+// tar.exe của Windows (bsdtar) hiểu ổ đĩa C:; tar của Git Bash thì không.
+const windowsTar = [path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')].find(p => fs.existsSync(p)) || 'tar';
 
 function run(command, commandArgs, options = {}) {
   const result = spawnSync(command, commandArgs, { encoding: 'utf8', windowsHide: true, ...options });
@@ -191,7 +193,7 @@ if (size.bytes > 3.5 * 1024 ** 3) {
 } else {
   const zip = `${base}.zip`;
   const sevenZip = [path.join(process.env.ProgramFiles || '', '7-Zip', '7z.exe'), path.join(process.env['ProgramFiles(x86)'] || '', '7-Zip', '7z.exe')].find(p => p && fs.existsSync(p));
-  const r = sevenZip ? run(sevenZip, ['a', '-tzip', '-mx=7', zip, staging]) : run('tar', ['-a', '-c', '-f', zip, '-C', stagingRoot, projectName]);
+  const r = sevenZip ? run(sevenZip, ['a', '-tzip', '-mx=7', zip, staging]) : run(windowsTar, ['-a', '-c', '-f', zip, '-C', stagingRoot, projectName]);
   if (r.status !== 0) throw Error(`Nén thất bại: ${r.stderr || r.stdout}`);
   log(`XONG: ${zip} (${gb(fs.statSync(zip).size)})`);
 }
@@ -202,14 +204,15 @@ function compress() {
   fs.mkdirSync(outDir, { recursive: true });
   const zip = path.join(outDir, `${projectName}-ban-giao-${stamp}.zip`);
   const sevenZip = [path.join(process.env.ProgramFiles || '', '7-Zip', '7z.exe'), path.join(process.env['ProgramFiles(x86)'] || '', '7-Zip', '7z.exe')].find(p => p && fs.existsSync(p));
-  const r = sevenZip ? run(sevenZip, ['a', '-tzip', '-mx=7', zip, staging]) : run('tar', ['-a', '-c', '-f', zip, '-C', stagingRoot, projectName]);
+  const r = sevenZip ? run(sevenZip, ['a', '-tzip', '-mx=7', zip, staging]) : run(windowsTar, ['-a', '-c', '-f', zip, '-C', stagingRoot, projectName]);
   if (r.status !== 0) throw Error(`Nén thất bại: ${r.stderr || r.stdout}`);
   return zip;
 }
 
 // Gói sạch: đúng tập file của bản phát hành (code đang có trong cây làm việc), không dữ liệu.
 function packClean() {
-  if (uncommitted.length) log(`CẢNH BÁO: còn ${uncommitted.length} file code chưa commit — gói chứa code CHƯA phát hành.`);
+  const uncommittedCode = uncommitted.map(line => line.slice(3).replace(/\\/g, '/')).filter(included);
+  if (uncommittedCode.length) log(`CẢNH BÁO: còn ${uncommittedCode.length} file code chưa commit — gói chứa code CHƯA phát hành.`);
   log('[1/3] Chép code phát hành (không dữ liệu, không mẫu riêng, không .env, không ảnh)...');
   const listed = String(run('git', ['-C', root, 'ls-files', '--cached', '--others', '--exclude-standard'], { maxBuffer: 64 * 1024 * 1024 }).stdout || '')
     .split(/\r?\n/).filter(Boolean).filter(included);
@@ -224,7 +227,7 @@ function packClean() {
   }
   fs.mkdirSync(path.join(staging, 'backend', 'data'), { recursive: true });
   fs.writeFileSync(path.join(staging, 'build-manifest.json'), JSON.stringify({ version, commit, userDataIncluded: false, clean: true,
-    packedAt: new Date().toISOString(), uncommittedCodeFiles: uncommitted.length }, null, 2));
+    packedAt: new Date().toISOString(), uncommittedCodeFiles: uncommittedCode.length }, null, 2));
   fs.writeFileSync(path.join(staging, 'HUONG_DAN_MAY_MOI.txt'), [
     'HUONG DAN CAI DAT', '=================', '',
     `Phien ban: ${version}${commit ? ` (${commit.slice(0, 8)})` : ''}  -  Dong goi: ${stamp}`, '',
