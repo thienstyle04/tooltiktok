@@ -5,10 +5,13 @@ import { apiFetch } from '../lib/apiClient';
 import { listIsMain } from '../lib/utils';
 import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET } from '../lib/photoPresets.mjs';
 import { filterSourceTemplates, forbiddenTemplateSelections } from '../lib/sourceTemplatePolicy.mjs';
+import RequiredPartnerPicker from './RequiredPartnerPicker';
+import { cleanRequiredPartners, supportsRequiredPartners } from '../lib/requiredPartners.mjs';
 
 const DALAT_ONLY_DECKS = new Set([
   'spotlight-v6-diary', 'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
+  'spotlight-v6-cherry-blossom',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
 ]);
 const DALAT_EXTRA_DECKS = [
   { id: 'spotlight-v5', navTitle: 'Spotlight V5' },
@@ -17,10 +20,13 @@ const DALAT_EXTRA_DECKS = [
   { id: 'spotlight-v6-persimmon', navTitle: 'Spotlight Mùa hồng' },
   { id: 'spotlight-v6-maps', navTitle: 'Spotlight V6 Google Maps' },
   { id: 'spotlight-v6-diary', navTitle: 'Spotlight Nhật ký Đà Lạt' },
+  { id: 'spotlight-v6-cherry-blossom', navTitle: 'Spotlight Mùa hoa đào' },
   { id: 'summary-note', navTitle: 'Tổng hợp địa điểm' },
   { id: 'itinerary-note-threads-3n2d', navTitle: 'Note Threads 3N2Đ' },
   { id: 'itinerary-note-threads-2n1d', navTitle: 'Note Threads 2N1Đ' },
   { id: 'itinerary-note-threads-budget-3n2d', navTitle: 'Chi phí Threads 3N2Đ' },
+  { id: 'itinerary-note-threads-expense-2n1d', navTitle: 'Bảng chi tiêu Threads 2N1Đ' },
+  { id: 'itinerary-note-threads-expense-3n2d', navTitle: 'Bảng chi tiêu Threads 3N2Đ' },
   { id: 'threads-toplist-dalat', navTitle: 'Top list Đà Lạt' },
   { id: 'threads-food-local', navTitle: 'Quán ăn Threads Local' },
   { id: 'threads-cafe-local', navTitle: 'Cà phê Threads Local' },
@@ -85,7 +91,8 @@ function loadDraftForm(destinationId) {
       sourceId: String(saved.sourceId || ''),
       templates: Array.isArray(saved.templates) ? saved.templates
         .map((entry) => { const legacy={'spotlight-v5-color-edit':'spotlight-v5','spotlight-v6-color-edit':'spotlight-v6'};
-          return { deckId: legacy[entry?.deckId] || String(entry?.deckId || ''), photoPreset: legacy[entry?.deckId] ? COLOR_EDIT_PRESET : entry?.photoPreset===COLOR_EDIT_PRESET ? COLOR_EDIT_PRESET : null, count: Math.min(5, Math.max(3, Number(entry?.count) || 3)) }; })
+          const requiredPartners = cleanRequiredPartners(entry?.requiredPartners);
+          return { deckId: legacy[entry?.deckId] || String(entry?.deckId || ''), photoPreset: legacy[entry?.deckId] ? COLOR_EDIT_PRESET : entry?.photoPreset===COLOR_EDIT_PRESET ? COLOR_EDIT_PRESET : null, count: Math.min(5, Math.max(3, Number(entry?.count) || 3)), ...(requiredPartners.length ? { requiredPartners } : {}) }; })
         .filter((entry) => entry.deckId) : [],
     };
   } catch {
@@ -108,7 +115,7 @@ async function payloadOrError(response) {
   return payload;
 }
 
-export default function AutomationSchedulerPanel({ dataset, destinations, hookSourcesInfo, automationState, onStateChange }) {
+export default function AutomationSchedulerPanel({ dataset, destinations, hookSourcesInfo, automationState, onStateChange, partners = [], partnerEligibility = {}, onNeedPartnerEligibility }) {
   const currentDestinationId = dataset?.source?.destinationId || 'dalat';
   const state = automationState || { schedules: [], runs: [], minListsPerTemplate: 3, maxListsPerTemplate: 5 };
   const minListsPerTemplate = Number(state.minListsPerTemplate) || 3;
@@ -151,7 +158,12 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     const entries = new Map((dataset?.decks || [])
       .filter((deck) => deck.id !== 'spotlight-partner' && (deck.localTemplate || (deck.lists || []).some((list) => listIsMain(list))))
       .map((deck) => [deck.id, deck]));
-    for (const deck of [...BASE_SCHEDULE_DECKS, ...DALAT_EXTRA_DECKS]) if (!entries.has(deck.id)) entries.set(deck.id, deck);
+    // For the open source the loaded catalog is authoritative: a template whose
+    // main list could not be built from this source's data (e.g. a new XLSX
+    // without Hinh_nen pools) would fail every scheduled run. Other sources have
+    // no catalog on this machine yet, so keep the static list for them.
+    const catalogIsAuthoritative = dataset?.source?.destinationId === form.destinationId && entries.size > 0;
+    if (!catalogIsAuthoritative) for (const deck of [...BASE_SCHEDULE_DECKS, ...DALAT_EXTRA_DECKS]) if (!entries.has(deck.id)) entries.set(deck.id, deck);
     return filterSourceTemplates([...entries.values()], targetSource)
       .filter((deck) => isDalatSource(form.destinationId) || !DALAT_ONLY_DECKS.has(deck.id));
   }, [dataset, form.destinationId, destinations]);
@@ -230,6 +242,19 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     };
   });
 
+  // Mẫu riêng (local-*) không nhận đối tác bắt buộc; mẫu dựng sẵn thì có.
+  const templateSupportsPartners = (deckId) => supportsRequiredPartners(decks.find((deck) => deck.id === deckId)
+    || dataset?.decks?.find((deck) => deck.id === deckId) || { id: deckId });
+  const setTemplatePartners = (deckId, names) => setForm((current) => ({
+    ...current,
+    templates: current.templates.map((entry) => {
+      if (entry.deckId !== deckId) return entry;
+      const { requiredPartners: _previous, ...rest } = entry;
+      const requiredPartners = cleanRequiredPartners(names);
+      return requiredPartners.length ? { ...rest, requiredPartners } : rest;
+    }),
+  }));
+
   const save = async (event) => {
     event.preventDefault();
     if (forbiddenTemplateSelections(form.templates, targetSource).length) { setMessage('Lỗi: Mẫu đã chọn không thuộc nguồn này. Threads và Note chỉ dùng Đà Lạt Threads.'); return; }
@@ -240,7 +265,8 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     const body = {
       name: form.name, destinationId: form.destinationId, frequency: form.frequency,
       ...(form.frequency === 'once' ? { onceAt: new Date(`${form.onceAt}:00+07:00`).toISOString() } : { dailyTime: form.dailyTime }),
-      format: form.format, outputDir: form.outputDir, outputFileName: form.outputFileName, templates: form.templates,
+      format: form.format, outputDir: form.outputDir, outputFileName: form.outputFileName,
+      templates: form.templates.map(({ requiredPartners, ...entry }) => (requiredPartners?.length && templateSupportsPartners(entry.deckId) ? { ...entry, requiredPartners } : entry)),
       hook: { mode: form.hookMode, ...(form.hookMode === 'festival' ? { sourceId: form.sourceId } : {}) },
       enabled: true,
     };
@@ -311,6 +337,18 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
             const selected = form.templates.find((entry) => entry.deckId === deck.id);
             return <label key={deck.id} className={selected ? 'selected' : ''}><input type="checkbox" checked={Boolean(selected)} onChange={(e) => toggleTemplate(deck.id, e.target.checked)} /><span>{deck.navTitle || deck.title}</span>{selected ? <input aria-label={`Số list ${deck.navTitle}`} type="number" min={minListsPerTemplate} max={maxListsPerTemplate} value={selected.count} onChange={(e) => setTemplateCount(deck.id, e.target.value)} /> : null}{selected&&supportsPhotoPreset(deck.id)?<select aria-label={`Bảng màu ${deck.navTitle}`} value={selected.photoPreset||''} disabled={busy||state.locked} onChange={e=>setForm(current=>({...current,templates:current.templates.map(entry=>entry.deckId===deck.id?{...entry,photoPreset:e.target.value||null}:entry)}))}>{photoPresets.map(p=><option key={p.id||'original'} value={p.id||''}>{p.label}</option>)}</select>:null}</label>;
           })}</div>
+          {form.templates.some((entry) => templateSupportsPartners(entry.deckId)) ? <div className="automation-required-partners">
+            <strong>Đối tác bắt buộc theo mẫu</strong>
+            <p>Đối tác chọn ở đây có mặt trong mọi list của mẫu đó. Không chọn thì tool tự xoay vòng như cũ. Nếu mẫu không xếp được, lượt đó báo lỗi và không tạo thiếu.</p>
+            {form.templates.filter((entry) => templateSupportsPartners(entry.deckId)).map((entry) => <div key={entry.deckId} className="automation-required-row">
+              <span>{templateLabel(entry.deckId)}</span>
+              <RequiredPartnerPicker compact partners={form.destinationId === currentDestinationId ? partners : []} value={entry.requiredPartners || []}
+                unavailableNote={form.destinationId === currentDestinationId ? '' : 'Lịch này dùng nguồn khác nguồn đang mở. Hãy chuyển sang nguồn đó để chọn thêm đối tác; vẫn có thể bỏ đối tác đã chọn.'}
+                eligibility={form.destinationId === currentDestinationId ? partnerEligibility[`${currentDestinationId}:${entry.deckId}`] : undefined}
+                onOpen={() => { if (form.destinationId === currentDestinationId) onNeedPartnerEligibility?.(entry.deckId); }}
+                disabled={busy || state.locked} onChange={(names) => setTemplatePartners(entry.deckId, names)} />
+            </div>)}
+          </div> : null}
         </div>
         <div className="automation-form-actions"><button className="toolbar-button primary" disabled={Boolean(saveDisabledReason)} title={saveDisabledReason} aria-busy={busy} type="submit">{busy ? 'Đang lưu...' : editingId ? 'Lưu chỉnh sửa' : 'Tạo lịch'}</button>{!form.outputDir ? <button type="button" onClick={chooseDirectory} disabled={busy || !outputPickerReady}>Chọn file ZIP</button> : null}{editingId ? <button type="button" onClick={() => { setEditingId(''); setForm(blankForm(currentDestinationId)); }}>Hủy sửa</button> : null}<span>{message || saveDisabledReason}</span></div>
       </form>
@@ -318,7 +356,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       <div className="automation-list" hidden={section!=='saved'}>
         <h3>Lịch đã lưu</h3>
         {state.schedules.length ? state.schedules.map((schedule) => <article key={schedule.id}>
-          <div><strong>{schedule.name}</strong><small>{(destinations || []).find(entry => entry.id === schedule.destinationId)?.label || schedule.destinationId} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small>{schedule.disabledReason ? <small role="status">{schedule.disabledReason}</small> : null}</div>
+          <div><strong>{schedule.name}</strong><small>{(destinations || []).find(entry => entry.id === schedule.destinationId)?.label || schedule.destinationId} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}${entry.requiredPartners?.length ? ` (đối tác: ${entry.requiredPartners.join(', ')})` : ''}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small>{schedule.disabledReason ? <small role="status">{schedule.disabledReason}</small> : null}</div>
           <div className="automation-row-actions"><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/run-now`, { method: 'POST' })} disabled={busy || state.locked}>Chạy ngay</button><button onClick={() => edit(schedule)} disabled={busy || state.activeRunId && state.runs.find((run) => run.id === state.activeRunId)?.scheduleId === schedule.id}>Sửa</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/enabled`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !schedule.enabled }) })} disabled={busy}>{schedule.enabled ? 'Tắt' : 'Bật'}</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}`, { method: 'DELETE' })} disabled={busy}>Xóa</button></div>
         </article>) : <p className="automation-empty">Chưa có lịch tự động.</p>}
       </div>

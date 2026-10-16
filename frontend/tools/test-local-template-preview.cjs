@@ -92,7 +92,9 @@ async function main() {
           for (const key of ['rightCrop', 'leftCrop', 'bottomCrop', 'viewportOverflow']) assert.ok(geometry[key] <= 2, label + ': ' + key + '=' + geometry[key]);
           await page.evaluate(() => window.checkLocalTemplateLayout(document.body, true));
           if (typeof list.pages[index].textFontSize === 'number') {
-            const sizes = await page.locator('[data-local-text]').evaluateAll(nodes => nodes.map(node => Number.parseFloat(getComputedStyle(node).fontSize)));
+            // Colored fields are text-bearing leaves; their grouping box has
+            // no text of its own and intentionally retains the design size.
+            const sizes = await page.locator('[data-local-field], [data-local-text]:not(:has([data-local-field]))').evaluateAll(nodes => nodes.map(node => Number.parseFloat(getComputedStyle(node).fontSize)));
             assert.ok(sizes.length && sizes.every(size => Math.abs(size - list.pages[index].textFontSize) < 0.01), label + ': saved absolute typography must reach every local text node');
           }
           if (mode === 'dashboard') {

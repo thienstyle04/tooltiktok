@@ -254,7 +254,7 @@ export default function SettingsPanel({
               <span>File XLSX</span>
               <input
                 type="file"
-                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 disabled={busy || adding}
                 required
                 onChange={(event) => setNewSourceFile(event.target.files?.[0] || null)}
@@ -562,7 +562,7 @@ export default function SettingsPanel({
                 <span>File XLSX mới</span>
                 <input
                   type="file"
-                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   disabled={busy || replacing || !activeDestination}
                   onChange={(event) => setReplaceFile(event.target.files?.[0] || null)}
                 />

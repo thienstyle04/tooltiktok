@@ -44,6 +44,8 @@ export function loadHinhNenImagePools(sheetDriveManifest: SheetDriveImageManifes
     dark: toProxyUrls(grouped?.dark || [], specialLimit),
     random: toProxyUrls(grouped?.random || [], specialLimit),
     persimmon: toProxyUrls(grouped?.persimmon || [], specialLimit),
+    'cherry-blossom': toProxyUrls(grouped?.['cherry-blossom'] || [], specialLimit),
+    'cherry-blossom-random': toProxyUrls(grouped?.['cherry-blossom-random'] || [], specialLimit),
   };
 }
 
@@ -103,6 +105,7 @@ export function buildItem(destinationId: DestinationId, workspaceRoot: string,
   const openHours = firstValue(row, 'gio_mo_cua', 'gio_mo_cua_', 'gio_mo_cua_1');
   const style = firstValue(row, 'phong_cach');
   const highlight = firstValue(row, 'mo_ta', 'mota', 'mo_ta_dia_diem', 'mon_an_noi_bat', 'mon_noi_bat', 'noi_bat');
+  const signatureDish = firstValue(row, 'mon_an_noi_bat', 'mon_noi_bat');
   const theme = firstValue(row, 'chu_de', 'chude');
   const partner = firstValue(row, 'doi_tac', 'doi_tac_cong_ty');
   const phone = firstValue(row, 'sdt');
@@ -191,14 +194,17 @@ export function buildItem(destinationId: DestinationId, workspaceRoot: string,
     sectionKey,
     sectionTitle: SECTION_CONFIG[sectionKey].title,
     name, address,
+    themedImageUrls: { 'cherry-blossom': filterKnownAvailableDriveProxyUrls((sheetDriveEntry?.themedImages?.['cherry-blossom']?.images || []).map(entry => getDriveImageProxyUrl(entry.fileId))) },
     type: placeType || SECTION_CONFIG[sectionKey].title,
     openHours, style, highlight, theme, streetAddress: rawAddress,
     diaryDescriptionRaw: String(row.mo_ta ?? row.mota ?? row.mo_ta_dia_diem ?? ''),
     diaryImageUrls: [...sheetDriveCandidateUrls],
+    ...(sheetDriveEntry?.cherryRegularImages ? { cherryRegularImageUrls: filterKnownAvailableDriveProxyUrls(sheetDriveEntry.cherryRegularImages.map(entry => getDriveImageProxyUrl(entry.fileId))) } : {}),
     partnerFlag: partner,
     classification: firstValue(row, 'phan_loai'),
     isPartner: normalizeText(partner) === 'x',
     headPrice,
+    ...(signatureDish ? { signatureDish } : {}),
     hasHeadPriceColumn,
     price, phone,
     imageUrl: resolvedImage.imageUrl,

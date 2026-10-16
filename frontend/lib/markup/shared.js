@@ -343,6 +343,7 @@ export const V2_LIST_VARIANTS = new Set([
   'itinerary-note-dark-day',
   'itinerary-note-threads-day',
   'itinerary-note-threads-budget',
+  'threads-expense-sheet',
   'itinerary-note-timed-day',
   'carousel-mau-1-page',
   'one-way-story-road',

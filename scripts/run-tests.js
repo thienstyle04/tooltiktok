@@ -49,8 +49,12 @@ const hasBrowserTools = () => (findBrowserPath() ? hasPlaywright() : 'không tì
 
 // ---------------------------------------------------------------- tầng unit
 const FRONTEND_UNIT = [
+  'tools/test-cherry-blossom-copy.mjs',
   'tools/test-sync-status-label.mjs',
+  'tools/test-threads-expense-sheet.mjs',
   'tools/test-page-text-rendering.mjs',
+  'tools/test-local-template-contract.mjs',
+  'tools/test-local-list-set-number.mjs',
   'tools/test-summary-note.mjs',
   'tools/test-spotlight-v4.mjs',
   'tools/test-spotlight-v5.mjs',
@@ -59,6 +63,7 @@ const FRONTEND_UNIT = [
   'tools/test-spotlight-design.mjs',
   'tools/test-threads-food-export.mjs',
   'tools/test-manual-generation-queue.mjs',
+  'tools/test-catalog-source-refresh.mjs',
   'tools/test-runtime-session-proxy.mjs',
   'tools/test-sheet-sync-timeout.mjs',
   'tools/test-one-way-story.mjs',
@@ -78,6 +83,7 @@ const SCRIPTS_UNIT = [
   { file: 'scripts/test-page-text-scale.cjs' },
   { file: 'scripts/test-startup-image-recovery.js' },
   { file: 'scripts/test-runtime-instance.js' },
+  { file: 'scripts/test-ai-key-step.cjs', requires: isWindows },
   { file: 'scripts/test-update-apply.js', requires: hasSigningKey },
   { file: 'scripts/typecheck-frontend.js' },
 ];
@@ -100,12 +106,19 @@ const BACKEND_TS_EXCLUDED = {
   //     src/modules/guide/tools/test-spotlight-diary-integration.ts  (đọc ./data, cần cache ảnh)
   'test-restructured-addresses.ts': 'manual',
   'test-spotlight-diary-integration.ts': 'manual',
+  // Bản sao dữ liệu thật + cache ảnh, chạy mọi mẫu (10–30 phút); không gọi mạng:
+  'test-required-partners-all-decks.ts': 'manual',
+  'test-partner-eligibility.ts': 'manual',
+  // Bản sao dữ liệu thật và GET Google Drive công khai thật (đọc link ảnh của XLSX):
+  'test-add-xlsx-source-e2e.ts': 'manual',
 };
 
 // ------------------------------------------------------------- tầng browser
 // Các test này nhận AUDIT_ROOT / DALAT_TEST_OUTPUT_DIR làm nơi ghi kết quả.
 const TEMP_OUTPUT_TESTS = new Set(['test-spotlight-icons-browser.mjs', 'test-spotlight-cover-placement.mjs', 'test-ai-settings.cjs']);
 const FRONTEND_BROWSER = [
+  'tools/test-catalog-layout-refresh.cjs',
+  'tools/test-cherry-blossom-preview.cjs',
   'tools/test-update-bell.cjs',
   'tools/test-update-bell-draft.cjs',
   'tools/test-font-size-save-click.cjs',
@@ -132,6 +145,9 @@ const FRONTEND_BROWSER = [
   'tools/test-v6-export-quality.mjs',
   'tools/test-first-source-sync.mjs',
   'tools/test-threads-food-browser-export.mjs',
+  'tools/test-required-partners-ui.mjs',
+  'tools/test-add-xlsx-source-ui.mjs',
+  'tools/test-spotlight-v5-square-export.cjs',
 ];
 // Đọc đường dẫn tương đối theo thư mục gốc repo.
 const FRONTEND_BROWSER_FROM_ROOT = [

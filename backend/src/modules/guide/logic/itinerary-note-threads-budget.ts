@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { GuideItem, ListPage, PageItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { hasItemKey, itemUsageKey } from './data-allocator';
+import { requiredPartnerRank } from './required-partners';
 
 export const THREADS_BUDGET_ID = 'itinerary-note-threads-budget-3n2d';
 export const THREADS_BUDGET_TEMPLATE_VERSION = 3;
@@ -25,7 +26,8 @@ function choiceRank(seed: string, slot: string, item: GuideItem): number {
 
 function preferFreshItems(items: GuideItem[], seed: string, slot: string, usedItemIds?: Set<string>): GuideItem[] {
   return [...items].sort((a, b) =>
-    Number(Boolean(usedItemIds && hasItemKey(usedItemIds, a))) - Number(Boolean(usedItemIds && hasItemKey(usedItemIds, b)))
+    requiredPartnerRank(a) - requiredPartnerRank(b)
+    || Number(Boolean(usedItemIds && hasItemKey(usedItemIds, a))) - Number(Boolean(usedItemIds && hasItemKey(usedItemIds, b)))
     || Number(!a.isPartner) - Number(!b.isPartner)
     || choiceRank(seed, slot, a) - choiceRank(seed, slot, b));
 }

@@ -13,7 +13,7 @@ function Child([string]$root, [string]$target) {
 function Copy-Code([string]$source, [string]$target) {
     if (-not (Child $install $target)) { throw "Thu muc release vuot khoi noi cai dat: $target" }
     New-Item -ItemType Directory -Path $target -Force | Out-Null
-    $excludes = @('.git', 'node_modules', '.next', 'outputs', 'shared', 'releases', '.codex', '.test-runtime', '.codex-runtime')
+    $excludes = @('.git', 'node_modules', '.next', 'outputs', 'shared', 'releases', '.codex', '.test-runtime', '.codex-runtime', 'migration')
     $excludedPaths = @($excludes | ForEach-Object { Join-Path $source $_ })
     $excludedPaths += @((Join-Path $source 'backend\data'), (Join-Path $source 'backend\node_modules'), (Join-Path $source 'frontend\node_modules'), (Join-Path $source 'frontend\.next'))
     $args = @($source, $target, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NC', '/NS', '/NP', '/XJ', '/XD') + $excludedPaths + @('/XF', '.env', '*.log')
@@ -94,6 +94,21 @@ if (Test-Path -LiteralPath $oldEnv -PathType Leaf) {
     $sharedEnv = Join-Path $config 'backend.env'
     if (-not (Test-Path -LiteralPath $sharedEnv)) { Copy-Item -LiteralPath $oldEnv -Destination $sharedEnv }
     if ($package -ne $install) { Copy-Item -LiteralPath $oldEnv -Destination (Join-Path $legacyRelease 'backend\.env') }
+}
+# A migration package (scripts/pack-migration.cjs) carries the private local
+# templates; place them for this Windows user without overwriting existing ones.
+$migrationTemplates = Join-Path $package 'migration\local-templates'
+if (Test-Path -LiteralPath $migrationTemplates -PathType Container) {
+    $templatesTarget = Join-Path $env:LOCALAPPDATA 'DalatTikTokCarouselTool\local-templates'
+    New-Item -ItemType Directory -Path $templatesTarget -Force | Out-Null
+    foreach ($template in Get-ChildItem -LiteralPath $migrationTemplates -Directory) {
+        if ($template.Name -notmatch '^local-[a-z0-9-]+$') { continue }
+        $destination = Join-Path $templatesTarget $template.Name
+        if (Test-Path -LiteralPath $destination) { Write-Host "Giu nguyen mau rieng da co: $($template.Name)"; continue }
+        & robocopy $template.FullName $destination /E /NFL /NDL /NJH /NJS /NC /NS /NP | Out-Null
+        if ($LASTEXITCODE -gt 7) { throw "Khong chep duoc mau rieng $($template.Name) ($LASTEXITCODE)." }
+        Write-Host "Da cai mau rieng: $($template.Name)"
+    }
 }
 Copy-Item -LiteralPath (Join-Path $install 'start.bat') -Destination (Join-Path $shared 'legacy-start.bat')
 if ($package -ne $install) {

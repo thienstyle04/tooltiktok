@@ -39,7 +39,7 @@ export function applyPageTextScale(root) {
     nodes.forEach((node, index) => {
       if (!Number.isFinite(sizes[index])) return;
       node.dataset.originalTextStyle = node.style.fontSize;
-      node.style.fontSize = `${absolute ? size : sizes[index] * scale}px`;
+      node.style.fontSize = `${absolute ? size * (Number(page.dataset.textUnitScale) || 1) : sizes[index] * scale}px`;
     });
     if (typeof CustomEvent !== 'undefined') page.dispatchEvent(new CustomEvent('page-typography-ready', { bubbles: true }));
   }

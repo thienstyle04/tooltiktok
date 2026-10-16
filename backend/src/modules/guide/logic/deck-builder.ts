@@ -25,6 +25,7 @@ import { cityLabel, cityLabelUpper, getMarketingCopy, buildCaptionHashtags, getA
 import { isPartnerFirstDestination, isDalatThreadsSource } from '../sync/destination-config';
 import { getActiveSourceId } from '../sync/destination-localize';
 import { getCachedSpotlightV3Hooks, getSpotlightV3BuildContext, pickSpotlightV3Hook } from '../sync/spotlight-hook-source';
+import { hasRequiredPartners, isRequiredPartner, requiredPartnersFirst } from './required-partners';
 
 // ─── Utility helpers shared by all deck builders ─────────────────────────────
 
@@ -463,7 +464,7 @@ function isMorningCafe(item: GuideItem): boolean {
   return normalized.includes('sang') || normalized.includes('breakfast');
 }
 
-function isGrillOrHotpotItem(item: GuideItem): boolean {
+export function isGrillOrHotpotItem(item: GuideItem): boolean {
   const normalized = normalizeText(`${item.name} ${item.type} ${item.highlight}`);
   return ['nuong', 'lau', 'nau', 'bbq', 'grill', 'buffet', 'long_nuong'].some((token) => normalized.includes(token));
 }
@@ -1177,7 +1178,8 @@ function candidateScore(item: GuideItem, seed: string): { total: number; tieBrea
   const imageScore = item.imageSource === 'manual' ? 180 : item.imageSource === 'auto' ? 100 : 0;
   const seedJitter = seededRank(`${seed}:jitter`, item.id) % 60;
   return {
-    total: imageScore + (item.isPartner ? 120 : 0) + infoScore + seedJitter,
+    // A user-required partner outranks every other candidate of its pool.
+    total: imageScore + (item.isPartner ? 120 : 0) + (isRequiredPartner(item) ? 100_000 : 0) + infoScore + seedJitter,
     tieBreaker: 10_000 - (seededRank(`${seed}:tie`, item.id) % 10_000),
   };
 }
@@ -1216,6 +1218,11 @@ export function createListPicker(initialUsedIds: Set<string> = new Set()): PickF
   // A scarce partner can be reused across lists, never twice within one list.
   pick.isUsed = (item: GuideItem) => hasItemKey(localUsedIds, item) || (!item.isPartner && hasItemKey(softUsedIds, item));
   return pick;
+}
+
+/** A user-required partner of this pool that the current list has not placed yet. */
+function hasPendingRequiredPartner(items: GuideItem[], pick: PickFn): boolean {
+  return items.some((item) => isRequiredPartner(item) && !pick.isUsed?.(item));
 }
 
 function freshForPicker(items: GuideItem[], pick: PickFn): GuideItem[] {
@@ -1279,10 +1286,10 @@ function pickShuffledWithUsedFallback(items: GuideItem[], count: number, seed: s
   const selected: GuideItem[] = [];
   const selectedIds = new Set<string>();
   const addCandidates = (candidates: GuideItem[], suffix: string): void => {
-    const orderedCandidates = [
+    const orderedCandidates = requiredPartnersFirst([
       ...shuffleItems(candidates.filter(hasMappedImage), `${seed}-${suffix}-mapped`),
       ...shuffleItems(candidates.filter((item) => !hasMappedImage(item)), `${seed}-${suffix}-unmapped`),
-    ];
+    ]);
     for (const item of orderedCandidates) {
       if (selected.length >= count || hasItemKey(selectedIds, item)) continue;
       const picked = pick([item], 1, `${seed}-${suffix}-${item.id}`)[0];
@@ -1500,7 +1507,7 @@ function pickItineraryPageItems(
       ...preferredPool.filter((item) => item.isPartner),
       ...(slot.allowFallbackPartner === false ? [] : fallbackPool.filter((item) => item.isPartner)),
     ]);
-    let selected = (partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE) && partnerPool.length > 0
+    let selected = (partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE || hasPendingRequiredPartner(partnerPool, pick)) && partnerPool.length > 0
       ? pickWithUsedFallback(partnerPool, 1, `${slot.seed}-partner`, pick)[0]
       : undefined;
     if (!selected) {
@@ -1554,7 +1561,9 @@ export function createDeckBuildPools(itemsBySection: WorkbookItemsBySection): De
     ...daytimeFoodItems.filter((i) => normalizeItemType(i, 'trua')),
   ]);
   const grillHotpotItems = dedupeItems(foodItems.filter(isGrillOrHotpotItem));
-  const dayCafeItems = dedupeItems(withoutGrillOrHotpot(cafeItems));
+  // A required partner cafe is never a real grill/hotpot; the text heuristic can
+  // misread words like "lâu"/"nâu". Food items keep the rule (no BBQ breakfast).
+  const dayCafeItems = dedupeItems(cafeItems.filter((item) => isRequiredPartner(item) || !isGrillOrHotpotItem(item)));
   const dayCheckinItems = dedupeItems(withoutGrillOrHotpot(checkinItems));
   const dayTourismItems = dedupeItems(withoutGrillOrHotpot(tourismItems));
   const dayFamousItems = dedupeItems(withoutGrillOrHotpot(famousItems));
@@ -2188,7 +2197,9 @@ function buildBudget3N2DPages(
     buildListPage('Bảng chi phí', 'gold', copy.budgetTableTitle, 'Bảng lịch trình dày thông tin: giờ đi, điểm ghé, địa chỉ và chi phí dự kiến.', tableItems, '', 'budget-3n2d-table'),
     buildListPage('Quán ăn', 'berry', 'QUÁN ĂN ĐÃ ĐI', '4 quán trong lịch trình, ưu tiên quán là đối tác để người xem dễ lưu và ghé đúng chỗ.', buildBudgetGalleryItems(selectedFood, pools.foodItems, 4, `${seedPrefix}-gallery-food`, pick, imageResolver, mealLabelForItem), background(`${seedPrefix}-gallery-food-bg`), 'grid-4'),
     buildListPage('Cà phê', 'gold', 'QUÁN CAFE ĐÃ GHÉ', '4 điểm cafe trong lịch trình, ưu tiên đối tác và điểm có đủ ảnh, địa chỉ, giá.', buildBudgetGalleryItems(selectedCafe, pools.cafeItems, 4, `${seedPrefix}-gallery-cafe`, pick, imageResolver, (item) => item.type || 'Cafe'), background(`${seedPrefix}-gallery-cafe-bg`), 'grid-4'),
-    buildListPage('Đối tác', 'pine', 'ĐỐI TÁC NÊN LƯU', '4 địa điểm ưu tiên đối tác trong chuyến đi, giữ đúng giá nếu dữ liệu đối tác đã có giá.', buildBudgetGalleryItems(selectedSupport, partnerPlaces, 4, `${seedPrefix}-gallery-partners`, pick, imageResolver, photomodeServiceLabel), background(`${seedPrefix}-gallery-partners-bg`), 'grid-4'),
+    // With required partners this draft page (replaced below) must not consume
+    // them; without a selection keep the historical behaviour unchanged.
+    buildListPage('Đối tác', 'pine', 'ĐỐI TÁC NÊN LƯU', '4 địa điểm ưu tiên đối tác trong chuyến đi, giữ đúng giá nếu dữ liệu đối tác đã có giá.', hasRequiredPartners() ? [] : buildBudgetGalleryItems(selectedSupport, partnerPlaces, 4, `${seedPrefix}-gallery-partners`, pick, imageResolver, photomodeServiceLabel), background(`${seedPrefix}-gallery-partners-bg`), 'grid-4'),
   ];
 
   const foodPage = pages[2];
@@ -2474,7 +2485,7 @@ function pickJourneySlots(
     const partnersInPool = pool.filter(item => item.isPartner);
     const regularsInPool = pool.filter(item => !item.isPartner);
 
-    if ((partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE) && partnersInPool.length > 0) {
+    if ((partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE || hasPendingRequiredPartner(partnersInPool, pick)) && partnersInPool.length > 0) {
       chosen = pick(partnersInPool, 1, `${seed}-slot${i}-partner`)[0];
       if (chosen) partnerCount++;
     }
@@ -2516,7 +2527,7 @@ function pickTimedJourneyGridItems(
     const regularsInPool = pool.filter((item) => !item.isPartner);
 
     let chosen: GuideItem | undefined;
-    if ((partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE) && partnersInPool.length > 0) {
+    if ((partnerFirstActive() || partnerCount < DEFAULT_PARTNER_TARGET_PER_PAGE || hasPendingRequiredPartner(partnersInPool, pick)) && partnersInPool.length > 0) {
       chosen = pick(partnersInPool, 1, `${slotSeed}-partner`)[0];
       if (chosen) partnerCount++;
     }

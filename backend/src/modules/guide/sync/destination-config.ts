@@ -40,6 +40,7 @@ export const THREADS_NOTE_DECK_LABELS: Record<string, string> = {
   'threads-toplist-dalat': 'Top list Đà Lạt',
   'itinerary-note-threads-3n2d': 'Note Threads 3N2Đ', 'itinerary-note-threads-2n1d': 'Note Threads 2N1Đ',
   'itinerary-note-threads-budget-3n2d': 'Chi phí Threads 3N2Đ',
+  'itinerary-note-threads-expense-2n1d': 'Bảng chi tiêu Threads 2N1Đ', 'itinerary-note-threads-expense-3n2d': 'Bảng chi tiêu Threads 3N2Đ',
   'summary-note': 'Tổng hợp địa điểm', 'itinerary-note-2days': 'Lịch trình Note 2 ngày',
   'itinerary-note-dark': 'Lịch trình Note nền đen', 'itinerary-note-timed': 'Lịch trình Note theo giờ',
 };
@@ -117,7 +118,7 @@ export function isIsolatedSheetSource(id: DestinationId): boolean {
 
 export function getAllowedDeckIds(id: DestinationId): string[] {
   if (!DESTINATIONS[id]) return [];
-  return [...(isDalatThreadsSource(id) ? THREADS_NOTE_DECK_IDS : OTHER_DECK_IDS), ...localTemplateAllowedIds(id)];
+  return [...(isDalatThreadsSource(id) ? THREADS_NOTE_DECK_IDS : OTHER_DECK_IDS), ...(isDalatTestSource(id) ? ['spotlight-v6-cherry-blossom'] : []), ...localTemplateAllowedIds(id)];
 }
 
 export function isDeckAllowedForSource(id: DestinationId, deckId: string): boolean {
@@ -125,6 +126,7 @@ export function isDeckAllowedForSource(id: DestinationId, deckId: string): boole
 }
 
 export function sourceTemplateError(id: DestinationId, deckId: string): string {
+  if (deckId === 'spotlight-v6-cherry-blossom') return 'Mẫu Spotlight Mùa hoa đào chỉ được tạo trên nguồn Đà Lạt Test. Hãy chọn Đà Lạt Test và đồng bộ dữ liệu.';
   const local = findLocalTemplate(deckId);
   if (local) return `Mẫu ${local.name} chỉ được tạo trên nguồn ${local.allowedSourceIds.map(id => DESTINATIONS[id]?.label || id).join(', ')} và máy đã cài gói mẫu riêng.`;
   if (deckId === 'spotlight-partner') return 'Mẫu Spotlight Đối tác đã ngừng sử dụng. Hãy chọn mẫu khác; list đã lưu vẫn được giữ nguyên.';

@@ -499,7 +499,7 @@ export function sanitizeDeckPageText(destinationId: DestinationId, page: DeckPag
   const oneWayMultiline = page.layoutVariant === 'one-way-story-road';
   const cleanPage: DeckPage = {
     ...page,
-    ...(page.layoutVariant === 'itinerary-note-threads-budget' ? { backgroundImage: '' } : {}),
+    ...(page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-expense-sheet' ? { backgroundImage: '' } : {}),
     chipText: sanitizeContentText(localizeText(page.chipText || '', destinationId)),
     title: sanitizeContentText(sanitizeDeckHeadline(localizeText(page.title || '', destinationId))),
     subtitle: oneWayMultiline
@@ -629,7 +629,7 @@ export function formatBudgetCostAmount(vnd: number): string {
 }
 
 export function sanitizePageItemText(item: PageItem, page?: DeckPage): PageItem {
-  const isBudgetTableItem = page?.type === 'list' && (page.layoutVariant === 'budget-3n2d-table' || page.layoutVariant === 'itinerary-note-threads-budget');
+  const isBudgetTableItem = page?.type === 'list' && (page.layoutVariant === 'budget-3n2d-table' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-expense-sheet');
   const isPov3V2Stack = page?.type === 'list' && page.layoutVariant === 'pov-3-v2-stack';
   const stackTagline = isPov3V2Stack
     ? finalizePov3V2Tagline({ name: item.name, highlight: item.label || item.imageNote || '', sectionKey: item.sourceSectionKey } as GuideItem)

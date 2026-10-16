@@ -13,6 +13,7 @@ import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, G
 import { normalizeText, stableHash } from './logic/image-resolver';
 import { ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_TEMPLATE_VERSION, ITINERARY_NOTE_TEMPLATE_VERSION } from './logic/itinerary-note';
 import { THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION } from './logic/itinerary-note-threads-budget';
+import { isThreadsExpense, THREADS_EXPENSE_TEMPLATE_VERSION } from './logic/threads-expense-sheet';
 import { ITINERARY_NOTE_TIMED_TEMPLATE_VERSION } from './logic/itinerary-note-timed';
 import { SPOTLIGHT_DESIGN_DECKS, prepareSpotlightDesign } from './logic/spotlight-design';
 import { DIARY_TEMPLATE_VERSION } from './logic/spotlight-diary';
@@ -99,6 +100,7 @@ export function pickFreshCandidateImage(
 }
 
 export function templateVersionForDeck(deckId: string): number | undefined {
+  if (deckId === 'spotlight-v6-cherry-blossom') return 1;
   if (deckId === 'spotlight-v6-diary') return DIARY_TEMPLATE_VERSION;
   if (deckId === 'itinerary-3n2d') return ITINERARY_3N2D_TEMPLATE_VERSION;
   if (deckId === 'budget-3n2d') return BUDGET_3N2D_TEMPLATE_VERSION;
@@ -129,6 +131,7 @@ export function templateVersionForDeck(deckId: string): number | undefined {
   if (deckId === 'spotlight-v6-persimmon') return SPOTLIGHT_V6_PERSIMMON_TEMPLATE_VERSION;
   if (deckId === 'spotlight-v6-maps') return SPOTLIGHT_V6_MAPS_TEMPLATE_VERSION;
   if (deckId === THREADS_BUDGET_ID) return THREADS_BUDGET_TEMPLATE_VERSION;
+  if (isThreadsExpense(deckId)) return THREADS_EXPENSE_TEMPLATE_VERSION;
   if (deckId === THREADS_FOOD_ID) return THREADS_FOOD_TEMPLATE_VERSION;
   if (deckId === THREADS_CAFE_ID) return THREADS_CAFE_TEMPLATE_VERSION;
   if (deckId === THREADS_MIX_ID) return THREADS_MIX_TEMPLATE_VERSION;
@@ -203,7 +206,7 @@ export function sanitizeGeneratedListForDisplay(destinationId: DestinationId,
 export function sanitizeBaseListForDisplay(destinationId: DestinationId, list: GuideDeckList, coverImageUrls: string[] = []): GuideDeckList {
   // Declarative local samples already own their photos and layout snapshot.
   // Generic workbook cover rotation can replace them (or blank them with no pool).
-  if (list.pages.some(page => Boolean(page.localRender))) return cloneJson(list);
+  if (list.pages.some(page => Boolean(page.localRender) || Boolean(page.imageRole))) return cloneJson(list);
   // Threads/Note builders own their backgrounds, including the fixed Top list cover.
   // Generic cover rotation must not replace these assets while displaying saved lists.
   if (THREADS_NOTE_DECK_IDS.some(id => list.id.startsWith(`${id}-`))) return cloneJson(list);

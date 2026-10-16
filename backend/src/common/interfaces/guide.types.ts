@@ -93,6 +93,8 @@ export interface HinhNenImageUrlPools {
   dark: string[];
   random: string[];
   persimmon?: string[];
+  'cherry-blossom'?: string[];
+  'cherry-blossom-random'?: string[];
 }
 
 export type AccentTone = 'terracotta' | 'gold' | 'pine' | 'berry' | 'slate';
@@ -117,6 +119,9 @@ export interface GuideItem {
   diaryDescriptionRaw?: string;
   /** Own Link_drive candidates only, excluding name-matched library fallbacks. */
   diaryImageUrls?: string[];
+  themedImageUrls?: { 'cherry-blossom'?: string[] };
+  /** Full direct-parent pool for cherry; never changes old templates' candidates. */
+  cherryRegularImageUrls?: string[];
   /** Chủ đề nguyên bản từ cột Sheet `Chu_de` (ví dụ: Mảng xanh). */
   theme?: string;
   partnerFlag: string;
@@ -125,6 +130,8 @@ export interface GuideItem {
   classification?: string;
   /** Giá đầu người — cột sheet `gia_dau_nguoi`, dùng cho bảng chi phí 72H. */
   headPrice: string;
+  /** Cột Món ăn nổi bật (quán ăn/cà phê), dùng cho ghi chú ngắn của bảng chi tiêu Threads. */
+  signatureDish?: string;
   /** Sheet có cột giá đầu người (kể cả khi ô trống). */
   hasHeadPriceColumn: boolean;
   price: string;
@@ -171,6 +178,7 @@ export type TitlePlacement =
 export type MutantContentStyle = 'strip' | 'center-card';
 
 export interface CoverPage {
+  imageRole?: 'cherry-blossom' | 'cherry-blossom-random' | 'venue-cherry-blossom' | 'venue-regular';
   localRender?: LocalRenderModel;
   coverApproval?: string;
   spotlightDesignRevision?: 1;
@@ -190,6 +198,7 @@ export interface CoverPage {
 }
 
 export interface ListPage {
+  imageRole?: CoverPage['imageRole'];
   localRender?: LocalRenderModel;
   threadsPartnerPolicy?: 'balanced-local-v1';
   spotlightDesignRevision?: 1;
@@ -204,7 +213,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'threads-toplist-page' | 'itinerary-note-threads-budget' | 'itinerary-note-threads-day' | 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-dark-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
+  layoutVariant?: 'threads-toplist-page' | 'itinerary-note-threads-budget' | 'threads-expense-sheet' | 'itinerary-note-threads-day' | 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-dark-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
   titlePlacement?: TitlePlacement;
   contentStyle?: MutantContentStyle;
   playlistLines?: string[];
@@ -235,7 +244,7 @@ export interface GuideDeckList {
   automationPosition?: string;
   canvasPreset?: 'default' | 'tiktok-3x4' | 'tiktok-4x5' | 'tiktok-9x16' | 'landscape-4x3';
   hookSnapshot?: {
-    mode: 'festival' | 'green' | 'dark' | 'persimmon';
+    mode: 'festival' | 'green' | 'dark' | 'persimmon' | 'cherry-blossom';
     sourceId: string;
     sourceRevision: string;
   };
@@ -368,6 +377,8 @@ export interface GenerateCaptionDeckRequest {
   hookSelection?: { mode: 'normal' | 'festival'; sourceId?: string };
   automationRunId?: string;
   automationPosition?: string;
+  /** Tên đối tác phải có mặt trong mọi list tạo ra (không áp dụng mẫu riêng local-*). */
+  requiredPartners?: string[];
 }
 
 export interface GenerateCaptionDeckResponse {
@@ -385,6 +396,8 @@ export interface GenerateBatchListsRequest {
   requestId?: string;
   hookSelection?: { mode: 'normal' | 'festival'; sourceId?: string };
   automationRunId?: string;
+  /** Tên đối tác phải có mặt trong mọi list của batch (không áp dụng mẫu riêng local-*). */
+  requiredPartners?: string[];
 }
 
 export interface DeleteGeneratedListsRequest {
@@ -534,6 +547,7 @@ export type PartnerRotationHistory = Record<string, {
   lastPhotos: string[];
   usedPhotos: string[];
   cycle: number;
+  photoPools?: Record<string, { usedPhotos: string[]; cycle: number }>;
 }>;
 
 // A data-only drawing model. Remote copy is plain text, never executable HTML.
@@ -545,6 +559,8 @@ export interface LocalRenderModel {
     x: number; y: number; width: number; height: number;
     text?: string; field?: string; src?: string; label?: string;
     itemIndices?: number[]; fields?: string[]; separator?: string;
+    /** Optional plain-text field colors; no executable markup from local data. */
+    fieldColors?: Record<string, string>;
     style?: Record<string, string | number>;
     required?: boolean;
   }>;

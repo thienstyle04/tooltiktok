@@ -1,5 +1,6 @@
 import { fitItineraryNote, fitItineraryNoteTimed } from '../lib/itineraryNote';
 import { fitSpotlightDiary } from '../lib/spotlightDiary';
+import { checkCherryBlossomLayout } from '../lib/cherryBlossom';
 import { fitThreadsToplist } from '../lib/threadsToplist';
 import { checkLocalTemplateLayout } from '../lib/localTemplates';
 import { applyPageTextScale, resetPageTextScale } from '../lib/pageTextScale';
@@ -106,6 +107,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     fitItineraryNoteTimed(root);
     fitSpotlightDiary(root);
     applyPageTextScale(root);
+    checkCherryBlossomLayout(root);
     if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root);
     fitThreadsToplist(root);
     checkLocalTemplateLayout(root);
@@ -121,7 +123,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
-    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); fitThreadsToplist(root); checkLocalTemplateLayout(root); };
+    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); checkCherryBlossomLayout(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); fitThreadsToplist(root); checkLocalTemplateLayout(root); };
     fitNotes();
     const noteFitFrame = window.requestAnimationFrame(fitNotes);
     const noteFitTimer = window.setTimeout(fitNotes, 120);

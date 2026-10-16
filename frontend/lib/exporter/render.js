@@ -34,8 +34,16 @@ export function prepareQualityLayout(nodes, profile) {
 }
 
 function isV6ExportPage(pageNode) {
+  if (pageNode?.classList?.contains('cherry-blossom-page')) return true;
   return ['spotlight-v6-diary-page', 'spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page', 'spotlight-v6-map-page', 'spotlight-v6-map-place']
     .some((name) => pageNode?.classList?.contains(name));
+}
+
+// Full-bleed photo templates: the preview card's rounded corners are UI only and
+// must never be cut into the exported image (Spotlight V5 4:5 and the V6 family).
+function isFullBleedExportPage(pageNode) {
+  return isV6ExportPage(pageNode)
+    || ['spotlight-v5-cover', 'spotlight-v5-playlist', 'spotlight-v5-place'].some((name) => pageNode?.classList?.contains(name));
 }
 
 function usesFullResolutionV6(pageNode, options) {
@@ -49,7 +57,7 @@ function parsePixelValue(value, fallback = 0) {
 }
 
 function exportCornerRadiusFor(pageNode, outputWidth) {
-  if (isV6ExportPage(pageNode)) return 0;
+  if (isFullBleedExportPage(pageNode)) return 0;
   const rect = pageNode.getBoundingClientRect();
   const scale = rect.width > 0 ? outputWidth / rect.width : 1;
   const styles = window.getComputedStyle?.(pageNode);
@@ -194,7 +202,7 @@ export function renderPageMarkupForExport(list, page, index) {
 
 function prepareExportStoryPages(pageNodes) {
   pageNodes.forEach((pageNode) => {
-    if (isV6ExportPage(pageNode)) pageNode.style.setProperty('border-radius', '0', 'important');
+    if (isFullBleedExportPage(pageNode)) pageNode.style.setProperty('border-radius', '0', 'important');
     pageNode.querySelectorAll('img').forEach((img) => {
       img.loading = 'eager';
       img.decoding = 'sync';
@@ -335,8 +343,8 @@ export function renderBatchTaskPages(tasks) {
 }
 
 export async function renderPageBlob(pageNode, options = {}) {
-  // V6 output is full-bleed: preview rounding must never enter the PNG.
-  if (isV6ExportPage(pageNode)) pageNode.style.setProperty('border-radius', '0', 'important');
+  // V5/V6 output is full-bleed: preview rounding must never enter the PNG.
+  if (isFullBleedExportPage(pageNode)) pageNode.style.setProperty('border-radius', '0', 'important');
   const imagesReady = options.imagesReady === true;
   const diaryPage = pageNode.classList.contains('spotlight-v6-diary-page');
   const diaryRect = diaryPage ? pageNode.getBoundingClientRect() : null;

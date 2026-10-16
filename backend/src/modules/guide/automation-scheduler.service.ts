@@ -12,6 +12,8 @@ import { getAppConfig, resolveBackendDataDir, resolveBackendRoot } from '../../c
 import { getRuntimeSession } from '../../runtime-session';
 import { GuideService } from './guide.service';
 import { isDalatContentSource } from './sync/destination-config';
+import { normalizeRequiredPartners } from './logic/required-partners';
+import { findLocalTemplate } from './local-templates';
 import {
   AutomationRun,
   AutomationRunError,
@@ -246,7 +248,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const completedByDeck = new Map<string, number>();
     for (const item of previous.generated) completedByDeck.set(item.deckId, (completedByDeck.get(item.deckId) || 0) + 1);
     const remaining = previous.templates
-      .map((item) => ({ photoPreset: item.photoPreset, deckId: item.deckId, count: Math.max(0, item.count - (completedByDeck.get(item.deckId) || 0)) }))
+      .map((item) => ({ photoPreset: item.photoPreset, deckId: item.deckId, count: Math.max(0, item.count - (completedByDeck.get(item.deckId) || 0)),
+        ...(item.requiredPartners?.length ? { requiredPartners: [...item.requiredPartners] } : {}) }))
       .filter((item) => item.count > 0);
     const run = this.newRun(schedule, new Date().toISOString(), remaining.length ? remaining : [], previous.id);
     run.generated = [...previous.generated];
@@ -520,6 +523,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
             requestId: `automation:${run.id}:${template.deckId}`,
             hookSelection: run.hook,
             automationRunId: run.id,
+            requiredPartners: template.requiredPartners,
           }));
           for (const item of response.lists || []) {
             run.generated.push({ deckId: template.deckId, listId: item.listId });
@@ -670,7 +674,9 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       if (merged.has(deckId)) throw new BadRequestException(`Mẫu ${deckId} đang bị chọn lặp trong cùng một lịch.`);
       if (LEGACY_COLOR_DECKS[deckId]) throw new BadRequestException('Chọn V5/V6 thay cho mẫu Color Edit riêng.');
       const photoPreset = validatePhotoPreset(raw.photoPreset, deckId);
-      merged.set(deckId, { deckId, count, ...(photoPreset ? { photoPreset } : {}) });
+      const requiredPartners = normalizeRequiredPartners(raw.requiredPartners);
+      if (requiredPartners.length && findLocalTemplate(deckId)) throw new BadRequestException('Mẫu riêng không hỗ trợ chọn đối tác bắt buộc; hãy bỏ chọn đối tác.');
+      merged.set(deckId, { deckId, count, ...(photoPreset ? { photoPreset } : {}), ...(requiredPartners.length ? { requiredPartners } : {}) });
     }
     return [...merged.values()];
   }

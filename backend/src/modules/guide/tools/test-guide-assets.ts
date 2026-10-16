@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GuideService } from '../guide.service';
+import sharp from 'sharp';
 
 // Chốt hành vi phục vụ file tĩnh/asset: chặn đường dẫn thoát thư mục, MIME,
 // và getColorEditedAsset phải đi qua getDriveFileAsset của chính service
@@ -72,6 +73,26 @@ async function main() {
   await check(configure(new GuideService()), 'new GuideService()');
   // Nhiều test dựng service bằng Object.create (không chạy constructor).
   await check(configure(Object.create(GuideService.prototype)), 'Object.create');
+  const priorLocalRoot = process.env.DALAT_LOCAL_TEMPLATES_DIR;
+  const localRoot = path.join(root, 'templates'), packageRoot = path.join(localRoot, 'local-asset-fixture');
+  fs.mkdirSync(path.join(packageRoot, 'assets'), { recursive: true });
+  fs.writeFileSync(path.join(packageRoot, 'template.json'), JSON.stringify({ id: 'local-asset-fixture', version: 1, name: 'Fixture', description: '', allowedSourceIds: ['fixture'], builder: 'builder.cjs', assets: ['photo.png', 'font.woff2'] }));
+  const photo = await sharp({ create: { width: 24, height: 32, channels: 3, background: '#a0b0c0' } }).png().toBuffer();
+  fs.writeFileSync(path.join(packageRoot, 'assets', 'photo.png'), photo);
+  fs.writeFileSync(path.join(packageRoot, 'assets', 'font.woff2'), 'not-a-photo');
+  process.env.DALAT_LOCAL_TEMPLATES_DIR = localRoot;
+  try {
+    const service = configure(new GuideService());
+    const edited = await service.getColorEditedAsset('/api/local-templates/local-asset-fixture/1/assets/photo.png', 'iphone-color-edit-v1');
+    assert.equal((await sharp(edited).metadata()).width, 24);
+    assert.ok(fs.readFileSync(path.join(packageRoot, 'assets', 'photo.png')).equals(photo), 'Do not overwrite original local photograph');
+    await assert.rejects(() => service.getColorEditedAsset('/api/local-templates/local-asset-fixture/1/assets/font.woff2', 'iphone-color-edit-v1'), /không phải ảnh/);
+    await assert.rejects(() => service.getColorEditedAsset('/api/local-templates/local-asset-fixture/2/assets/photo.png', 'iphone-color-edit-v1'), /Không tìm thấy/);
+    await assert.rejects(() => service.getColorEditedAsset('/api/local-templates/local-asset-fixture/1/assets/other.png', 'iphone-color-edit-v1'), /Không tìm thấy/);
+    await assert.rejects(() => service.getColorEditedAsset('/api/local-templates/local-asset-fixture/1/assets/../../secret.png', 'iphone-color-edit-v1'), BadRequestException);
+  } finally {
+    if (priorLocalRoot === undefined) delete process.env.DALAT_LOCAL_TEMPLATES_DIR; else process.env.DALAT_LOCAL_TEMPLATES_DIR = priorLocalRoot;
+  }
   fs.rmSync(root, { recursive: true, force: true });
   console.log('PASS guide assets: tool/frontend/asset paths, traversal blocked, MIME, library mapping, color-edit uses instance drive asset');
 }

@@ -133,7 +133,7 @@ async function main() {
         entries.push({ sourceId: 'dalat-threads', deckId, list });
       }
     }
-    assert.equal(entries.length, 48);
+    assert.equal(entries.length, config.THREADS_NOTE_DECK_IDS.length * 4);
     const restarted: any = new GuideService();
     assert.equal(restarted.activeDestinationId, 'dalat-threads');
     const reload = await restarted.getDataset();

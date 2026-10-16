@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { COLOR_EDIT_PRESET, DEFAULT_PHOTO_PRESETS, supportsPhotoPreset } from '../lib/photoPresets.mjs';
+import { cleanRequiredPartners, loadRequiredPartnerChoices, saveRequiredPartnerChoices, supportsRequiredPartners } from '../lib/requiredPartners.mjs';
 import { apiFetch, fetchGuideDataset, formatApiError } from '../lib/apiClient';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../lib/selection';
 import useExportProgress from './useExportProgress';
@@ -63,6 +64,8 @@ export default function DeckStudio({ initialDataset = null }) {
       try { localStorage.setItem('dalat-photo-presets-v1',JSON.stringify(next)); } catch { /* still usable in this session */ }
       return next; });
   }, [activeDeckId]);
+  const [requiredPartnerChoices, setRequiredPartnerChoices] = useState({});
+  useEffect(() => { setRequiredPartnerChoices(loadRequiredPartnerChoices()); }, []);
   const [activeListId, setActiveListId] = useState(initialList?.id || null);
   const [selectedPageIndex, setSelectedPageIndex] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -100,6 +103,51 @@ export default function DeckStudio({ initialDataset = null }) {
   const [selectedListsForDelete, setSelectedListsForDelete] = useState(new Set());
   const { progress, showProgress, updateProgress, completeProgress, failProgress } = useExportProgress();
   const [partners, setPartners] = useState([]);
+  const [partnersRevision, setPartnersRevision] = useState(0);
+  // A freshly added/replaced XLSX reads its Drive photos in the background; when
+  // they are ready, reload that source's catalog and partners once.
+  const photosReadyReloadRef = useRef(null);
+  const loadDatasetRef = useRef(null);
+  const partnerSourceId = dataset?.source?.destinationId || '';
+  useEffect(() => {
+    // Danh sách đối tác thuộc nguồn đang mở; nạp lại khi đổi nguồn.
+    if (!partnerSourceId) return undefined;
+    let cancelled = false;
+    apiFetch('/api/partners').then(async (res) => {
+      if (res.ok && !cancelled) setPartners(await res.json());
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [partnerSourceId, partnersRevision]);
+  // Đối tác hiển thị được theo từng mẫu (backend chạy thử builder); tải khi mở bộ chọn.
+  const [partnerEligibility, setPartnerEligibility] = useState({});
+  const eligibilityRequests = useRef(new Set());
+  useEffect(() => { eligibilityRequests.current = new Set(); setPartnerEligibility({}); }, [partners]);
+  const ensurePartnerEligibility = useCallback((deckId) => {
+    if (!deckId || !partnerSourceId) return;
+    const key = `${partnerSourceId}:${deckId}`;
+    if (eligibilityRequests.current.has(key)) return;
+    eligibilityRequests.current.add(key);
+    setPartnerEligibility(previous => ({ ...previous, [key]: { status: 'loading' } }));
+    apiFetch(`/api/partners/eligibility?deckId=${encodeURIComponent(deckId)}`).then(async (res) => {
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setPartnerEligibility(previous => ({ ...previous, [key]: { status: 'ready', data } }));
+    }).catch(() => {
+      eligibilityRequests.current.delete(key);
+      setPartnerEligibility(previous => ({ ...previous, [key]: { status: 'error' } }));
+    });
+  }, [partnerSourceId]);
+  const requiredPartnerKey = `${partnerSourceId}:${activeDeckId}`;
+  const selectedRequiredPartners = supportsRequiredPartners(dataset?.decks?.find(deck => deck.id === activeDeckId))
+    ? requiredPartnerChoices[requiredPartnerKey] || [] : [];
+  const changeRequiredPartners = useCallback(names => {
+    setRequiredPartnerChoices(previous => {
+      const next = { ...previous, [requiredPartnerKey]: cleanRequiredPartners(names) };
+      if (!next[requiredPartnerKey].length) delete next[requiredPartnerKey];
+      saveRequiredPartnerChoices(next);
+      return next;
+    });
+  }, [requiredPartnerKey]);
   const [savingPageText, setSavingPageText] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [destinationInfo, setDestinationInfo] = useState(null);
@@ -497,7 +545,8 @@ export default function DeckStudio({ initialDataset = null }) {
         throw new Error(apiErrorMessage(payload, `Không thêm được workbook XLSX: HTTP ${response.status}`));
       }
       await applyDestinationMutation(payload);
-      setStatus(`Đã thêm và chuyển sang ${payload.active?.label || label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
+      photosReadyReloadRef.current = payload.active?.id || null;
+      setStatus(`Đã thêm và chuyển sang ${payload.active?.label || label} (${payload.dataset?.source?.totalItems || 0} địa điểm). Đang đọc ảnh Drive của workbook…`);
       return payload.active;
     } finally {
       setSwitchingDestination(false);
@@ -523,6 +572,7 @@ export default function DeckStudio({ initialDataset = null }) {
         throw new Error(apiErrorMessage(payload, `Không thay được file XLSX: HTTP ${response.status}`));
       }
       const updatedActive = await applyDestinationMutation(payload);
+      photosReadyReloadRef.current = updatedActive?.id || destinationId;
       const label = updatedActive?.label || payload?.dataset?.source?.destinationLabel || 'Sheet';
       setStatus(`Đã cập nhật workbook cho ${label} (${payload.dataset?.source?.totalItems || 0} địa điểm).`);
       return updatedActive;
@@ -640,22 +690,32 @@ export default function DeckStudio({ initialDataset = null }) {
       if (cached?.dataset && activeDestinationId && cached.dataset?.source?.destinationId !== activeDestinationId) {
         clearCachedDataset();
       } else if (cached?.dataset) {
-        if (!cancelled) {
-          applyDataset(cached.dataset, stored);
-          setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm${cached.dataset.source?.destinationLabel ? ` — ${cached.dataset.source.destinationLabel}` : ''}).`);
-        }
-        if (needsTemplateCatalogRefresh(cached.dataset)) {
+        if (needsTemplateCatalogRefresh(cached.dataset, destinations?.active)) {
+          v2CatalogRefreshAttemptedRef.current = true;
           clearCachedDataset();
-          loadDataset('Đang nạp lại thư viện mẫu V2...', stored, true, { silent: true }).catch((error) => {
+          // Read the published catalog; a UI catalog refresh must not trigger a
+          // Google Sheet/Drive sync or require Internet access.
+          loadDataset('Đang nạp lại thư viện mẫu...', stored, false, { silent: true }).catch((error) => {
             console.error(error);
-            if (!cancelled) setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được mẫu mới: ${error.message}`);
+            if (!cancelled) {
+              applyDataset(cached.dataset, stored);
+              setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được mẫu mới: ${error.message}`);
+            }
           });
-        } else if (shouldCheckDatasetInBackground()) {
-          markDatasetBackgroundChecked();
-          loadDataset('Đang kiểm tra dữ liệu mới...', {}, false, { silent: true }).catch((error) => {
-            console.error(error);
-            if (!cancelled) setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được cập nhật mới: ${error.message}`);
-          });
+        } else {
+          // Never paint a known-stale layout first. Only use it as a fallback
+          // if reading the current, already-published local dataset fails.
+          if (!cancelled) {
+            applyDataset(cached.dataset, stored);
+            setStatus(`Đã mở dữ liệu đã lưu (${cached.dataset.source?.totalItems || 0} địa điểm${cached.dataset.source?.destinationLabel ? ` — ${cached.dataset.source.destinationLabel}` : ''}).`);
+          }
+          if (shouldCheckDatasetInBackground()) {
+            markDatasetBackgroundChecked();
+            loadDataset('Đang kiểm tra dữ liệu mới...', {}, false, { silent: true }).catch((error) => {
+              console.error(error);
+              if (!cancelled) setStatus(`Đang dùng dữ liệu đã lưu. Chưa tải được cập nhật mới: ${error.message}`);
+            });
+          }
         }
         return;
       }
@@ -682,9 +742,6 @@ export default function DeckStudio({ initialDataset = null }) {
         if (!cancelled) setStatus(error.message);
       });
 
-      apiFetch('/api/partners').then(async (res) => {
-        if (res.ok && !cancelled) setPartners(await res.json());
-      }).catch(() => {});
     }, 0);
 
     if ('scrollRestoration' in window.history) {
@@ -740,6 +797,8 @@ export default function DeckStudio({ initialDataset = null }) {
     };
   }, []);
 
+  loadDatasetRef.current = loadDataset;
+
   useEffect(() => {
     let cancelled = false;
     let readyNoticeTimer = null;
@@ -772,6 +831,11 @@ export default function DeckStudio({ initialDataset = null }) {
           driveCacheWasWaitingRef.current = true;
         } else if (driveCacheWasWaitingRef.current) {
           driveCacheWasWaitingRef.current = false;
+          if (photosReadyReloadRef.current && next.destinationId === photosReadyReloadRef.current) {
+            photosReadyReloadRef.current = null;
+            void loadDatasetRef.current?.('Đang nạp ảnh của nguồn vừa nhập...', currentSelectionRef.current || {}, false)?.catch?.(() => {});
+            setPartnersRevision((value) => value + 1);
+          }
           setDismissedCacheDestinationId(null);
           setDriveCacheReadyNotice(true);
           if (readyNoticeTimer) window.clearTimeout(readyNoticeTimer);
@@ -809,7 +873,7 @@ export default function DeckStudio({ initialDataset = null }) {
     if (!dataset || v2CatalogRefreshAttemptedRef.current || !needsTemplateCatalogRefresh(dataset)) return;
     v2CatalogRefreshAttemptedRef.current = true;
     clearCachedDataset();
-    loadDataset('Đang nạp lại thư viện mẫu V2...', currentSelectionRef.current, true, { silent: true }).catch((error) => {
+    loadDataset('Đang nạp lại thư viện mẫu...', currentSelectionRef.current, false, { silent: true }).catch((error) => {
       console.error(error);
       setStatus(`Chưa tải được mẫu V2 mới: ${error.message}`);
     });
@@ -917,11 +981,11 @@ export default function DeckStudio({ initialDataset = null }) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && (page.localRender || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && (page.localRender || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-expense-sheet' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
-                ...(updates.titlePlacement !== undefined && (page.layoutVariant === 'spotlight-v6-diary-page' || page.spotlightDesignRevision === 1) ? { titlePlacement: updates.titlePlacement } : {}),
+                ...(updates.titlePlacement !== undefined && (page.imageRole || page.layoutVariant === 'spotlight-v6-diary-page' || page.spotlightDesignRevision === 1) ? { titlePlacement: updates.titlePlacement } : {}),
                 ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && updates.coverImages ? { coverImages: updates.coverImages, backgroundImage: updates.coverImages[0] } : {}),
                 ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && updates.coverApproval !== undefined ? { coverApproval: updates.coverApproval } : {}),
                 ...(updates.textScale !== undefined ? { textScale: updates.textScale } : {}),
@@ -967,6 +1031,7 @@ export default function DeckStudio({ initialDataset = null }) {
           title: activePage.title || '',
           textScale: activePage.textScale ?? 100,
           textFontSize: pageToSave.textFontSize ?? null,
+          ...(activePage.imageRole ? { titlePlacement: activePage.titlePlacement } : {}),
           ...(activePage.type === 'cover' && activePage.spotlightDesignRevision === 1 ? { coverImages: activePage.coverImages?.length ? activePage.coverImages : [activePage.backgroundImage], coverApproval: activePage.coverApproval || '', titlePlacement: activePage.titlePlacement } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { diaryFontSize: activePage.diaryFontSize ?? 13 } : {}),
           subtitle: activePage.subtitle || '',
@@ -976,6 +1041,8 @@ export default function DeckStudio({ initialDataset = null }) {
           ...((activePage.layoutVariant === 'itinerary-note-day' || activePage.layoutVariant === 'itinerary-note-dark-day' || activePage.layoutVariant === 'itinerary-note-threads-day' || activePage.layoutVariant === 'threads-toplist-page') ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { items: activePage.items.map(({ name, metaPrimary, scheduleTime }) => ({ name, metaPrimary, scheduleTime })) } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-map-place' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
+          // Bảng chi phí/chi tiêu Threads: số tiền (metaSecondary) cũng là nội dung người dùng sửa.
+          ...(activePage.layoutVariant === 'itinerary-note-threads-budget' || activePage.layoutVariant === 'threads-expense-sheet' ? { items: activePage.items.map(({ name, metaPrimary, metaSecondary }) => ({ name, metaPrimary, metaSecondary: metaSecondary ?? '' })) } : {}),
           ...(activeDeck.id === 'spotlight-v6-persimmon' && activePage.layoutVariant === 'spotlight-v6-page' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
         }),
       });
@@ -1066,6 +1133,7 @@ export default function DeckStudio({ initialDataset = null }) {
       || activeDeck.id === 'spotlight-v6-persimmon'
       || activeDeck.id === 'spotlight-v6-maps'
       || activeDeck.id === 'spotlight-v6-diary'
+      || activeDeck.id === 'spotlight-v6-cherry-blossom'
       || (activeDeck.id === 'summary-note' || activeDeck.id === 'itinerary-note-dark' || (activeDeck.id === 'itinerary-note-2days' || activeDeck.id.startsWith('itinerary-note-threads-')) || activeDeck.id === 'itinerary-note-timed' || activeDeck.id === 'threads-toplist-dalat');
     const festivalProvidesCover = hookSourcesInfo?.mode === 'festival'
       && hookSourcesInfo?.eligibleDeckIds?.includes(activeDeck.id);
@@ -1098,6 +1166,7 @@ export default function DeckStudio({ initialDataset = null }) {
           deckId: activeDeck.id,
           listId: captionSourceList?.id || activeListId,
           photoPreset: selectedPhotoPreset,
+          requiredPartners: selectedRequiredPartners,
           tone: captionTone,
           caption: {
             coverTitle: isNonAiTemplate ? '' : coverTitle.slice(0, 56),
@@ -1126,7 +1195,7 @@ export default function DeckStudio({ initialDataset = null }) {
     } finally {
       setBusy(false);
     }
-  }, [selectedPhotoPreset, activeDeck, activeListId, caption, captionSourceList, driveCacheStatus.ready, hookSourcesInfo, loadDataset, loadHookSources, queueGenerationRequest, automationState.locked]);
+  }, [selectedPhotoPreset, selectedRequiredPartners, activeDeck, activeListId, caption, captionSourceList, driveCacheStatus.ready, hookSourcesInfo, loadDataset, loadHookSources, queueGenerationRequest, automationState.locked]);
 
   const createBatchLists = useCallback(async (count) => {
     if (!activeDeck) {
@@ -1153,7 +1222,7 @@ export default function DeckStudio({ initialDataset = null }) {
       const response = await queueGenerationRequest('/api/decks/generate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deckId: activeDeck.id, count: safeCount, requestId, photoPreset: selectedPhotoPreset }),
+        body: JSON.stringify({ deckId: activeDeck.id, count: safeCount, requestId, photoPreset: selectedPhotoPreset, requiredPartners: selectedRequiredPartners }),
       });
       if (!response.ok) {
         const message = await response.text();
@@ -1178,7 +1247,7 @@ export default function DeckStudio({ initialDataset = null }) {
       creatingListsRef.current = false;
       setBusy(false);
     }
-  }, [selectedPhotoPreset, activeDeck, activeListId, driveCacheStatus.ready, loadDataset, loadHookSources, queueGenerationRequest, automationState.locked]);
+  }, [selectedPhotoPreset, selectedRequiredPartners, activeDeck, activeListId, driveCacheStatus.ready, loadDataset, loadHookSources, queueGenerationRequest, automationState.locked]);
 
   const createPartnerSpotlight = useCallback(async (partner) => {
     if (!automationState.locked && !driveCacheStatus.ready) {
@@ -1856,6 +1925,9 @@ export default function DeckStudio({ initialDataset = null }) {
         ) : activeView === 'scheduler' ? (
           <div className={workspaceClasses}>
             <AutomationSchedulerPanel
+              partners={partners}
+              partnerEligibility={partnerEligibility}
+              onNeedPartnerEligibility={ensurePartnerEligibility}
               dataset={dataset}
               destinations={destinationOptions}
               hookSourcesInfo={hookSourcesInfo}
@@ -1899,6 +1971,11 @@ export default function DeckStudio({ initialDataset = null }) {
               onCreateBatchLists={createBatchLists}
               onCreatePartnerSpotlight={createPartnerSpotlight}
               partners={partners}
+              requiredPartners={selectedRequiredPartners}
+              onRequiredPartnersChange={changeRequiredPartners}
+              partnerEligibility={partnerEligibility[requiredPartnerKey]}
+              cacheNotice={driveCacheStatus.ready && driveCacheStatus.imagesMissing ? driveCacheStatus.message : ''}
+              onPartnerPickerOpen={() => ensurePartnerEligibility(activeDeckId)}
               onCopy={copyText}
             />
 
@@ -1942,7 +2019,7 @@ export default function DeckStudio({ initialDataset = null }) {
                 <div className="panel-head compact">
                   <div>
                     <p className="panel-kicker">Dữ liệu trang</p>
-                    <h3 className="panel-title">{activePage?.layoutVariant === 'itinerary-note-threads-budget' ? 'Dữ liệu bảng chi phí' : activeDeck?.id === 'threads-toplist-dalat' ? 'Dữ liệu địa điểm' : 'Dữ liệu & ảnh'}</h3>
+                    <h3 className="panel-title">{activePage?.layoutVariant === 'itinerary-note-threads-budget' || activePage?.layoutVariant === 'threads-expense-sheet' ? 'Dữ liệu bảng chi phí' : activeDeck?.id === 'threads-toplist-dalat' ? 'Dữ liệu địa điểm' : 'Dữ liệu & ảnh'}</h3>
                     <p role="status">{savingPageText ? 'Đang lưu…' : editorSaveState === 'dirty' ? '● Chưa lưu' : editorSaveState === 'failed' ? 'Lưu thất bại — bản nháp vẫn còn' : 'Đã lưu'}</p>
                   </div>
                 </div>

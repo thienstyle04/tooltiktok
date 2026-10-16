@@ -98,7 +98,7 @@ export function exportQualityProfile(quality, deckId, runtimeMode = 'modern', fo
       ? { ...profile, label: 'Cân bằng tương thích', compatibility: true, imagePrepareConcurrency: 1, renderChunkSize: 1, captureConcurrency: 1 }
       : profile;
   }
-  const isV6Family = deckId === 'spotlight-v6-diary' || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
+  const isV6Family = deckId === 'spotlight-v6-cherry-blossom' || deckId === 'spotlight-v6-diary' || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
   return { ...profile, label: 'Cân bằng mới', losslessSource: true, fullResolutionV6: isV6Family,
     pixelRatio: isV6Family ? 1080 / 397 + 1e-9 : profile.pixelRatio,
     sourceImageMaxDimension: 0, sourceImageFormat: 'image/png', sourceImageQuality: 1 };

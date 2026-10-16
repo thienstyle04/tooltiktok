@@ -15,8 +15,9 @@ const V2_DECK_IDS = new Set([
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
   'spotlight-v6-diary',
+  'spotlight-v6-cherry-blossom',
   'summary-note',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
   'itinerary-note-timed',
   'carousel-mau-1',
   'one-way-story',
@@ -25,12 +26,14 @@ const V2_DECK_IDS = new Set([
 ]);
 
 function countDeckItems(deck) {
+  if (deck.id === 'spotlight-v6-cherry-blossom') return (deck.lists || []).reduce((total, list) => total + new Set((list.pages || []).flatMap(page => (page.items || []).map(item => item.rawName || item.name))).size, 0);
   return (deck?.lists || []).reduce((total, list) => total + (list.pages || []).reduce((pageTotal, page) => {
     return pageTotal + (Array.isArray(page.items) ? page.items.length : 0);
   }, 0), 0);
 }
 
 function countDeckPartners(deck) {
+  if (deck.id === 'spotlight-v6-cherry-blossom') return (deck.lists || []).reduce((total, list) => total + new Set((list.pages || []).flatMap(page => (page.items || []).filter(item => item.isPartner).map(item => item.rawName || item.name))).size, 0);
   return (deck?.lists || []).reduce((total, list) => total + (list.pages || []).reduce((pageTotal, page) => {
     return pageTotal + (Array.isArray(page.items) ? page.items.filter((item) => item.isPartner).length : 0);
   }, 0), 0);

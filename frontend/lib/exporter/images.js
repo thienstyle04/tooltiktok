@@ -6,6 +6,7 @@ import { fitItineraryNote, fitItineraryNoteTimed } from '../itineraryNote';
 import { fitSpotlightDiary } from '../spotlightDiary';
 import { fitThreadsToplist } from '../threadsToplist';
 import { checkLocalTemplateLayout, ensureLocalTemplateFonts } from '../localTemplates';
+import { checkCherryBlossomLayout } from '../cherryBlossom';
 import { ExportImageError } from '../exportImageValidation';
 import { EXPORT_FALLBACK_SOURCE_LIMIT, IMAGE_FETCH_TIMEOUT_MS, IMAGE_READY_TIMEOUT_MS, settleWithin } from './shared';
 
@@ -364,6 +365,7 @@ async function waitForImageReady(img) {
 
 /** Cho batch export: đợi ảnh trong trang load xong trước khi inline/fetch. */
 export async function waitForPageImagesSettled(node, timeoutMs = 20000) {
+  if (node.matches?.('.local-template-page[data-photo-preset]')) timeoutMs = Math.max(timeoutMs, 60000);
   await ensureLocalTemplateFonts(node);
   await document.fonts.ready;
   resetPageTextScale(node);
@@ -376,6 +378,7 @@ export async function waitForPageImagesSettled(node, timeoutMs = 20000) {
   fitSpotlightDiary(node, true);
   fitThreadsToplist(node, true);
   checkLocalTemplateLayout(node, true);
+  checkCherryBlossomLayout(node, true);
   const images = Array.from(node?.querySelectorAll?.('img') || []);
   if (!images.length) return;
   await Promise.all(images.map(async (img) => {
@@ -855,10 +858,11 @@ export function isSpotlightV5PageNode(pageNode) {
 }
 
 export function isThreadsPortraitPageNode(pageNode) {
-  return Boolean(pageNode?.classList?.contains('local-template-page') || pageNode?.classList?.contains('threads-portrait') || pageNode?.classList?.contains('itinerary-note-threads-budget'));
+  return Boolean(pageNode?.classList?.contains('local-template-page') || pageNode?.classList?.contains('threads-portrait') || pageNode?.classList?.contains('itinerary-note-threads-budget') || pageNode?.classList?.contains('threads-expense-sheet'));
 }
 
 export function isSpotlightV6PageNode(pageNode) {
+  if (pageNode?.classList?.contains('cherry-blossom-page')) return true;
   return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day') || pageNode?.classList?.contains('itinerary-note-timed-day'));
 }
 

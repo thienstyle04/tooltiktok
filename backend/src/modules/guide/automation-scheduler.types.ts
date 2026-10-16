@@ -5,6 +5,8 @@ export interface AutomationTemplateRequest {
   photoPreset?: 'iphone-color-edit-v1' | null;
   deckId: string;
   count: number;
+  /** Tên đối tác phải có mặt trong mọi list của mẫu này (không áp dụng mẫu riêng). */
+  requiredPartners?: string[];
 }
 
 export interface AutomationScheduleInput {

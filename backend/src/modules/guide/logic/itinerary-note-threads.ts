@@ -1,6 +1,7 @@
 import type { GuideItem, ListPage, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { normalizeText, stableHash } from './image-resolver';
 import { itemUsageKey } from './data-allocator';
+import { isRequiredPartner } from './required-partners';
 
 export const THREADS_NOTE_IDS = ['itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d'] as const;
 export const isThreadsNote = (id: string): id is (typeof THREADS_NOTE_IDS)[number] =>
@@ -82,6 +83,7 @@ export function buildThreadsNotePages(common: { itemsBySection: WorkbookItemsByS
   const ranked = pools.map((pool, i) => pool.filter(item => !featured || reservedSlot === undefined || identity(item) !== identity(featured)).sort((a, b) => {
     const preferPartner = localPositions[i] % 2 === 0;
     const score = (x: GuideItem) => Number(slots[i].period === 'Tối' && slots[i].groups.includes('choi_dem') && x.sectionKey !== 'choi_dem') * 100
+      - Number(isRequiredPartner(x)) * 50
       + Number(Boolean(x.isPartner) !== preferPartner) * 10
       + Number(Boolean(common.globalUsedItemIds?.has(itemUsageKey(x))));
     return score(a) - score(b) || stableHash(seed + i + a.id) - stableHash(seed + i + b.id);

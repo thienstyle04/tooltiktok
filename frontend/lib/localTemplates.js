@@ -7,6 +7,8 @@ function css(style = {}) {
 }
 function field(page, key) {
   if (key === 'title' || key === 'subtitle' || key === 'backgroundImage') return String(page[key] || '');
+  const cover = /^coverImages\.(\d+)$/.exec(key || '');
+  if (cover) return String(page.coverImages?.[Number(cover[1])] || '');
   const match = /^items\.(\d+)\.(name|metaPrimary|metaSecondary|imageUrl)$/.exec(key || '');
   return match ? String(page.items?.[Number(match[1])]?.[match[2]] || '') : '';
 }
@@ -37,6 +39,13 @@ export function renderLocalTemplate(page, index, listId) {
       if (!src) return '';
       if (!/^\/(?:api\/local-templates\/|assets\/)|^https?:\/\//i.test(src)) throw new Error('URL ảnh local không hợp lệ.');
       return `<img src="${escapeHtml(src)}" alt="${escapeHtml(owner?.name || node.label || '')}" loading="eager" decoding="sync" draggable="false" data-local-required="${node.required !== false}" style="${escapeHtml(geometry)}"/>`;
+    }
+    if (node.itemIndices && node.fieldColors) {
+      const content = node.itemIndices.map(i => (node.fields || ['name']).map(key => {
+        const value = String(page.items?.[i]?.[key] || '');
+        return value ? `<span data-local-field="${escapeHtml(key)}" style="display:block;font-family:inherit!important;font-size:inherit;line-height:inherit;font-weight:inherit;${escapeHtml(css({ color: node.fieldColors[key] || node.style?.color || 'inherit' }))}">${escapeHtml(value)}</span>` : '';
+      }).join('')).join('');
+      return `<div data-local-text="${n}" data-local-label="${escapeHtml(node.label || page.title || 'Nội dung')}" style="${escapeHtml(geometry)};white-space:pre-line;overflow:visible">${content}</div>`;
     }
     let text = node.field ? field(page, node.field) : String(node.text || '');
     if (node.itemIndices) text = node.itemIndices.map(i => (node.fields || ['name']).map(key => String(page.items?.[i]?.[key] || '')).filter(Boolean).join(node.separator ?? ' - ')).filter(Boolean).join('\n');

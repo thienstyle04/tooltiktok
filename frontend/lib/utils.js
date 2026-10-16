@@ -1,7 +1,7 @@
 export const SELECTION_STORAGE_KEY = 'dalat-carousel-active-selection-v1';
 export const DATASET_CACHE_KEY = 'dalat-carousel-dataset-cache-v82';
 export const DESTINATION_STORAGE_KEY = 'dalat-carousel-active-destination-v1';
-export const STUDIO_CATALOG_REVISION = '2026-10-12-local-template-registry';
+export const STUDIO_CATALOG_REVISION = '2026-10-15-local-layout-refresh-2';
 export const STUDIO_CATALOG_REVISION_KEY = `${DATASET_CACHE_KEY}:catalog-revision`;
 
 /** Deck đã gỡ khỏi app — lọc khỏi cache/dataset cũ. */
@@ -94,12 +94,13 @@ export function listIsMain(list) {
   return /-main$/i.test(String(list?.id || ''));
 }
 
-/** 1-based caption/set index from list id (caption-01-…) or navTitle (AI 01). */
+/** 1-based set index; UUID prefixes are identity, never an ordinal. */
 export function parseListSetIndex(list) {
   const id = String(list?.id || '');
-  const captionMatch = id.match(/caption-(\d+)/i);
+  const uuidCaption = /caption-[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}(?:$|-)/i.test(id);
+  const captionMatch = !uuidCaption && id.match(/caption-(\d+)(?:-|$)/i);
   if (captionMatch) return Number(captionMatch[1]);
-  const navMatch = String(list?.navTitle || '').match(/AI\s*0*(\d+)/i);
+  const navMatch = String(list?.navTitle || '').match(/(?:\bAI|\bMẫu)\s*0*(\d+)/i);
   if (navMatch) return Number(navMatch[1]);
   return 1;
 }

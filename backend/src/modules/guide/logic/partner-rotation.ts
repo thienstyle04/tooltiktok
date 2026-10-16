@@ -2,6 +2,7 @@ import type { DeckPage, GuideDeckList, GuideItem, ListPage, PageItem, PartnerRot
 import { normalizeText, stableHash } from './image-resolver';
 import { extractDriveFileIdFromProxyUrl, getCachedDriveFileVisualFingerprint, uniqueCachedDriveFileIdsByVisualContent } from '../sync/drive-images';
 import { DIARY_PARTNER_COUNT } from './spotlight-diary';
+import { requiredPartnerKeys } from './required-partners';
 
 export const PARTNER_ROTATION_VERSION = 1;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -27,7 +28,7 @@ export function sourcePhotoId(url: string): string {
 
 // Stable source ID is authoritative even if the cache disappears. A content
 // alias also prevents a re-upload of the same picture being counted as new.
-function photoKeys(url: string): string[] {
+export function photoKeys(url: string): string[] {
   const id = sourcePhotoId(url), driveId = id.startsWith('drive:') ? id.slice(6) : '';
   const fingerprint = driveId ? getCachedDriveFileVisualFingerprint(driveId) : '';
   return fingerprint ? [id, `content:${fingerprint}`] : [id];
@@ -42,6 +43,8 @@ export function validateRotationStore(value: unknown): Record<string, PartnerRot
       if (!state || !Number.isInteger(state.position) || state.position < 1 || !Number.isInteger(state.cycle) || state.cycle < 1
         || !Array.isArray(state.lastPhotos) || !Array.isArray(state.usedPhotos)
         || ![...state.lastPhotos, ...state.usedPhotos].every(id => typeof id === 'string')) throw new Error('Lịch sử vị trí/ảnh đối tác bị hỏng; chưa thể tạo list.');
+      if (state.photoPools !== undefined && (!state.photoPools || typeof state.photoPools !== 'object' || Array.isArray(state.photoPools)
+        || Object.values(state.photoPools).some((pool: any) => !pool || !Number.isInteger(pool.cycle) || pool.cycle < 1 || !Array.isArray(pool.usedPhotos) || !pool.usedPhotos.every((id: unknown) => typeof id === 'string')))) throw new Error('Lịch sử nhóm ảnh đối tác bị hỏng.');
     }
   }
   return clone(value as Record<string, PartnerRotationHistory>);
@@ -259,7 +262,7 @@ export function requiredPartnerCount(deckId: string, items: WorkbookItemsBySecti
 }
 
 export function rotatePartnerList(input: GuideDeckList, deckId: string, items: WorkbookItemsBySection,
-  previous: PartnerRotationHistory, seed: string, requiredPartners = 1, requiredSlots = requiredPartners): { list: GuideDeckList; history: PartnerRotationHistory } {
+  previous: PartnerRotationHistory, seed: string, requiredPartners = 1, requiredSlots = requiredPartners, positionsOnly = false): { list: GuideDeckList; history: PartnerRotationHistory } {
   const list = clone(input), history = clone(previous), sources = Object.values(items).flat();
   // Information rows are labels (address/hours/price), not extra partner venues.
   // Only the new list is normalized; old saved lists remain untouched.
@@ -272,12 +275,17 @@ export function rotatePartnerList(input: GuideDeckList, deckId: string, items: W
   const groups = new Map<string, Unit[]>();
   units.forEach(unit => groups.set(unit.group, [...(groups.get(unit.group) || []), unit]));
   const originalPages = clone(list.pages);
+  // A user-required partner is in every list; when no legal move exists, it may
+  // keep its position so the other partners can still change theirs.
+  const required = new Set(requiredPartnerKeys());
   for (const group of groups.values()) {
     const owner = new Map<number, number>(), destinations = new Map<number, number>();
+    let relaxRequired = false;
     const assign = (index: number, seen: Set<number>): boolean => {
       const unit = group[index], lastPosition = history[unit.key]?.position;
       const slots = group.map((target, slot) => ({ target, slot })).filter(({ target }) =>
-        !unit.partner || lastPosition === undefined || target.position !== lastPosition || group.length === 1)
+        !unit.partner || lastPosition === undefined || target.position !== lastPosition || group.length === 1
+        || (relaxRequired && required.has(unit.key)))
         .sort((a, b) => stableHash(`${seed}:${unit.key}:${a.target.position}`) - stableHash(`${seed}:${unit.key}:${b.target.position}`));
       for (const { slot } of slots) {
         if (seen.has(slot)) continue;
@@ -287,11 +295,19 @@ export function rotatePartnerList(input: GuideDeckList, deckId: string, items: W
       }
       return false;
     };
-    for (let index = 0; index < group.length; index++) {
-      if (!assign(index, new Set())) throw new Error(`${deckId}: chưa thể đổi vị trí đối tác “${group[index].source?.name || group[index].key}” trong các vị trí hợp lệ. Chưa lưu list; hãy bổ sung đối tác đúng nhóm.`);
-    }
+    const solve = (): number => {
+      owner.clear(); destinations.clear();
+      for (let index = 0; index < group.length; index++) if (!assign(index, new Set())) return index;
+      return -1;
+    };
+    let failed = solve();
+    if (failed >= 0 && group.some(unit => unit.partner && required.has(unit.key))) { relaxRequired = true; failed = solve(); }
+    if (failed >= 0) throw new Error(`${deckId}: chưa thể đổi vị trí đối tác “${group[failed].source?.name || group[failed].key}” trong các vị trí hợp lệ. Chưa lưu list; hãy bổ sung đối tác đúng nhóm.`);
     group.forEach((unit, index) => {
       const target = group[destinations.get(index)!];
+      if (unit.partner && relaxRequired && required.has(unit.key) && history[unit.key]?.position === target.position && group.length > 1) {
+        warnings.push(`Đối tác bắt buộc “${unit.source?.name || unit.key}” giữ vị trí ${target.position} để các đối tác khác đổi chỗ; ảnh vẫn được thay mới.`);
+      }
       if (unit.partner && history[unit.key]?.position === target.position && group.length === 1) {
         warnings.push(`Đối tác “${unit.source?.name || (originalPages[unit.refs[0].page] as ListPage).items[unit.refs[0].item].rawName}” giữ vị trí ${target.position}: mẫu chỉ có một vị trí phù hợp.`);
       }
@@ -308,6 +324,16 @@ export function rotatePartnerList(input: GuideDeckList, deckId: string, items: W
     });
   }
   const rotated = unitsFor(list.pages, deckId, sources);
+  // Role-constrained builders select their own photos. Reuse the exact same
+  // position solver, but never replace a themed photograph with a regular one.
+  if (positionsOnly) {
+    for (const unit of rotated.filter(unit => unit.partner)) history[unit.key] = {
+      ...(history[unit.key] || { lastPhotos: [], usedPhotos: [], cycle: 1 }), position: unit.position,
+    };
+    list.partnerRotationVersion = PARTNER_ROTATION_VERSION;
+    list.warnings = [...new Set([...(list.warnings || []), ...warnings])];
+    return { list, history };
+  }
   const usedInList = new Set(rotated.filter(unit => !unit.partner).flatMap(unit => unit.refs.flatMap(ref => {
     const page = list.pages[ref.page] as ListPage;
     return page.items[ref.item].imageUrl ? photoKeys(page.items[ref.item].imageUrl) : [];

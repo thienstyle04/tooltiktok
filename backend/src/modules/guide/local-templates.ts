@@ -18,6 +18,11 @@ export interface LocalTemplateBuildInput {
   /** Verified background photos from the active source, never another workbook. */
   coverImages: Array<{ id: string; url: string }>;
   savedCoverImageIds: string[];
+  /** Read-only copy of this template's saved lists, oldest first, so a builder
+   * can rebuild its own content rotation when no state was stored yet. */
+  savedLists?: GuideDeckList[];
+  /** Read-only snapshot of the main list with its saved page edits applied. */
+  mainList?: GuideDeckList;
   assetUrl: (name: string) => string;
 }
 export interface LocalTemplateBuildResult {

@@ -79,6 +79,36 @@
 .threads-budget-foot { margin:10px 0 0; font-size:.65em; line-height:1.25; color:#555; }
 .itinerary-note-threads-budget[data-note-overflow="true"] .in-content { outline:2px solid #c33; }
 
+/* Threads expense sheet: screenshot-like Google Sheet (Arial, light grid, green header, red totals). */
+.story-page.threads-expense-sheet,
+.batch-export-root .story-page.threads-expense-sheet { position:relative; flex:0 0 auto; width:810px; height:1080px; max-width:none; min-height:0; aspect-ratio:3/4; box-sizing:border-box; padding:0; border-radius:0; overflow:hidden; isolation:isolate; background:#fff; color:#000; font-family:Arial,"Helvetica Neue",Helvetica,sans-serif; }
+/* Canvas cố định 810×1080: không kế thừa khung slide 397px cũ (bị bóp hẹp trong khung xem trước). */
+.story-page.threads-expense-sheet::before,.story-page.threads-expense-sheet::after { display:none; }
+.page-grid .story-page.threads-expense-sheet,
+.template-compare-focus-stage .story-page.threads-expense-sheet { zoom:.37; }
+.threads-expense-sheet .tes-content { position:absolute; inset:0; overflow:hidden; font-size:var(--tes-font,20px); }
+/* Ảnh chụp Google Sheet dùng Arial (có sẵn trên mọi máy Windows); ghi đè font chung của carousel. */
+.story-page.threads-expense-sheet,
+.story-page.threads-expense-sheet * { font-family:Arial,"Liberation Sans",Helvetica,sans-serif !important; }
+.threads-expense-sheet .tes-table { width:max-content; border-collapse:collapse; table-layout:fixed; font:inherit; color:#000; }
+.threads-expense-sheet .tes-table td,
+.threads-expense-sheet .tes-table th { height:var(--tes-row,40px); box-sizing:border-box; padding:0 8px; border:1px solid #e1e1e1; text-align:center; vertical-align:middle; white-space:nowrap; overflow:hidden; text-overflow:clip; line-height:1.1; font-weight:400; }
+.threads-expense-sheet .tes-head th { background:#6aa84f; font-weight:700; letter-spacing:.01em; }
+.threads-expense-sheet .tes-head th,
+.threads-expense-sheet .tes-row td:not(.tes-gutter):not(.tes-outside),
+.threads-expense-sheet .tes-person .tes-person-label,
+.threads-expense-sheet .tes-person .tes-amount { border:1.5px solid #222; }
+.threads-expense-sheet .tes-table .tes-title { color:#e8261f; font-weight:700; font-size:1.6em; overflow:visible; }
+.threads-expense-sheet .tes-amount { font-variant-numeric:tabular-nums; }
+.threads-expense-sheet .tes-amount.is-invalid { color:#c00; text-decoration:underline wavy #c00; }
+.threads-expense-sheet .tes-total .tes-amount,
+.threads-expense-sheet .tes-person .tes-person-label,
+.threads-expense-sheet .tes-person .tes-amount { color:#e8261f; font-weight:700; }
+.threads-expense-sheet .tes-person .tes-person-label { text-align:left; }
+.threads-expense-sheet .tes-person .tes-amount { text-align:right; }
+.threads-expense-sheet .tes-total small { font-size:.62em; color:#888; }
+.threads-expense-sheet .tes-example { position:absolute; left:24px; right:24px; bottom:14px; margin:0; padding:6px 8px; background:#fff; font-size:14px; line-height:1.3; color:#666; }
+
 .story-page.itinerary-note-timed-day { position:relative; width:397px; height:706px; aspect-ratio:9/16; box-sizing:border-box; border-radius:0; background:#fff; color:#505050; isolation:isolate; font-family:Arial,"Helvetica Neue",sans-serif; padding:0; overflow:hidden; }
 .itinerary-note-timed-day svg { display:block; flex:none; }
 .itinerary-note-timed-day .int-status { position:absolute; z-index:2; top:8px; left:31px; right:26px; height:20px; display:flex; align-items:center; justify-content:space-between; color:#111; font-size:14px; line-height:1; }

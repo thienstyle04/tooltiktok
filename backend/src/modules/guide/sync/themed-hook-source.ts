@@ -180,6 +180,10 @@ export class ThemedHookSourceStore {
 
   getLastError(): string | undefined { return this.state?.lastError; }
 
+  getSourceIdentity(): { sourceId: string; sourceRevision: string } | null {
+    return this.state ? { sourceId: this.state.docId, sourceRevision: this.state.revision } : null;
+  }
+
   getCachedHooks(): string[] {
     return this.state?.hooks ? [...this.state.hooks] : [];
   }

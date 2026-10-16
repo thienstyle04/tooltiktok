@@ -7,35 +7,42 @@ import {
   filterAccessibleDriveEntries,
   hasDriveFileDiskCache,
   resolveDriveLinkToEntries,
+  resolveCherryBlossomFolders,
+  resolveCherryRegularImages,
 } from './drive-images';
 import { composeAddress, firstValue, itemMappingKey, normalizeText, normalizeWorkbookHeaders } from '../logic/image-resolver';
-import { DestinationId, isIsolatedSheetSource } from './destination-config';
+import { DestinationId, isDalatTestSource, isIsolatedSheetSource } from './destination-config';
 import { publishedSourcePaths } from './published-source';
 import { PREFERRED_WORKBOOK_NAME, SheetWorkbookSource } from './workbook-source';
 import { resolveSectionKeyFromSheetName } from './sheet-section';
 import { SectionKey } from '../../../common/interfaces/guide.types';
 
 export const SHEET_DRIVE_MANIFEST_FILE = 'sheet-drive-images.json';
-/** Giữ thấp để tránh Google trả HTTP 401 hàng loạt khi list embeddedfolderview. */
-const DRIVE_MANIFEST_CONCURRENCY = 2;
+/**
+ * Số lượt list embeddedfolderview chạy song song. Đo thật (40 thư mục công khai):
+ * 2 → ~15 s, 4 → ~8–9 s, không lỗi; 6 → chậm hơn và Google bắt đầu trả 500.
+ * Không tăng quá 4 để tránh bị chặn/401 hàng loạt.
+ */
+const DRIVE_MANIFEST_CONCURRENCY = 4;
 
-export type HinhNenImageGroup = 'default' | 'green' | 'dark' | 'random' | 'persimmon';
-export const HINH_NEN_IMAGE_GROUPS: readonly HinhNenImageGroup[] = ['default', 'green', 'dark', 'random', 'persimmon'];
+export type HinhNenImageGroup = 'default' | 'green' | 'dark' | 'random' | 'persimmon' | 'cherry-blossom' | 'cherry-blossom-random';
+export const HINH_NEN_IMAGE_GROUPS: readonly HinhNenImageGroup[] = ['default', 'green', 'dark', 'random', 'persimmon', 'cherry-blossom', 'cherry-blossom-random'];
 
 export type HinhNenDriveImageGroups = Record<HinhNenImageGroup, DriveFolderEntry[]>;
 export type HinhNenSourceLinkGroups = Record<HinhNenImageGroup, string[]>;
 export type HinhNenHookSourceGroups = Partial<Record<HinhNenImageGroup, string>>;
 
 function emptyHinhNenDriveImageGroups(): HinhNenDriveImageGroups {
-  return { default: [], green: [], dark: [], random: [], persimmon: [] };
+  return { default: [], green: [], dark: [], random: [], persimmon: [], 'cherry-blossom': [], 'cherry-blossom-random': [] };
 }
 
 function emptyHinhNenSourceLinkGroups(): HinhNenSourceLinkGroups {
-  return { default: [], green: [], dark: [], random: [], persimmon: [] };
+  return { default: [], green: [], dark: [], random: [], persimmon: [], 'cherry-blossom': [], 'cherry-blossom-random': [] };
 }
 
 export function classifyHinhNenImageGroup(label: string): HinhNenImageGroup {
   const normalized = normalizeText(label).replace(/_/g, ' ');
+  if (normalized.includes('hoa dao')) return /ra[mn]dom|random/.test(normalized) ? 'cherry-blossom-random' : 'cherry-blossom';
   if (normalized.includes('mang xanh')) return 'green';
   if (normalized.includes('tone den')) return 'dark';
   if (normalized.includes('mua hong')) return 'persimmon';
@@ -52,6 +59,8 @@ export interface SheetDriveImageManifestEntry {
   fileId: string;
   fileName: string;
   candidateImages?: DriveFolderEntry[];
+  cherryRegularImages?: DriveFolderEntry[];
+  themedImages?: { 'cherry-blossom'?: { sourceLink: string; venueKey: string; folders: Array<{ folderId: string; name: string }>; images: DriveFolderEntry[] } };
   mapSourceLink?: string;
   mapFileId?: string;
   mapFileName?: string;
@@ -59,6 +68,7 @@ export interface SheetDriveImageManifestEntry {
 }
 
 export interface SheetDriveImageManifest {
+  syncWarnings?: string[];
   version: number;
   generatedAt: string;
   workbookName: string;
@@ -231,6 +241,7 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
       : {};
     const manifest: SheetDriveImageManifest = {
       version: Number(parsed.version ?? 1),
+      syncWarnings: Array.isArray(parsed.syncWarnings) ? parsed.syncWarnings.map(String) : [],
       generatedAt: String(parsed.generatedAt ?? new Date(0).toISOString()),
       workbookName: String(parsed.workbookName ?? PREFERRED_WORKBOOK_NAME),
       workbookMtimeMs: Number(parsed.workbookMtimeMs ?? 0),
@@ -245,6 +256,8 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
         dark: Array.isArray(parsedImageGroups.dark) ? parsedImageGroups.dark : [],
         random: Array.isArray(parsedImageGroups.random) ? parsedImageGroups.random : [],
         persimmon: Array.isArray(parsedImageGroups.persimmon) ? parsedImageGroups.persimmon : [],
+        'cherry-blossom': parsedImageGroups['cherry-blossom'] || [],
+        'cherry-blossom-random': parsedImageGroups['cherry-blossom-random'] || [],
       },
       coverSourceLinkGroups: {
         default: Array.isArray(parsedSourceGroups.default) ? parsedSourceGroups.default.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
@@ -252,6 +265,8 @@ export function readSheetDriveManifest(dataRoot: string, destinationId: Destinat
         dark: Array.isArray(parsedSourceGroups.dark) ? parsedSourceGroups.dark.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
         random: Array.isArray(parsedSourceGroups.random) ? parsedSourceGroups.random.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
         persimmon: Array.isArray(parsedSourceGroups.persimmon) ? parsedSourceGroups.persimmon.map((entry) => String(entry || '').trim()).filter(Boolean) : [],
+        'cherry-blossom': parsedSourceGroups['cherry-blossom'] || [],
+        'cherry-blossom-random': parsedSourceGroups['cherry-blossom-random'] || [],
       },
       hookSourceGroups: parsed.hookSourceGroups && typeof parsed.hookSourceGroups === 'object'
         ? Object.fromEntries(Object.entries(parsed.hookSourceGroups)
@@ -286,6 +301,8 @@ export async function buildSheetDriveManifest(
   const hookSourceGroups: HinhNenHookSourceGroups = {};
   const itemTasks: Array<() => Promise<void>> = [];
   const mapTasks: Array<() => Promise<void>> = [];
+  const themeTasks: Array<() => Promise<void>> = [];
+  const syncWarnings: string[] = [];
   const coverTasks: Array<() => Promise<void>> = [];
   const coverResolveErrors = Object.fromEntries(
     HINH_NEN_IMAGE_GROUPS.map((group) => [group, 0]),
@@ -333,6 +350,51 @@ export async function buildSheetDriveManifest(
       if (!imageLink && !mapImageLink) continue;
       const key = itemMappingKey(sectionKey, name, address);
       const legacyKey = rawAddress === address ? '' : itemMappingKey(sectionKey, name, rawAddress);
+      // This phase runs even when the parent link and regular-photo index were
+      // reused. Discover direct themed children only; never recurse into maps.
+      if (['cafe', 'quan_an'].includes(sectionKey) && imageLink && isDalatTestSource(source.destinationId)
+        && normalizeText(firstValue(row, 'doi_tac', 'doi_tac_cong_ty')) === 'x') themeTasks.push(async () => {
+        const entry = items[key];
+        if (!entry) return;
+        // Switching source/startup reuses the last verified result for an unchanged
+        // link (an empty result is valid: no photos there); only a manual reload
+        // (forceRevalidate) rediscovers the folder.
+        const previousRegular = previousManifest.items[key];
+        if (!forceRevalidate && previousRegular?.sourceLink === imageLink && Array.isArray(previousRegular.cherryRegularImages)) {
+          entry.cherryRegularImages = previousRegular.cherryRegularImages;
+          return;
+        }
+        try {
+          const images = await resolveCherryRegularImages(imageLink, name, address);
+          entry.cherryRegularImages = await filterAccessibleDriveEntries(images);
+          if (images.length && !entry.cherryRegularImages.length) throw new Error('Ảnh thường chưa truy cập được');
+        } catch (error) {
+          const previous = previousManifest.items[key];
+          if (previous?.sourceLink === imageLink) entry.cherryRegularImages = previous.cherryRegularImages;
+          syncWarnings.push(`Ảnh thường ${name}: ${error instanceof Error ? error.message : error} (giữ ảnh hợp lệ trước đó).`);
+        }
+      });
+      if (sectionKey === 'cafe' && imageLink && isDalatTestSource(source.destinationId)) themeTasks.push(async () => {
+        const entry = items[key];
+        if (!entry) return;
+        const previousThemed = previousManifest.items[key]?.themedImages?.['cherry-blossom'];
+        if (!forceRevalidate && previousThemed?.sourceLink === imageLink && Array.isArray(previousThemed.images)) {
+          entry.themedImages = { 'cherry-blossom': previousThemed };
+          return;
+        }
+        try {
+          const themed = await resolveCherryBlossomFolders(imageLink);
+          const images = await filterAccessibleDriveEntries(themed.images);
+          if (themed.images.length && !images.length) throw new Error(`${name}: ảnh hoa đào không truy cập được`);
+          entry.themedImages = { 'cherry-blossom': { sourceLink: imageLink, venueKey: key, folders: themed.folders, images } };
+        } catch (error) {
+          const previous = previousManifest.items[key]?.themedImages?.['cherry-blossom'];
+          if (previous?.sourceLink === imageLink) entry.themedImages = { 'cherry-blossom': previous };
+          const message = `Không đồng bộ được thư mục Hoa đào của ${name}; giữ bản hợp lệ trước đó. ${error instanceof Error ? error.message : error}`;
+          if (/12circle|dlartgarden/.test(normalizeText(name).replace(/[^a-z0-9]/g, ''))) throw new Error(message);
+          syncWarnings.push(message);
+        }
+      });
 
       if (imageLink) itemTasks.push(async () => {
         const previousCandidate = previousManifest.items[key] ?? (legacyKey ? previousManifest.items[legacyKey] : undefined);
@@ -524,6 +586,8 @@ export async function buildSheetDriveManifest(
         dark: previousManifest.coverImageGroups?.dark || [],
         random: previousManifest.coverImageGroups?.random || [],
         persimmon: previousManifest.coverImageGroups?.persimmon || [],
+        'cherry-blossom': previousManifest.coverImageGroups?.['cherry-blossom'] || [],
+        'cherry-blossom-random': previousManifest.coverImageGroups?.['cherry-blossom-random'] || [],
       }
     : emptyHinhNenDriveImageGroups();
   const previousSourceGroups = previousManifest.version >= 2
@@ -533,6 +597,8 @@ export async function buildSheetDriveManifest(
         dark: previousManifest.coverSourceLinkGroups?.dark || [],
         random: previousManifest.coverSourceLinkGroups?.random || [],
         persimmon: previousManifest.coverSourceLinkGroups?.persimmon || [],
+        'cherry-blossom': previousManifest.coverSourceLinkGroups?.['cherry-blossom'] || [],
+        'cherry-blossom-random': previousManifest.coverSourceLinkGroups?.['cherry-blossom-random'] || [],
       }
     : emptyHinhNenSourceLinkGroups();
 
@@ -574,12 +640,14 @@ export async function buildSheetDriveManifest(
   }
 
   const firstPhaseTotal = coverTasks.length + itemTasks.length;
-  const allTasksTotal = firstPhaseTotal + mapTasks.length;
+  const allTasksTotal = firstPhaseTotal + mapTasks.length + themeTasks.length;
   options.onProgress?.(0, allTasksTotal);
   await runLimited([...coverTasks, ...itemTasks], DRIVE_MANIFEST_CONCURRENCY,
     completed => options.onProgress?.(completed, allTasksTotal));
   await runLimited(mapTasks, DRIVE_MANIFEST_CONCURRENCY,
     completed => options.onProgress?.(firstPhaseTotal + completed, allTasksTotal));
+  await runLimited(themeTasks, DRIVE_MANIFEST_CONCURRENCY,
+    completed => options.onProgress?.(firstPhaseTotal + mapTasks.length + completed, allTasksTotal));
 
   console.log(
     `[sync] Drive manifest: resolved=${syncStats.resolved}`
@@ -624,6 +692,7 @@ export async function buildSheetDriveManifest(
   return {
     version: 5,
     generatedAt: new Date().toISOString(),
+    syncWarnings,
     workbookName: source.workbookName,
     workbookMtimeMs: source.fetchedAt,
     items,

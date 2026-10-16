@@ -4,7 +4,7 @@ const textOnly = new Set(['summary-note', 'itinerary-note-2days', 'itinerary-not
 export function supportsPhotoPreset(deckId) { return Boolean(deckId) && !textOnly.has(deckId) && !deckId.startsWith('itinerary-note-threads-'); }
 export function photoDisplayUrl(source, preset) {
   if (!source || !preset || source.startsWith('/assets/color-edit?')) return source;
-  if (!source.startsWith('/assets/') && !/^https?:\/\//i.test(source)) return source;
+  if (!source.startsWith('/assets/') && !/^\/api\/local-templates\/local-[a-z0-9-]+\/\d+\/assets\/[\w.-]+$/.test(source) && !/^https?:\/\//i.test(source)) return source;
   return `/assets/color-edit?preset=${encodeURIComponent(preset)}&source=${encodeURIComponent(source)}`;
 }
 export function photoRenderPage(page, preset) {

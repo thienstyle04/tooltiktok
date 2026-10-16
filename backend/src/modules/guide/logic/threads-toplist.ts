@@ -1,6 +1,7 @@
 import type { CoverPage, DeckPage, GuideItem, ListPage, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { stableHash } from './image-resolver';
 import { itemUsageKey } from './data-allocator';
+import { requiredPartnerRank } from './required-partners';
 
 export const THREADS_TOPLIST_ID = 'threads-toplist-dalat';
 export const THREADS_TOPLIST_TEMPLATE_VERSION = 1;
@@ -37,7 +38,7 @@ export function buildThreadsToplistPages(
     pool.sort((a, b) => {
       const score = (item: GuideItem): number =>
         Number(Boolean(globalUsedItemIds?.has(itemUsageKey(item)))) * 2 + Number(!item.isPartner);
-      return score(a) - score(b) || stableHash(`${seed}|${title}|${a.id}`) - stableHash(`${seed}|${title}|${b.id}`);
+      return requiredPartnerRank(a) - requiredPartnerRank(b) || score(a) - score(b) || stableHash(`${seed}|${title}|${a.id}`) - stableHash(`${seed}|${title}|${b.id}`);
     });
     const chosen = pool.slice(0, PLACES_PER_PAGE);
     chosen.forEach(item => selectedNames.add(identity(item.name)));

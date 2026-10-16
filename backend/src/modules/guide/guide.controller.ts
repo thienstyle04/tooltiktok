@@ -53,6 +53,7 @@ import {
   UpdatePageTextRequest,
   UpdatePageTextResponse,
 } from '../../common/interfaces/guide.types';
+import type { PartnerEligibilityResponse } from './logic/required-partners';
 
 @Controller()
 export class GuideController {
@@ -270,6 +271,11 @@ export class GuideController {
   @Get('api/partners')
   getPartners(): Promise<Array<{ id: string; name: string; section: string; address: string; imageCount: number }>> {
     return this.guideService.getPartnerList();
+  }
+
+  @Get('api/partners/eligibility')
+  getPartnerEligibility(@Query('deckId') deckId: string): Promise<PartnerEligibilityResponse> {
+    return this.guideService.getPartnerEligibility(deckId);
   }
 
   @Post('api/ai/deepseek/caption')

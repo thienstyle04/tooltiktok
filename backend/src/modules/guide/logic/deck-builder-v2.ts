@@ -47,11 +47,13 @@ import { getActiveDestinationLocalize, getActiveSourceId } from '../sync/destina
 import { isDeckAllowedForSource } from '../sync/destination-config';
 import { buildThreadsNotePages, buildThreadsNoteExample, isThreadsNote, threadsNoteCaption } from './itinerary-note-threads';
 import { buildThreadsBudgetPages, buildThreadsBudgetExample, THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION, threadsBudgetCaption } from './itinerary-note-threads-budget';
+import { buildThreadsExpenseExample, buildThreadsExpensePages, isThreadsExpense, THREADS_EXPENSE_2N1D_ID, THREADS_EXPENSE_3N2D_ID, THREADS_EXPENSE_TEMPLATE_VERSION, threadsExpenseCaption } from './threads-expense-sheet';
 import { buildThreadsToplistPages, buildThreadsToplistExample, THREADS_TOPLIST_ID, THREADS_TOPLIST_TEMPLATE_VERSION, THREADS_TOPLIST_CAPTION } from './threads-toplist';
 import { buildThreadsCafePages, buildThreadsFoodPages, buildThreadsMixPages, buildThreadsMixTextPages, isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_CAFE_TEMPLATE_VERSION, THREADS_FOOD_ID, THREADS_FOOD_TEMPLATE_VERSION, THREADS_MIX_ID, THREADS_MIX_TEMPLATE_VERSION, THREADS_MIX_TEXT_ID, THREADS_MIX_TEXT_TEMPLATE_VERSION, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from './threads-food-local';
 
 import { buildItineraryNotePages, buildItineraryNoteDarkPages, ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION, ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_TEMPLATE_VERSION, ITINERARY_NOTE_DARK_CAPTION } from './itinerary-note';
 import { buildItineraryNoteTimedPages, ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './itinerary-note-timed';
+import { isRequiredPartner } from './required-partners';
 export const GRID_8_FEED_TEMPLATE_VERSION = 17;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
 
@@ -111,6 +113,8 @@ export const V2_DECK_IDS = [
   'itinerary-note-threads-3n2d',
   'itinerary-note-threads-2n1d',
   THREADS_BUDGET_ID,
+  THREADS_EXPENSE_2N1D_ID,
+  THREADS_EXPENSE_3N2D_ID,
   THREADS_TOPLIST_ID,
   THREADS_FOOD_ID,
   THREADS_CAFE_ID,
@@ -649,6 +653,18 @@ function pickSpotlightV4Venues(
     }
   };
 
+  // User-required partners take partner slots first; round-robin fills the rest.
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (selected.length >= SPOTLIGHT_V4_PARTNER_COUNT) break;
+      if (!isRequiredPartner(item) || selectedNames.has(normalizeText(item.name)) || pick.isUsed?.(item)) continue;
+      const candidate = pick([item], 1, `${seed}:required:${group.key}`)[0];
+      if (!candidate) continue;
+      selected.push(candidate);
+      selectedKeys.add(itemUsageKey(candidate));
+      selectedNames.add(normalizeText(candidate.name));
+    }
+  }
   fillQuota(true, SPOTLIGHT_V4_PARTNER_COUNT, 'partners');
   fillQuota(false, SPOTLIGHT_V4_VENUE_COUNT - SPOTLIGHT_V4_PARTNER_COUNT, 'regulars');
   const partners = selected.filter((item) => item.isPartner);
@@ -1950,7 +1966,10 @@ export function buildOneWayStoryPages(common: DeckBuildCommon, seedPrefix: strin
   const partnerFoods = pickOneWayItems(pools.foodItems, 2, `${seedPrefix}|partner-food`, 'quán ăn đối tác', pick, (item) => item.isPartner);
 
   const homestayIndex = oneWaySequenceIndex(seedPrefix) % ONE_WAY_HOMESTAYS.length;
-  const wantedHomestay = ONE_WAY_HOMESTAYS[homestayIndex];
+  // A required homestay of the story's own rotation replaces this list's turn.
+  const requiredHomestay = dedupeItems(pools.stayItems).find((item) => isRequiredPartner(item)
+    && ONE_WAY_HOMESTAYS.includes(normalizeOneWayText(item.name)) && hasOneWayOwnImage(item));
+  const wantedHomestay = requiredHomestay ? normalizeOneWayText(requiredHomestay.name) : ONE_WAY_HOMESTAYS[homestayIndex];
   const homestay = dedupeItems(pools.stayItems)
     .filter(hasOneWayOwnImage)
     .find((item) => normalizeOneWayText(item.name) === wantedHomestay);
@@ -2149,6 +2168,8 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'itinerary-note-threads-3n2d': 3,
   'itinerary-note-threads-2n1d': 3,
   [THREADS_BUDGET_ID]: THREADS_BUDGET_TEMPLATE_VERSION,
+  [THREADS_EXPENSE_2N1D_ID]: THREADS_EXPENSE_TEMPLATE_VERSION,
+  [THREADS_EXPENSE_3N2D_ID]: THREADS_EXPENSE_TEMPLATE_VERSION,
   [THREADS_TOPLIST_ID]: THREADS_TOPLIST_TEMPLATE_VERSION,
   [THREADS_FOOD_ID]: THREADS_FOOD_TEMPLATE_VERSION,
   [THREADS_CAFE_ID]: THREADS_CAFE_TEMPLATE_VERSION,
@@ -2257,6 +2278,8 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
   'itinerary-note-threads-3n2d': { nav: 'Note Threads 3N2Đ', title: 'Note Threads 3N2Đ', description: '1 trang bảng khổ 3:4, 18 địa điểm không trùng chia đều 3 ngày; đối tác phân bổ linh hoạt. Không cần ảnh.', listName: 'Note Threads 3N2Đ' },
   'itinerary-note-threads-2n1d': { nav: 'Note Threads 2N1Đ', title: 'Note Threads 2N1Đ', description: '1 trang bảng khổ 3:4, 18 địa điểm không trùng chia đều 2 ngày; đối tác phân bổ linh hoạt. Không cần ảnh.', listName: 'Note Threads 2N1Đ' },
   [THREADS_BUDGET_ID]: { nav: 'Chi phí Threads 3N2Đ', title: 'Bảng chi phí Threads 3N2Đ', description: '1 trang bảng 3:4: di chuyển, một chỗ lưu trú theo giá đầu người, chi tiêu 3 ngày và các dòng tổng. Giá không có trong cột Giá đầu người để trống cho người dùng nhập. Không cần ảnh.', listName: 'Chi phí Threads 3N2Đ' },
+  [THREADS_EXPENSE_2N1D_ID]: { nav: 'Bảng chi tiêu Threads 2N1Đ', title: 'Bảng chi tiêu Threads 2N1Đ', description: '1 trang 3:4 kiểu ảnh chụp Google Sheet: Nội dung · Số tiền · Ghi chú cho 2 người. Giá đầu người trong Sheet × 2, tự cộng tổng và chia mỗi người. Không cần ảnh.', listName: 'Bảng chi tiêu Threads 2N1Đ' },
+  [THREADS_EXPENSE_3N2D_ID]: { nav: 'Bảng chi tiêu Threads 3N2Đ', title: 'Bảng chi tiêu Threads 3N2Đ', description: '1 trang 3:4 kiểu ảnh chụp Google Sheet: Nội dung · Số tiền · Ghi chú cho 2 người, 3 ngày 2 đêm. Giá đầu người trong Sheet × 2, tự cộng tổng và chia mỗi người. Không cần ảnh.', listName: 'Bảng chi tiêu Threads 3N2Đ' },
   [THREADS_TOPLIST_ID]: { nav: 'Top list Đà Lạt', title: 'Top list các địa điểm Đà Lạt', description: '4 trang khổ 4:5: bìa cửa đỏ nguyên bản và 3 trang giấy kẻ dòng, mỗi trang 5 địa điểm Quán ăn, Cà phê, Check-in. Không cần ảnh địa điểm, hook hay AI.', listName: 'Top list Đà Lạt' },
   [THREADS_FOOD_ID]: { nav: 'Quán ăn Threads Local', title: 'Top quán ăn Đà Lạt cho Threads', description: 'Xuất một ZIP gồm TXT 10 quán (5 đối tác có địa chỉ, 5 quán Local không đối tác), XLSX 5 đối tác và 6 ảnh thật riêng.', listName: 'Quán ăn Threads Local' },
   [THREADS_CAFE_ID]: { nav: 'Cà phê Threads Local', title: 'Top quán cà phê Đà Lạt cho Threads', description: 'Xuất một ZIP gồm TXT 10 quán cà phê (5 đối tác có địa chỉ, 5 quán Local không đối tác), XLSX 5 đối tác và 6 ảnh thật riêng.', listName: 'Cà phê Threads Local' },
@@ -2399,6 +2422,9 @@ export function buildPagesForDeckV2(
       return buildThreadsNotePages(common, deckId, seedPrefix, getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt');
     case THREADS_BUDGET_ID:
       return buildThreadsBudgetPages(itemsBySection, seedPrefix, getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt', common.globalUsedItemIds);
+    case THREADS_EXPENSE_2N1D_ID:
+    case THREADS_EXPENSE_3N2D_ID:
+      return buildThreadsExpensePages(deckId, itemsBySection, seedPrefix, getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt', common.globalUsedItemIds);
     case THREADS_TOPLIST_ID:
       return buildThreadsToplistPages(itemsBySection, seedPrefix, common.globalUsedItemIds);
     case THREADS_FOOD_ID:
@@ -2519,6 +2545,12 @@ export function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): Guid
     list.captionBody = '';
     list.captionHashtags = [];
   }
+  if (isThreadsExpense(deckId)) {
+    list.canvasPreset = 'tiktok-3x4';
+    list.postCaption = threadsExpenseCaption(deckId);
+    list.captionBody = '';
+    list.captionHashtags = [];
+  }
   if (deckId === THREADS_TOPLIST_ID) {
     list.canvasPreset = 'tiktok-4x5';
     list.postCaption = THREADS_TOPLIST_CAPTION;
@@ -2617,17 +2649,19 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       // Catalog loading must not prevent opening a source to repair its data.
       // Generation still uses the strict builder and rejects missing requirements.
       previewError = error instanceof Error ? error.message : String(error);
-      if (isThreadsNote(deckId) || deckId === THREADS_BUDGET_ID || deckId === THREADS_TOPLIST_ID) {
+      if (isThreadsNote(deckId) || deckId === THREADS_BUDGET_ID || isThreadsExpense(deckId) || deckId === THREADS_TOPLIST_ID) {
         mainList = buildDeckList(deckId, 'main', 'Mẫu minh họa', meta.listName,
           `Dữ liệu minh họa, không phải list đã tạo. ${previewError}`,
           deckId === THREADS_TOPLIST_ID
             ? buildThreadsToplistExample()
             : deckId === THREADS_BUDGET_ID
             ? buildThreadsBudgetExample(activeDestinationId === 'greenland' ? 'Green Land' : 'Đà Lạt')
+            : isThreadsExpense(deckId)
+            ? buildThreadsExpenseExample(deckId, activeDestinationId === 'greenland' ? 'Green Land' : 'Đà Lạt')
             : buildThreadsNoteExample(deckId, activeDestinationId === 'greenland' ? 'Green Land' : 'Đà Lạt'));
         mainList.templateVersion = V2_TEMPLATE_VERSIONS[deckId];
         mainList.canvasPreset = deckId === THREADS_TOPLIST_ID ? 'tiktok-4x5' : 'tiktok-3x4';
-        mainList.postCaption = deckId === THREADS_TOPLIST_ID ? THREADS_TOPLIST_CAPTION : deckId === THREADS_BUDGET_ID ? threadsBudgetCaption() : threadsNoteCaption(deckId);
+        mainList.postCaption = deckId === THREADS_TOPLIST_ID ? THREADS_TOPLIST_CAPTION : deckId === THREADS_BUDGET_ID ? threadsBudgetCaption() : isThreadsExpense(deckId) ? threadsExpenseCaption(deckId) : threadsNoteCaption(deckId);
         mainList.captionBody = '';
         mainList.captionHashtags = [];
       }
