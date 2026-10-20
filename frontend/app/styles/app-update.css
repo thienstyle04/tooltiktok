@@ -18,9 +18,9 @@
 .app-update-actions label{display:grid;gap:.2rem;min-width:0;max-width:100%}
 .app-update-actions input{width:100%;min-width:0;max-width:100%;box-sizing:border-box;padding:.5rem;border:1px solid #b87955;border-radius:8px}
 .app-update-widget button:focus-visible,.app-update-widget input:focus-visible{outline:3px solid #ac4c1f;outline-offset:3px}
-.studio-workflow .studio-topbar{padding-right:84px}
+
 @media(max-width:1023px){
   .app-update-widget{top:12px;right:12px}
   .app-update-notice{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 76px);padding:1rem}
-  .studio-workflow .app-sidebar{padding-right:72px}
+
 }

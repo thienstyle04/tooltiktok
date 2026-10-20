@@ -26,14 +26,14 @@ try {
     } else if (url.pathname === '/api/automation') body = state;
     else if (url.pathname.endsWith('choose-output-directory')) body = { directory: 'C:\\test', fileName: 'test.zip', path: 'C:\\test\\test.zip' };
     else if (url.pathname === '/api/health') body = { status: 'ok', sessionId: 'unchanged-test-session' };
-    else if (url.pathname === '/api/destinations') body = { active: { id: 'dalat' }, destinations: [{ id: 'dalat', label: 'Đà Lạt' }] };
+    else if (url.pathname === '/api/destinations') body = { active: { id: 'dalat' }, destinations: [{ id: 'dalat', label: 'Đà Lạt', allowedDeckIds: ['summary-note'] }] };
     else if (url.pathname === '/api/partners') body = [];
     else if (url.pathname === '/api/drive-cache/status') body = { ready: true };
     return route.fulfill({ json: body });
   });
   await page.goto('http://localhost:3001');
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
-  await page.getByRole('button', { name: 'Hẹn giờ', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Điều hướng chính' }).getByRole('button', { name: /^Tự động/ }).click();
   await page.waitForTimeout(1000);
   const initialGuideRequests = guideRequests;
   await page.locator('.automation-output button').click();

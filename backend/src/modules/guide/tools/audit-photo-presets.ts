@@ -45,9 +45,8 @@ async function main(){
   }
   const batch=await service.generateBatchLists({deckId:'spotlight-v5',count:2,photoPreset:'iphone-color-edit-v1',requestId:'palette-batch',hookSelection:{mode:'normal'}});
   assert.equal(batch.successCount,2);
-  const partner=await service.generatePartnerSpotlight({partnerId:(await service.getPartnerList())[0].id,photoPreset:'iphone-color-edit-v1'});
-  const latest=await service.getDataset();assert.equal(latest.decks.find((d:any)=>d.id===partner.deckId).lists.find((l:any)=>l.id===partner.listId).photoPreset,'iphone-color-edit-v1');
-  console.log('PASS 16 V5/V6 lists (4 original + 4 Color Edit each), batch and partner generation, persisted URLs/snapshots.');
+  // Mẫu Spotlight Đối tác đã ngừng dùng (backend từ chối tạo mới) nên không còn bước tạo list đối tác.
+  console.log('PASS 16 V5/V6 lists (4 original + 4 Color Edit each), batch generation, persisted URLs/snapshots.');
  }finally{await app.close();const changed=[...before].filter(([file,value])=>hash(file)!==value).map(([file])=>file);fs.writeFileSync(path.join(root,'original-integrity.json'),JSON.stringify({changed}));assert.equal(changed.length,0);}
  console.log('AUDIT_ROOT='+root);
 }

@@ -124,4 +124,22 @@ for (const page of meal2.list.pages as any[]) {
   assert.ok([meals[1].id, meals[3].id].includes(page.items[1].id));
   assert.equal(page.items[0].scheduleTime, '08:00'); assert.equal(page.items[1].scheduleTime, '18:00');
 }
-console.log('PASS partner rotation: matching, 3 image cycles, singleton warning, TXT exception, source IDs, bootstrap, new photos, maps blocks. ROOT=' + root);
+// Spotlight V3 venue page: only the venue photo is rendered. A stale backgroundImage holding the
+// partner's other photo must not use it up, so a 2-photo partner alternates list after list.
+const stay = item(61, 2, 'homestay');
+const v3List = (id: string): GuideDeckList => ({ id, navTitle: id, title: '', description: '', pages: [{ type: 'list',
+  chipText: 'Homestay', chipTone: 'pine', title: stay.name, subtitle: '', layoutVariant: 'spotlight-v3',
+  backgroundImage: stay.candidateImageUrls![1], items: [pageItem(stay)] }] });
+const stayPool = { homestay: [stay] } as WorkbookItemsBySection;
+let stayHistory: PartnerRotationHistory = {}, lastStayPhoto = '';
+for (let i = 0; i < 4; i++) {
+  const next = rotatePartnerList(v3List(`v3-caption-${i}`), 'spotlight-v3', stayPool, stayHistory, `v3-${i}`);
+  const page = next.list.pages[0] as any, state = next.history[partnerIdentity(stay)];
+  assert.equal(page.backgroundImage, page.items[0].imageUrl, 'Background follows the rendered venue photo');
+  assert.deepEqual(state.lastPhotos, [sourcePhotoId(page.items[0].imageUrl)], 'Only the rendered photo is recorded');
+  if (lastStayPhoto) assert.notEqual(sourcePhotoId(page.items[0].imageUrl), lastStayPhoto);
+  lastStayPhoto = sourcePhotoId(page.items[0].imageUrl); stayHistory = next.history;
+}
+const staleBootstrap = bootstrapPartnerHistory([v3List('v3-caption-old')], 'spotlight-v3', [stay]);
+assert.deepEqual(staleBootstrap[partnerIdentity(stay)].lastPhotos, [sourcePhotoId(stay.imageUrl)], 'Saved lists: stale background ignored');
+console.log('PASS partner rotation: matching, 3 image cycles, singleton warning, TXT exception, source IDs, bootstrap, new photos, maps blocks, V3 hidden background. ROOT=' + root);

@@ -51,6 +51,18 @@ createRoot(document.getElementById('root')).render(<App/>);`);
     assert.equal(await page.locator('.required-partner-list input:disabled').count(), 2);
     await page.getByRole('button', { name: 'Bỏ chọn tất cả' }).click();
     assert.deepEqual(await page.evaluate(() => window.required), []);
+    // Users click the partner's name, not the small checkbox. The name is not focusable: the picker
+    // used to close on that blur before the click landed, so it took several clicks to choose one.
+    if (!await page.locator('.required-partner-options').count()) await trigger.click();
+    await options.filter({ hasText: 'Cafe hai' }).locator('strong').click();
+    await options.filter({ hasText: 'Quán một' }).locator('small').first().click();
+    assert.deepEqual(await page.evaluate(() => window.required), ['Cafe hai', 'Quán một'], 'One click on a name selects it');
+    assert.equal(await page.locator('.required-partner-options').count(), 1, 'Clicking inside keeps the picker open');
+    await page.mouse.click(5, 5);
+    assert.equal(await page.locator('.required-partner-options').count(), 0, 'Clicking outside closes the picker');
+    await page.getByRole('button', { name: 'Bỏ Cafe hai' }).click(); await page.getByRole('button', { name: 'Bỏ Quán một' }).click();
+    assert.deepEqual(await page.evaluate(() => window.required), []);
+    await trigger.click();
     // Eligibility from the template dry run: unavailable partners are grouped,
     // cannot be chosen, show the reason; a chosen one becomes a flagged chip.
     assert.ok(await page.evaluate(() => window.opened) >= 1, 'Opening the picker requests the template check');
@@ -115,6 +127,7 @@ createRoot(document.getElementById('root')).render(<Studio initialDataset={windo
     page.on('dialog', dialog => dialog.accept());
     if (process.env.DEBUG_UI) { page.on('console', m => console.log('[console]', m.text().slice(0, 300))); await page.waitForTimeout(4000); console.log((await page.locator('body').innerText()).slice(0, 1500)); }
     // Create panel: choose a partner, create 1 list and a batch; both requests carry it.
+    await page.getByRole('navigation', { name: 'Điều hướng chính' }).getByRole('button', { name: /^Tạo/ }).click();
     await page.getByRole('button', { name: 'Tạo list', exact: true }).first().click();
     await page.locator('.list-create-required .required-partner-trigger').click();
     await page.locator('.required-partner-list label').filter({ hasText: 'Cafe hai' }).locator('input').check();
@@ -133,7 +146,7 @@ createRoot(document.getElementById('root')).render(<Studio initialDataset={windo
     // Persisted per source + template, restored after reload.
     assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('dalat-required-partners-v1'))), { 'dalat:grid-6': ['Cafe hai'] });
     // Scheduler: per-template partner row; saved schedule template carries the names.
-    await page.getByRole('button', { name: 'Hẹn giờ', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Điều hướng chính' }).getByRole('button', { name: /^Tự động/ }).click();
     await page.locator('.automation-output button').click();
     await page.waitForFunction(() => document.querySelector('.automation-output output')?.textContent.includes('test.zip'));
     // Open source: only templates its loaded catalog can build (no Spotlight V4 here).

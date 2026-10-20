@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 export default function FontSizeControl({ value, actualSizes = [], onChange, onReset, disabled = false }) {
   // Multi-size pages still need a visible numeric starting point. Use the
@@ -8,13 +8,24 @@ export default function FontSizeControl({ value, actualSizes = [], onChange, onR
   const id = useId();
   const [draft, setDraft] = useState(displayed);
   const [error, setError] = useState('');
-  useEffect(() => { setDraft(displayed); setError(''); }, [displayed]);
+  // Số đo cỡ chữ có thể tới muộn (font/fit chạy xong sau): không ghi đè số người dùng đang gõ.
+  const typing = useRef(false);
+  const lastValue = useRef(value);
+  useEffect(() => {
+    const valueChanged = lastValue.current !== value;
+    lastValue.current = value;
+    if (typing.current && !valueChanged) return;
+    typing.current = false;
+    setDraft(displayed); setError('');
+  }, [displayed, value]);
   const valid = raw => raw !== '' && Number.isFinite(Number(raw)) && Number(raw) >= 8 && Number(raw) <= 72 && Number(raw) * 2 === Math.round(Number(raw) * 2);
   const change = raw => {
+    typing.current = true;
     setDraft(raw);
     setError('');
   };
   const commit = () => {
+    typing.current = false;
     if (String(draft) === String(displayed)) return;
     if (valid(draft)) onChange(Number(draft));
     else { setDraft(displayed); setError('Nhập số từ 8 đến 72, bước 0,5 px. Đã giữ cỡ chữ trước đó.'); }
@@ -37,18 +48,23 @@ export default function FontSizeControl({ value, actualSizes = [], onChange, onR
           onChange={event => change(event.target.value)} onBlur={commit}
           onKeyDown={event => {
             if (event.key === 'Enter') { event.preventDefault(); commit(); }
-            if (event.key === 'Escape') { event.preventDefault(); setDraft(displayed); setError(''); }
+            if (event.key === 'Escape') { event.preventDefault(); typing.current = false; setDraft(displayed); setError(''); }
           }} />
         <span aria-hidden="true">px</span>
       </div>
       <button type="button" aria-label="Tăng cỡ chữ 0,5 px" disabled={disabled || displayed === '' || Number(displayed) >= 72} onClick={() => step(0.5)}>+</button>
     </div>
-    <p id={`${id}-help`} className="font-size-help">Trang đang chọn · 8–72 px · bước 0,5<br />Nhập số rồi nhấn Enter hoặc rời ô để áp dụng.
-      <br />Đang hiển thị: {actualSizes.length ? `${actualSizes.join(' / ')} px` : 'Chưa đo được chữ trên trang'}.
-      {/* Keep this space after blur commits an override: otherwise Save moves
-          between pointer-down and pointer-up and the user's click is lost. */}
-      <br /><span aria-hidden={value != null} style={{ visibility: value == null ? 'visible' : 'hidden' }}>Đang dùng cỡ chữ của mẫu. Ô số hiển thị cỡ lớn nhất; khi chỉnh, tất cả chữ trên trang dùng cỡ đã chọn.</span>
+    {/* Dòng tóm tắt luôn đúng một dòng (cắt bằng …) để chiều cao không đổi khi blur/đặt lại:
+        nếu Save dịch giữa pointer-down và pointer-up thì cú bấm của người dùng bị mất. */}
+    <p id={`${id}-help`} className="font-size-summary" title={actualSizes.length ? `${actualSizes.join(' / ')} px` : undefined}>
+      Đang hiển thị: {actualSizes.length ? `${actualSizes.join(' / ')} px` : 'chưa đo được chữ'} · {value == null ? 'theo mẫu' : 'đã chỉnh'}
     </p>
+    <details className="ui-more font-size-more">
+      <summary>Cách chỉnh cỡ chữ</summary>
+      <p className="font-size-help">Trang đang chọn · 8–72 px · bước 0,5<br />Nhập số rồi nhấn Enter hoặc rời ô để áp dụng.
+        <br /><span aria-hidden={value != null} style={{ visibility: value == null ? 'visible' : 'hidden' }}>Đang dùng cỡ chữ của mẫu. Ô số hiển thị cỡ lớn nhất; khi chỉnh, tất cả chữ trên trang dùng cỡ đã chọn.</span>
+      </p>
+    </details>
     <p id={`${id}-error`} className="font-size-error" role="status">{error}</p>
   </section>;
 }

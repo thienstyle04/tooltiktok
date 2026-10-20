@@ -48,39 +48,56 @@ export default function AutomationExportRunner({ runId, token }) {
         const available = new Set((dataset.decks || []).flatMap((deck) => (deck.lists || []).map((list) => list.id)));
         const selectedListIds = new Set((context.listIds || []).filter((id) => available.has(id)));
         if (selectedListIds.size !== context.listIds.length) throw new Error(`Thiếu ${context.listIds.length - selectedListIds.size} list trong snapshot render.`);
-        const recordOutcome = async (outcome) => {
-          const recorded = await fetch(endpoint('/progress'), {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ progress: 99, phase: 'Đang lưu kết quả xuất...', outcome }),
-          });
-          if (!recorded.ok) throw new Error(await readError(recorded, 'Không lưu được báo cáo list bỏ qua.'));
-        };
-        const result = await exportBatch({
-          dataset,
-          selectedListIds,
-          quality: 'optimized',
-          format: context.format || 'png',
-          skipImageErrors: true,
-          onExportOutcome: recordOutcome,
-          onArchive: async (archive, name, outcome) => {
-            await recordOutcome(outcome);
-            await report(99, 'Đang chuyển ZIP về thư mục đã chọn...');
-            const upload = await fetch(endpoint('/archive'), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/zip' },
-              body: archive,
+        // Lượt lớn được chia nhiều phần ZIP (backend quyết định): mỗi phần xuất, gửi về rồi giải phóng
+        // bộ nhớ trước phần sau. Một phần lỗi không làm mất các phần đã lưu; lượt vẫn đi tiếp.
+        const parts = Array.isArray(context.parts) && context.parts.length ? context.parts : [context.listIds];
+        for (let index = 0; index < parts.length; index++) {
+          if (stopped) return;
+          const part = index + 1;
+          const prefix = parts.length > 1 ? `Phần ${part}/${parts.length}: ` : '';
+          const scaled = (value) => 65 + ((index + Math.max(0, Math.min(100, Number(value) || 0)) / 100) / parts.length) * 34;
+          const recordOutcome = async (outcome) => {
+            const recorded = await fetch(endpoint('/progress'), {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ progress: scaled(99), phase: `${prefix}Đang lưu kết quả xuất...`, outcome, part }),
             });
-            if (!upload.ok) throw new Error(await readError(upload, 'Không lưu được ZIP tự động.'));
-          },
-        }, {
-          setBusy: () => undefined,
-          setStatus: (value) => report(Math.max(progress, 70), value),
-          showProgress: (value, amount) => report(amount, value),
-          updateProgress: (value, phase) => report(65 + (Number(value) || 0) * 0.34, phase),
-          completeProgress: (value) => { setProgress(100); setLabel(value); },
-          failProgress: setLabel,
-        });
-        if (!result?.success) throw new Error(result?.error || 'Luồng xuất không hoàn tất.');
+            if (!recorded.ok) throw new Error(await readError(recorded, 'Không lưu được báo cáo list bỏ qua.'));
+          };
+          const result = await exportBatch({
+            dataset,
+            selectedListIds: new Set(parts[index]),
+            quality: 'optimized',
+            format: context.format || 'png',
+            skipImageErrors: true,
+            onExportOutcome: recordOutcome,
+            onArchive: async (archive, name, outcome) => {
+              await recordOutcome(outcome);
+              await report(scaled(99), `${prefix}Đang chuyển ZIP về thư mục đã chọn...`);
+              const upload = await fetch(`${endpoint('/archive')}&part=${part}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/zip' },
+                body: archive,
+              });
+              if (!upload.ok) throw new Error(await readError(upload, 'Không lưu được ZIP tự động.'));
+            },
+          }, {
+            setBusy: () => undefined,
+            setStatus: (value) => report(scaled(5), `${prefix}${value}`),
+            showProgress: (value, amount) => report(scaled(amount), `${prefix}${value}`),
+            updateProgress: (value, phase) => report(scaled(value), `${prefix}${phase}`),
+            completeProgress: (value) => { setProgress(scaled(100)); setLabel(`${prefix}${value}`); },
+            failProgress: (value) => setLabel(`${prefix}${value}`),
+          });
+          if (result?.cancelled) throw new Error('Luồng xuất đã bị hủy.');
+          if (!result?.success) {
+            if (parts.length === 1) throw new Error(result?.error || 'Luồng xuất không hoàn tất.');
+            // Báo lỗi riêng phần này rồi xuất tiếp phần sau (backend bỏ qua nếu phần đã có kết quả).
+            await fetch(endpoint('/export-failure'), {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: result?.error || 'Phần này không xuất được.', part }),
+            }).catch(() => undefined);
+          }
+        }
       } catch (error) {
         stopped = true;
         setFailed(true);

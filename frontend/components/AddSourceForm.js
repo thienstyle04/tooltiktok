@@ -2,6 +2,7 @@
 // Form thêm nguồn dữ liệu, dùng ở Cài đặt và màn hình máy chưa có nguồn.
 // Link Google Sheet không nằm trong tool: mỗi máy tự nhập link của mình.
 import { useState } from 'react';
+import FilePicker from './ui/FilePicker';
 
 export const SOURCE_KIND_OPTIONS = [
   { value: 'standard', label: 'Thường', hint: 'Carousel, lịch trình, spotlight…' },
@@ -69,8 +70,8 @@ export default function AddSourceForm({ busy = false, onSubmit, submitLabel = 'T
         {mode === 'xlsx' ? (
           <label>
             <span>File XLSX</span>
-            <input
-              type="file"
+            <FilePicker
+              file={file}
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               disabled={disabled}
               required

@@ -51,6 +51,7 @@ const hasBrowserTools = () => (findBrowserPath() ? hasPlaywright() : 'không tì
 // ---------------------------------------------------------------- tầng unit
 const FRONTEND_UNIT = [
   'tools/test-cherry-blossom-copy.mjs',
+  'tools/test-list-status.mjs',
   'tools/test-sync-status-label.mjs',
   'tools/test-threads-expense-sheet.mjs',
   'tools/test-page-text-rendering.mjs',
@@ -99,7 +100,6 @@ const BACKEND_TS_EXCLUDED = {
   'test-photo-presets-reload.ts': 'live',          // khởi động AppModule, cần AUDIT_ROOT
   'test-startup-refresh-live.ts': 'live',          // khởi động AppModule
   'test-note-threads-tac-ke-hoa-live.ts': 'live',  // tải Google Sheet thật
-  'test-spotlight-v6-dark.ts': 'live',             // gọi backend :3000
   'test-spotlight-v6-green.ts': 'live',            // gọi backend :3000
   'test-spotlight-v6-persimmon.ts': 'live',        // gọi backend :3000
   'test-spotlight-v6-maps.ts': 'live',             // ghi kết quả vào outputs/
@@ -120,6 +120,11 @@ const BACKEND_TS_EXCLUDED = {
 // Các test này nhận AUDIT_ROOT / DALAT_TEST_OUTPUT_DIR làm nơi ghi kết quả.
 const TEMP_OUTPUT_TESTS = new Set(['test-spotlight-icons-browser.mjs', 'test-spotlight-cover-placement.mjs', 'test-ai-settings.cjs']);
 const FRONTEND_BROWSER = [
+  'tools/test-v2-studio.cjs',
+  'tools/test-slide-thumb-images.cjs',
+  'tools/test-automation-export-parts.cjs',
+  'tools/test-automation-schedule-form.cjs',
+  'tools/test-reference-photo-presets.cjs',
   'tools/test-catalog-layout-refresh.cjs',
   'tools/test-cherry-blossom-preview.cjs',
   'tools/test-update-bell.cjs',
@@ -136,7 +141,7 @@ const FRONTEND_BROWSER = [
   'tools/test-local-template-export-paint.cjs',
   'tools/test-partner-export-gate.mjs',
   'tools/test-runtime-performance.mjs',
-  'tools/test-status-bar-layout.cjs',
+  'tools/test-task-center.cjs',
   'tools/test-threads-budget-fit.cjs',
   'tools/test-threads-fit.cjs',
   'tools/test-threads-source-ui.cjs',
@@ -208,12 +213,14 @@ function buildManifest() {
   for (const file of FRONTEND_LIVE) {
     add({ tier: 'live', cwd: frontendRoot, file, name: `frontend/${file}`, requires: hasBrowserTools, timeoutMs: LIVE_TIMEOUT_MS });
   }
+  // Build giao diện thật (next build) trên bản sao tạm: ~30 giây, nên ở tầng browser.
+  add({ tier: 'browser', cwd: root, file: 'scripts/test-frontend-build.js', requires: isWindows, timeoutMs: BROWSER_TIMEOUT_MS });
   add({ tier: 'live', cwd: root, file: 'scripts/test-live-update-canary.js', requires: isWindows, timeoutMs: LIVE_TIMEOUT_MS });
   return tests;
 }
 
 // ------------------------------------------------- bảo vệ dữ liệu thật
-const SNAPSHOT_SKIP = /^(?:drive-file-cache|drive-file-cache-sim-.*|photo-preset-cache)$/;
+const SNAPSHOT_SKIP = /^(?:drive-file-cache|drive-file-cache-thumbs|drive-file-cache-sim-.*|photo-preset-cache)$/;
 function snapshotRealData() {
   const entries = new Map();
   if (!fs.existsSync(realDataDir)) return entries;

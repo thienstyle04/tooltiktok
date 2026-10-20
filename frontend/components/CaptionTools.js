@@ -3,6 +3,7 @@ import { listIsMain } from '../lib/utils';
 import PhotoPresetPicker from './PhotoPresetPicker';
 import { supportsPhotoPreset } from '../lib/photoPresets.mjs';
 import RequiredPartnerPicker from './RequiredPartnerPicker';
+import EmptyState from './ui/EmptyState';
 import { supportsRequiredPartners } from '../lib/requiredPartners.mjs';
 
 const DATA_TEMPLATES = new Set([
@@ -167,7 +168,7 @@ export default function CaptionTools({
               <span className="generated-list-copy"><strong>{list.navTitle || list.title}</strong><small>{list.pages?.length || 0} trang · {list.title}</small></span>
               <span className="generated-list-action">Mở →</span>
             </button>)}
-          </div> : <p className="list-create-empty">Chưa có list mới. List tạo xong sẽ xuất hiện tại đây.</p>}
+          </div> : <EmptyState compact title="Chưa có list mới">List tạo xong sẽ xuất hiện tại đây.</EmptyState>}
         </section>
       </div>
     </section>

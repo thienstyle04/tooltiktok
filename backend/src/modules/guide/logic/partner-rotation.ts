@@ -94,13 +94,19 @@ function photoAt(pages: DeckPage[], ref: Ref): string {
   return page.type === 'list' ? page.items[ref.item].imageUrl : '';
 }
 
+// Spotlight V2/V3 venue pages render only the venue photo when it exists (markup/spotlight.js);
+// their backgroundImage is an undisplayed copy and must not consume a partner photo.
+function hiddenBackground(page: DeckPage): boolean {
+  return page.type === 'list' && (page.layoutVariant === 'spotlight-v2' || page.layoutVariant === 'spotlight-v3') && Boolean(page.items[0]?.imageUrl);
+}
+
 function extraPhotoRefs(pages: DeckPage[], source?: GuideItem, sources: GuideItem[] = []): Ref[] {
   if (!source) return [];
   const ids = new Set((sources.length ? venuePhotos(source, sources) : ownPhotos(source)).flatMap(photoKeys)), refs: Ref[] = [];
   const belongs = (url: string) => Boolean(url && photoKeys(url).some(id => ids.has(id)));
   pages.forEach((page, index) => {
     if (page.layoutVariant === 'spotlight-v6-map-page') return;
-    if (belongs(page.backgroundImage || '')) refs.push({ page: index, item: -1 });
+    if (!hiddenBackground(page) && belongs(page.backgroundImage || '')) refs.push({ page: index, item: -1 });
     if (page.type === 'cover') (page.coverImages || []).forEach((url, photo) => {
       if (belongs(url)) refs.push({ page: index, item: -2 - photo });
     });
@@ -244,7 +250,9 @@ export function partnerSlotCount(pages: DeckPage[]): number {
 export function requiredPartnerCount(deckId: string, items: WorkbookItemsBySection, baseline: DeckPage[]): number {
   if (['spotlight-v4', 'spotlight-v6', 'spotlight-v6-maps'].includes(deckId)) return 4;
   if (deckId === 'spotlight-v5') return 7;
-  if (deckId === 'spotlight-v6-diary') return DIARY_PARTNER_COUNT;
+  // 8 ô đối tác luôn bắt buộc (kiểm bằng requiredSlots); khi thiếu quán khác nhau, một quán có cả Quán ăn và
+  // Cafe được dùng ở cả hai ô với ảnh khác nhau, nên số tên khác nhau có thể ít hơn 8.
+  if (deckId === 'spotlight-v6-diary') return Math.max(1, Math.min(DIARY_PARTNER_COUNT, visiblePartnerCount(baseline)));
   if (['itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed'].includes(deckId)) return 7;
   if (deckId === 'threads-mix-local' || deckId === 'one-way-story') return 5;
   if (deckId === 'threads-mix-text') return 6;
@@ -308,7 +316,9 @@ export function rotatePartnerList(input: GuideDeckList, deckId: string, items: W
       if (unit.partner && relaxRequired && required.has(unit.key) && history[unit.key]?.position === target.position && group.length > 1) {
         warnings.push(`Đối tác bắt buộc “${unit.source?.name || unit.key}” giữ vị trí ${target.position} để các đối tác khác đổi chỗ; ảnh vẫn được thay mới.`);
       }
-      if (unit.partner && history[unit.key]?.position === target.position && group.length === 1) {
+      // Một quán chiếm nhiều trang (Nhật ký: cả ô Quán ăn và Cafe) không phải "thiếu vị trí": không cảnh báo.
+      if (unit.partner && history[unit.key]?.position === target.position && group.length === 1
+        && !(deckId === 'spotlight-v6-diary' && new Set(unit.refs.map(ref => ref.page)).size > 1)) {
         warnings.push(`Đối tác “${unit.source?.name || (originalPages[unit.refs[0].page] as ListPage).items[unit.refs[0].item].rawName}” giữ vị trí ${target.position}: mẫu chỉ có một vị trí phù hợp.`);
       }
       if (unit.wholePages.length) unit.wholePages.forEach((pageIndex, offset) => {
@@ -395,6 +405,7 @@ export function rotatePartnerList(input: GuideDeckList, deckId: string, items: W
         if (ref.item < -1) { if (page.type === 'cover' && page.coverImages) page.coverImages[-ref.item - 2] = url; continue; }
         if (page.type !== 'list') continue;
         const item = page.items[ref.item];
+        if (ref.item === 0 && hiddenBackground(page)) page.backgroundImage = url;
         item.imageUrl = url; item.candidateImageUrls = pool; item.imageMapped = true; item.imageSource = unit.source!.imageSource;
       }
     });

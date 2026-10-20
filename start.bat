@@ -70,8 +70,8 @@ echo.
 
 set DALAT_OPEN_BROWSER=1
 
-rem Cache giao dien (frontend\.next) duoc scripts\dev.js kiem tra: chi xoa khi doi
-rem phien ban/may hoac lan truoc chua khoi dong xong, va chi sau khi phien cu da tat.
+rem Giao dien chay ban build (frontend\.next-build) cho muot: scripts\dev.js chi build lai
+rem khi ma giao dien/phien ban thay doi (khoang 20 giay), build loi thi tu dung next dev.
 call npm run dev
 if errorlevel 1 (
   echo.

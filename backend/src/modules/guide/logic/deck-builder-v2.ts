@@ -321,6 +321,10 @@ export function retuneSpotlightV2SpotImages(
       resolver,
     );
 
+    // Trang chỉ vẽ ảnh quán; ảnh nền phải theo ảnh vừa chọn lại, nếu không nó giữ một ảnh
+    // khác của cùng quán (không hiển thị) và vòng ảnh đối tác tính là đã dùng.
+    const backgroundImage = nextItem.imageUrl || listPage.backgroundImage;
+
     // V3: giữ address + giá đầu người (không để resolver ghi đè thành SĐT/giờ như V2).
     if (listPage.layoutVariant === 'spotlight-v3') {
       const chip = String(listPage.chipText || '');
@@ -329,14 +333,14 @@ export function retuneSpotlightV2SpotImages(
       return {
         ...listPage,
         items: [{ ...nextItem, metaPrimary: priced.metaPrimary, metaSecondary: priced.metaSecondary }],
-        backgroundImage: listPage.backgroundImage,
+        backgroundImage,
       };
     }
 
     return {
       ...listPage,
       items: [nextItem],
-      backgroundImage: listPage.backgroundImage,
+      backgroundImage,
     };
   });
 }
@@ -1284,7 +1288,11 @@ export function buildSpotlightV6DarkPages(
     throw new Error(`Mẫu Spotlight V6 Tone đen cần ít nhất 5 địa điểm Chu_de = Tone đen có ảnh (${venuePool.length}/5).`);
   }
   const pick = createListPicker(common.globalUsedItemIds);
-  const venues: GuideItem[] = [];
+  // Mỗi list cần ít nhất 1 đối tác (quy tắc luân phiên). Chọn đối tác Tone đen trước, kể cả khi
+  // đã có ở list trước: chọn ngẫu nhiên 5/nhiều địa điểm thường bỏ sót đối tác duy nhất.
+  const venues: GuideItem[] = venuePool.some((item) => item.isPartner)
+    ? pick(venuePool, 1, `${seedPrefix}:dark-partner`, (item) => item.isPartner)
+    : [];
   for (let round = 0; venues.length < SPOTLIGHT_V6_DARK_VENUE_COUNT; round += 1) {
     let added = 0;
     for (const group of venueGroups) {

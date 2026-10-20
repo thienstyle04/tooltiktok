@@ -241,6 +241,8 @@ export function cloneVisiblePageForExport(sourceNode) {
   const clone = sourceNode.cloneNode(true);
   clone.classList.remove('is-selected');
   clone.querySelectorAll('.is-selected').forEach((node) => node.classList.remove('is-selected'));
+  // Dấu "bấm chữ để sửa" của preview V2 không được đi vào markup xuất ảnh.
+  clone.querySelectorAll('[data-edit-field]').forEach((node) => node.removeAttribute('data-edit-field'));
   clone.querySelectorAll('img').forEach((img) => {
     const currentSrc = img.currentSrc || img.src;
     if (currentSrc) img.src = currentSrc;

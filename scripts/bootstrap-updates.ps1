@@ -15,7 +15,7 @@ function Copy-Code([string]$source, [string]$target) {
     New-Item -ItemType Directory -Path $target -Force | Out-Null
     $excludes = @('.git', 'node_modules', '.next', 'outputs', 'shared', 'releases', '.codex', '.test-runtime', '.codex-runtime', 'migration')
     $excludedPaths = @($excludes | ForEach-Object { Join-Path $source $_ })
-    $excludedPaths += @((Join-Path $source 'backend\data'), (Join-Path $source 'backend\node_modules'), (Join-Path $source 'frontend\node_modules'), (Join-Path $source 'frontend\.next'))
+    $excludedPaths += @((Join-Path $source 'backend\data'), (Join-Path $source 'backend\node_modules'), (Join-Path $source 'frontend\node_modules'), (Join-Path $source 'frontend\.next'), (Join-Path $source 'frontend\.next-build'), (Join-Path $source 'frontend\.next-build-tmp'))
     $args = @($source, $target, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NC', '/NS', '/NP', '/XJ', '/XD') + $excludedPaths + @('/XF', '.env', '*.log')
     & robocopy @args | Out-Null
     if ($LASTEXITCODE -gt 7) { throw "Sao chep ban phat hanh that bai ($LASTEXITCODE)." }

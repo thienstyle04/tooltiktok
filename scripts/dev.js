@@ -15,6 +15,7 @@ const {
   watchForShutdownRequest,
   writeActiveInstance,
 } = require('./runtime-instance');
+const { PRODUCTION_DIST_NAME, ensureProductionBuild: ensureFrontendBuild } = require('./frontend-build');
 
 const rootDir = path.resolve(__dirname, '..');
 const backendDir = path.join(rootDir, 'backend');
@@ -36,6 +37,12 @@ let stopShutdownWatch = null;
 const FRONTEND_START_TIMEOUT_MS = 15 * 60 * 1000;
 const frontendDistDir = path.join(frontendDir, process.env.NEXT_DIST_DIR || '.next');
 const frontendCacheMarkerPath = path.join(frontendDistDir, 'dalat-cache.json');
+// Giao diện mặc định chạy bản build (next build + next start): nhanh và mượt hơn nhiều so với
+// next dev. `npm run dev:hot` (hoặc DALAT_FRONTEND_MODE=dev) dùng next dev: tự nạp lại khi sửa code.
+const requestedFrontendMode = process.argv.includes('--hot') || String(process.env.DALAT_FRONTEND_MODE || '').trim().toLowerCase() === 'dev'
+  ? 'dev'
+  : 'production';
+let frontendMode = requestedFrontendMode;
 const startupStartedAt = Date.now();
 let startupState = { ready: false, url: '', error: '', message: 'Đang chuẩn bị khởi động...' };
 let loaderServer = null;
@@ -77,9 +84,6 @@ async function main() {
   await stopLegacyToolOnFixedPorts();
   stopExistingWorkspaceDevProcesses();
   await assertFixedPortsAvailable(host, [defaultBackendPort, defaultFrontendPort]);
-  // Chỉ dọn cache Next.js sau khi phiên cũ đã tắt hẳn, để không xóa file mà
-  // frontend cũ còn đang dùng.
-  prepareFrontendCache();
 
   const backendPort = defaultBackendPort;
   const frontendPort = defaultFrontendPort;
@@ -94,6 +98,17 @@ async function main() {
     console.log(`[dev] network: http://${networkHost}:${frontendPort}/`);
   }
 
+  const frontendEnv = {
+    ...process.env,
+    BACKEND_ORIGIN: backendOrigin,
+    PORT: String(frontendPort),
+    NEXT_PUBLIC_BACKEND_ORIGIN: backendOrigin,
+    NEXT_PUBLIC_DALAT_SESSION_ID: sessionId,
+    NEXT_PUBLIC_DALAT_APP_VERSION: appVersion,
+    // Bản build đóng cứng NEXT_PUBLIC_* lúc build: proxy đọc mã phiên từ hai biến này lúc chạy.
+    DALAT_FRONTEND_SESSION_ID: sessionId,
+    DALAT_FRONTEND_APP_VERSION: appVersion,
+  };
   processes = [
     startNpmProcess('backend', ['run', 'start:dev'], backendDir, {
       ...process.env,
@@ -103,19 +118,11 @@ async function main() {
       DALAT_SESSION_ID: sessionId,
       DALAT_APP_VERSION: appVersion,
     }),
-    startFrontendProcess(frontendPort, {
-      ...process.env,
-      BACKEND_ORIGIN: backendOrigin,
-      PORT: String(frontendPort),
-      NEXT_PUBLIC_BACKEND_ORIGIN: backendOrigin,
-      NEXT_PUBLIC_DALAT_SESSION_ID: sessionId,
-      NEXT_PUBLIC_DALAT_APP_VERSION: appVersion,
-    }),
   ];
 
   const backendProcessState = captureProcessState(processes[0]?.pid);
-  const frontendProcessState = captureProcessState(processes[1]?.pid);
 
+  // Ghi phiên ngay khi backend chạy (giao diện có thể còn đang build): lần mở sau vẫn tắt được phiên này.
   instanceState = {
     sessionId,
     appVersion,
@@ -126,9 +133,9 @@ async function main() {
     backendPid: processes[0]?.pid || null,
     backendCommandLine: backendProcessState?.commandLine || '',
     backendStartedAtMs: backendProcessState?.startedAtMs || null,
-    frontendPid: processes[1]?.pid || null,
-    frontendCommandLine: frontendProcessState?.commandLine || '',
-    frontendStartedAtMs: frontendProcessState?.startedAtMs || null,
+    frontendPid: null,
+    frontendCommandLine: '',
+    frontendStartedAtMs: null,
     backendPort,
     frontendPort,
     browserPid: null,
@@ -140,7 +147,42 @@ async function main() {
   releaseStartupLock();
   releaseStartupLock = null;
 
-  if (!shouldOpenBrowser()) {
+  // Mở ngay cửa sổ "Đang khởi động" thay vì chờ build/biên dịch xong: máy yếu có thể
+  // mất vài phút cho lần đầu, trước đây người dùng chỉ thấy backend chạy mà
+  // không có giao diện nào hiện lên.
+  const openBrowser = shouldOpenBrowser();
+  const loaderUrl = openBrowser ? await startLoaderServer() : '';
+  if (loaderUrl) openManagedBrowser(loaderUrl);
+
+  if (frontendMode === 'production') {
+    try {
+      await ensureProductionBuild(frontendEnv);
+    } catch (error) {
+      if (shuttingDown) return;
+      // Build lỗi: vẫn cho dùng tool bằng next dev (chậm hơn) thay vì dừng hẳn.
+      console.warn(`[dev] Build giao diện lỗi (${error.message || error}); chuyển sang chế độ next dev để vẫn dùng được tool.`);
+      frontendMode = 'dev';
+    }
+  }
+  if (shuttingDown) return;
+  // Chỉ dọn cache next dev sau khi phiên cũ đã tắt hẳn, để không xóa file mà frontend cũ còn đang dùng.
+  if (frontendMode === 'dev') prepareFrontendCache();
+  setStartupStage(frontendMode === 'dev'
+    ? 'Đang khởi động backend và biên dịch giao diện. Lần đầu sau khi cập nhật có thể mất vài phút...'
+    : 'Đang khởi động backend và giao diện...');
+  const frontendProcess = startFrontendProcess(frontendPort, frontendEnv, frontendMode);
+  processes.push(frontendProcess);
+  const frontendProcessState = captureProcessState(frontendProcess?.pid);
+  instanceState = {
+    ...instanceState,
+    frontendPid: frontendProcess?.pid || null,
+    frontendCommandLine: frontendProcessState?.commandLine || '',
+    frontendStartedAtMs: frontendProcessState?.startedAtMs || null,
+  };
+  writeActiveInstance(instanceState);
+  console.log(`[dev] giao diện: ${frontendMode === 'dev' ? 'next dev (tự nạp lại khi sửa code)' : 'bản build (next start)'}`);
+
+  if (!openBrowser) {
     // Không mở trình duyệt: vẫn ghi nhận cache frontend dùng được khi giao diện lên.
     waitForServer(frontendOrigin, FRONTEND_START_TIMEOUT_MS)
       .then(() => markFrontendCacheHealthy())
@@ -148,20 +190,13 @@ async function main() {
     return;
   }
 
-  // Mở ngay cửa sổ "Đang khởi động" thay vì chờ biên dịch xong: máy yếu có thể
-  // mất vài phút cho lần đầu, trước đây người dùng chỉ thấy backend chạy mà
-  // không có giao diện nào hiện lên.
-  const loaderUrl = await startLoaderServer();
-  if (loaderUrl) openManagedBrowser(loaderUrl);
-  setStartupStage('Đang khởi động backend và biên dịch giao diện. Lần đầu sau khi cập nhật có thể mất vài phút...');
-
   // Wait for both HTTP servers. Dataset/cache warmup is reported by the UI;
   // never use a heavyweight dataset request as the process liveness probe.
   await Promise.all([
     waitForServer(frontendOrigin, FRONTEND_START_TIMEOUT_MS)
-      .then(() => setStartupStage('Giao diện đã biên dịch xong; đang chờ backend sẵn sàng...')),
+      .then(() => setStartupStage('Giao diện đã sẵn sàng; đang chờ backend sẵn sàng...')),
     waitForBackendReady(backendOrigin)
-      .then(() => setStartupStage('Backend đã sẵn sàng; đang biên dịch giao diện...')),
+      .then(() => setStartupStage(frontendMode === 'dev' ? 'Backend đã sẵn sàng; đang biên dịch giao diện...' : 'Backend đã sẵn sàng; đang mở giao diện...')),
   ]);
   setStartupStage('Đang kiểm tra kết nối giao diện và backend...');
   await verifyRuntimeEndpoints(backendOrigin, frontendOrigin);
@@ -334,6 +369,7 @@ function prepareFrontendCache() {
 }
 
 function markFrontendCacheHealthy() {
+  if (frontendMode !== 'dev') return; // Bản build có dấu riêng (dalat-build.json), ghi ngay khi build xong.
   writeFrontendCacheMarker({ ...frontendCacheFingerprint(), healthy: true, checkedAt: new Date().toISOString() });
 }
 
@@ -344,6 +380,27 @@ function writeFrontendCacheMarker(value) {
   } catch (error) {
     console.warn(`[dev] Không ghi được trạng thái cache giao diện: ${error.message}`);
   }
+}
+
+// Bản build giao diện: xem scripts/frontend-build.js.
+async function ensureProductionBuild(env) {
+  const result = await ensureFrontendBuild({
+    frontendDir,
+    appVersion,
+    env,
+    onStage: () => {
+      setStartupStage('Đang build giao diện cho bản mới (chỉ khi mã giao diện thay đổi; khoảng 20 giây đến vài phút)...');
+      console.log('[dev] Đang build giao diện (next build)...');
+    },
+    log: (chunk, isError) => writePrefixed('frontend-build', chunk, isError),
+    track: (child) => {
+      processes.push(child); // Ctrl+C / phiên mới tắt cả tiến trình build.
+      return () => { processes = processes.filter((entry) => entry !== child); };
+    },
+  });
+  console.log(result.built
+    ? `[dev] Build giao diện xong sau ${Math.round(result.buildMs / 1000)} giây.`
+    : '[dev] Dùng bản build giao diện có sẵn (mã giao diện không đổi).');
 }
 
 function waitForBackendReady(origin, timeoutMs = 15 * 60 * 1000, intervalMs = 1000) {
@@ -397,8 +454,17 @@ function startNpmProcess(label, args, cwd, env) {
   return startProcess(label, command, commandArgs, cwd, env);
 }
 
-function startFrontendProcess(port, env) {
+function startFrontendProcess(port, env, mode = 'dev') {
   const nextCliPath = resolveNextCliPath();
+  if (mode === 'production') {
+    return startProcess(
+      'frontend',
+      process.execPath,
+      [nextCliPath, 'start', '-H', env.HOST || defaultHost, '-p', String(port)],
+      frontendDir,
+      { ...env, NODE_ENV: 'production', NEXT_DIST_DIR: PRODUCTION_DIST_NAME },
+    );
+  }
   if (nextCliPath) {
     return startProcess(
       'frontend',

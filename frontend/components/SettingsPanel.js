@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import AiSettingsPanel from './AiSettingsPanel';
 import AddSourceForm from './AddSourceForm';
+import { studioConfirm } from './ui/confirmDialog';
+import FilePicker from './ui/FilePicker';
+import SectionNav from './ui/SectionNav';
 import { syncStatusLabel } from '../lib/syncStatusLabel.mjs';
 
 function formatCount(count) {
@@ -31,6 +34,11 @@ function formatHookDate(value) {
   return Number.isNaN(date.getTime()) ? 'Chưa tải' : date.toLocaleString('vi-VN');
 }
 
+const SETTINGS_SECTIONS = {
+  sources: ['settings-add-source', 'settings-sources', 'settings-active-source'],
+  advanced: ['settings-ai', 'settings-night-sync', 'settings-hooks', 'settings-cache'],
+};
+
 export default function SettingsPanel({
   activeDestinationId,
   destinations,
@@ -49,7 +57,10 @@ export default function SettingsPanel({
   onRefreshHookSource,
   onDeleteHookSource,
   onChangeHookMode,
+  section = null,
 }) {
+  // V2 chia Cài đặt thành 2 tab; Classic (section = null) vẫn hiện đủ mọi thẻ như cũ.
+  const show = id => !section || SETTINGS_SECTIONS[section]?.includes(id);
   const [linkDraft, setLinkDraft] = useState('');
   const [linkError, setLinkError] = useState('');
   const [linkSaving, setLinkSaving] = useState(false);
@@ -195,10 +206,19 @@ export default function SettingsPanel({
           {cacheReady ? 'Hệ thống sẵn sàng' : 'Đang đồng bộ'}
         </span>
       </header>
-      <AiSettingsPanel />
+      <SectionNav ariaLabel="Mục trong cài đặt" sections={[
+        { id: 'settings-ai', label: 'Nhà cung cấp AI' },
+        { id: 'settings-night-sync', label: 'Đồng bộ' },
+        { id: 'settings-add-source', label: 'Thêm nguồn' },
+        { id: 'settings-sources', label: 'Danh sách nguồn' },
+        { id: 'settings-hooks', label: 'Hook' },
+        { id: 'settings-cache', label: 'Cache ảnh' },
+        { id: 'settings-active-source', label: 'Nguồn đang dùng' },
+      ].filter(item => show(item.id))} />
+      {show('settings-ai') ? <AiSettingsPanel /> : null}
 
       <div className="settings-grid">
-        <article className="settings-card settings-night-sync-card">
+        {show('settings-night-sync') ? <article id="settings-night-sync" tabIndex={-1} className="settings-card settings-night-sync-card">
           <h3>Đồng bộ dữ liệu</h3>
           <p>Các nguồn được cập nhật lần lượt. Tạo và xuất list sử dụng cache cục bộ; đồng bộ chờ khi có tác vụ đang chạy.</p>
           {nightSync ? <>
@@ -224,8 +244,8 @@ export default function SettingsPanel({
               }}>Đã đọc báo cáo</button>
             </div>}
           </> : <p>Đang lấy trạng thái đồng bộ…</p>}
-        </article>
-        <article className="settings-card settings-add-source-card">
+        </article> : null}
+        {show('settings-add-source') ? <article id="settings-add-source" tabIndex={-1} className="settings-card settings-add-source-card">
           <div>
             <p className="panel-kicker">Thêm nguồn mới</p>
             <h3>Link Google Sheet hoặc file XLSX</h3>
@@ -234,9 +254,9 @@ export default function SettingsPanel({
             </p>
           </div>
           <AddSourceForm busy={busy} onSubmit={onAddDestination} />
-        </article>
+        </article> : null}
 
-        <article className="settings-card settings-source-card">
+        {show('settings-sources') ? <article id="settings-sources" tabIndex={-1} className="settings-card settings-source-card">
           <div className="settings-card-head">
             <div>
               <p className="panel-kicker">Nguồn dữ liệu</p>
@@ -287,9 +307,9 @@ export default function SettingsPanel({
               );
             })}
           </div>
-        </article>
+        </article> : null}
 
-        <article className={`settings-card settings-hook-card${hookAvailable ? '' : ' is-disabled'}`}>
+        {show('settings-hooks') ? <article id="settings-hooks" tabIndex={-1} className={`settings-card settings-hook-card${hookAvailable ? '' : ' is-disabled'}`}>
           <div className="settings-card-head">
             <div>
               <p className="panel-kicker">Nguồn Hook</p>
@@ -347,8 +367,8 @@ export default function SettingsPanel({
             </label>
             <label>
               <span>Hoặc file DOCX/TXT</span>
-              <input
-                type="file"
+              <FilePicker
+                file={newHookFile}
                 accept=".docx,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 disabled={!hookAvailable || hookSourcesBusy || Boolean(newHookUrl.trim())}
                 onChange={(event) => setNewHookFile(event.target.files?.[0] || null)}
@@ -403,8 +423,8 @@ export default function SettingsPanel({
                     <>
                       <label className="settings-hook-replace">
                         <span>File mới</span>
-                        <input
-                          type="file"
+                        <FilePicker
+                          file={replacementFiles[source.id]}
                           accept=".docx,.txt"
                           disabled={!hookAvailable || hookSourcesBusy}
                           onChange={(event) => setReplacementFiles((previous) => ({
@@ -427,8 +447,8 @@ export default function SettingsPanel({
                     type="button"
                     className="toolbar-button secondary settings-hook-delete"
                     disabled={!hookAvailable || hookSourcesBusy || source.active}
-                    onClick={() => {
-                      if (window.confirm(`Xóa bộ Hook “${source.name}”? List cũ sẽ vẫn được giữ nguyên.`)) {
+                    onClick={async () => {
+                      if (await studioConfirm({ title: 'Xóa bộ Hook?', message: `Xóa bộ Hook “${source.name}”? List cũ sẽ vẫn được giữ nguyên.`, confirmLabel: 'Xóa bộ Hook', tone: 'danger' })) {
                         runHookAction(() => onDeleteHookSource(source.id));
                       }
                     }}
@@ -442,9 +462,9 @@ export default function SettingsPanel({
             )}
           </div>
           {hookError ? <p className="settings-form-error" role="alert">{hookError}</p> : null}
-        </article>
+        </article> : null}
 
-        <article className="settings-card">
+        {show('settings-cache') ? <article id="settings-cache" tabIndex={-1} className="settings-card settings-cache-card">
           <div className="settings-card-head">
             <div>
               <p className="panel-kicker">Bộ nhớ ảnh</p>
@@ -478,9 +498,9 @@ export default function SettingsPanel({
           <p className="settings-help">
             Thống kê ảnh của nguồn đang chọn từ chỉ mục và cache trên máy, không phải tiến độ cập nhật. Ảnh thiếu cần được tải qua đồng bộ; không tự thay ảnh của list đã lưu.
           </p>
-        </article>
+        </article> : null}
 
-        <article className="settings-card settings-sync-card">
+        {show('settings-active-source') ? <article id="settings-active-source" tabIndex={-1} className="settings-card settings-sync-card">
           <div>
             <p className="panel-kicker">Nguồn đang dùng</p>
             <h3>{activeDestination?.label || 'Chưa có nguồn'}</h3>
@@ -528,8 +548,8 @@ export default function SettingsPanel({
             <form className="settings-replace-form" onSubmit={submitReplaceWorkbook}>
               <label className="settings-file-picker">
                 <span>File XLSX mới</span>
-                <input
-                  type="file"
+                <FilePicker
+                  file={replaceFile}
                   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   disabled={busy || replacing || !activeDestination}
                   onChange={(event) => setReplaceFile(event.target.files?.[0] || null)}
@@ -565,7 +585,7 @@ export default function SettingsPanel({
             {replaceError ? <p className="settings-form-error" role="alert">{replaceError}</p> : null}
             {refreshError ? <p className="settings-form-error" role="alert">{refreshError}</p> : null}
           </div>
-        </article>
+        </article> : null}
       </div>
     </section>
   );

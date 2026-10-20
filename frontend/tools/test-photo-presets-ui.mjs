@@ -6,6 +6,8 @@ const require=createRequire(import.meta.url),{chromium}=require('playwright'),es
 const root=path.resolve(process.env.AUDIT_ROOT),fixture=JSON.parse(fs.readFileSync(path.join(root,'generation.json')));
 const dataset={source:{...fixture.source,totalItems:34,destinationId:'dalat'},decks:fixture.decks.map(deck=>({...deck,lists:[{...deck.lists[0],id:deck.id+'-main',navTitle:'List chính'}]}))};
 const first=dataset.decks[0];dataset.decks.push({...first,id:'threads-mix-text',title:'Tổng hợp chữ',navTitle:'Tổng hợp chữ',lists:[{...first.lists[0],id:'threads-mix-text-main'}]});
+// Chính sách nguồn: chỉ mẫu có trong allowedDeckIds của nguồn mới được hiện/tạo.
+dataset.source.allowedDeckIds=dataset.decks.map(deck=>deck.id);
 const content=`import React from 'react';import {createRoot} from 'react-dom/client';import DeckStudio from './components/DeckStudio';createRoot(document.getElementById('root')).render(<DeckStudio initialDataset={window.fixture}/>);`;
 const bundle=await esbuild.build({stdin:{contents:content,resolveDir:process.cwd(),loader:'jsx'},bundle:true,write:false,format:'iife',loader:{'.js':'jsx'},jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'}});
 const css=[...fs.readFileSync('app/globals.css','utf8').matchAll(/@import url\("(.+?)"\)/g)].map(match=>fs.readFileSync(path.join('app',match[1]),'utf8')).join('\n');
@@ -19,17 +21,18 @@ try{
   if(u.pathname==='/api/photo-presets')value={presets:[{id:null,label:'Ảnh gốc'},{id:'iphone-color-edit-v1',label:'Color Edit'}]};
   else if(u.pathname==='/api/health')value={status:'ok',appVersion:'0.9.03',sessionId:'ui-preset-test'};
   else if(u.pathname==='/api/guide-data')value=dataset;
-  else if(u.pathname==='/api/destinations')value={destinations:[{id:'dalat',label:'Đà Lạt'}],activeDestinationId:'dalat'};
+  else if(u.pathname==='/api/destinations'){const allowedDeckIds=dataset.decks.map(deck=>deck.id);value={active:{id:'dalat',label:'Đà Lạt',allowedDeckIds},destinations:[{id:'dalat',label:'Đà Lạt',allowedDeckIds}],activeDestinationId:'dalat'};}
   else if(u.pathname.includes('drive-cache'))value={ready:true,phase:'ready',destinationId:'dalat',total:151,cached:151};
   else if(u.pathname==='/api/automation')value={schedules:[],runs:[],locked:false,minListsPerTemplate:3,maxListsPerTemplate:5};
   else if(u.pathname.includes('manual-generation')){requests.push(route.request().postDataJSON());value={id:'test',status:'failed',error:'Kiểm thử không tạo dữ liệu'};}
   else if(u.pathname.startsWith('/assets/'))return route.fulfill({status:404,body:'mock image'});
   return route.fulfill({json:value});
  });
- const mount=async()=>{await page.goto('http://127.0.0.1/');await page.evaluate(data=>window.fixture=data,dataset);await page.addScriptTag({content:bundle.outputFiles[0].text});await page.getByRole('button',{name:'2 · Tạo list',exact:true}).click();};
+ const mount=async()=>{await page.goto('http://127.0.0.1/');await page.evaluate(data=>window.fixture=data,dataset);await page.addScriptTag({content:bundle.outputFiles[0].text});await page.getByRole('navigation',{name:'Điều hướng chính'}).getByRole('button',{name:/^Tạo/}).click();await page.getByRole('button',{name:'Tạo list',exact:true}).first().click();};
  await mount();await page.getByRole('button',{name:'Bảng màu: Ảnh gốc',exact:true}).click();await page.getByLabel('Color Edit',{exact:true}).click();
  await page.screenshot({path:path.join(root,'list-create-desktop.png'),fullPage:true});
- await page.locator('.studio-theme-toggle').click();
+ // Ngăn kéo tạo list che thanh trên (modal): đổi Sáng/Tối bằng sự kiện trực tiếp.
+ await page.locator('.studio-theme-toggle').dispatchEvent('click');
  await page.screenshot({path:path.join(root,'list-create-dark.png'),fullPage:true});
  await page.locator('.list-create-panel').screenshot({path:path.join(root,'list-create-panel.png')});
  await page.setViewportSize({width:390,height:844});
@@ -45,7 +48,7 @@ try{
  await mount();await page.locator('#captionDeckSelect').selectOption('spotlight-v5');assert.equal(await page.getByRole('button',{name:'Bảng màu: Color Edit',exact:true}).count(),1);
  await page.locator('#nonAiBatchCountSelect').selectOption('1');await page.locator('#createDeckFromCaptionBtn').click();await page.waitForFunction(()=>document.body.innerText.includes('Kiểm thử không tạo dữ liệu'));
  assert.equal(requests.at(-1).request.photoPreset,'iphone-color-edit-v1');assert.equal(requests.at(-1).kind,'caption');
- await page.getByRole('button',{name:'Hẹn giờ',exact:true}).click();
+ await page.getByRole('button',{name:'Đóng ngăn kéo tạo list',exact:true}).click();await page.getByRole('navigation',{name:'Điều hướng chính'}).getByRole('button',{name:/^Tự động/}).click();
  const row=page.locator('.automation-template-grid label').filter({hasText:'Spotlight V5'}).first();await row.locator('input[type=checkbox]').check();await row.locator('select').selectOption('iphone-color-edit-v1');
  const draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('dalat-carousel:automation-schedule-draft:v2')));assert.equal(draft.templates.find(t=>t.deckId==='spotlight-v5').photoPreset,'iphone-color-edit-v1');
  assert.deepEqual(errors,[]);console.log('PASS UI: palette picker, per-template memory/reload, text-only hidden, single request preset, scheduled row/draft.');

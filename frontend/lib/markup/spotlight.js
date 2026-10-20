@@ -261,8 +261,8 @@ export function renderSummaryNotePage(page, index, listId) {
   `;
 }
 function spotlightColorAttrs(page) {
-  return page.photoPreset === 'iphone-color-edit-v1'
-    ? ' data-export-strict="true" data-photo-preset="iphone-color-edit-v1"' : '';
+  return page.photoPreset
+    ? ` data-export-strict="true" data-photo-preset="${escapeHtml(page.photoPreset)}"` : '';
 }
 
 function renderSpotlightPhoto(page, source, alt) {

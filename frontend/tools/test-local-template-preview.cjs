@@ -24,15 +24,12 @@ async function main() {
   const source = `import React from 'react'; import {createRoot} from 'react-dom/client';
     import SlideCard from './components/SlideCard';
     import FittedStudioPreview from './components/FittedStudioPreview';
-    import PreviewDashboardPanel from './components/PreviewDashboardPanel';
     import {checkLocalTemplateLayout} from './lib/localTemplates';
     const root=createRoot(document.getElementById('root'));
-    window.mountPreview=(list,index,mode)=>root.render(<div className="studio-workflow" style={{display:'block',height:'auto'}}>
-      {mode==='dashboard'?<PreviewDashboardPanel dataset={{decks:[{id:'local-preview-fixture',navTitle:'Local template',lists:[list]}]}} activeDeck={{id:'local-preview-fixture',lists:[list]}} activeList={list} activeDeckId="local-preview-fixture" activeListId={list.id} selectedPageIndex={index} onDeckSelect={()=>{}} onListSelect={()=>{}} onPageSelect={(_,i)=>window.mountPreview(list,i,'dashboard')}/>
-      :mode==='editor'?<section className="studio-selected-preview"><header><h3>Preview</h3></header><FittedStudioPreview key={list.id+'-'+index}><SlideCard list={list} page={list.pages[index]} index={index} selected onSelect={()=>{}}/></FittedStudioPreview></section>
-      :mode==='grid'?<section className="page-grid"><SlideCard list={list} page={list.pages[index]} index={index} selected onSelect={()=>{}}/></section>
-      :<section className="template-compare-focus-stage"><SlideCard list={list} page={list.pages[index]} index={index} selected onSelect={()=>{}}/></section>}
-    </div>);
+    // Khung preview của màn Duyệt & Xuất (V2): FittedStudioPreview chừa chỗ cho dải trang bên dưới.
+    window.mountPreview=(list,index)=>root.render(<main className="app-shell studio-workflow studio-v2" data-view="review" style={{display:'block',height:'auto'}}>
+      <div className="v2-canvas"><FittedStudioPreview key={list.id+'-'+index} reserve={150}><SlideCard list={list} page={list.pages[index]} index={index} selected onSelect={()=>{}}/></FittedStudioPreview></div>
+    </main>);
     window.checkLocalTemplateLayout=checkLocalTemplateLayout;`;
   const bundle = await esbuild.build({ stdin: { contents: source, resolveDir: front, loader: 'jsx' }, bundle: true, write: false, format: 'iife', loader: { '.js': 'jsx' }, jsx: 'automatic' });
   const css = [...fs.readFileSync(path.join(front, 'app/globals.css'), 'utf8').matchAll(/@import url\("(.+?)"\)/g)]
@@ -46,7 +43,7 @@ async function main() {
     const pack = fixtureFile && (fixtureData.lists ? path.resolve(path.dirname(fixtureFile), '..') : path.dirname(fixtureFile));
     await page.route('**/*', async route => {
       const url = new URL(route.request().url());
-      if (url.pathname === '/') return route.fulfill({ contentType: 'text/html', body: '<style>' + css + '</style><div id="root"></div>' });
+      if (url.pathname === '/') return route.fulfill({ contentType: 'text/html; charset=utf-8', body: '<meta charset="utf-8"><style>' + css + '</style><div id="root"></div>' });
       if (pack && url.pathname.startsWith('/api/local-templates/')) {
         const name = url.pathname.split('/').pop();
         const resource = path.join(pack, 'assets', name);
@@ -63,7 +60,7 @@ async function main() {
     await page.addScriptTag({ content: bundle.outputFiles[0].text });
     for (const width of [1920, 1280, 768, 390]) {
       await page.setViewportSize({ width, height: 1000 });
-      for (const mode of ['editor', 'grid', 'compare', ...(process.argv.includes('--dashboard') ? ['dashboard'] : [])]) {
+      for (const mode of ['editor']) {
         let count = 0;
         for (const list of fixtureLists) for (let index = 0; index < list.pages.length; index++) {
           await page.evaluate(({ list, index, mode }) => window.mountPreview(list, index, mode), { list, index, mode });
@@ -96,12 +93,6 @@ async function main() {
             // no text of its own and intentionally retains the design size.
             const sizes = await page.locator('[data-local-field], [data-local-text]:not(:has([data-local-field]))').evaluateAll(nodes => nodes.map(node => Number.parseFloat(getComputedStyle(node).fontSize)));
             assert.ok(sizes.length && sizes.every(size => Math.abs(size - list.pages[index].textFontSize) < 0.01), label + ': saved absolute typography must reach every local text node');
-          }
-          if (mode === 'dashboard') {
-            assert.equal(await page.locator('.studio-page-picker select').nth(1).inputValue(), list.id);
-            assert.equal(await page.locator('.studio-page-picker-list button').count(), list.pages.length);
-            assert.equal(await page.locator('.studio-selected-preview header h3').innerText(), `Trang ${index+1}/${list.pages.length}`);
-            if (width === 1280 && index === 0) await page.locator('.studio-editor-preview').screenshot({ path: path.join(output, 'dashboard.png') });
           }
           if (width === 1280 && mode === 'editor' && count < 6) await page.locator('.slide-card-frame').screenshot({ path: path.join(output, `page-${count + 1}.png`) });
           count++;

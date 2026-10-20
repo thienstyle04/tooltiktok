@@ -8,9 +8,15 @@ const evidence = {};
 try {
   const page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   await page.goto('http://127.0.0.1:3211/');
-  await page.getByRole('button', { name: '3 · Chỉnh sửa', exact: true }).click({ timeout: 60000 });
-  await page.locator('.studio-page-picker select').nth(0).selectOption('itinerary-note-timed');
-  await page.locator('.studio-page-picker-list button').nth(1).click();
+  // V2: mở list chính (mẫu mẹ) của một mẫu trong màn Duyệt & Xuất.
+  const openMainList = async deckId => {
+    await page.getByRole('navigation', { name: 'Điều hướng chính' }).getByRole('button', { name: /^Duyệt & Xuất/ }).click({ timeout: 60000 });
+    await page.getByRole('group', { name: 'Lọc trạng thái' }).getByRole('button', { name: /^Mẫu mẹ/ }).click();
+    await page.locator(`.v2-queue-item[data-deck-id="${deckId}"] > button`).first().click();
+    await page.locator('.v2-canvas article').waitFor({ timeout: 60000 });
+  };
+  await openMainList('itinerary-4n3d');
+  await page.locator('.v2-filmstrip button').nth(1).click();
   const field = page.locator('.right-panel textarea').first();
   await field.scrollIntoViewIfNeeded();
   const positions = () => field.evaluate(node => {
@@ -30,9 +36,11 @@ try {
   assert.equal(await input.inputValue(), size);
   evidence.escapeRestoresDraft = true;
   await input.fill('9'); await input.press('Enter');
-  const dialog = page.waitForEvent('dialog');
-  const navigation = page.locator('.sidebar-menu-item').filter({ hasText: 'List đã tạo' }).click();
-  const warning = await dialog; evidence.unsavedWarning = warning.message(); await warning.dismiss(); await navigation;
+  await page.getByRole('navigation', { name: 'Điều hướng chính' }).getByRole('button', { name: /^Hôm nay/ }).click();
+  const warning = page.getByRole('alertdialog');
+  evidence.unsavedWarning = await warning.innerText();
+  await warning.getByRole('button', { name: 'Ở lại chỉnh sửa', exact: true }).click();
+  await warning.waitFor({ state: 'detached' });
   assert.ok(await page.locator('.font-size-value input').isVisible(), 'Rejecting navigation keeps the editor');
   await input.focus(); await page.keyboard.press('Tab');
   evidence.tabTarget = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));

@@ -31,7 +31,7 @@ try {
   assert.equal(needsTemplateCatalogRefresh(ordered, { id: 'dalat-test', allowedDeckIds: ['local-fixture', cherry] }), false, 'Compare sets, not array order');
   globalThis.window.localStorage.getItem = key => key === STUDIO_CATALOG_REVISION_KEY ? '2026-10-15-cherry-blossom' : null;
   assert.equal(needsTemplateCatalogRefresh(fresh, active), true, 'An old layout revision must reload even when source permissions are unchanged');
-  const studio = readFileSync(new URL('../components/DeckStudio.js', import.meta.url), 'utf8');
+  const studio = readFileSync(new URL('../components/studio/useStudioController.js', import.meta.url), 'utf8');
   assert.match(studio, /needsTemplateCatalogRefresh\(cached\.dataset, destinations\?\.active\)/);
   assert.match(studio, /loadDataset\('Đang nạp lại thư viện mẫu\.\.\.', stored, false, \{ silent: true \}\)/, 'Catalog-only fetch must not request remote sync');
   const nonAi = studio.slice(studio.indexOf('const isNonAiTemplate ='), studio.indexOf('const festivalProvidesCover ='));

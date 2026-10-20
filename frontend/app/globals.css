@@ -14,7 +14,6 @@
 @import url("./styles/local-templates.css");
 @import url("./styles/studio-preview.css");
 @import url("./styles/studio-inspector.css");
-@import url("./styles/studio-navigation.css");
 @import url("./styles/studio-ai-tools.css");
 @import url("./styles/studio-settings.css");
 @import url("./styles/studio-modal-overrides.css");
@@ -37,3 +36,5 @@
 @import url("./styles/spotlight-design.css");
 @import url("./styles/studio-list-create.css");
 @import url("./styles/app-update.css");
+@import url("./styles/studio-refresh.css");
+@import url("./styles/studio-v2.css");

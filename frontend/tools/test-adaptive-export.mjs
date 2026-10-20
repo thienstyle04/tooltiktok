@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const esbuild = require('esbuild');
+const { APP_VERSION } = require('../lib/appVersion.js');
 const root = path.resolve(import.meta.dirname, '..');
 const exportTest = require('./exportClientTestHelper.cjs');
 const bundle = await esbuild.build({ ...exportTest.bundleOptions({ names: ['runAdaptiveExport', 'isResourceExportError', 'exportQualityProfile'] }), bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'AdaptiveTest' });
@@ -15,7 +16,7 @@ try {
   await page.setContent('<base href="http://localhost:3001/">');
   let reports = 0;
   let exportRoutesOk = true;
-  await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok', sessionId: 'adaptive-test', appVersion: '0.6.01' } }));
+  await page.route('**/api/health', route => route.fulfill({ json: { status: 'ok', sessionId: 'adaptive-test', appVersion: APP_VERSION } }));
   await page.route('**/api/drive-cache/status', route => route.fulfill({ json: { ready: true, phase: 'ready' } }));
   await page.route('**/api/drive-files/cache-status', route => route.fulfill(exportRoutesOk
     ? { json: { total: 0, cached: 0, missing: [] } }

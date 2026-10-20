@@ -46,7 +46,7 @@ try {
   await page.goto('http://localhost:3001');
   await page.evaluate(value => { window.__dataset = value; }, datasetFor('dalat', 'Đà Lạt'));
   await page.addScriptTag({ content: bundle });
-  await page.getByRole('button', { name: 'Dữ liệu & Cài đặt', exact: true }).click();
+  await page.getByRole('button', { name: 'Cài đặt', exact: true }).click();
   if (process.env.DEBUG_UI) { await page.waitForTimeout(2000); console.log((await page.locator('body').innerText()).slice(0, 1500)); }
   const form = page.locator('.settings-source-form');
   await form.waitFor();

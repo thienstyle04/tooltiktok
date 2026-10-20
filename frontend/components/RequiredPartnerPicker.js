@@ -1,5 +1,5 @@
 'use client';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { MAX_REQUIRED_PARTNERS, partnerKey, partnerOptions, sectionLabel } from '../lib/requiredPartners.mjs';
 
 // Chọn đối tác phải có mặt trong mọi list tạo ra. Các ô đối tác còn lại tool vẫn
@@ -11,7 +11,16 @@ export default function RequiredPartnerPicker({ partners, value, onChange, disab
   const [query, setQuery] = useState('');
   const pickerId = useId();
   const triggerRef = useRef(null);
+  const rootRef = useRef(null);
   const options = useMemo(() => partnerOptions(partners), [partners]);
+  // Bấm chuột ra ngoài thì đóng. Không dựa vào blur: bấm vào chữ của một dòng (không nhận focus)
+  // cũng làm mất focus với relatedTarget = null, từng đóng bộ chọn trước khi dòng kịp được chọn.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = event => { if (!rootRef.current?.contains(event.target)) { setOpen(false); setQuery(''); } };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
   const verdicts = useMemo(() => new Map((eligibility?.status === 'ready' ? eligibility.data?.partners || [] : [])
     .map(entry => [partnerKey(entry.name), entry])), [eligibility]);
   const checking = eligibility?.status === 'loading';
@@ -40,9 +49,9 @@ export default function RequiredPartnerPicker({ partners, value, onChange, disab
         {!enabled && reason ? <small className="required-partner-reason">{reason}</small> : null}</span>
     </label>;
   };
-  return <div className={'required-partner-picker' + (compact ? ' compact' : '')}
+  return <div ref={rootRef} className={'required-partner-picker' + (compact ? ' compact' : '')}
     onKeyDown={event => { if (event.key === 'Escape' && open) { event.stopPropagation(); close(); } }}
-    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) { setOpen(false); setQuery(''); } }}>
+    onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) { setOpen(false); setQuery(''); } }}>
     <button ref={triggerRef} type="button" className="required-partner-trigger" disabled={disabled}
       aria-expanded={open && !disabled} aria-controls={pickerId} onClick={() => { if (!open) onOpen?.(); setOpen(!open); }}>
       <span>Đối tác: {label}</span><span className="photo-preset-chevron" aria-hidden="true">{open && !disabled ? '−' : '+'}</span>

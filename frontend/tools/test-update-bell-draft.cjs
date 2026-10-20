@@ -13,7 +13,7 @@ async function main(){
   const page=await browser.newPage({viewport:{width:1600,height:1000}});page.on('dialog',async d=>{dialogs++;await d.dismiss();});
   const update={enabled:true,currentVersion:'0.9.07',availableVersion:'0.9.08',notes:['Cải thiện giao diện'],busy:false,applying:false};
   await page.route('**/*',route=>{const p=new URL(route.request().url()).pathname;
-   if(p==='/')return route.fulfill({contentType:'text/html',body:'<style>'+css+'</style><div id="root"></div><script>window.fixture='+JSON.stringify(dataset)+'</script><script>'+bundle.outputFiles[0].text+'</script>'});
+   if(p==='/')return route.fulfill({contentType:'text/html; charset=utf-8',body:'<meta charset="utf-8"><style>'+css+'</style><div id="root"></div><script>window.fixture='+JSON.stringify(dataset)+'</script><script>'+bundle.outputFiles[0].text+'</script>'});
    if(p.startsWith('/api/app-update/')){const action=p.split('/').pop();if(action==='defer')update.scheduledAt=route.request().postDataJSON().scheduledAt;return route.fulfill({json:update});}
    if(p.startsWith('/api/decks/')&&route.request().method()==='PATCH'){const body=route.request().postDataJSON();patches.push(body);return route.fulfill({json:{deckId:id,listId:id+'-main',pageIndex:0,...body}});}
    if(p==='/api/guide-data')return route.fulfill({json:dataset});
@@ -29,16 +29,18 @@ async function main(){
    if(p.startsWith('/fonts/'))return route.fulfill({body:fs.readFileSync(path.join(front,'public',p))});
    return route.fulfill({status:404,body:'Isolated test: unavailable'});
   });
-  await page.goto('http://update-draft.test/');await page.getByRole('button',{name:'3 · Chỉnh sửa',exact:true}).click();
+  await page.goto('http://update-draft.test/');await page.getByRole('navigation',{name:'Điều hướng chính'}).getByRole('button',{name:/^Duyệt & Xuất/}).click();
   const input=page.locator('.font-size-value input');await input.fill('45');await input.press('Enter');
   const title=page.locator('.inspector-page-editor textarea').first();await title.fill('Nội dung đang sửa');
-  await page.getByText('● Chưa lưu',{exact:true}).waitFor();const bell=page.locator('.app-update-bell');
+  await page.getByText('● Chưa lưu',{exact:true}).waitFor();const bell=page.locator('.app-update-bell');const confirm=page.getByRole('alertdialog');
   await bell.click();assert.equal(await page.getByRole('button',{name:'Cập nhật ngay',exact:true}).isDisabled(),true,'Do not restart over an unsaved draft');await page.getByRole('button',{name:'Hẹn ngày giờ',exact:true}).click();await page.locator('input[type=datetime-local]').fill('2027-01-01T22:00');await page.getByRole('button',{name:'Lưu giờ hẹn',exact:true}).click();await page.getByText(/Hẹn cập nhật:/).waitFor();
-  await page.getByRole('button',{name:'Đóng bảng cập nhật',exact:true}).click();assert.equal(dialogs,0);assert.equal(patches.length,0,'Update actions must not autosave');assert.equal(await input.inputValue(),'45');assert.equal(await title.inputValue(),'Nội dung đang sửa');
-  await bell.click();await page.keyboard.press('Escape');assert.equal(dialogs,0);assert.equal(await title.inputValue(),'Nội dung đang sửa');
-  await page.locator('.studio-page-picker-list button').nth(1).click();assert.equal(dialogs,1,'Real page navigation must still warn about draft');await page.getByRole('heading',{name:'Trang 1/2',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Đóng bảng cập nhật',exact:true}).click();assert.equal(dialogs,0);assert.equal(await confirm.count(),0);assert.equal(patches.length,0,'Update actions must not autosave');assert.equal(await input.inputValue(),'45');assert.equal(await title.inputValue(),'Nội dung đang sửa');
+  await bell.click();await page.keyboard.press('Escape');assert.equal(dialogs,0);assert.equal(await confirm.count(),0);assert.equal(await title.inputValue(),'Nội dung đang sửa');
+  // Cảnh báo bản nháp giờ là hộp xác nhận của studio (không phải window.confirm).
+  await page.getByRole('tab',{name:'Trang 2',exact:true}).click();await confirm.waitFor();assert.match(await confirm.innerText(),/thay đổi chưa lưu/,'Real page navigation must still warn about draft');
+  await confirm.getByRole('button',{name:'Ở lại chỉnh sửa',exact:true}).click();await confirm.waitFor({state:'detached'});await page.getByRole('heading',{name:'Trang 1/2',exact:true}).waitFor();assert.equal(await title.inputValue(),'Nội dung đang sửa','Staying keeps the draft');assert.equal(dialogs,0);
   await page.getByRole('button',{name:'Lưu thay đổi',exact:true}).click();await page.getByText('Đã lưu',{exact:true}).waitFor();assert.equal(patches.length,1);assert.equal(patches[0].textFontSize,45);assert.equal(patches[0].title,'Nội dung đang sửa');
-  await page.locator('.studio-page-picker-list button').nth(1).click();await page.getByRole('heading',{name:'Trang 2/2',exact:true}).waitFor();assert.equal(dialogs,1);
+  await page.getByRole('tab',{name:'Trang 2',exact:true}).click();await page.getByRole('heading',{name:'Trang 2/2',exact:true}).waitFor();assert.equal(dialogs,0);assert.equal(await confirm.count(),0,'Saved draft navigates without a warning');
   await bell.click();assert.equal(await page.getByRole('button',{name:'Cập nhật ngay',exact:true}).isEnabled(),true);await page.screenshot({path:path.join(output,'editor-bell.png')});
   console.log('PASS full editor: update bell/check/schedule/close/Escape preserve font+copy draft; no false confirm/autosave; real navigation still warns; subsequent save and navigation succeed. Screenshot:',output);
  }finally{await browser.close();}

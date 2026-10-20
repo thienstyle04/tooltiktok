@@ -266,11 +266,25 @@ function getPlaceNameCandidates(name) {
   return [...new Set([normalized, unaccented].filter((value) => value.length >= 3))];
 }
 
+// Một list có thể có hàng trăm tên địa điểm; thử từng regex riêng cho mọi trang/thumbnail làm
+// cuộn thư viện mẫu khựng. Gộp thành một regex (?:tên1|tên2|…) — khớp khi và chỉ khi có một tên
+// khớp, như cách cũ — và nhớ lại theo danh sách tên. Không có cờ g nên .test() không giữ trạng thái.
+const placeNamePatterns = new Map();
+function placeNamesPattern(placeNames) {
+  const key = placeNames.join('\u0000');
+  if (placeNamePatterns.has(key)) return placeNamePatterns.get(key);
+  const alternatives = [...new Set(placeNames.flatMap(getPlaceNameCandidates))]
+    .map((candidate) => escapeRegExp(candidate).replace(/\s+/g, '\\s+'));
+  const pattern = alternatives.length
+    ? new RegExp(`(^|[^\\p{L}\\p{N}])(?:${alternatives.join('|')})(?=$|[^\\p{L}\\p{N}])`, 'iu')
+    : null;
+  if (placeNamePatterns.size > 500) placeNamePatterns.clear();
+  placeNamePatterns.set(key, pattern);
+  return pattern;
+}
+
 function hasPagePlaceName(value, placeNames) {
-  return placeNames.some((name) => getPlaceNameCandidates(name).some((candidate) => {
-    const escaped = escapeRegExp(candidate).replace(/\s+/g, '\\s+');
-    return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, 'iu').test(value);
-  }));
+  return Boolean(placeNamesPattern(placeNames)?.test(value));
 }
 
 function looksLikeStopList(value) {

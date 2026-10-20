@@ -4,8 +4,6 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../../../app.module';
-import { GuideService } from '../guide.service';
 
 async function main() {
   const originalData = path.resolve(__dirname, '../../../../data');
@@ -40,6 +38,9 @@ async function main() {
     DALAT_AUTO_SYNC_SHEET: 'false', DALAT_AUTO_WARM_DRIVE_CACHE: 'false',
     DALAT_APP_VERSION: appVersion, DALAT_SESSION_ID: 'isolated-startup-regression',
   });
+  // Nạp sau khi đặt biến môi trường: phiên bản/session và thư mục dữ liệu được đọc lúc nạp module.
+  const { AppModule } = require('../../../app.module');
+  const { GuideService } = require('../guide.service');
   let networkCalls = 0;
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async () => { networkCalls++; throw Error('Test: external network disabled'); }) as typeof fetch;
@@ -84,15 +85,28 @@ async function main() {
           const response = await originalFetch(`${origin}/api/guide-data`, { signal: AbortSignal.timeout(15000) });
           assert.equal(response.status, 200);
           const data: any = await response.json();
-          assert.ok(data.decks?.some((d: any) => d.id === 'itinerary-note-dark'));
+          // Mẫu Note chỉ còn ở nguồn Threads; nguồn Đà Lạt vẫn phải có Spotlight V3 (list cũ của Note vẫn được giữ, kiểm bên dưới).
+          assert.ok(data.decks?.some((d: any) => d.id === 'spotlight-v3'));
         }
         assert.equal(builds, 1, 'Each startup builds once, reload uses cache');
-        assert.deepEqual(service.generatedListsByDeckId.get('itinerary-note-dark'), snapshots['itinerary-note-dark'], 'Old Note snapshot unchanged');
-        if (iteration < 2) assert.deepEqual(service.generatedListsByDeckId.get('spotlight-v3'), snapshots['spotlight-v3']);
-        else {
-          assert.equal(service.generatedListsByDeckId.get('spotlight-v3')[0].templateVersion, 2);
-          assert.equal(service.hasGeneratedListsNeedingTemplateRefresh(), false);
+        if (iteration < 2) {
+          // Mẫu Note chỉ thuộc nguồn Threads: lần khởi động đầu sao lưu kho rồi gỡ list Note khỏi nguồn Đà Lạt
+          // (threads-source-migration, chạy một lần). List cũ phải còn nguyên trong bản sao lưu.
+          assert.equal(service.generatedListsByDeckId.get('itinerary-note-dark'), undefined, 'Note list leaves the non-Threads source');
+          const backups = path.join(fixture, 'migration-backups');
+          assert.ok(fs.readdirSync(backups).some((dir) => {
+            const saved = path.join(backups, dir, 'generated-caption-lists.dalat.json');
+            return fs.existsSync(saved) && JSON.stringify(JSON.parse(fs.readFileSync(saved, 'utf8')).decks['itinerary-note-dark']) === JSON.stringify(snapshots['itinerary-note-dark']);
+          }), 'Old Note snapshot kept unchanged in the migration backup');
+        } else {
+          // Di chuyển chỉ chạy một lần: list ghi lại sau đó được giữ nguyên.
+          assert.deepEqual(service.generatedListsByDeckId.get('itinerary-note-dark'), snapshots['itinerary-note-dark'], 'Old Note snapshot unchanged');
         }
+        // List Spotlight là ảnh chụp nội dung đã duyệt (list-display canRefreshGeneratedTemplate): kể cả list mang
+        // phiên bản mẫu cũ cũng không bị dựng lại khi khởi động.
+        if (iteration < 2) assert.deepEqual(service.generatedListsByDeckId.get('spotlight-v3'), snapshots['spotlight-v3']);
+        else assert.deepEqual(service.generatedListsByDeckId.get('spotlight-v3'), [{ ...currentV3, templateVersion: 1 }], 'Old V3 snapshot unchanged');
+        assert.equal(service.hasGeneratedListsNeedingTemplateRefresh(), false);
         starts.push(Date.now() - started);
         assert.ok(starts[iteration] < 60000, 'Startup must finish within 60s');
       } finally { await app.close(); }

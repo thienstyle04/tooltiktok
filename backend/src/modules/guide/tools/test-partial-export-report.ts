@@ -27,7 +27,7 @@ async function archiveTest() {
     Object.assign(run, { id: 'fixture-run-id', outputDir: dir, scheduleName: 'Fixture', createdAt: new Date().toISOString(), errors: [] });
     await scheduler.acceptArchive('run', 'token', Readable.from([bytes]));
     assert.equal(run.status, 'partial');
-    assert.match(run.phase, /1 list; bỏ qua 1 list/);
+    assert.match(run.phase, /xuất 1 list vào 1 file ZIP\. Bỏ qua 1 list lỗi ảnh\/dữ liệu/);
     const report = path.join(dir, 'restart.json'); fs.writeFileSync(report, JSON.stringify(persisted));
     assert.deepEqual(JSON.parse(fs.readFileSync(report, 'utf8')).skippedLists, outcome.skippedLists);
     run.exportedLists = [];

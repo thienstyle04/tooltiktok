@@ -132,8 +132,9 @@ export async function loadSpotlightV3Hooks(options: {
     return disk.hooks;
   }
 
+  const localOnly = isLocalDataOnly();
   try {
-    if (isLocalDataOnly()) throw new Error('Tạo list không cập nhật hook qua mạng');
+    if (localOnly) throw new Error('Tạo list không cập nhật hook qua mạng');
     if (!docId) throw new Error('Máy này chưa cấu hình Google Doc hook');
     const text = await (options.fetchDocument || fetchHookDocument)(docId);
     const hooks = sectionKey
@@ -146,7 +147,9 @@ export async function loadSpotlightV3Hooks(options: {
     console.log(`[spotlight-hooks] Đã tải ${hooks.length} hook từ Google Doc.`);
     return hooks;
   } catch (error) {
-    console.warn('[spotlight-hooks] Fetch Doc thất bại, dùng cache cũ nếu có:', error instanceof Error ? error.message : error);
+    // Ngoài giờ đồng bộ đêm, dùng hook đã lưu là bình thường, không phải lỗi.
+    if (localOnly) console.log('[spotlight-hooks] Dùng hook đã lưu (hook từ Google Doc chỉ cập nhật trong giờ đồng bộ đêm).');
+    else console.warn('[spotlight-hooks] Fetch Doc thất bại, dùng cache cũ nếu có:', error instanceof Error ? error.message : error);
     if (disk?.hooks?.length) {
       memoryCache = disk;
       return disk.hooks;

@@ -144,9 +144,12 @@ export function applyPageTextOverrides(
     const coverOverride = pages[0]?.type === 'cover'
       ? listOverrides?.['0']
       : undefined;
+    // Lần sửa gần nhất của list; bản sửa cũ chưa có mốc giờ dùng giờ lưu kho.
+    const editedAt = Object.values(listOverrides).map(override => override.editedAt || store.savedAt || '').sort().pop();
+    const edited = editedAt ? { editedAt } : {};
     return coverOverride
-      ? { ...list, title: coverOverride.title, coverTitle: coverOverride.title, pages }
-      : { ...list, pages };
+      ? { ...list, title: coverOverride.title, coverTitle: coverOverride.title, ...edited, pages }
+      : { ...list, ...edited, pages };
   });
 }
 

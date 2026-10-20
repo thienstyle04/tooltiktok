@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
+const { APP_VERSION } = require('../lib/appVersion.js');
 const { chromium } = require('playwright');
 const esbuild = require('esbuild');
 const root = path.resolve(import.meta.dirname, '..');
@@ -46,8 +47,9 @@ try {
     const url = new URL(route.request().url());
     if (url.pathname === '/') return route.fulfill({ contentType: 'text/html', body: `<html><head><style>${css}</style></head><body></body></html>` });
     if (url.pathname === '/api/health') {
-      return route.fulfill({ json: { status: 'ok', sessionId: 'persimmon-export-smoke', appVersion: '0.6.03' } });
+      return route.fulfill({ json: { status: 'ok', sessionId: 'persimmon-export-smoke', appVersion: APP_VERSION } });
     }
+    if (url.pathname === '/api/night-sync/export-lease') return route.fulfill({ json: { ok: true } });
     if (url.pathname === '/api/drive-cache/status') {
       return route.fulfill({ json: { phase: 'ready', ready: true, destinationId: 'dalat', total: 736, completed: 736, cached: 736, failed: 0, percent: 100 } });
     }
@@ -67,7 +69,8 @@ try {
     if (url.pathname === '/assets/drive-file') {
       const id = url.searchParams.get('id');
       const file = path.join(data, 'drive-file-cache', `${id}.bin`);
-      if (/^[\w-]+$/.test(id || '') && fs.existsSync(file)) return route.fulfill({ body: fs.readFileSync(file) });
+      // Như backend: Content-Type lấy từ file .json cạnh ảnh (trình xuất từ chối ảnh thiếu Content-Type).
+      if (/^[\w-]+$/.test(id || '') && fs.existsSync(file)) return route.fulfill({ contentType: JSON.parse(fs.readFileSync(file.replace(/\.bin$/, '.json'), 'utf8')).contentType || 'image/jpeg', body: fs.readFileSync(file) });
       missing.add(id); return route.abort();
     }
     if (url.pathname.startsWith('/fonts/')) {

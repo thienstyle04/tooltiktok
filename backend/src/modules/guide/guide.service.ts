@@ -15,7 +15,7 @@ import { NightSyncCoordinator } from './sync/night-sync-coordinator';
 import { syncNightSource } from './sync/night-sync-source';
 import { publishSourceSnapshot } from './sync/published-source';
 
-import { CaptionBlocks, AddDestinationRequest, AddDestinationResponse, AddXlsxDestinationRequest, CoverPage, DatasetBuildContext, DeckPage, DeepSeekCaptionRequest, DeepSeekCaptionResponse, DeleteGeneratedListsResponse, GenerateBatchListsRequest, GenerateBatchListsResponse, GenerateCaptionDeckRequest, GenerateCaptionDeckResponse, GeneratePartnerSpotlightRequest, GeneratePartnerSpotlightResponse, PartnerRotationHistory, GuideDeck, GuideDeckList, GuideDataset, GuideItem, HinhNenImageUrlPools, ImageLibraryFolderEntry, ImageMappingFile, ListPage, PageItem, ReferenceSet, SectionKey, UpdateGeneratedListCoverRequest, UpdateGeneratedListCoverResponse, UpdatePageTextRequest, UpdatePageTextResponse, PageTextOverrideStore, WorkbookItemsBySection, DestinationId, DestinationListResponse, DestinationSummary, HookSourcesResponse, SetHookModeRequest, SetDestinationRequest, SetDestinationResponse } from '../../common/interfaces/guide.types';
+import { CaptionBlocks, AddDestinationRequest, AddDestinationResponse, AddXlsxDestinationRequest, CoverPage, DatasetBuildContext, DeckPage, DeepSeekCaptionRequest, DeepSeekCaptionResponse, DeleteGeneratedListsResponse, MarkListsExportedResponse, GenerateBatchListsRequest, GenerateBatchListsResponse, GenerateCaptionDeckRequest, GenerateCaptionDeckResponse, GeneratePartnerSpotlightRequest, GeneratePartnerSpotlightResponse, PartnerRotationHistory, GuideDeck, GuideDeckList, GuideDataset, GuideItem, HinhNenImageUrlPools, ImageLibraryFolderEntry, ImageMappingFile, ListPage, PageItem, ReferenceSet, SectionKey, UpdateGeneratedListCoverRequest, UpdateGeneratedListCoverResponse, UpdatePageTextRequest, UpdatePageTextResponse, PageTextOverrideStore, WorkbookItemsBySection, DestinationId, DestinationListResponse, DestinationSummary, HookSourcesResponse, SetHookModeRequest, SetDestinationRequest, SetDestinationResponse } from '../../common/interfaces/guide.types';
 
 
 import { buildImageLibraryEntries, getImageLibraryRoot, imageUrlsForDirectory, normalizeText, stableHash } from './logic/image-resolver';
@@ -98,7 +98,7 @@ const isGoogleDocHookDeck = (deckId: string): boolean =>
   deckId === 'spotlight-v6-diary' || isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
 import { ITINERARY_NOTE_CAPTION, ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_CAPTION } from './logic/itinerary-note';
-import { DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
+import { DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryItemLines } from './logic/spotlight-diary';
 import { ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
 import { threadsNoteCaption } from './logic/itinerary-note-threads';
 import { THREADS_BUDGET_ID, threadsBudgetCaption } from './logic/itinerary-note-threads-budget';
@@ -108,6 +108,7 @@ import { isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_MIX_ID, THREADS_MIX_TEXT_I
 import { CaptionTone, isSpotlightV5Deck, isTextNoteDeck } from './deck-kinds';
 import { isUpdateLocked } from '../../runtime-update-lock';
 import { applySourceLinks, hookDocId, updateBuiltinSourceLinks } from './sync/source-links';
+import { driveThumbnail } from './drive-thumbnails';
 const isNonAiDeck = (deckId: string): boolean => deckId === CHERRY_ID || Boolean(findLocalTemplate(deckId)) || isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || isSpotlightV5Deck(deckId) || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
@@ -148,6 +149,17 @@ export interface DriveCacheWarmStatus {
    * manual update downloads them. The message explains this instead of "ready".
    */
   imagesMissing?: boolean;
+}
+
+export interface TemplateCapacityResult {
+  deckId: string;
+  navTitle?: string;
+  requested: number;
+  /** Số list liên tiếp dựng được trong lần chạy thử. */
+  possible: number;
+  /** false: mẫu có luồng tạo riêng nên không ước lượng. */
+  checked: boolean;
+  reason?: string;
 }
 
 @Injectable()
@@ -765,6 +777,8 @@ export class GuideService implements OnApplicationBootstrap {
   getWorkspaceAsset(relativePath: string): Buffer { return this.assets.getWorkspaceAsset(relativePath); }
   getLibraryAsset(relativePath: string, rootKey = 'main'): Buffer { return this.assets.getLibraryAsset(relativePath, rootKey); }
   getDriveFileAsset(fileId: string): Promise<DriveFileAsset> { return this.assets.getDriveFileAsset(fileId); }
+  /** Bản thu nhỏ cho thumbnail giao diện; xuất ảnh luôn dùng getDriveFileAsset. */
+  async getDriveFileThumbnail(fileId: string): Promise<DriveFileAsset> { return driveThumbnail(await this.getDriveFileAsset(fileId), this.dataRoot); }
   getColorEditedAsset(source: string, preset: string): Promise<Buffer> { return this.assets.getColorEditedAsset(source, preset); }
   getDriveFilesCacheStatus(fileIds: string[]) { return this.assets.getDriveFilesCacheStatus(fileIds); }
   prefetchDriveFiles(fileIds: string[]) { return this.assets.prefetchDriveFiles(fileIds); }
@@ -1368,6 +1382,26 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
+  /** Ghi mốc xuất file thành công cho list đã tạo; list chính và id không còn tồn tại được bỏ qua. */
+  markListsExported(groups: Array<{ deckId?: string; listIds?: string[] }> = []): MarkListsExportedResponse {
+    this.ensureGeneratedListsLoaded();
+    const exportedAt = new Date().toISOString();
+    let markedCount = 0;
+    for (const group of groups) {
+      const deckId = String(group?.deckId || '').trim();
+      const ids = new Set((group?.listIds || []).map(id => String(id || '').trim()).filter(Boolean));
+      const existing = deckId ? this.generatedListsByDeckId.get(deckId) : undefined;
+      if (!existing || !ids.size) continue;
+      this.generatedListsByDeckId.set(deckId, existing.map(list => {
+        if (!ids.has(list.id)) return list;
+        markedCount += 1;
+        return { ...list, exportedAt };
+      }));
+    }
+    if (markedCount) this.persistGeneratedLists();
+    return { exportedAt, markedCount };
+  }
+
   updateGeneratedListCover(
     deckId: string,
     listId: string,
@@ -1411,7 +1445,7 @@ export class GuideService implements OnApplicationBootstrap {
     const store = this.loadPageTextOverrides();
     store.decks[deckId] ||= {};
     store.decks[deckId][listId] ||= {};
-    const override = pageText.buildPageTextOverride(deckId, page, request, store.decks[deckId][listId][String(pageIndex)], derived.coverImageUrls);
+    const override = { ...pageText.buildPageTextOverride(deckId, page, request, store.decks[deckId][listId][String(pageIndex)], derived.coverImageUrls), editedAt: new Date().toISOString() };
     store.decks[deckId][listId][String(pageIndex)] = override;
     store.savedAt = new Date().toISOString();
     this.savePageTextOverrides(store);
@@ -1698,23 +1732,7 @@ export class GuideService implements OnApplicationBootstrap {
 
     try {
     this.ensureInventoryLoaded();
-    const deckUsage = this.createUsageScope();
-    currentDeck.lists.forEach((list) => {
-      const isPreviewList = /-main$/i.test(String(list.id || '')) || String(list.id || '').toLowerCase() === 'main';
-      if ((isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID || isThreadsExpense(deckId)) && isPreviewList) return;
-      this.markUsedInDeck(list.pages, deckUsage);
-    });
-    // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
-    for (const prevList of existing) {
-      if (isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID || isThreadsExpense(deckId)) this.markUsedInDeck(prevList.pages, deckUsage);
-      for (const page of prevList.pages) {
-        if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
-        if (page.type !== 'list') continue;
-        for (const item of page.items) {
-          if (item.imageUrl) deckUsage.imageUrls.add(item.imageUrl);
-        }
-      }
-    }
+    const deckUsage = this.deckUsageScope(deckId, currentDeck.lists, existing);
     if (deckId === 'spotlight-v6-green') {
       setSpotlightV3BuildContext({
         hooks: greenHookReservation ? [greenHookReservation.hook] : [],
@@ -1859,7 +1877,8 @@ export class GuideService implements OnApplicationBootstrap {
         }
       }
       if (rotationError && requiredMissing) throw this.requiredPartnersFailure(currentDeck.navTitle, requiredMissing, context.itemsBySection, requiredSections);
-      if (rotationError) throw new BadRequestException(`${currentDeck.navTitle}: ${rotationError instanceof Error ? rotationError.message : String(rotationError)}`);
+      // Như bước chạy thử: nêu đối tác hết ảnh mới, thay vì chỉ báo thiếu ô đối tác.
+      if (rotationError) throw new BadRequestException(`${currentDeck.navTitle}: ${rotationError instanceof Error ? rotationError.message : String(rotationError)}${rotationPhotoShortage(sourceItems, rotationHistory)}`);
     } finally {
       clearSpotlightV3BuildContext();
       clearRequiredPartnerContext();
@@ -2024,7 +2043,7 @@ export class GuideService implements OnApplicationBootstrap {
         if (page.type !== 'list' || !page.items.length) continue;
         const key = diaryIdentity(page.items[0].rawName || page.items[0].name);
         const source = Object.values(context.itemsBySection).flat().find(item => item.id === page.items[0].id);
-        const choices = diaryDescriptionLines(source?.diaryDescriptionRaw || '');
+        const choices = source ? diaryItemLines(source) : [];
         const used = (nextLines[key] || []).filter(line => choices.includes(line));
         nextLines[key] = [...(choices.every(line => used.includes(line)) ? [] : used), page.title];
       }
@@ -2360,6 +2379,99 @@ export class GuideService implements OnApplicationBootstrap {
     this.partnerEligibilityCache.set(key, task);
     task.catch(() => this.partnerEligibilityCache.delete(key));
     return task;
+  }
+
+  /**
+   * Chạy thử khô (không lưu list, vòng ảnh hay hook): mẫu tạo liên tiếp được bao nhiêu list với dữ liệu,
+   * đối tác và vòng xoay ảnh đối tác hiện tại của nguồn đang mở. Dùng để cảnh báo trước khi lưu lịch tự động;
+   * kết quả là ước lượng (lượt thật còn thử thêm bộ địa điểm khác) nên chỉ cảnh báo, không chặn.
+   */
+  async checkTemplatesCapacity(entries: Array<{ deckId: string; count: number; requiredPartners?: string[] }>): Promise<TemplateCapacityResult[]> {
+    // Dựng dữ liệu nguồn một lần cho cả lịch (trước đây mỗi mẫu dựng lại, 29 mẫu mất hơn 1 phút).
+    await this.prepareWorkbookForDataset(false);
+    const contexts = new Map<boolean, Promise<DatasetBuildContext>>();
+    const contextFor = (verifyImages: boolean) => {
+      if (!contexts.has(verifyImages)) contexts.set(verifyImages, this.buildLocallyVerifiedGenerationContext(verifyImages));
+      return contexts.get(verifyImages)!;
+    };
+    const results: TemplateCapacityResult[] = [];
+    for (const entry of entries) {
+      try { results.push(await this.checkTemplateCapacity(entry.deckId, entry.count, entry.requiredPartners || [], contextFor)); }
+      catch (error) { results.push({ deckId: entry.deckId, requested: entry.count, possible: 0, checked: true, reason: error instanceof Error ? error.message : String(error) }); }
+    }
+    return results;
+  }
+
+  async checkTemplateCapacity(deckIdRaw: unknown, countRaw: unknown, requiredPartnerNamesRaw: unknown = [],
+    contextFor?: (verifyImages: boolean) => Promise<DatasetBuildContext>): Promise<TemplateCapacityResult> {
+    const deckId = String(deckIdRaw ?? '').trim();
+    const requested = Math.max(1, Math.min(10, Math.trunc(Number(countRaw)) || 1));
+    this.assertTemplateAllowed(deckId);
+    this.ensureGeneratedListsLoaded();
+    // Mẫu riêng, Hoa anh đào và Spotlight Đối tác có luồng tạo riêng: không ước lượng.
+    if (findLocalTemplate(deckId) || deckId === CHERRY_ID || deckId === 'spotlight-partner') return { deckId, requested, possible: requested, checked: false };
+    const requiredPartnerNames = normalizeRequiredPartners(requiredPartnerNamesRaw);
+    const verifyImages = !isTextNoteDeck(deckId) && !isThreadsLocalDeck(deckId);
+    if (!contextFor) await this.prepareWorkbookForDataset(false);
+    const shared = contextFor ? await contextFor(verifyImages) : await this.buildLocallyVerifiedGenerationContext(verifyImages);
+    // Ngữ cảnh có thể dùng chung giữa các mẫu: chép phần builder có thể đọc/ghi.
+    const context = { ...shared, hinhNenImagePools: this.cloneJson(shared.hinhNenImagePools) };
+    const currentDeck = context.decks.find((deck) => deck.id === deckId);
+    const navTitle = currentDeck?.navTitle || deckId;
+    const sourceItems = this.cloneJson(context.itemsBySection);
+    const existing = this.generatedListsByDeckId.get(deckId) ?? [];
+    const historicalLists = this.applyPageTextOverrides(deckId, this.cloneJson(existing), this.loadPageTextOverrides());
+    let history = bootstrapPartnerHistory(historicalLists, deckId, Object.values(sourceItems).flat(), this.partnerRotation[deckId]);
+    const destinationId = contentDestinationId(this.activeDestinationId);
+    // Như computePartnerEligibility: đặt rồi trả lại ngữ cảnh dựng một cách đồng bộ để không ảnh hưởng lượt tạo đang chạy.
+    // Như lượt thật: list mới tránh địa điểm/ảnh đã dùng ở các list trước của mẫu (kể cả list vừa chạy thử).
+    const simulated: GuideDeckList[] = [];
+    let usedItems = new Set<string>(), usedImages = new Set<string>();
+    const refreshUsage = () => {
+      const usage = this.deckUsageScope(deckId, [...(currentDeck?.lists || []), ...simulated], [...existing, ...simulated]);
+      usedItems = new Set(usage.itemIds);
+      usedImages = new Set(usage.imageUrls);
+      for (const items of partnerItemsByName(context.itemsBySection, requiredPartnerNames).values()) {
+        for (const item of items) [item.id, itemUsageKey(item), itemNameUsageKey(item)].forEach(key => usedItems.delete(key));
+      }
+    };
+    const build = (items: WorkbookItemsBySection, seed: string): DeckPage[] => {
+      const previousHooks = { ...getSpotlightV3BuildContext() };
+      setSpotlightV3BuildContext({ hooks: ['Kiểm tra mẫu'], destinationId, usedHookTitles: [], diaryUsedLines: this.diaryUsedLines });
+      try {
+        return withRequiredPartners(requiredPartnerNames, () => buildPagesForDeck(deckId, items, context.imageUrls, context.imageLibraryEntries, seed,
+          new Set(usedItems), new Set(usedImages), context.coverImageUrls, context.hinhNenImagePools), { dryRun: true });
+      } finally { setSpotlightV3BuildContext(previousHooks); }
+    };
+    let lastError = '';
+    for (let index = 0; index < requested; index++) {
+      refreshUsage();
+      let built = false;
+      for (let attempt = 0; attempt < 6 && !built; attempt++) {
+        const seed = `capacity:${deckId}:${index}:${attempt}`;
+        try {
+          const unrestricted = build(sourceItems, seed);
+          const requiredPartners = requiredPartnerCount(deckId, sourceItems, unrestricted);
+          const requiredSlots = Math.max(1, partnerSlotCount(unrestricted));
+          const items = isTextNoteDeck(deckId) ? sourceItems : restrictRotationPhotos(sourceItems, history, isThreadsLocalDeck(deckId));
+          const pages = isTextNoteDeck(deckId) ? unrestricted : build(items, seed);
+          const rotated = rotatePartnerList(buildDeckList(deckId, `caption-capacity-${index + 1}`, '', '', '', pages),
+            deckId, sourceItems, history, `${seed}:rotation`, requiredPartners, requiredSlots);
+          history = rotated.history;
+          simulated.push(rotated.list);
+          built = true;
+        } catch (error) {
+          lastError = error instanceof Error ? error.message : String(error);
+        }
+        // Giữ server phản hồi (health, giao diện) trong lúc kiểm tra nhiều mẫu.
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      if (!built) {
+        return { deckId, navTitle, requested, possible: index, checked: true,
+          reason: `${lastError}${rotationPhotoShortage(sourceItems, history)}`.replace(/\s+/g, ' ').trim().slice(0, 600) };
+      }
+    }
+    return { deckId, navTitle, requested, possible: requested, checked: true };
   }
 
   private async computePartnerEligibility(deckId: string, context: DatasetBuildContext, partnerNames: string[]): Promise<PartnerEligibilityResponse> {
@@ -3435,6 +3547,28 @@ export class GuideService implements OnApplicationBootstrap {
   private persistInventory(): void {
     this.ensureDataRoot();
     this.writeJsonFileSafe(this.getDestinationDataPath('used-inventory'), this.usedAllocator.snapshot());
+  }
+
+  /** Địa điểm/ảnh đã dùng ở các list của mẫu (list mới ưu tiên cái chưa dùng). Dùng chung cho tạo thật và chạy thử khô. */
+  private deckUsageScope(deckId: string, deckLists: GuideDeckList[], existing: GuideDeckList[]): DataAllocator {
+    const deckUsage = this.createUsageScope();
+    deckLists.forEach((list) => {
+      const isPreviewList = /-main$/i.test(String(list.id || '')) || String(list.id || '').toLowerCase() === 'main';
+      if ((isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID || isThreadsExpense(deckId)) && isPreviewList) return;
+      this.markUsedInDeck(list.pages, deckUsage);
+    });
+    // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
+    for (const prevList of existing) {
+      if (isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID || isThreadsExpense(deckId)) this.markUsedInDeck(prevList.pages, deckUsage);
+      for (const page of prevList.pages) {
+        if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
+        if (page.type !== 'list') continue;
+        for (const item of page.items) {
+          if (item.imageUrl) deckUsage.imageUrls.add(item.imageUrl);
+        }
+      }
+    }
+    return deckUsage;
   }
 
   private createUsageScope(): DataAllocator {

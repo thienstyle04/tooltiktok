@@ -1,3 +1,4 @@
+import type { PhotoPresetId } from '../photo-preset-catalog';
 export type DestinationId = string;
 
 export interface DestinationSummary {
@@ -193,7 +194,7 @@ export interface CoverPage {
   localRender?: LocalRenderModel;
   coverApproval?: string;
   spotlightDesignRevision?: 1;
-  photoPreset?: 'iphone-color-edit-v1';
+  photoPreset?: PhotoPresetId;
   textFontSize?: number | null;
   textScale?: number;
   diaryFontSize?: number;
@@ -213,7 +214,7 @@ export interface ListPage {
   localRender?: LocalRenderModel;
   threadsPartnerPolicy?: 'balanced-local-v1';
   spotlightDesignRevision?: 1;
-  photoPreset?: 'iphone-color-edit-v1';
+  photoPreset?: PhotoPresetId;
   textFontSize?: number | null;
   textScale?: number;
   diaryFontSize?: number;
@@ -240,7 +241,7 @@ export interface GuideDeckList {
   warnings?: string[];
   spotlightDesignRevision?: 1;
   coverReview?: { topic: string | null; warnings: string[]; approvedSourceIds: string[] };
-  photoPreset?: 'iphone-color-edit-v1';
+  photoPreset?: PhotoPresetId;
   id: string;
   navTitle: string;
   title: string;
@@ -253,6 +254,10 @@ export interface GuideDeckList {
   templateVersion?: number;
   automationRunId?: string;
   automationPosition?: string;
+  /** Lần xuất file thành công gần nhất (ISO); chỉ list đã tạo, list chính không có. */
+  exportedAt?: string;
+  /** Lần người dùng lưu sửa nội dung gần nhất (ISO), tính từ page-text-overrides khi hiển thị. */
+  editedAt?: string;
   canvasPreset?: 'default' | 'tiktok-3x4' | 'tiktok-4x5' | 'tiktok-9x16' | 'landscape-4x3';
   hookSnapshot?: {
     mode: 'festival' | 'green' | 'dark' | 'persimmon' | 'cherry-blossom';
@@ -380,7 +385,7 @@ export interface CaptionBlocks {
 }
 
 export interface GenerateCaptionDeckRequest {
-  photoPreset?: 'iphone-color-edit-v1' | null;
+  photoPreset?: PhotoPresetId | null;
   deckId?: string;
   listId?: string;
   tone?: DeepSeekCaptionResponse['tone'];
@@ -401,7 +406,7 @@ export interface GenerateCaptionDeckResponse {
 }
 
 export interface GenerateBatchListsRequest {
-  photoPreset?: 'iphone-color-edit-v1' | null;
+  photoPreset?: PhotoPresetId | null;
   deckId?: string;
   count?: number;
   requestId?: string;
@@ -421,6 +426,15 @@ export interface DeleteGeneratedListsResponse {
   remainingIds: string[];
 }
 
+export interface MarkListsExportedRequest {
+  groups?: Array<{ deckId?: string; listIds?: string[] }>;
+}
+
+export interface MarkListsExportedResponse {
+  exportedAt: string;
+  markedCount: number;
+}
+
 export interface GenerateBatchListsProgress {
   index: number;
   total: number;
@@ -438,7 +452,7 @@ export interface GenerateBatchListsResponse {
 }
 
 export interface GeneratePartnerSpotlightRequest {
-  photoPreset?: 'iphone-color-edit-v1' | null;
+  photoPreset?: PhotoPresetId | null;
   partnerId?: string;
   partnerName?: string;
 }
@@ -497,7 +511,7 @@ export interface UpdatePageTextResponse {
 export interface PageTextOverrideStore {
   version: 1;
   savedAt: string;
-  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; coverImages?: string[]; coverApproval?: string; textFontSize?: number | null; textScale?: number; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; metaSecondary?: string; scheduleTime?: string }> }>>>;
+  decks: Record<string, Record<string, Record<string, { editedAt?: string; title: string; subtitle: string; coverImages?: string[]; coverApproval?: string; textFontSize?: number | null; textScale?: number; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; metaSecondary?: string; scheduleTime?: string }> }>>>;
 }
 
 export interface DatasetBuildContext {

@@ -42,7 +42,9 @@ export default function PageInspector({
   useEffect(() => {
     const read = () => {
       const article = [...document.querySelectorAll('.slide-card-content article')].find(node => node.dataset.listId === list?.id && Number(node.dataset.pageIndex) === selectedPageIndex);
-      const next = renderedTextSizes(article, { hiddenPreview: !!article?.closest('.studio-editor-preview') });
+      // Màn hẹp đang ở vùng "Chỉnh sửa nội dung": preview vẫn được dựng nhưng ẩn, vẫn phải đo được chữ.
+      const host = article?.closest('.v2-canvas');
+      const next = renderedTextSizes(article, { hiddenPreview: !!host && getComputedStyle(host).visibility === 'hidden' });
       setActualSizes(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
     };
     setActualSizes([]);
@@ -104,41 +106,41 @@ export default function PageInspector({
         <div className="inspector-cover-editor inspector-page-editor">
           {!isTimedNote && !isDarkNote && !isThreadsBudget ? <label className="inspector-field">
             <span className="inspector-field-head"><span>Tiêu đề trang</span><span>{pageTitle.length}/{titleLimit}</span></span>
-            <textarea value={pageTitle} placeholder="Nhập tiêu đề trang..." rows={2} maxLength={titleLimit} onChange={(event) => onPageTextChange({ title: event.target.value })} />
+            <textarea data-edit-target="title" value={pageTitle} placeholder="Nhập tiêu đề trang..." rows={2} maxLength={titleLimit} onChange={(event) => onPageTextChange({ title: event.target.value })} />
           </label> : isTimedNote ? (
             <label className="inspector-field">
               <span className="inspector-field-head"><span>Nhãn ngày</span><span>{String(page.chipText || '').length}/40</span></span>
-              <input value={page.chipText ?? ''} maxLength={40} onChange={(event) => onPageTextChange({ chipText: event.target.value })} />
+              <input data-edit-target="chipText" value={page.chipText ?? ''} maxLength={40} onChange={(event) => onPageTextChange({ chipText: event.target.value })} />
             </label>
           ) : null}
           {!hideSubtitleEditor && !page.imageRole ? (
             <label className="inspector-field">
               <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/{page.localRender ? 4000 : 220}</span></span>
-              <textarea value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={page.localRender ? 4000 : 220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
+              <textarea data-edit-target="subtitle" value={pageSubtitle} placeholder="Có thể để trống mô tả..." rows={4} maxLength={page.localRender ? 4000 : 220} onChange={(event) => onPageTextChange({ subtitle: event.target.value })} />
             </label>
           ) : null}
           {(page.localRender || page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') ? items.map((item, i) => (
             <div className="inspector-field" key={i}>
               <span>{isThreadsToplist ? 'Địa điểm' : 'Hoạt động'} {i + 1}</span>
-              <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
-              <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+              <input data-edit-target={`items.${i}.name`} aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              <textarea data-edit-target={`items.${i}.metaPrimary`} aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
             </div>
           )) : null}
           {isThreadsBudget ? <>
             <p className="inspector-field">Tổng tạm tính cộng các khoản đã có giá và ghi rõ số khoản còn thiếu. Nhập giá VND cho các khoản trống để có tổng đầy đủ.</p>
             {items.map((item, i) => <div className="inspector-field" key={item.id || i}>
               <span>{item.label} · Khoản {i + 1}</span>
-              <input aria-label={'Chi tiết khoản ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
-              <input aria-label={'Tiền khoản ' + (i + 1)} value={item.metaSecondary ?? ''} placeholder="Ví dụ: 65.000 đ" maxLength={80} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaSecondary: event.target.value } : row) })} />
+              <input data-edit-target={`items.${i}.name`} aria-label={'Chi tiết khoản ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              <input data-edit-target={`items.${i}.metaSecondary`} aria-label={'Tiền khoản ' + (i + 1)} value={item.metaSecondary ?? ''} placeholder="Ví dụ: 65.000 đ" maxLength={80} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaSecondary: event.target.value } : row) })} />
             </div>)}
           </> : null}
           {isExpenseSheet ? <>
             <p className="inspector-field">Số tiền ghi theo nghìn đồng cho {THREADS_EXPENSE_PEOPLE} người (ví dụ 90 = 90.000đ). Tổng {formatThousands(threadsExpenseTotals(items).total)} · Mỗi người {formatThousands(threadsExpenseTotals(items).perPerson)} tự tính lại khi sửa.</p>
             {items.map((item, i) => <div className="inspector-field" key={item.id || i}>
               <span>{item.label} · Dòng {i + 1}{parseThousands(item.metaSecondary) === null ? ' · số tiền chưa hợp lệ' : ''}</span>
-              <input aria-label={'Nội dung dòng ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
-              <input aria-label={'Số tiền dòng ' + (i + 1)} value={item.metaSecondary ?? ''} placeholder="Ví dụ: 90 hoặc 1.900" maxLength={20} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaSecondary: event.target.value } : row) })} />
-              <input aria-label={'Ghi chú dòng ' + (i + 1)} value={item.metaPrimary ?? ''} placeholder="Ghi chú (có thể để trống)" maxLength={60} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+              <input data-edit-target={`items.${i}.name`} aria-label={'Nội dung dòng ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              <input data-edit-target={`items.${i}.metaSecondary`} aria-label={'Số tiền dòng ' + (i + 1)} value={item.metaSecondary ?? ''} placeholder="Ví dụ: 90 hoặc 1.900" maxLength={20} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaSecondary: event.target.value } : row) })} />
+              <input data-edit-target={`items.${i}.metaPrimary`} aria-label={'Ghi chú dòng ' + (i + 1)} value={item.metaPrimary ?? ''} placeholder="Ghi chú (có thể để trống)" maxLength={60} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
             </div>)}
           </> : null}
           {page.type === 'cover' && page.spotlightDesignRevision === 1 ? <>
@@ -158,28 +160,28 @@ export default function PageInspector({
             </label>
             {items.map((item, i) => <div className="inspector-field" key={item.id || i}>
               <span>Tên và địa chỉ địa điểm</span>
-              <input aria-label="Tên địa điểm" value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
-              <textarea aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+              <input data-edit-target={`items.${i}.name`} aria-label="Tên địa điểm" value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              <textarea data-edit-target={`items.${i}.metaPrimary`} aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
             </div>)}
           </> : null}
           {isTimedNote ? items.map((item, i) => (
             <div className="inspector-field" key={item.id || i}>
               <span>{item.fixedRow ? `Dòng cố định ${i + 1}` : `Hoạt động ${i + 1}`}</span>
-              <input aria-label={'Khung giờ ' + (i + 1)} value={item.scheduleTime ?? ''} maxLength={24} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, scheduleTime: event.target.value } : row) })} />
-              <input aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
-              {!item.fixedRow ? <textarea aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} /> : null}
+              <input data-edit-target={`items.${i}.scheduleTime`} aria-label={'Khung giờ ' + (i + 1)} value={item.scheduleTime ?? ''} maxLength={24} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, scheduleTime: event.target.value } : row) })} />
+              <input data-edit-target={`items.${i}.name`} aria-label={'Tên địa điểm ' + (i + 1)} value={item.name ?? ''} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} />
+              {!item.fixedRow ? <textarea data-edit-target={`items.${i}.metaPrimary`} aria-label={'Địa chỉ ' + (i + 1)} value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} /> : null}
             </div>
           )) : null}
           {page.layoutVariant === 'spotlight-v6-map-place' ? items.map((item, i) => (
             <label className="inspector-field" key={item.id || i}>
               <span>Địa chỉ địa điểm</span>
-              <textarea aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+              <textarea data-edit-target={`items.${i}.metaPrimary`} aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
             </label>
           )) : null}
           {deck.id === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page' ? items.map((item, i) => (
             <label className="inspector-field" key={item.id || i}>
               <span>Địa chỉ địa điểm</span>
-              <textarea aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
+              <textarea data-edit-target={`items.${i}.metaPrimary`} aria-label="Địa chỉ địa điểm" value={item.metaPrimary ?? ''} rows={2} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, metaPrimary: event.target.value } : row) })} />
             </label>
           )) : null}
           <div className="inspector-editor-actions">

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
@@ -6,6 +7,7 @@ const require = createRequire(import.meta.url);
 const puppeteer = require('../../backend/node_modules/puppeteer-core');
 const backendOrigin = 'http://127.0.0.1:3000';
 const frontendOrigin = 'http://127.0.0.1:3001';
+const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scheduler-regression-'));
 
 function browserPath() {
   const local = process.env.LOCALAPPDATA || '';
@@ -16,6 +18,19 @@ function browserPath() {
     path.join(process.env['PROGRAMFILES(X86)'] || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
     path.join(process.env.PROGRAMFILES || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
   ].find((entry) => entry && fs.existsSync(entry));
+}
+
+// Màn hình chuyển cảnh có hiệu ứng và trạng thái lịch tải sau: chờ trạng thái tải xong
+// và nút đứng yên 300 ms trước khi bấm theo tọa độ.
+async function waitForSettledView(page) {
+  await page.waitForFunction(() => new Promise((resolve) => {
+    const button = document.querySelector('.automation-output button');
+    const first = button?.getBoundingClientRect();
+    setTimeout(() => {
+      const next = button?.getBoundingClientRect();
+      resolve(Boolean(first && next && first.x === next.x && first.y === next.y && document.querySelector('.automation-browser.ready')));
+    }, 300);
+  }), { timeout: 15_000 });
 }
 
 async function automationState() {
@@ -40,7 +55,8 @@ try {
       await request.respond({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ directory: 'D:\\test', fileName: 'scheduler-regression.zip', path: 'D:\\test\\scheduler-regression.zip' }),
+        // Thư mục phải tồn tại thật: backend từ chối lưu lịch vào thư mục không có.
+        body: JSON.stringify({ directory: outputDir, fileName: 'scheduler-regression.zip', path: path.join(outputDir, 'scheduler-regression.zip') }),
       });
       return;
     }
@@ -48,9 +64,10 @@ try {
   });
   await page.goto(`${frontendOrigin}/?runtimeSession=${encodeURIComponent(health.sessionId)}`, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => window.localStorage.removeItem('dalat-carousel:automation-schedule-draft:v2'));
-  await page.waitForFunction(() => [...document.querySelectorAll('button')].some((button) => button.textContent?.includes('Hẹn giờ')), { timeout: 30_000 });
-  await page.evaluate(() => [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Hẹn giờ'))?.click());
+  await page.waitForFunction(() => [...document.querySelectorAll('.v2-nav button')].some((button) => button.textContent?.includes('Tự động')), { timeout: 30_000 });
+  await page.evaluate(() => [...document.querySelectorAll('.v2-nav button')].find((button) => button.textContent?.includes('Tự động'))?.click());
   await page.waitForSelector('.automation-panel', { timeout: 30_000 });
+  await waitForSettledView(page);
   await page.click('.automation-output button');
   try {
     await page.waitForFunction(() => document.querySelector('.automation-output output')?.textContent?.includes('scheduler-regression.zip'), { timeout: 10_000 });
@@ -79,7 +96,15 @@ try {
     throw new Error(`Giới hạn 3–5 theo từng mẫu chưa đúng: ${JSON.stringify(firstSelection)}`);
   }
   await page.click('.automation-form-actions button[type="submit"]');
-  await page.waitForFunction(() => document.querySelector('.automation-form-actions span')?.textContent?.includes('Đã tạo lịch'), { timeout: 30_000 });
+  try {
+    await page.waitForFunction(() => document.querySelector('.automation-form-actions span')?.textContent?.includes('Đã tạo lịch'), { timeout: 30_000 });
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      message: document.querySelector('.automation-form-actions span')?.textContent,
+      dialog: document.querySelector('[role="dialog"], [role="alertdialog"]')?.textContent?.slice(0, 400),
+    }));
+    throw new Error(`Lịch đầu chưa lưu: ${JSON.stringify(state)}; ${error.message}`);
+  }
   const retained = await page.evaluate(() => ({
     output: document.querySelector('.automation-output output')?.textContent || '',
     selectedTemplates: document.querySelectorAll('.automation-template-grid label.selected').length,
@@ -90,9 +115,10 @@ try {
   }
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => [...document.querySelectorAll('button')].some((button) => button.textContent?.includes('Hẹn giờ')), { timeout: 30_000 });
-  await page.evaluate(() => [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Hẹn giờ'))?.click());
+  await page.waitForFunction(() => [...document.querySelectorAll('.v2-nav button')].some((button) => button.textContent?.includes('Tự động')), { timeout: 30_000 });
+  await page.evaluate(() => [...document.querySelectorAll('.v2-nav button')].find((button) => button.textContent?.includes('Tự động'))?.click());
   await page.waitForSelector('.automation-panel', { timeout: 30_000 });
+  await waitForSettledView(page);
   const restored = await page.evaluate(() => ({
     output: document.querySelector('.automation-output output')?.textContent || '',
     selectedTemplates: document.querySelectorAll('.automation-template-grid label.selected').length,

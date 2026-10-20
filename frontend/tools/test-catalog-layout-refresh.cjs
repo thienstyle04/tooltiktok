@@ -40,14 +40,16 @@ async function main(){
    if(p.startsWith('/fonts/'))return route.fulfill({body:fs.readFileSync(path.join(front,'public',p))});
    return route.fulfill({status:404,body:'Isolated fixture'});
   });
+  if(process.env.DEBUG_UI){page.on('pageerror',e=>console.log('[pageerror]',e.message));page.on('console',m=>console.log('[console]',m.type(),m.text().slice(0,200)));}
   await page.goto('http://catalog-layout.test/');
   await Promise.race([seen,new Promise((_,reject)=>setTimeout(()=>reject(Error('No catalog refresh: stale cache was reused')),10000))]);
+  await page.getByRole('navigation',{name:'Điều hướng chính'}).getByRole('button',{name:/^Tạo/}).click();
   assert.equal(await page.locator('.local-template-page').count(),0,'Do not show known-stale cached layout before current response');
-  assert.equal(await page.getByRole('button',{name:'Layout fixture',exact:true}).count(),0,'Do not paint stale gallery first');
-  release();await page.getByRole('button',{name:'Layout fixture',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Tạo list từ mẫu Layout fixture',exact:true}).count(),0,'Do not paint stale gallery first');
+  release();await page.getByRole('button',{name:'Tạo list từ mẫu Layout fixture',exact:true}).waitFor();
   if(fail)await page.getByText(/Chưa tải được mẫu mới/).waitFor();
-  await page.getByRole('button',{name:'3 · Chỉnh sửa',exact:true}).click();await page.locator('.local-template-page').waitFor();
-  const xs=await page.locator('.local-template-page img').evaluateAll(nodes=>nodes.map(n=>parseFloat(n.style.left)));
+  await page.getByRole('navigation',{name:'Điều hướng chính'}).getByRole('button',{name:/^Duyệt & Xuất/}).click();await page.locator('.v2-canvas .local-template-page').waitFor();
+  const xs=await page.locator('.v2-canvas .local-template-page img').evaluateAll(nodes=>nodes.map(n=>parseFloat(n.style.left)));
   assert.deepEqual(xs,fail?[180,610,180,610]:[150,580,150,580]);
   const keep=await page.evaluate(()=>[localStorage.getItem('draft-sentinel'),sessionStorage.getItem('draft-sentinel')]);assert.deepEqual(keep,['keep-me','keep-me']);
   assert.ok(guideRequests.length>0);assert.ok(guideRequests.every(query=>query===''),'Read published dataset only, never ?refresh=1 / Sheet sync, including offline retries');

@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { MotionConfig } from 'motion/react';
+import BarLoader from './ui/BarLoader';
 
 const DeckStudio = dynamic(() => import('./DeckStudio'), {
   ssr: false,
   loading: () => (
     <main className="app-shell studio-boot-loading" aria-busy="true" aria-live="polite">
+      <BarLoader />
       <p>Đang tải studio...</p>
     </main>
   ),
@@ -32,5 +35,6 @@ export default function DeckStudioLoader() {
   if (automationRunId && automationToken) {
     return <AutomationExportRunner runId={automationRunId} token={automationToken} />;
   }
-  return <DeckStudio />;
+  // Tôn trọng tùy chọn giảm chuyển động của Windows cho mọi hiệu ứng motion trong studio.
+  return <MotionConfig reducedMotion="user"><DeckStudio /></MotionConfig>;
 }

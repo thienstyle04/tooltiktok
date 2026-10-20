@@ -16,4 +16,6 @@ for (const side of ['backend', 'frontend']) {
 // Independent bytes, no data junctions/hardlinks. Tests may safely alter their own copy.
 fs.cpSync(path.join(root, 'backend/data'), path.join(target, 'backend/data'), { recursive: true });
 fs.copyFileSync(path.join(root, 'VERSION'), path.join(target, 'VERSION'));
+// Backend nạp scripts/update-protocol.js từ thư mục gốc workspace.
+fs.cpSync(path.join(root, 'scripts'), path.join(target, 'scripts'), { recursive: true });
 console.log('Prepared isolated source and data copies:', target);
