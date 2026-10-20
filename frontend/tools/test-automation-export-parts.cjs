@@ -3,7 +3,7 @@
 // Mỗi ZIP chỉ chứa list của phần mình. Không dùng backend hay dữ liệu thật.
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path');
 const front = path.resolve(__dirname, '..');
-const esbuild = require(path.join(front, '../backend/node_modules/esbuild')), { chromium } = require('playwright');
+const esbuild = require(path.join(front, '../backend/node_modules/esbuild')), { chromium } = require('playwright'), { APP_VERSION } = require('../lib/appVersion.js');
 const JSZip = require(path.join(front, 'node_modules/jszip'));
 const id = 'local-runner-fixture';
 const model = { templateId: id, version: 1, width: 1080, height: 1440, fonts: [], nodes: [
@@ -43,7 +43,7 @@ async function main() {
       if (p === '/api/night-sync/export-lease') return route.fulfill({ json: { ok: true } });
       if (p === '/api/drive-files/cache-status') return route.fulfill({ json: { missing: [], images: [] } });
       if (p === '/api/drive-cache/status') return route.fulfill({ json: { ready: true, phase: 'ready' } });
-      if (p === '/api/health') return route.fulfill({ json: { status: 'ok', sessionId: 'runner-test', appVersion: '0.10.03' } });
+      if (p === '/api/health') return route.fulfill({ json: { status: 'ok', sessionId: 'runner-test', appVersion: APP_VERSION } });
       if (p.startsWith('/api/runtime-performance')) return route.fulfill({ json: { mode: 'modern', reason: 'isolated' } });
       if (p.startsWith('/fonts/')) return route.fulfill({ body: fs.readFileSync(path.join(front, 'public', p)) });
       return route.fulfill({ status: 404, body: 'Isolated test: unavailable' });

@@ -3,7 +3,7 @@
 // "Đã xuất", trung tâm tác vụ, Ctrl+K mở ngăn kéo tạo list, chuyển qua lại Classic, bố cục điện thoại.
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), os = require('node:os');
 const front = path.resolve(__dirname, '..');
-const esbuild = require(path.join(front, '../backend/node_modules/esbuild')), { chromium } = require('playwright');
+const esbuild = require(path.join(front, '../backend/node_modules/esbuild')), { chromium } = require('playwright'), { APP_VERSION } = require('../lib/appVersion.js');
 const id = 'local-v2-fixture';
 const model = { templateId: id, version: 1, width: 1080, height: 1440, fonts: [], nodes: [
   { kind: 'shape', x: 0, y: 0, width: 1080, height: 1440, style: { background: '#ddd' } },
@@ -47,13 +47,13 @@ async function main() {
       if (p === '/api/guide-data') return route.fulfill({ json: dataset });
       if (p === '/api/destinations') return route.fulfill({ json: { active: { id: 'dalat-test', label: 'Đà Lạt Test' }, destinations: [{ id: 'dalat-test', label: 'Đà Lạt Test' }] } });
       if (p === '/api/drive-cache/status') return route.fulfill({ json: { ready: true, phase: 'ready', destinationId: 'dalat-test' } });
-      if (p === '/api/health') return route.fulfill({ json: { status: 'ok', sessionId: 'v2-studio-test', appVersion: '0.10.03' } });
+      if (p === '/api/health') return route.fulfill({ json: { status: 'ok', sessionId: 'v2-studio-test', appVersion: APP_VERSION } });
       if (p === '/api/automation') return route.fulfill({ json: { locked: false, schedules: [], runs: [] } });
       if (p === '/api/hook-sources') return route.fulfill({ json: { mode: 'normal', sources: [] } });
       if (p === '/api/photo-presets') return route.fulfill({ json: { presets: [{ id: null, label: 'Ảnh gốc' }] } });
       if (p === '/api/partners') return route.fulfill({ json: [] });
       if (p === '/api/night-sync/status') return route.fulfill({ json: { phase: 'idle', locked: false, sources: [] } });
-      if (p.startsWith('/api/app-update/')) return route.fulfill({ json: { enabled: false, currentVersion: '0.10.03' } });
+      if (p.startsWith('/api/app-update/')) return route.fulfill({ json: { enabled: false, currentVersion: APP_VERSION } });
       if (p.startsWith('/api/runtime-performance')) return route.fulfill({ json: { mode: 'modern', reason: 'isolated' } });
       if (p.startsWith('/fonts/')) return route.fulfill({ body: fs.readFileSync(path.join(front, 'public', p)) });
       if (process.env.DEBUG_UI) console.log('UNMOCKED', method, p);
