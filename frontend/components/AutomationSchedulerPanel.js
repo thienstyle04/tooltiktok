@@ -3,12 +3,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../lib/apiClient';
 import { listIsMain } from '../lib/utils';
-import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET } from '../lib/photoPresets.mjs';
+import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET, isKnownPhotoPreset } from '../lib/photoPresets.mjs';
 import { filterSourceTemplates, forbiddenTemplateSelections } from '../lib/sourceTemplatePolicy.mjs';
+import RequiredPartnerPicker from './RequiredPartnerPicker';
+import StepTabs from './ui/StepTabs';
+import EmptyState from './ui/EmptyState';
+import { deckCover } from './ui/deckCover';
+import { studioConfirm } from './ui/confirmDialog';
+import { cleanRequiredPartners, supportsRequiredPartners } from '../lib/requiredPartners.mjs';
 
 const DALAT_ONLY_DECKS = new Set([
   'spotlight-v6-diary', 'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
+  'spotlight-v6-cherry-blossom',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
 ]);
 const DALAT_EXTRA_DECKS = [
   { id: 'spotlight-v5', navTitle: 'Spotlight V5' },
@@ -17,10 +24,13 @@ const DALAT_EXTRA_DECKS = [
   { id: 'spotlight-v6-persimmon', navTitle: 'Spotlight Mùa hồng' },
   { id: 'spotlight-v6-maps', navTitle: 'Spotlight V6 Google Maps' },
   { id: 'spotlight-v6-diary', navTitle: 'Spotlight Nhật ký Đà Lạt' },
+  { id: 'spotlight-v6-cherry-blossom', navTitle: 'Spotlight Mùa hoa đào' },
   { id: 'summary-note', navTitle: 'Tổng hợp địa điểm' },
   { id: 'itinerary-note-threads-3n2d', navTitle: 'Note Threads 3N2Đ' },
   { id: 'itinerary-note-threads-2n1d', navTitle: 'Note Threads 2N1Đ' },
   { id: 'itinerary-note-threads-budget-3n2d', navTitle: 'Chi phí Threads 3N2Đ' },
+  { id: 'itinerary-note-threads-expense-2n1d', navTitle: 'Bảng chi tiêu Threads 2N1Đ' },
+  { id: 'itinerary-note-threads-expense-3n2d', navTitle: 'Bảng chi tiêu Threads 3N2Đ' },
   { id: 'threads-toplist-dalat', navTitle: 'Top list Đà Lạt' },
   { id: 'threads-food-local', navTitle: 'Quán ăn Threads Local' },
   { id: 'threads-cafe-local', navTitle: 'Cà phê Threads Local' },
@@ -60,7 +70,7 @@ function localDateTimeValue(date = new Date(Date.now() + 10 * 60 * 1000)) {
 }
 
 function blankForm(destinationId = 'dalat') {
-  return { format: 'png', name: '', destinationId, frequency: 'once', onceAt: localDateTimeValue(), dailyTime: '09:00', outputDir: '', outputFileName: '', outputPath: '', hookMode: 'normal', sourceId: '', templates: [] };
+  return { format: 'png', name: '', destinationId, frequency: 'once', onceAt: localDateTimeValue(), dailyTime: '09:00', outputDir: '', outputFileName: '', outputPath: '', hookMode: 'normal', sourceId: '', templates: [], catchUp: true };
 }
 
 function loadDraftForm(destinationId) {
@@ -83,9 +93,11 @@ function loadDraftForm(destinationId) {
       outputPath: outputDir ? String(saved.outputPath || (outputFileName ? `${outputDir}\\${outputFileName}` : outputDir)) : '',
       hookMode: saved.hookMode === 'festival' ? 'festival' : 'normal',
       sourceId: String(saved.sourceId || ''),
+      catchUp: saved.catchUp !== false,
       templates: Array.isArray(saved.templates) ? saved.templates
         .map((entry) => { const legacy={'spotlight-v5-color-edit':'spotlight-v5','spotlight-v6-color-edit':'spotlight-v6'};
-          return { deckId: legacy[entry?.deckId] || String(entry?.deckId || ''), photoPreset: legacy[entry?.deckId] ? COLOR_EDIT_PRESET : entry?.photoPreset===COLOR_EDIT_PRESET ? COLOR_EDIT_PRESET : null, count: Math.min(5, Math.max(3, Number(entry?.count) || 3)) }; })
+          const requiredPartners = cleanRequiredPartners(entry?.requiredPartners);
+          return { deckId: legacy[entry?.deckId] || String(entry?.deckId || ''), photoPreset: legacy[entry?.deckId] ? COLOR_EDIT_PRESET : isKnownPhotoPreset(entry?.photoPreset) ? entry.photoPreset : null, count: Math.min(5, Math.max(3, Number(entry?.count) || 3)), ...(requiredPartners.length ? { requiredPartners } : {}) }; })
         .filter((entry) => entry.deckId) : [],
     };
   } catch {
@@ -108,7 +120,7 @@ async function payloadOrError(response) {
   return payload;
 }
 
-export default function AutomationSchedulerPanel({ dataset, destinations, hookSourcesInfo, automationState, onStateChange }) {
+export default function AutomationSchedulerPanel({ dataset, destinations, hookSourcesInfo, automationState, onStateChange, partners = [], partnerEligibility = {}, onNeedPartnerEligibility }) {
   const currentDestinationId = dataset?.source?.destinationId || 'dalat';
   const state = automationState || { schedules: [], runs: [], minListsPerTemplate: 3, maxListsPerTemplate: 5 };
   const minListsPerTemplate = Number(state.minListsPerTemplate) || 3;
@@ -118,6 +130,8 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
   const [section, setSection] = useState('create');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  // Kết quả chạy thử khô lần lưu gần nhất (mẫu có thể không tạo đủ list).
+  const [preflight, setPreflight] = useState(null);
   const [photoPresets, setPhotoPresets] = useState(DEFAULT_PHOTO_PRESETS);
   const [scheduleHookSources, setScheduleHookSources] = useState(null);
   useEffect(() => {
@@ -151,7 +165,12 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     const entries = new Map((dataset?.decks || [])
       .filter((deck) => deck.id !== 'spotlight-partner' && (deck.localTemplate || (deck.lists || []).some((list) => listIsMain(list))))
       .map((deck) => [deck.id, deck]));
-    for (const deck of [...BASE_SCHEDULE_DECKS, ...DALAT_EXTRA_DECKS]) if (!entries.has(deck.id)) entries.set(deck.id, deck);
+    // For the open source the loaded catalog is authoritative: a template whose
+    // main list could not be built from this source's data (e.g. a new XLSX
+    // without Hinh_nen pools) would fail every scheduled run. Other sources have
+    // no catalog on this machine yet, so keep the static list for them.
+    const catalogIsAuthoritative = dataset?.source?.destinationId === form.destinationId && entries.size > 0;
+    if (!catalogIsAuthoritative) for (const deck of [...BASE_SCHEDULE_DECKS, ...DALAT_EXTRA_DECKS]) if (!entries.has(deck.id)) entries.set(deck.id, deck);
     return filterSourceTemplates([...entries.values()], targetSource)
       .filter((deck) => isDalatSource(form.destinationId) || !DALAT_ONLY_DECKS.has(deck.id));
   }, [dataset, form.destinationId, destinations]);
@@ -230,6 +249,19 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     };
   });
 
+  // Mẫu riêng (local-*) không nhận đối tác bắt buộc; mẫu dựng sẵn thì có.
+  const templateSupportsPartners = (deckId) => supportsRequiredPartners(decks.find((deck) => deck.id === deckId)
+    || dataset?.decks?.find((deck) => deck.id === deckId) || { id: deckId });
+  const setTemplatePartners = (deckId, names) => setForm((current) => ({
+    ...current,
+    templates: current.templates.map((entry) => {
+      if (entry.deckId !== deckId) return entry;
+      const { requiredPartners: _previous, ...rest } = entry;
+      const requiredPartners = cleanRequiredPartners(names);
+      return requiredPartners.length ? { ...rest, requiredPartners } : rest;
+    }),
+  }));
+
   const save = async (event) => {
     event.preventDefault();
     if (forbiddenTemplateSelections(form.templates, targetSource).length) { setMessage('Lỗi: Mẫu đã chọn không thuộc nguồn này. Threads và Note chỉ dùng Đà Lạt Threads.'); return; }
@@ -237,12 +269,38 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       setMessage(`Lỗi: Mỗi mẫu phải có từ ${minListsPerTemplate} đến ${maxListsPerTemplate} list.`);
       return;
     }
+    // Chạy thử khô các mẫu trước khi lưu: cảnh báo mẫu không tạo đủ list (thiếu đối tác, đối tác hết ảnh khác...).
+    if (form.destinationId !== currentDestinationId) {
+      const label = (id) => (destinations || []).find((entry) => entry.id === id)?.label || id;
+      setPreflight({ at: Date.now(), shortfalls: [], note: `Chưa kiểm tra trước được: lịch dùng nguồn ${label(form.destinationId)}, đang mở nguồn ${label(currentDestinationId)}. Mở nguồn ${label(form.destinationId)} trong Cài đặt rồi lưu lại lịch để kiểm tra mẫu có tạo đủ list.` });
+    } else {
+      setBusy(true); setMessage(`Đang chạy thử ${form.templates.length} mẫu (không lưu gì); lịch nhiều mẫu có thể mất khoảng ${Math.max(5, Math.round(form.templates.length * 1.2))} giây...`);
+      let shortfalls = [];
+      try {
+        const response = await apiFetch('/api/automation/preflight', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ destinationId: form.destinationId, templates: form.templates }), signal: AbortSignal.timeout(180000) });
+        const result = response.ok ? await response.json() : null;
+        if (result?.checked) {
+          shortfalls = (result.templates || []).filter((entry) => entry.checked && entry.possible < entry.requested);
+          setPreflight({ at: Date.now(), shortfalls });
+        } else if (result?.reason) setPreflight({ at: Date.now(), shortfalls: [], note: `Chưa kiểm tra trước được: ${result.reason}` });
+      } catch { /* Backend cũ hoặc kiểm tra lỗi: vẫn cho lưu như trước. */ }
+      finally { setBusy(false); setMessage(''); }
+      if (shortfalls.length) {
+        const lines = shortfalls.map((entry) => `• ${entry.navTitle || templateLabel(entry.deckId)}: chạy thử chỉ tạo được ${entry.possible}/${entry.requested} list. ${entry.reason || ''}`.trim()).join('\n');
+        const accepted = await studioConfirm({ title: 'Một số mẫu có thể không tạo đủ list', message: `${lines}\n\nLượt chạy vẫn tạo các mẫu khác; mẫu thiếu sẽ được ghi rõ trong lịch sử. Bổ sung đối tác/ảnh rồi lưu lại để chắc chắn.`,
+          confirmLabel: 'Vẫn lưu lịch', cancelLabel: 'Quay lại sửa' });
+        if (!accepted) { setMessage('Chưa lưu lịch. Xem các mẫu được cảnh báo bên dưới.'); return; }
+      }
+    }
     const body = {
       name: form.name, destinationId: form.destinationId, frequency: form.frequency,
       ...(form.frequency === 'once' ? { onceAt: new Date(`${form.onceAt}:00+07:00`).toISOString() } : { dailyTime: form.dailyTime }),
-      format: form.format, outputDir: form.outputDir, outputFileName: form.outputFileName, templates: form.templates,
+      format: form.format, outputDir: form.outputDir, outputFileName: form.outputFileName,
+      templates: form.templates.map(({ requiredPartners, ...entry }) => (requiredPartners?.length && templateSupportsPartners(entry.deckId) ? { ...entry, requiredPartners } : entry)),
       hook: { mode: form.hookMode, ...(form.hookMode === 'festival' ? { sourceId: form.sourceId } : {}) },
       enabled: true,
+      catchUp: form.catchUp !== false,
     };
     const wasEditing = Boolean(editingId);
     try {
@@ -269,7 +327,9 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
       outputPath: schedule.outputFileName ? `${schedule.outputDir}\\${schedule.outputFileName}` : schedule.outputDir,
       hookMode: schedule.hook?.mode || 'normal', sourceId: schedule.hook?.sourceId || '',
       templates: (schedule.templates || []).map((entry) => ({ ...entry })),
+      catchUp: Boolean(schedule.catchUp),
     });
+    setPreflight(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -292,15 +352,16 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
         <span className={`automation-browser ${state.browserAvailable ? 'ready' : ''}`}>{state.browserAvailable ? `${state.browserName} sẵn sàng` : 'Thiếu Chrome/Edge'}</span>
       </header>
 
-      <nav className="studio-workflow-steps" aria-label="Quản lý hẹn giờ">{[['create','Tạo / sửa lịch'],['saved','Lịch đã lưu'],['history','Hàng đợi & lịch sử']].map(([id,label])=><button key={id} type="button" aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}>{label}</button>)}</nav>
+      <StepTabs ariaLabel="Quản lý hẹn giờ" pillId="scheduler-tab-pill" activeId={section} items={[['create','Tạo / sửa lịch'],['saved','Lịch đã lưu'],['history','Hàng đợi & lịch sử']].map(([id,label])=>({id,label,onClick:()=>setSection(id)}))} />
       {message && <p role="status">{message}</p>}
       <form className="automation-form" style={section==='create'?undefined:{display:'none'}} onSubmit={save}>
         <label><span>Tên lịch</span><input required minLength="2" maxLength="80" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ví dụ: Bài sáng Đà Lạt" /></label>
         <label><span>Destination</span><select value={form.destinationId} onChange={(e) => setForm({ ...form, destinationId: e.target.value, hookMode: 'normal', sourceId: '', templates: [] })}>{(destinations || []).map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select></label>
         <label><span>Kiểu lịch</span><select value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })}><option value="once">Chạy một lần</option><option value="daily">Lặp hằng ngày</option></select></label>
         {form.frequency === 'once' ? <label><span>Ngày giờ bắt đầu</span><input required type="datetime-local" value={form.onceAt} onChange={(e) => setForm({ ...form, onceAt: e.target.value })} /></label> : <label><span>Giờ bắt đầu mỗi ngày</span><input required type="time" value={form.dailyTime} onChange={(e) => setForm({ ...form, dailyTime: e.target.value })} /></label>}
+        <label className="automation-checkbox"><input type="checkbox" checked={form.catchUp !== false} onChange={(e) => setForm({ ...form, catchUp: e.target.checked })} /><span>Chạy bù khi lỡ giờ<small>Nếu đúng giờ hẹn tool đang tắt hoặc máy đang ngủ, lượt sẽ tự chạy khi mở lại tool trong vòng 6 tiếng thay vì bị bỏ qua.</small></span></label>
         <label className="automation-output"><span>File ZIP sẽ lưu</span><div><output title={form.outputPath}>{form.outputPath || 'Chưa chọn file ZIP'}</output><button type="button" onClick={chooseDirectory} disabled={busy || !outputPickerReady}>{outputPickerReady ? 'Chọn file ZIP' : 'Cần chạy lại start.bat'}</button></div><small>{outputPickerReady ? 'Windows sẽ mở hộp thoại để chọn thư mục và tên file. Mỗi lượt được đặt trong thư mục riêng nên không ghi đè lượt cũ.' : 'Frontend đang nối với backend cũ. Hãy đóng tool và chạy lại start.bat; tải lại trang không đủ để cập nhật backend.'}</small></label>
-        <label><span>Định dạng ảnh</span><select value={form.format} onChange={e => setForm({ ...form, format: e.target.value })}><option value="png">PNG</option><option value="jpg">JPG</option></select></label>
+        <label><span>Định dạng ảnh</span><select value={form.format} onChange={e => setForm({ ...form, format: e.target.value })}><option value="png">PNG</option><option value="jpg">JPG</option></select>{form.format === 'png' && total > 16 ? <small className="automation-hint">PNG nặng (~30–40 MB/list): lịch {total} list sẽ được chia thành nhiều file ZIP. Nên dùng JPG (~7 MB/list) cho lịch lớn.</small> : null}</label>
         <label><span>Hook của lịch</span><select value={form.hookMode} onChange={(e) => setForm({ ...form, hookMode: e.target.value, sourceId: '' })}><option value="normal">Hook thường</option>{isDalatSource(form.destinationId) ? <option value="festival">Hook lễ đã lưu</option> : null}</select></label>
         {form.hookMode === 'festival' ? <label><span>Nguồn Hook lễ</span><select required value={form.sourceId} onChange={(e) => setForm({ ...form, sourceId: e.target.value })}><option value="">Chọn nguồn</option>{festivalSources.map((source) => <option key={source.id} value={source.id}>{source.name} ({source.hookCount})</option>)}</select></label> : null}
 
@@ -309,24 +370,44 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
           <p>Mỗi mẫu tạo riêng {minListsPerTemplate}–{maxListsPerTemplate} list; không giới hạn tổng ở 5. Mẫu dùng hook cố định/chủ đề vẫn giữ hook riêng.</p>
           <div className="automation-template-grid">{decks.map((deck) => {
             const selected = form.templates.find((entry) => entry.deckId === deck.id);
-            return <label key={deck.id} className={selected ? 'selected' : ''}><input type="checkbox" checked={Boolean(selected)} onChange={(e) => toggleTemplate(deck.id, e.target.checked)} /><span>{deck.navTitle || deck.title}</span>{selected ? <input aria-label={`Số list ${deck.navTitle}`} type="number" min={minListsPerTemplate} max={maxListsPerTemplate} value={selected.count} onChange={(e) => setTemplateCount(deck.id, e.target.value)} /> : null}{selected&&supportsPhotoPreset(deck.id)?<select aria-label={`Bảng màu ${deck.navTitle}`} value={selected.photoPreset||''} disabled={busy||state.locked} onChange={e=>setForm(current=>({...current,templates:current.templates.map(entry=>entry.deckId===deck.id?{...entry,photoPreset:e.target.value||null}:entry)}))}>{photoPresets.map(p=><option key={p.id||'original'} value={p.id||''}>{p.label}</option>)}</select>:null}</label>;
+            const cover = deckCover(deck);
+            return <label key={deck.id} className={selected ? 'selected' : ''}><input type="checkbox" checked={Boolean(selected)} onChange={(e) => toggleTemplate(deck.id, e.target.checked)} /><i className="automation-template-thumb" aria-hidden="true">{cover ? <img src={cover} alt="" loading="lazy" decoding="async" draggable="false" /> : null}</i><span>{deck.navTitle || deck.title}</span>{selected ? <input aria-label={`Số list ${deck.navTitle}`} type="number" min={minListsPerTemplate} max={maxListsPerTemplate} value={selected.count} onChange={(e) => setTemplateCount(deck.id, e.target.value)} /> : null}{selected&&supportsPhotoPreset(deck.id)?<select aria-label={`Bảng màu ${deck.navTitle}`} value={selected.photoPreset||''} disabled={busy||state.locked} onChange={e=>setForm(current=>({...current,templates:current.templates.map(entry=>entry.deckId===deck.id?{...entry,photoPreset:e.target.value||null}:entry)}))}>{photoPresets.map(p=><option key={p.id||'original'} value={p.id||''}>{p.label}</option>)}</select>:null}</label>;
           })}</div>
+          {form.templates.some((entry) => templateSupportsPartners(entry.deckId)) ? <div className="automation-required-partners">
+            <strong>Đối tác bắt buộc theo mẫu</strong>
+            <p>Đối tác chọn ở đây có mặt trong mọi list của mẫu đó. Không chọn thì tool tự xoay vòng như cũ. Nếu mẫu không xếp được, lượt đó báo lỗi và không tạo thiếu.</p>
+            {form.templates.filter((entry) => templateSupportsPartners(entry.deckId)).map((entry) => <div key={entry.deckId} className="automation-required-row">
+              <span>{templateLabel(entry.deckId)}</span>
+              <RequiredPartnerPicker compact partners={form.destinationId === currentDestinationId ? partners : []} value={entry.requiredPartners || []}
+                unavailableNote={form.destinationId === currentDestinationId ? '' : 'Lịch này dùng nguồn khác nguồn đang mở. Hãy chuyển sang nguồn đó để chọn thêm đối tác; vẫn có thể bỏ đối tác đã chọn.'}
+                eligibility={form.destinationId === currentDestinationId ? partnerEligibility[`${currentDestinationId}:${entry.deckId}`] : undefined}
+                onOpen={() => { if (form.destinationId === currentDestinationId) onNeedPartnerEligibility?.(entry.deckId); }}
+                disabled={busy || state.locked} onChange={(names) => setTemplatePartners(entry.deckId, names)} />
+            </div>)}
+          </div> : null}
         </div>
+        {preflight?.note ? <p className="automation-preflight-note" role="status">{preflight.note}</p> : null}
+        {preflight?.shortfalls?.length ? <div className="automation-preflight" role="status"><strong>Chạy thử: {preflight.shortfalls.length} mẫu có thể không tạo đủ list</strong>
+          {preflight.shortfalls.map((entry) => <small key={entry.deckId}><b>{entry.navTitle || templateLabel(entry.deckId)}</b> — tạo được {entry.possible}/{entry.requested}. {entry.reason}</small>)}</div> : null}
         <div className="automation-form-actions"><button className="toolbar-button primary" disabled={Boolean(saveDisabledReason)} title={saveDisabledReason} aria-busy={busy} type="submit">{busy ? 'Đang lưu...' : editingId ? 'Lưu chỉnh sửa' : 'Tạo lịch'}</button>{!form.outputDir ? <button type="button" onClick={chooseDirectory} disabled={busy || !outputPickerReady}>Chọn file ZIP</button> : null}{editingId ? <button type="button" onClick={() => { setEditingId(''); setForm(blankForm(currentDestinationId)); }}>Hủy sửa</button> : null}<span>{message || saveDisabledReason}</span></div>
       </form>
 
       <div className="automation-list" hidden={section!=='saved'}>
         <h3>Lịch đã lưu</h3>
         {state.schedules.length ? state.schedules.map((schedule) => <article key={schedule.id}>
-          <div><strong>{schedule.name}</strong><small>{(destinations || []).find(entry => entry.id === schedule.destinationId)?.label || schedule.destinationId} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small>{schedule.disabledReason ? <small role="status">{schedule.disabledReason}</small> : null}</div>
+          <div><strong>{schedule.name}</strong><small>{(destinations || []).find(entry => entry.id === schedule.destinationId)?.label || schedule.destinationId} · {schedule.templates.map((entry) => `${templateLabel(entry.deckId)} ×${entry.count}${entry.requiredPartners?.length ? ` (đối tác: ${entry.requiredPartners.join(', ')})` : ''}`).join(', ')}</small><small>Lần tới: {schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Đang tắt'} · {schedule.outputDir}{schedule.outputFileName ? `\\${schedule.outputFileName}` : ''}</small>{schedule.disabledReason ? <small role="status">{schedule.disabledReason}</small> : null}</div>
           <div className="automation-row-actions"><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/run-now`, { method: 'POST' })} disabled={busy || state.locked}>Chạy ngay</button><button onClick={() => edit(schedule)} disabled={busy || state.activeRunId && state.runs.find((run) => run.id === state.activeRunId)?.scheduleId === schedule.id}>Sửa</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}/enabled`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !schedule.enabled }) })} disabled={busy}>{schedule.enabled ? 'Tắt' : 'Bật'}</button><button onClick={() => mutate(`/api/automation/schedules/${schedule.id}`, { method: 'DELETE' })} disabled={busy}>Xóa</button></div>
-        </article>) : <p className="automation-empty">Chưa có lịch tự động.</p>}
+        </article>) : <EmptyState icon="calendar" title="Chưa có lịch tự động" className="automation-empty" action={<button type="button" className="toolbar-button primary" onClick={()=>setSection('create')}>Tạo lịch</button>}>Lịch đã lưu sẽ tự tạo list và xuất ZIP đúng giờ khi tool đang mở.</EmptyState>}
       </div>
 
       <div className="automation-list automation-history" hidden={section!=='history'}>
         <h3>Lịch sử chạy</h3>
         {state.runs.length ? state.runs.map((run) => <article key={run.id}>
-          <div><strong>{run.scheduleName} — {STATUS_LABELS[run.status] || run.status}</strong><small>{new Date(run.scheduledFor).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {run.listIds.length} list</small><small>{run.phase}</small>{run.ai ? <small>AI: {run.ai.provider} · {run.ai.model}</small> : null}{run.outputPath ? <small className="automation-path">{run.outputPath}</small> : null}
+          <div><strong>{run.scheduleName} — {STATUS_LABELS[run.status] || run.status}</strong><small>{new Date(run.scheduledFor).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · {run.listIds.length} list</small><small>{run.phase}</small>{run.ai ? <small>AI: {run.ai.provider} · {run.ai.model}</small> : null}{run.outputPaths?.length > 1 ? <details><summary>{run.outputPaths.length} file ZIP</summary>{run.outputPaths.map((file) => <small key={file} className="automation-path">{file}</small>)}</details>
+              : run.outputPath ? <small className="automation-path">{run.outputPath}</small> : null}
+            {run.errors?.length > 0 && <details><summary>{run.errors.length} lỗi khi tạo/xuất</summary>
+              {run.errors.map((error, index) => <small key={index} style={{ overflowWrap: 'anywhere' }}>{error.deckId ? <b>{templateLabel(error.deckId)}{typeof error.requested === 'number' ? ` (tạo ${error.completed || 0}/${error.requested})` : ''}: </b> : null}{error.message}</small>)}
+            </details>}
             {run.skippedLists?.length > 0 && <details><summary>{run.skippedLists.length} list bị bỏ qua (đối tác, dữ liệu hoặc ảnh)</summary>
               {run.skippedLists.map(list => <div key={`${list.deckId}/${list.listId}`}><strong>{list.label || list.listId}</strong>
                 {(list.errors || []).map((error, index) => <small key={index} style={{ overflowWrap: 'anywhere' }}>{error.page ? `Trang ${error.page} · ` : ''}{error.id || ''}: {error.reason}</small>)}
@@ -338,14 +419,14 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
           </div>
           <div className="automation-run-progress"><span style={{ width: `${run.progress || 0}%` }} /></div>
           {!['queued','refreshing','warming','generating','awaiting-export','exporting'].includes(run.status) ? (
-            <div className="automation-row-actions"><button type="button" disabled={busy || state.activeRunId === run.id} onClick={() => {
-              if (window.confirm(`Xóa lịch sử lượt "${run.scheduleName}"? Chỉ xóa bản ghi này, không xóa list đã tạo, file ZIP hoặc lịch hẹn.`)) {
+            <div className="automation-row-actions"><button type="button" disabled={busy || state.activeRunId === run.id} onClick={async () => {
+              if (await studioConfirm({ title: 'Xóa lịch sử lượt chạy?', message: `Xóa lịch sử lượt "${run.scheduleName}"? Chỉ xóa bản ghi này, không xóa list đã tạo, file ZIP hoặc lịch hẹn.`, confirmLabel: 'Xóa lịch sử', tone: 'danger' })) {
                 mutate(`/api/automation/runs/${encodeURIComponent(run.id)}`, { method: 'DELETE' });
               }
             }}>Xóa lịch sử</button></div>
           ) : null}
           <div className="automation-row-actions">{['queued','refreshing','warming','generating','awaiting-export','exporting'].includes(run.status) ? <button onClick={() => mutate(`/api/automation/runs/${run.id}/cancel`, { method: 'POST' })}>Hủy lượt</button> : null}{['partial','failed','cancelled','interrupted'].includes(run.status) ? <button onClick={() => mutate(`/api/automation/runs/${run.id}/retry`, { method: 'POST' })} disabled={busy || state.locked}>Thử lại lỗi</button> : null}</div>
-        </article>) : <p className="automation-empty">Chưa có lượt chạy.</p>}
+        </article>) : <EmptyState icon="calendar" title="Chưa có lượt chạy" className="automation-empty">Lượt chạy theo lịch hoặc yêu cầu xếp hàng sẽ hiện ở đây kèm tiến độ.</EmptyState>}
       </div>
     </section>
   );

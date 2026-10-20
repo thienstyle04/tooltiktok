@@ -3,10 +3,8 @@
 
 export const GENERIC_CAPTION_BODY = 'Lưu list này để có lịch đi Đà Lạt gọn hơn, dễ chọn điểm theo buổi và đỡ mất thời gian mò từng nơi.';
 export const SPOTLIGHT_PARTNER_DECK_ID = 'spotlight-partner';
-export const BUILTIN_DESTINATION_FALLBACKS = [
-  { id: 'dalat', label: 'Đà Lạt', shortLabel: 'ĐL' },
-  { id: 'greenland', label: 'Green Land', shortLabel: 'GL' },
-];
+// Không còn nguồn dựng sẵn ở giao diện: danh sách nguồn luôn lấy từ máy (máy mới có 0 nguồn).
+export const BUILTIN_DESTINATION_FALLBACKS = [];
 
 export function mergeDestinations(...lists) {
   const merged = new Map();

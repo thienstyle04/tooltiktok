@@ -77,6 +77,17 @@ assert.ok(venueSections.includes('hoat_dong'));
 assert.ok(venueSections.includes('check_in'));
 assert.equal(new Set(venuePages.map((page) => page.type === 'list' ? page.items[0]?.sourceKey : '')).size, 5);
 
+// One partner among 19 Tone đen venues, already used by the previous list: every build must still
+// contain it (each list needs ≥ 1 partner; random 5/19 used to leave it out and the list failed).
+const partnerItems = { ...itemsBySection, check_in: itemsBySection.check_in.map((item, index) => index === 4 ? { ...item, isPartner: true, partnerFlag: 'x' } : item) };
+const partnerKey = `${partnerItems.check_in[4].id}`;
+for (let seed = 0; seed < 12; seed += 1) {
+  const partnerPages = buildSpotlightV6DarkPages({ ...common, itemsBySection: partnerItems, globalUsedItemIds: new Set([partnerKey]), globalUsedImageUrls: new Set() },
+    `dark-partner-${seed}`, { destinationId: 'dalat', hooks: ['Hook tối'] });
+  const partners = partnerPages.filter((page) => page.layoutVariant === 'spotlight-v6-page' && page.type === 'list' && page.items[0]?.isPartner);
+  assert.equal(partners.length, 1, `Tone đen list ${seed} must include the only partner`);
+}
+
 assert.throws(
   () => buildSpotlightV6DarkPages({ ...common, hinhNenImagePools: { ...common.hinhNenImagePools, dark: dark.slice(0, 5) } }, 'short-images', { destinationId: 'dalat', hooks: ['Hook tối'] }),
   /5\/6/,

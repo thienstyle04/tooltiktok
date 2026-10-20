@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import AiSettingsPanel from './AiSettingsPanel';
+import AddSourceForm from './AddSourceForm';
+import { studioConfirm } from './ui/confirmDialog';
+import FilePicker from './ui/FilePicker';
+import SectionNav from './ui/SectionNav';
 import { syncStatusLabel } from '../lib/syncStatusLabel.mjs';
 
 function formatCount(count) {
@@ -30,6 +34,11 @@ function formatHookDate(value) {
   return Number.isNaN(date.getTime()) ? 'Chưa tải' : date.toLocaleString('vi-VN');
 }
 
+const SETTINGS_SECTIONS = {
+  sources: ['settings-add-source', 'settings-sources', 'settings-active-source'],
+  advanced: ['settings-ai', 'settings-night-sync', 'settings-hooks', 'settings-cache'],
+};
+
 export default function SettingsPanel({
   activeDestinationId,
   destinations,
@@ -40,6 +49,7 @@ export default function SettingsPanel({
   onAddDestination,
   onReplaceDestinationWorkbook,
   onRefreshFromSheet,
+  onUpdateSheetLink,
   hookSourcesInfo,
   hookSourcesBusy,
   onCreateHookSource,
@@ -47,12 +57,13 @@ export default function SettingsPanel({
   onRefreshHookSource,
   onDeleteHookSource,
   onChangeHookMode,
+  section = null,
 }) {
-  const [newSourceName, setNewSourceName] = useState('');
-  const [newSourceUrl, setNewSourceUrl] = useState('');
-  const [newSourceFile, setNewSourceFile] = useState(null);
-  const [addError, setAddError] = useState('');
-  const [adding, setAdding] = useState(false);
+  // V2 chia Cài đặt thành 2 tab; Classic (section = null) vẫn hiện đủ mọi thẻ như cũ.
+  const show = id => !section || SETTINGS_SECTIONS[section]?.includes(id);
+  const [linkDraft, setLinkDraft] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [linkSaving, setLinkSaving] = useState(false);
   const [replaceFile, setReplaceFile] = useState(null);
   const [replaceError, setReplaceError] = useState('');
   const [replacing, setReplacing] = useState(false);
@@ -97,25 +108,22 @@ export default function SettingsPanel({
     setReplaceFile(null);
     setReplaceError('');
     setRefreshError('');
+    setLinkDraft('');
+    setLinkError('');
   }, [activeDestinationId]);
 
-  const submitNewSource = async (event) => {
+  const submitSheetLink = async (event) => {
     event.preventDefault();
-    setAddError('');
-    setAdding(true);
+    if (!activeDestination?.id || !linkDraft.trim()) return;
+    setLinkError('');
+    setLinkSaving(true);
     try {
-      await onAddDestination({
-        label: newSourceName.trim(),
-        sheetUrl: newSourceUrl.trim(),
-        file: newSourceFile,
-      });
-      setNewSourceName('');
-      setNewSourceUrl('');
-      setNewSourceFile(null);
+      await onUpdateSheetLink(activeDestination.id, linkDraft.trim());
+      setLinkDraft('');
     } catch (error) {
-      setAddError(error?.message || 'Không thể thêm nguồn XLSX.');
+      setLinkError(error?.message || 'Không lưu được link Google Sheet.');
     } finally {
-      setAdding(false);
+      setLinkSaving(false);
     }
   };
 
@@ -198,10 +206,19 @@ export default function SettingsPanel({
           {cacheReady ? 'Hệ thống sẵn sàng' : 'Đang đồng bộ'}
         </span>
       </header>
-      <AiSettingsPanel />
+      <SectionNav ariaLabel="Mục trong cài đặt" sections={[
+        { id: 'settings-ai', label: 'Nhà cung cấp AI' },
+        { id: 'settings-night-sync', label: 'Đồng bộ' },
+        { id: 'settings-add-source', label: 'Thêm nguồn' },
+        { id: 'settings-sources', label: 'Danh sách nguồn' },
+        { id: 'settings-hooks', label: 'Hook' },
+        { id: 'settings-cache', label: 'Cache ảnh' },
+        { id: 'settings-active-source', label: 'Nguồn đang dùng' },
+      ].filter(item => show(item.id))} />
+      {show('settings-ai') ? <AiSettingsPanel /> : null}
 
       <div className="settings-grid">
-        <article className="settings-card settings-night-sync-card">
+        {show('settings-night-sync') ? <article id="settings-night-sync" tabIndex={-1} className="settings-card settings-night-sync-card">
           <h3>Đồng bộ dữ liệu</h3>
           <p>Các nguồn được cập nhật lần lượt. Tạo và xuất list sử dụng cache cục bộ; đồng bộ chờ khi có tác vụ đang chạy.</p>
           {nightSync ? <>
@@ -227,64 +244,19 @@ export default function SettingsPanel({
               }}>Đã đọc báo cáo</button>
             </div>}
           </> : <p>Đang lấy trạng thái đồng bộ…</p>}
-        </article>
-        <article className="settings-card settings-add-source-card">
+        </article> : null}
+        {show('settings-add-source') ? <article id="settings-add-source" tabIndex={-1} className="settings-card settings-add-source-card">
           <div>
             <p className="panel-kicker">Thêm nguồn mới</p>
-            <h3>Nhập workbook XLSX</h3>
+            <h3>Link Google Sheet hoặc file XLSX</h3>
             <p className="settings-help">
-              Mỗi nguồn mới cần tên hiển thị và file workbook. Link Google Sheet là tùy chọn để dùng làm dự phòng khi cần tải mới.
+              Link Sheet chỉ lưu trên máy này. Chọn Thường hoặc Threads và cho biết nội dung có phải về Đà Lạt không để tool mở đúng mẫu.
             </p>
           </div>
-          <form className="settings-source-form" onSubmit={submitNewSource}>
-            <label>
-              <span>Tên hiển thị</span>
-              <input
-                type="text"
-                value={newSourceName}
-                onChange={(event) => setNewSourceName(event.target.value)}
-                placeholder="Ví dụ: Nha Trang"
-                minLength={2}
-                maxLength={60}
-                disabled={busy || adding}
-                required
-              />
-            </label>
-            <label>
-              <span>File XLSX</span>
-              <input
-                type="file"
-                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                disabled={busy || adding}
-                required
-                onChange={(event) => setNewSourceFile(event.target.files?.[0] || null)}
-              />
-            </label>
-            <label>
-              <span>Link Google Sheet dự phòng</span>
-              <input
-                type="url"
-                value={newSourceUrl}
-                onChange={(event) => setNewSourceUrl(event.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/..."
-                disabled={busy || adding}
-              />
-            </label>
-            <button
-              type="submit"
-              className="toolbar-button primary settings-add-button"
-              disabled={busy || adding || !newSourceName.trim() || !newSourceFile}
-            >
-              {adding ? 'Đang kiểm tra workbook...' : 'Thêm và sử dụng'}
-            </button>
-          </form>
-          {addError ? <p className="settings-form-error" role="alert">{addError}</p> : null}
-          <p className="settings-form-note">
-            Chỉ nhận workbook hợp lệ tối đa 20 MB. Link dự phòng có thể để trống nếu bạn chỉ muốn dùng file cục bộ.
-          </p>
-        </article>
+          <AddSourceForm busy={busy} onSubmit={onAddDestination} />
+        </article> : null}
 
-        <article className="settings-card settings-source-card">
+        {show('settings-sources') ? <article id="settings-sources" tabIndex={-1} className="settings-card settings-source-card">
           <div className="settings-card-head">
             <div>
               <p className="panel-kicker">Nguồn dữ liệu</p>
@@ -335,9 +307,9 @@ export default function SettingsPanel({
               );
             })}
           </div>
-        </article>
+        </article> : null}
 
-        <article className={`settings-card settings-hook-card${hookAvailable ? '' : ' is-disabled'}`}>
+        {show('settings-hooks') ? <article id="settings-hooks" tabIndex={-1} className={`settings-card settings-hook-card${hookAvailable ? '' : ' is-disabled'}`}>
           <div className="settings-card-head">
             <div>
               <p className="panel-kicker">Nguồn Hook</p>
@@ -353,7 +325,7 @@ export default function SettingsPanel({
 
           {!hookAvailable ? (
             <p className="settings-hook-lock">
-              Green Land luôn dùng Hook thường. Chuyển sang nguồn Đà Lạt để quản lý và bật Hook lễ.
+              Nguồn này không phải nội dung Đà Lạt nên luôn dùng Hook thường. Chuyển sang nguồn có nội dung Đà Lạt để quản lý và bật Hook lễ.
             </p>
           ) : null}
 
@@ -395,8 +367,8 @@ export default function SettingsPanel({
             </label>
             <label>
               <span>Hoặc file DOCX/TXT</span>
-              <input
-                type="file"
+              <FilePicker
+                file={newHookFile}
                 accept=".docx,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 disabled={!hookAvailable || hookSourcesBusy || Boolean(newHookUrl.trim())}
                 onChange={(event) => setNewHookFile(event.target.files?.[0] || null)}
@@ -451,8 +423,8 @@ export default function SettingsPanel({
                     <>
                       <label className="settings-hook-replace">
                         <span>File mới</span>
-                        <input
-                          type="file"
+                        <FilePicker
+                          file={replacementFiles[source.id]}
                           accept=".docx,.txt"
                           disabled={!hookAvailable || hookSourcesBusy}
                           onChange={(event) => setReplacementFiles((previous) => ({
@@ -475,8 +447,8 @@ export default function SettingsPanel({
                     type="button"
                     className="toolbar-button secondary settings-hook-delete"
                     disabled={!hookAvailable || hookSourcesBusy || source.active}
-                    onClick={() => {
-                      if (window.confirm(`Xóa bộ Hook “${source.name}”? List cũ sẽ vẫn được giữ nguyên.`)) {
+                    onClick={async () => {
+                      if (await studioConfirm({ title: 'Xóa bộ Hook?', message: `Xóa bộ Hook “${source.name}”? List cũ sẽ vẫn được giữ nguyên.`, confirmLabel: 'Xóa bộ Hook', tone: 'danger' })) {
                         runHookAction(() => onDeleteHookSource(source.id));
                       }
                     }}
@@ -490,9 +462,9 @@ export default function SettingsPanel({
             )}
           </div>
           {hookError ? <p className="settings-form-error" role="alert">{hookError}</p> : null}
-        </article>
+        </article> : null}
 
-        <article className="settings-card">
+        {show('settings-cache') ? <article id="settings-cache" tabIndex={-1} className="settings-card settings-cache-card">
           <div className="settings-card-head">
             <div>
               <p className="panel-kicker">Bộ nhớ ảnh</p>
@@ -526,9 +498,9 @@ export default function SettingsPanel({
           <p className="settings-help">
             Thống kê ảnh của nguồn đang chọn từ chỉ mục và cache trên máy, không phải tiến độ cập nhật. Ảnh thiếu cần được tải qua đồng bộ; không tự thay ảnh của list đã lưu.
           </p>
-        </article>
+        </article> : null}
 
-        <article className="settings-card settings-sync-card">
+        {show('settings-active-source') ? <article id="settings-active-source" tabIndex={-1} className="settings-card settings-sync-card">
           <div>
             <p className="panel-kicker">Nguồn đang dùng</p>
             <h3>{activeDestination?.label || 'Chưa có nguồn'}</h3>
@@ -555,14 +527,30 @@ export default function SettingsPanel({
               ) : (
                 <p>Chưa cấu hình Google Sheet dự phòng.</p>
               )}
+              {activeDestination && onUpdateSheetLink ? (
+                <form className="settings-link-form" onSubmit={submitSheetLink}>
+                  <input
+                    type="url"
+                    value={linkDraft}
+                    onChange={(event) => setLinkDraft(event.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    aria-label={`Link Google Sheet mới cho ${activeDestination.label}`}
+                    disabled={busy || linkSaving}
+                  />
+                  <button type="submit" className="toolbar-button secondary" disabled={busy || linkSaving || !linkDraft.trim()}>
+                    {linkSaving ? 'Đang lưu...' : activeSheetUrl ? 'Đổi link Sheet' : 'Lưu link Sheet'}
+                  </button>
+                </form>
+              ) : null}
+              {linkError ? <p className="settings-form-error" role="alert">{linkError}</p> : null}
             </div>
 
             <form className="settings-replace-form" onSubmit={submitReplaceWorkbook}>
               <label className="settings-file-picker">
                 <span>File XLSX mới</span>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                <FilePicker
+                  file={replaceFile}
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   disabled={busy || replacing || !activeDestination}
                   onChange={(event) => setReplaceFile(event.target.files?.[0] || null)}
                 />
@@ -597,7 +585,7 @@ export default function SettingsPanel({
             {replaceError ? <p className="settings-form-error" role="alert">{replaceError}</p> : null}
             {refreshError ? <p className="settings-form-error" role="alert">{refreshError}</p> : null}
           </div>
-        </article>
+        </article> : null}
       </div>
     </section>
   );

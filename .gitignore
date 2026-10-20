@@ -14,6 +14,7 @@ dev-log*.txt
 backend/src/modules/guide/tools/export-quality-test-output/
 backend/data/drive-file-cache/
 backend/data/photo-preset-cache/
+backend/data/drive-file-cache-thumbs/
 backend/data/migration-backups/
 backend/data/threads-source-migration*.json
 backend/data/drive-file-cache-sim-*/

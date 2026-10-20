@@ -3,7 +3,14 @@
  * Chạy: npx ts-node --transpile-only src/modules/guide/tools/audit-all-destinations-sheet-coverage.ts
  */
 import * as XLSX from 'xlsx';
-import { DESTINATION_LIST, DestinationId } from '../sync/destination-config';
+import * as path from 'node:path';
+import { getDestinationList, DestinationId } from '../sync/destination-config';
+import { applySourceLinks } from '../sync/source-links';
+
+// Link Sheet lấy từ cấu hình của máy (backend/data/source-links.json), không nằm trong code.
+const BACKEND_ROOT = path.resolve(__dirname, '../../../..');
+applySourceLinks(process.env.DALAT_DATA_DIR || path.join(BACKEND_ROOT, 'data'), BACKEND_ROOT);
+const DESTINATION_LIST = getDestinationList();
 import { fetchWorkbookFromSheet } from '../sync/workbook-source';
 import { resolveSectionKeyFromSheetName } from '../sync/sheet-section';
 import { resolveDriveLinkToEntries } from '../sync/drive-images';

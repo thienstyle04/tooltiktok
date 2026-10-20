@@ -14,12 +14,17 @@ const browser = await chromium.launch({ headless: true, executablePath: `${proce
 const evidence = { originalSize: originalSize ?? null, destinationId: before.source.destinationId, checks: [] };
 try {
   const page = await browser.newPage({ viewport: { width: 600, height: 800 } });
+  // V2: mở list chính (mẫu mẹ) của một mẫu trong màn Duyệt & Xuất.
+  const openMainList = async deckId => {
+    await page.getByRole('navigation', { name: 'Điều hướng chính' }).getByRole('button', { name: /^Duyệt & Xuất/ }).click({ timeout: 60000 });
+    await page.getByRole('group', { name: 'Lọc trạng thái' }).getByRole('button', { name: /^Mẫu mẹ/ }).click();
+    await page.locator(`.v2-queue-item[data-deck-id="${deckId}"] > button`).first().click();
+    await page.locator('.v2-canvas article').waitFor({ timeout: 60000 });
+  };
   const openEditor = async () => {
     await page.goto(origin);
-    await page.getByRole('button', { name: '3 · Chỉnh sửa', exact: true }).click({ timeout: 60000 });
-    await page.locator('.studio-page-picker select').nth(0).selectOption(deck.id);
-    await page.locator('.studio-page-picker select').nth(1).selectOption(list.id);
-    await page.locator('.studio-page-picker-list button').first().click();
+    await openMainList(deck.id);
+    await page.locator('.v2-filmstrip button').first().click();
     await page.getByRole('button', { name: 'Chỉnh sửa nội dung', exact: true }).click();
   };
   await openEditor();

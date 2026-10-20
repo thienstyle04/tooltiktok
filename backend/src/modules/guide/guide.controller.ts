@@ -39,6 +39,8 @@ import {
   GenerateBatchListsResponse,
   DeleteGeneratedListsRequest,
   DeleteGeneratedListsResponse,
+  MarkListsExportedRequest,
+  MarkListsExportedResponse,
   GenerateCaptionDeckRequest,
   GenerateCaptionDeckResponse,
   GeneratePartnerSpotlightRequest,
@@ -53,6 +55,8 @@ import {
   UpdatePageTextRequest,
   UpdatePageTextResponse,
 } from '../../common/interfaces/guide.types';
+import type { PartnerEligibilityResponse } from './logic/required-partners';
+import type { DriveFileAsset } from './sync/drive-images';
 
 @Controller()
 export class GuideController {
@@ -206,6 +210,12 @@ export class GuideController {
     return this.guideService.replaceDestinationWorkbook(id, file);
   }
 
+  @Put('api/destinations/:id/sheet-link')
+  updateDestinationSheetLink(@Param('id') id: string, @Body() request: { sheetUrl?: string }): DestinationListResponse {
+    this.automationScheduler.assertUserMutationAllowed();
+    return this.guideService.updateDestinationSheetLink(id, request);
+  }
+
   @Post('api/destinations/:id/refresh-from-sheet')
   refreshDestinationFromSheet(@Param('id') id: string, @Query('background') background?: string) {
     if (background === '1') return this.guideService.startDestinationSync(id);
@@ -272,6 +282,11 @@ export class GuideController {
     return this.guideService.getPartnerList();
   }
 
+  @Get('api/partners/eligibility')
+  getPartnerEligibility(@Query('deckId') deckId: string): Promise<PartnerEligibilityResponse> {
+    return this.guideService.getPartnerEligibility(deckId);
+  }
+
   @Post('api/ai/deepseek/caption')
   generateDeepSeekCaption(@Body() request: DeepSeekCaptionRequest): Promise<DeepSeekCaptionResponse> {
     return this.guideService.generateDeepSeekCaption(request);
@@ -299,17 +314,24 @@ export class GuideController {
     return this.guideService.deleteGeneratedLists(request.groups || []);
   }
 
+  // Chỉ ghi mốc thời gian (không đổi nội dung list), nên vẫn cho phép khi lịch tự động đang chạy.
+  @Post('api/decks/mark-exported')
+  @HttpCode(200)
+  markListsExported(@Body() request: MarkListsExportedRequest): MarkListsExportedResponse {
+    return this.guideService.markListsExported(request?.groups || []);
+  }
+
   @Post('api/decks/generate-partner-spotlight')
   generatePartnerSpotlight(@Body() request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
     return this.enqueueSourceGeneration('spotlight-partner', () => this.guideService.generatePartnerSpotlight(request));
   }
 
   private enqueueSourceGeneration<T>(deckId: unknown, task: () => Promise<T>): Promise<T> {
-    const sourceId = this.guideService.getDestinations().active.id;
+    const sourceId = this.guideService.getDestinations().active?.id || '';
     this.guideService.assertTemplateAllowed(deckId, sourceId);
     this.automationScheduler.assertUserMutationAllowed();
     return this.guideService.enqueueGeneration(() => {
-      if (this.guideService.getDestinations().active.id !== sourceId) {
+      if ((this.guideService.getDestinations().active?.id || '') !== sourceId) {
         throw new BadRequestException('Nguồn dữ liệu đã thay đổi khi yêu cầu đang chờ. Hãy chọn lại đúng nguồn và tạo lại; không tự chuyển tác vụ sang nguồn khác.');
       }
       this.guideService.assertTemplateAllowed(deckId, sourceId);
@@ -386,6 +408,13 @@ export class GuideController {
     return this.automationScheduler.cancelManualGeneration(id);
   }
 
+  // Chạy thử khô các mẫu trước khi lưu lịch; chỉ đọc dữ liệu, không lưu gì.
+  @Post('api/automation/preflight')
+  @HttpCode(200)
+  preflightAutomationSchedule(@Body() request: { destinationId?: string; templates?: AutomationScheduleInput['templates'] }) {
+    return this.automationScheduler.preflight(request);
+  }
+
   @Post('api/automation/schedules')
   createAutomationSchedule(@Body() request: AutomationScheduleInput) {
     return this.automationScheduler.create(request);
@@ -446,14 +475,14 @@ export class GuideController {
   reportAutomationProgress(
     @Param('id') id: string,
     @Query('token') token: string,
-    @Body() request: { progress?: number; phase?: string; outcome?: any },
+    @Body() request: { progress?: number; phase?: string; outcome?: any; part?: number },
   ): void {
-    this.automationScheduler.reportProgress(id, token, Number(request?.progress), String(request?.phase || ''), request?.outcome);
+    this.automationScheduler.reportProgress(id, token, Number(request?.progress), String(request?.phase || ''), request?.outcome, request?.part);
   }
 
   @Post('api/automation/runs/:id/archive')
-  acceptAutomationArchive(@Param('id') id: string, @Query('token') token: string, @Req() request: any) {
-    return this.automationScheduler.acceptArchive(id, token, request);
+  acceptAutomationArchive(@Param('id') id: string, @Query('token') token: string, @Query('part') part: string, @Req() request: any) {
+    return this.automationScheduler.acceptArchive(id, token, request, part);
   }
 
   @Post('api/automation/runs/:id/export-failure')
@@ -461,9 +490,9 @@ export class GuideController {
   reportAutomationExportFailure(
     @Param('id') id: string,
     @Query('token') token: string,
-    @Body() request: { message?: string },
+    @Body() request: { message?: string; part?: number },
   ): void {
-    this.automationScheduler.reportExportFailure(id, token, String(request?.message || ''));
+    this.automationScheduler.reportExportFailure(id, token, String(request?.message || ''), request?.part);
   }
 
   @Get('assets/dalat/:fileName')
@@ -496,7 +525,16 @@ export class GuideController {
 
   @Get('assets/drive-file')
   async getDriveFileAssetFromQuery(@Query('id') fileId: string, @Res() response: any): Promise<void> {
-    const asset = await this.guideService.getDriveFileAsset(fileId);
+    this.sendDriveAsset(response, await this.guideService.getDriveFileAsset(fileId));
+  }
+
+  // Ảnh thu nhỏ cho thumbnail slide (thư viện mẫu, hàng chờ, dải trang); không dùng khi xuất.
+  @Get('assets/drive-thumb')
+  async getDriveThumbnailFromQuery(@Query('id') fileId: string, @Res() response: any): Promise<void> {
+    this.sendDriveAsset(response, await this.guideService.getDriveFileThumbnail(fileId));
+  }
+
+  private sendDriveAsset(response: any, asset: DriveFileAsset): void {
     response.setHeader('Content-Type', asset.contentType);
     response.setHeader('Content-Length', asset.contentLength);
     response.setHeader('Cache-Control', asset.isFallback

@@ -62,7 +62,9 @@ async function main() {
     const reloaded: any = app.get(GuideService);
     while (reloaded.destinationDataLoading) await new Promise(r => setTimeout(r, 50));
     const dataset = await reloaded.getDataset();
-    const saved = dataset.decks.find((d: any) => d.id === deck.id).lists.filter((l: any) => deck.lists.some((s: any) => s.id === l.id));
+    // Mẫu Color Edit riêng đã gộp vào preset ảnh: list cũ được chuyển (giữ ID) sang mẫu gốc V5/V6.
+    const migratedDeckId = deck.id.replace(/-color-edit$/, '');
+    const saved = dataset.decks.find((d: any) => d.id === migratedDeckId).lists.filter((l: any) => deck.lists.some((s: any) => s.id === l.id));
     assert.equal(saved.length, 4);
     saved.forEach((l: any) => { assert.equal(l.photoPreset, COLOR_EDIT_PRESET); assert(l.pages.every((p: any) => p.photoPreset === COLOR_EDIT_PRESET)); });
     const source = deck.lists[0].pages[0].backgroundImage;

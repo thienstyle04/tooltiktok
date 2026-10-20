@@ -2,9 +2,11 @@ export type AutomationFrequency = 'once' | 'daily';
 export type AutomationHookMode = 'normal' | 'festival';
 
 export interface AutomationTemplateRequest {
-  photoPreset?: 'iphone-color-edit-v1' | null;
+  photoPreset?: import('../../common/photo-preset-catalog').PhotoPresetId | null;
   deckId: string;
   count: number;
+  /** Tên đối tác phải có mặt trong mọi list của mẫu này (không áp dụng mẫu riêng). */
+  requiredPartners?: string[];
 }
 
 export interface AutomationScheduleInput {
@@ -17,6 +19,8 @@ export interface AutomationScheduleInput {
   outputFileName?: string;
   format?: 'png' | 'jpg';
   enabled?: boolean;
+  /** Tool tắt/máy ngủ đúng giờ: khi mở lại trong CATCH_UP_WINDOW thì chạy bù thay vì bỏ lượt. */
+  catchUp?: boolean;
   templates?: AutomationTemplateRequest[];
   hook?: { mode?: AutomationHookMode; sourceId?: string };
 }
@@ -33,6 +37,7 @@ export interface AutomationSchedule {
   outputFileName?: string;
   format?: 'png' | 'jpg';
   enabled: boolean;
+  catchUp?: boolean;
   templates: AutomationTemplateRequest[];
   hook: { mode: AutomationHookMode; sourceId?: string };
   createdAt: string;
@@ -62,6 +67,17 @@ export interface AutomationRunError {
   completed?: number;
 }
 
+/** Một phần ZIP của lượt xuất: lượt lớn được chia nhỏ để không dồn cả lượt vào một file trong bộ nhớ. */
+export interface AutomationExportPart {
+  index: number;
+  listIds: string[];
+  outcomeRecorded?: boolean;
+  exportedCount?: number;
+  outputPath?: string;
+  bytes?: number;
+  error?: string;
+}
+
 export interface AutomationRun {
   warnings?: Array<{ deckId: string; listId: string; message: string }>;
   ai?: { provider: 'deepseek' | 'gemini'; model: string };
@@ -88,6 +104,11 @@ export interface AutomationRun {
   startedAt?: string;
   completedAt?: string;
   outputPath?: string;
+  /** Các file ZIP đã lưu (lượt chia nhiều phần); outputPath khi đó là thư mục của lượt. */
+  outputPaths?: string[];
+  exportParts?: AutomationExportPart[];
+  /** Lượt chạy bù cho giờ hẹn đã lỡ. */
+  catchUp?: boolean;
   retryOf?: string;
   cancelRequested?: boolean;
   exportToken?: string;

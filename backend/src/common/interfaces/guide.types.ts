@@ -1,3 +1,4 @@
+import type { PhotoPresetId } from '../photo-preset-catalog';
 export type DestinationId = string;
 
 export interface DestinationSummary {
@@ -8,6 +9,7 @@ export interface DestinationSummary {
   sourceType: 'xlsx' | 'google-sheet';
   workbookFileName: string;
   contentDestinationId?: DestinationId;
+  kind?: 'standard' | 'threads';
   allowedDeckIds: string[];
   hasLocalWorkbook: boolean;
   hasSheetFallback: boolean;
@@ -16,7 +18,8 @@ export interface DestinationSummary {
 }
 
 export interface DestinationListResponse {
-  active: DestinationSummary;
+  /** null khi máy chưa có nguồn dữ liệu nào. */
+  active: DestinationSummary | null;
   destinations: DestinationSummary[];
 }
 
@@ -32,15 +35,24 @@ export interface SetDestinationResponse {
 export interface AddDestinationRequest {
   label: string;
   sheetUrl: string;
+  /** Thường hoặc Threads. Bỏ trống = nguồn kiểu cũ dùng chung dữ liệu gốc. */
+  kind?: 'standard' | 'threads';
+  /** Nội dung Đà Lạt: mở chữ/hook Đà Lạt và mẫu riêng Đà Lạt. */
+  dalatContent?: boolean | string;
 }
 
 export interface AddXlsxDestinationRequest {
   label: string;
   sheetUrl?: string;
+  kind?: 'standard' | 'threads';
+  dalatContent?: boolean | string;
 }
 
 export interface AddDestinationResponse extends SetDestinationResponse {
   destinations: DestinationSummary[];
+  /** Nguồn tách biệt vừa thêm: chưa có dữ liệu, giao diện chạy cập nhật đầu tiên rồi mới chuyển sang. */
+  created?: DestinationSummary;
+  needsFirstSync?: boolean;
 }
 
 export type HookMode = 'normal' | 'festival';
@@ -93,6 +105,8 @@ export interface HinhNenImageUrlPools {
   dark: string[];
   random: string[];
   persimmon?: string[];
+  'cherry-blossom'?: string[];
+  'cherry-blossom-random'?: string[];
 }
 
 export type AccentTone = 'terracotta' | 'gold' | 'pine' | 'berry' | 'slate';
@@ -117,6 +131,9 @@ export interface GuideItem {
   diaryDescriptionRaw?: string;
   /** Own Link_drive candidates only, excluding name-matched library fallbacks. */
   diaryImageUrls?: string[];
+  themedImageUrls?: { 'cherry-blossom'?: string[] };
+  /** Full direct-parent pool for cherry; never changes old templates' candidates. */
+  cherryRegularImageUrls?: string[];
   /** Chủ đề nguyên bản từ cột Sheet `Chu_de` (ví dụ: Mảng xanh). */
   theme?: string;
   partnerFlag: string;
@@ -125,6 +142,8 @@ export interface GuideItem {
   classification?: string;
   /** Giá đầu người — cột sheet `gia_dau_nguoi`, dùng cho bảng chi phí 72H. */
   headPrice: string;
+  /** Cột Món ăn nổi bật (quán ăn/cà phê), dùng cho ghi chú ngắn của bảng chi tiêu Threads. */
+  signatureDish?: string;
   /** Sheet có cột giá đầu người (kể cả khi ô trống). */
   hasHeadPriceColumn: boolean;
   price: string;
@@ -171,10 +190,11 @@ export type TitlePlacement =
 export type MutantContentStyle = 'strip' | 'center-card';
 
 export interface CoverPage {
+  imageRole?: 'cherry-blossom' | 'cherry-blossom-random' | 'venue-cherry-blossom' | 'venue-regular';
   localRender?: LocalRenderModel;
   coverApproval?: string;
   spotlightDesignRevision?: 1;
-  photoPreset?: 'iphone-color-edit-v1';
+  photoPreset?: PhotoPresetId;
   textFontSize?: number | null;
   textScale?: number;
   diaryFontSize?: number;
@@ -190,10 +210,11 @@ export interface CoverPage {
 }
 
 export interface ListPage {
+  imageRole?: CoverPage['imageRole'];
   localRender?: LocalRenderModel;
   threadsPartnerPolicy?: 'balanced-local-v1';
   spotlightDesignRevision?: 1;
-  photoPreset?: 'iphone-color-edit-v1';
+  photoPreset?: PhotoPresetId;
   textFontSize?: number | null;
   textScale?: number;
   diaryFontSize?: number;
@@ -204,7 +225,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'threads-toplist-page' | 'itinerary-note-threads-budget' | 'itinerary-note-threads-day' | 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-dark-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
+  layoutVariant?: 'threads-toplist-page' | 'itinerary-note-threads-budget' | 'threads-expense-sheet' | 'itinerary-note-threads-day' | 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-dark-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
   titlePlacement?: TitlePlacement;
   contentStyle?: MutantContentStyle;
   playlistLines?: string[];
@@ -220,7 +241,7 @@ export interface GuideDeckList {
   warnings?: string[];
   spotlightDesignRevision?: 1;
   coverReview?: { topic: string | null; warnings: string[]; approvedSourceIds: string[] };
-  photoPreset?: 'iphone-color-edit-v1';
+  photoPreset?: PhotoPresetId;
   id: string;
   navTitle: string;
   title: string;
@@ -233,9 +254,13 @@ export interface GuideDeckList {
   templateVersion?: number;
   automationRunId?: string;
   automationPosition?: string;
+  /** Lần xuất file thành công gần nhất (ISO); chỉ list đã tạo, list chính không có. */
+  exportedAt?: string;
+  /** Lần người dùng lưu sửa nội dung gần nhất (ISO), tính từ page-text-overrides khi hiển thị. */
+  editedAt?: string;
   canvasPreset?: 'default' | 'tiktok-3x4' | 'tiktok-4x5' | 'tiktok-9x16' | 'landscape-4x3';
   hookSnapshot?: {
-    mode: 'festival' | 'green' | 'dark' | 'persimmon';
+    mode: 'festival' | 'green' | 'dark' | 'persimmon' | 'cherry-blossom';
     sourceId: string;
     sourceRevision: string;
   };
@@ -360,7 +385,7 @@ export interface CaptionBlocks {
 }
 
 export interface GenerateCaptionDeckRequest {
-  photoPreset?: 'iphone-color-edit-v1' | null;
+  photoPreset?: PhotoPresetId | null;
   deckId?: string;
   listId?: string;
   tone?: DeepSeekCaptionResponse['tone'];
@@ -368,6 +393,8 @@ export interface GenerateCaptionDeckRequest {
   hookSelection?: { mode: 'normal' | 'festival'; sourceId?: string };
   automationRunId?: string;
   automationPosition?: string;
+  /** Tên đối tác phải có mặt trong mọi list tạo ra (không áp dụng mẫu riêng local-*). */
+  requiredPartners?: string[];
 }
 
 export interface GenerateCaptionDeckResponse {
@@ -379,12 +406,14 @@ export interface GenerateCaptionDeckResponse {
 }
 
 export interface GenerateBatchListsRequest {
-  photoPreset?: 'iphone-color-edit-v1' | null;
+  photoPreset?: PhotoPresetId | null;
   deckId?: string;
   count?: number;
   requestId?: string;
   hookSelection?: { mode: 'normal' | 'festival'; sourceId?: string };
   automationRunId?: string;
+  /** Tên đối tác phải có mặt trong mọi list của batch (không áp dụng mẫu riêng local-*). */
+  requiredPartners?: string[];
 }
 
 export interface DeleteGeneratedListsRequest {
@@ -395,6 +424,15 @@ export interface DeleteGeneratedListsResponse {
   requestedCount: number;
   deletedCount: number;
   remainingIds: string[];
+}
+
+export interface MarkListsExportedRequest {
+  groups?: Array<{ deckId?: string; listIds?: string[] }>;
+}
+
+export interface MarkListsExportedResponse {
+  exportedAt: string;
+  markedCount: number;
 }
 
 export interface GenerateBatchListsProgress {
@@ -414,7 +452,7 @@ export interface GenerateBatchListsResponse {
 }
 
 export interface GeneratePartnerSpotlightRequest {
-  photoPreset?: 'iphone-color-edit-v1' | null;
+  photoPreset?: PhotoPresetId | null;
   partnerId?: string;
   partnerName?: string;
 }
@@ -473,7 +511,7 @@ export interface UpdatePageTextResponse {
 export interface PageTextOverrideStore {
   version: 1;
   savedAt: string;
-  decks: Record<string, Record<string, Record<string, { title: string; subtitle: string; coverImages?: string[]; coverApproval?: string; textFontSize?: number | null; textScale?: number; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; metaSecondary?: string; scheduleTime?: string }> }>>>;
+  decks: Record<string, Record<string, Record<string, { editedAt?: string; title: string; subtitle: string; coverImages?: string[]; coverApproval?: string; textFontSize?: number | null; textScale?: number; diaryFontSize?: number; titlePlacement?: TitlePlacement; chipText?: string; items?: Array<{ name: string; metaPrimary: string; metaSecondary?: string; scheduleTime?: string }> }>>>;
 }
 
 export interface DatasetBuildContext {
@@ -534,6 +572,7 @@ export type PartnerRotationHistory = Record<string, {
   lastPhotos: string[];
   usedPhotos: string[];
   cycle: number;
+  photoPools?: Record<string, { usedPhotos: string[]; cycle: number }>;
 }>;
 
 // A data-only drawing model. Remote copy is plain text, never executable HTML.
@@ -545,6 +584,8 @@ export interface LocalRenderModel {
     x: number; y: number; width: number; height: number;
     text?: string; field?: string; src?: string; label?: string;
     itemIndices?: number[]; fields?: string[]; separator?: string;
+    /** Optional plain-text field colors; no executable markup from local data. */
+    fieldColors?: Record<string, string>;
     style?: Record<string, string | number>;
     required?: boolean;
   }>;

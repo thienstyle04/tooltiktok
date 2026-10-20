@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { chromium } = require('playwright'), esbuild = require('esbuild');
+const { chromium } = require('playwright'), esbuild = require('esbuild'), { APP_VERSION } = require('../lib/appVersion.js');
 const front = path.resolve(import.meta.dirname, '..'), root = path.resolve(process.env.AUDIT_ROOT);
 const backend = path.resolve(front, '../backend'), br = createRequire(path.join(backend, 'package.json'));
 br('ts-node').register({ project: path.join(backend, 'tsconfig.json'), transpileOnly: true });
@@ -26,7 +26,7 @@ try {
   await page.route('**/*', async route => {
     const u = new URL(route.request().url()), json = value => route.fulfill({ json: value });
     if (u.pathname === '/') return route.fulfill({ contentType: 'text/html', body: `<style>${css}</style>` });
-    if (u.pathname === '/api/health') return json({ status: 'ok', sessionId: 'color-test', appVersion: '0.9.03' });
+    if (u.pathname === '/api/health') return json({ status: 'ok', sessionId: 'color-test', appVersion: APP_VERSION });
     if (u.pathname === '/api/night-sync/export-lease') return json({ ok: true });
     if (u.pathname === '/api/drive-cache/status') return json({ phase: 'ready', ready: true, destinationId: 'dalat' });
     if (u.pathname.includes('runtime-performance')) return json({ mode: 'modern', totalMemoryBytes: 32*1024**3, freeMemoryBytes: 8*1024**3, logicalCpuCount: 8 });

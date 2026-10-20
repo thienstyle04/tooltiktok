@@ -3,10 +3,12 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ImageMappingFile } from '../../common/interfaces/guide.types';
-import { getColorEditAsset, COLOR_EDIT_PRESET } from './color-edit';
+import { getColorEditAsset } from './color-edit';
+import { photoPresetSettings } from '../../common/photo-preset-catalog';
 import { getConfiguredLibraryRoots, readAssetFromBase, safeRelative } from './logic/image-resolver';
 import { DriveFileAsset, fetchDriveFileAsset, listUncachedDriveFileIds, verifyDriveFileCache, warmDriveFileDiskCache } from './sync/drive-images';
 import { withLocalDataOnly } from './sync/night-sync-policy';
+import { localTemplateAsset } from './local-templates';
 
 /**
  * Những gì GuideAssetService cần từ GuideService. Mỗi giá trị được đọc lại ở
@@ -105,11 +107,16 @@ export class GuideAssetService {
   }
 
   async getColorEditedAsset(source: string, preset: string): Promise<Buffer> {
-    if (preset !== COLOR_EDIT_PRESET) throw new BadRequestException('Bộ màu không được hỗ trợ.');
-    if (!source?.startsWith('/assets/') || source.startsWith('//')) throw new BadRequestException('Ảnh phải nằm trong cache cục bộ.');
+    if (!photoPresetSettings(preset)) throw new BadRequestException('Bộ màu không được hỗ trợ.');
+    const local = /^\/api\/local-templates\/(local-[a-z0-9-]+)\/(\d+)\/assets\/([\w.-]+)$/.exec(source || '');
+    if ((!source?.startsWith('/assets/') && !local) || source.startsWith('//')) throw new BadRequestException('Ảnh phải nằm trong cache cục bộ.');
     const url = new URL(source, 'http://localhost');
     let body: Buffer;
-    if (url.pathname === '/assets/drive-file') {
+    if (local) {
+      const asset = localTemplateAsset(local[1], Number(local[2]), local[3]);
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(asset.type)) throw new BadRequestException('Tài nguyên local không phải ảnh chụp được hỗ trợ.');
+      body = asset.body;
+    } else if (url.pathname === '/assets/drive-file') {
       const asset = await this.host.getDriveFileAsset(url.searchParams.get('id') || '');
       if (asset.isFallback) throw new BadRequestException('Không thể chỉnh màu: ảnh gốc chưa có cache hợp lệ.');
       body = asset.body;

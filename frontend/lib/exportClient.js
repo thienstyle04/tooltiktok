@@ -445,7 +445,11 @@ async function exportBatchAttempt(context, callbacks = {}) {
     });
 
     const baseDate = Date.now();
-    const concurrencyLimit = batchRenderChunkSize(qualityProfile);
+    // A cold local photo preset is rendered by a bounded backend worker pool.
+    // Mounting a large photo grid queues dozens of transforms at once and can
+    // exhaust the image-settle deadline before valid images have been served.
+    const hasLocalPhotoPreset = pageTasks.some(task => task.page.localRender && (task.page.photoPreset || task.list.photoPreset));
+    const concurrencyLimit = hasLocalPhotoPreset ? Math.min(batchRenderChunkSize(qualityProfile), 2) : batchRenderChunkSize(qualityProfile);
     let pagesSinceLastTrim = 0;
     for (let i = 0; i < pageTasks.length; i += concurrencyLimit) {
       await assertRuntimeResources(qualityProfile);

@@ -2,6 +2,7 @@ import type { DeckPage, GuideItem, PageItem, WorkbookItemsBySection } from '../.
 import { hasItemKey, itemUsageKey } from './data-allocator';
 import { normalizeText, stableHash } from './image-resolver';
 import { getActiveDestinationLocalize } from '../sync/destination-localize';
+import { requiredPartnerRank } from './required-partners';
 
 export const THREADS_FOOD_ID = 'threads-food-local';
 export const THREADS_FOOD_TEMPLATE_VERSION = 3;
@@ -64,6 +65,7 @@ function ownPhoto(item: GuideItem): boolean {
 
 function ranked(items: GuideItem[], seed: string, used: Set<string>): GuideItem[] {
   return [...items].sort((a, b) => {
+    if (requiredPartnerRank(a) !== requiredPartnerRank(b)) return requiredPartnerRank(a) - requiredPartnerRank(b);
     const aUsed = hasItemKey(used, a) ? 1 : 0;
     const bUsed = hasItemKey(used, b) ? 1 : 0;
     if (aUsed !== bUsed) return aUsed - bUsed;

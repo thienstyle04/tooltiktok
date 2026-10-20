@@ -59,8 +59,12 @@ dalat-tiktok-carousel-tool/
     │   ├── api/[...path]/     # Proxy API từ frontend sang backend
     │   └── assets/[...path]/  # Proxy asset/ảnh từ frontend sang backend
     ├── components/            # UI preview, deck studio, controls
-    │   └── studio/            # Hàm phụ của DeckStudio (catalog, chặn tên trong caption)
+    │   ├── DeckStudio.js      # Điểm vào studio: useStudioController + StudioV2
+    │   ├── studio/            # useStudioController (toàn bộ state/hành động) và hàm phụ (catalog, chặn tên trong caption)
+    │   ├── v2/                # Giao diện: Hôm nay, Tạo, Duyệt & Xuất, Tự động, Cài đặt, trung tâm tác vụ, Ctrl+K
+    │   └── ui/                # Thành phần dùng chung: Icon, hộp xác nhận, chuyển Sáng/Tối, nhóm mẫu...
     ├── lib/                   # API client, export, render helpers
+    │   ├── listStatus.mjs     # Trạng thái list: Mẫu mẹ / Mới / Đã sửa / Đã xuất (từ exportedAt, editedAt)
     │   ├── pageMarkup.js      # Điểm vào render trang → HTML (renderCoverPage/renderListPage)
     │   ├── markup/            # Render theo nhóm mẫu: grid, spotlight, itinerary, budget, pov...
     │   ├── exportClient.js    # Điểm vào xuất ảnh/ZIP (exportBatch, exportActiveList...)
@@ -124,6 +128,19 @@ Ghi chú:
 5. Frontend gọi `/api/guide-data`; route frontend sẽ proxy sang backend.
 6. Ảnh Drive được hiển thị qua `/assets/drive-file?id=...`, giúp chạy được trên máy khác mà không phụ thuộc đường dẫn ảnh cũ.
 
+## Giao Diện Studio
+
+- **Hôm nay**: số list chờ duyệt / đã sửa / đã xuất, lịch tự động kế tiếp, tiếp tục duyệt, mẫu gần đây.
+- **Tạo**: thư viện mẫu có ảnh trang thật (render khi cuộn tới), Đã ghim / Dùng gần đây; bấm **Tạo list** mở ngăn kéo tạo list.
+- **Duyệt & Xuất**: hàng chờ list có lọc trạng thái (Mới, Đã sửa, Đã xuất, Mẫu mẹ), dải trang, bấm chữ trên preview để nhảy tới ô sửa, thanh xuất ở đáy. Trạng thái **Đã xuất** lưu ở backend (`exportedAt`), list sửa sau khi xuất quay về **Đã sửa**. Mặc định không xóa list sau khi xuất.
+- **Tự động**: lịch tạo/xuất định kỳ. **Cài đặt**: nguồn dữ liệu và tùy chọn nâng cao.
+  - Lưu lịch sẽ **chạy thử khô** từng mẫu (không lưu gì) với dữ liệu, đối tác và vòng ảnh hiện tại; mẫu không tạo đủ list (ví dụ thiếu đối tác hợp lệ) được cảnh báo trước. Chỉ kiểm tra được khi nguồn của lịch đang mở.
+  - Lượt lớn được **chia nhiều file ZIP** (PNG 8 list, JPG 20 list mỗi file, tên `…-phan-01-tren-05.zip`) trong thư mục riêng của lượt; một phần lỗi không làm mất phần đã lưu. Bước xuất chỉ dừng khi 15 phút không có tiến độ.
+  - **Chạy bù khi lỡ giờ** (bật sẵn cho lịch mới): tool tắt/máy ngủ đúng giờ thì lượt chạy khi mở lại tool trong vòng 6 tiếng; quá 6 tiếng thì ghi "Bị lỡ".
+  - Lịch sử ghi rõ số list tạo được/yêu cầu, số list xuất, số file ZIP, mẫu không tạo đủ và lý do.
+- Nút **Tác vụ** trên thanh trên cùng gom việc đang chạy và lịch sử (lưu trên máy). **Ctrl+K** mở tìm nhanh mẫu, list và màn hình.
+- Ảnh xuất không đổi: dấu bấm-để-sửa chỉ có trên preview, bị bỏ khi dựng ảnh xuất.
+
 ## Chạy Dự Án
 
 Cách dành cho người dùng:
@@ -135,8 +152,11 @@ start.bat
 Cách dành cho developer:
 
 ```bash
-npm run dev
+npm run dev       # như start.bat: giao diện chạy bản build
+npm run dev:hot   # giao diện chạy next dev, tự nạp lại khi sửa code (chậm hơn)
 ```
+
+Giao diện mặc định chạy **bản build** (`next build` + `next start`, thư mục `frontend/.next-build`): mở và cuộn mượt hơn nhiều so với `next dev`. Launcher chỉ build lại khi mã giao diện, phiên bản, dependencies, Node hoặc thư mục cài đặt thay đổi (khoảng 20 giây, máy yếu có thể vài phút; cửa sổ chờ hiện tiến độ). Build vào thư mục tạm rồi mới thay, nên build lỗi hay bị tắt giữa chừng không làm mất bản cũ; nếu build lỗi, tool tự chạy `next dev` để vẫn dùng được. Sửa code giao diện khi đang chạy bản build thì cần tắt và mở lại tool (hoặc dùng `npm run dev:hot`).
 
 Mặc định:
 
@@ -197,7 +217,7 @@ npm run sync:sheet
 
 ### Next.js báo còn dev server cũ
 
-`start.bat` sẽ xóa cache `frontend/.next` trước khi chạy. Launcher chỉ mở giao diện sau khi health và API cache ảnh của frontend/backend cùng phiên, cùng phiên bản. Nếu vẫn báo cổng bị chiếm, đóng ứng dụng theo PID được in trong terminal rồi chạy lại `start.bat`.
+Bản build nằm ở `frontend/.next-build` (cache `frontend/.next` chỉ dùng cho `npm run dev:hot`, bị xóa khi đổi phiên bản/máy). Có thể xóa `frontend/.next-build` để buộc build lại. Launcher chỉ mở giao diện sau khi health và API cache ảnh của frontend/backend cùng phiên, cùng phiên bản. Nếu vẫn báo cổng bị chiếm, đóng ứng dụng theo PID được in trong terminal rồi chạy lại `start.bat`.
 
 ## Kiểm Tra Trước Khi Đẩy Code
 

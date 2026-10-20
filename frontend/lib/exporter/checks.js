@@ -58,7 +58,7 @@ export function collectDriveFileIdsFromLists(lists) {
     }
     if (typeof value !== 'object') return;
     // Threads chi phí chỉ render chữ; ảnh còn sót trong snapshot không phải tài nguyên xuất.
-    if (value.layoutVariant === 'itinerary-note-threads-budget') return;
+    if (value.layoutVariant === 'itinerary-note-threads-budget' || value.layoutVariant === 'threads-expense-sheet') return;
     for (const [key, child] of Object.entries(value)) {
       // Candidate chỉ dùng khi primary fail — không prefetch hết (máy mới sẽ rất lâu).
       if (key === 'candidateImageUrls' || key === 'candidates') continue;
@@ -91,6 +91,12 @@ export function collectDriveFileIdsFromLists(lists) {
 }
 
 export function assertSpotlightV4V6PartnerExportReady(list, deckId = '') {
+  if (deckId === 'spotlight-v6-cherry-blossom') {
+    const count = collectPartnerNames(list).length;
+    const ids = (list.pages || []).map(page => page.backgroundImage);
+    if (count !== 7 || ids.length !== 16 || new Set(ids).size !== 16 || ids.some(id => !id)) throw new Error(`Spotlight Mùa hoa đào cần đúng 7 đối tác và 16 ảnh riêng; hiện có ${count}/7 đối tác. Hãy sửa/tạo lại list trước khi xuất.`);
+    return;
+  }
   if (deckId === 'spotlight-v5-color-edit') {
     const count = collectPartnerNames(list).length;
     if (count !== 7) throw new Error(`List Spotlight V5 Color Edit có ${count}/7 đối tác hiển thị hợp lệ. Hãy tạo lại list đủ đối tác trước khi xuất.`);

@@ -838,6 +838,41 @@ export async function listDriveFolderEntries(folderId: string): Promise<DriveFol
   return entries;
 }
 
+/** Separate discovery avoids changing regular photo pools of existing decks. */
+export function cherryBlossomChildFolders(html: string): Array<{ folderId: string; name: string }> {
+  const folders = new Map<string, { folderId: string; name: string }>();
+  for (const match of html.matchAll(/<a\s[^>]*href="([^"]*\/folders\/([a-zA-Z0-9_-]+)[^"]*)"[^>]*>(.*?)<\/a>/gs)) {
+    const name = stripHtml(match[3]);
+    const normalized = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').trim().toLowerCase();
+    if (/^hoa\s+dao(?:\s|$)/.test(normalized)) folders.set(match[2], { folderId: match[2], name });
+  }
+  return [...folders.values()];
+}
+
+export async function resolveCherryBlossomFolders(link: string): Promise<{ folders: Array<{ folderId: string; name: string }>; images: DriveFolderEntry[] }> {
+  if (/\/file\/d\//.test(link)) return { folders: [], images: [] };
+  const parentId = extractDriveFolderId(link);
+  if (!parentId) return { folders: [], images: [] };
+  // Deliberately bypass the folder TTL: newly added children must be found on
+  // manual sync even if the Sheet's parent Link_drive has not changed.
+  const html = await fetchTextWithRetry(`https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(parentId)}#list`);
+  const folders = cherryBlossomChildFolders(html);
+  const images = new Map<string, DriveFolderEntry>();
+  for (const folder of folders) {
+    folderEntriesCache.delete(folder.folderId);
+    for (const entry of await listDriveFolderEntries(folder.folderId)) {
+      if (looksLikeImageName(entry.fileName)) images.set(entry.fileId, entry);
+    }
+  }
+  return { folders, images: [...images.values()] };
+}
+
+export async function resolveCherryRegularImages(link: string, name: string, address: string): Promise<DriveFolderEntry[]> {
+  const folderId = extractDriveFolderId(link);
+  if (folderId && !/\/file\/d\//.test(link)) folderEntriesCache.delete(folderId);
+  return (await resolveDriveLinkToEntries(link, name, address, Number.MAX_SAFE_INTEGER)).filter(entry => !entry.fileName || looksLikeImageName(entry.fileName));
+}
+
 export async function resolveDriveLinkToEntry(link: string, placeName: string, address: string): Promise<DriveFolderEntry | null> {
   return (await resolveDriveLinkToEntries(link, placeName, address))[0] ?? null;
 }

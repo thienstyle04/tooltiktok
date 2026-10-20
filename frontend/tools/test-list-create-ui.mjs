@@ -24,8 +24,8 @@ try{
  await page.locator('#captionDeckSelect').selectOption('spotlight-v5');assert.equal(await page.locator('.list-create-advanced').count(),0);
  await page.locator('#createDeckFromCaptionBtn').click();assert.deepEqual(await event(),['single']);
  await page.getByRole('button',{name:/Mẫu 01.*Mở/}).click();assert.deepEqual(await event(),['open','spotlight-v5-caption-01']);
- await page.evaluate(()=>window.toggleReady(false));assert(await page.locator('#createDeckFromCaptionBtn').isDisabled());
- await page.locator('#captionDeckSelect').selectOption('threads-toplist-dalat');assert(await page.locator('#createDeckFromCaptionBtn').isEnabled());assert.equal(await page.locator('.photo-preset-picker').count(),0);
+ await page.evaluate(()=>window.toggleReady(false));await page.waitForFunction(()=>document.querySelector('#createDeckFromCaptionBtn')?.disabled,null,{timeout:5000});
+ await page.locator('#captionDeckSelect').selectOption('threads-toplist-dalat');await page.waitForFunction(()=>document.querySelector('#createDeckFromCaptionBtn')?.disabled===false,null,{timeout:5000});assert.equal(await page.locator('.photo-preset-picker').count(),0);
  assert.equal(await page.locator('#captionDeckSelect option[value="spotlight-partner"]').count(),0);
  await page.evaluate(()=>window.chooseRetired());assert.equal(await page.locator('#createDeckFromCaptionBtn').count(),0);assert.equal(await page.locator('#createPartnerSearch').count(),0);
  assert(await page.getByText('Mẫu đã ngừng sử dụng',{exact:true}).isVisible());

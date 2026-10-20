@@ -6,9 +6,9 @@ const esbuild = require(path.join(front, '../backend/node_modules/esbuild'));
 const { chromium } = require('playwright');
 async function main() {
   const source = `import React from 'react';import{createRoot}from'react-dom/client';import FontSizeControl from './components/FontSizeControl';
-    function App(){const[value,setValue]=React.useState(null),ref=React.useRef(null);window.saved||=[];
+    function App(){const[value,setValue]=React.useState(null),[measured,setMeasured]=React.useState([52,64]),ref=React.useRef(null);window.saved||=[];window.setMeasured=setMeasured;
       const change=v=>{ref.current=v;setValue(v)};
-      return <aside className="right-panel" style={{width:300,padding:20}}><FontSizeControl value={value} actualSizes={value==null?[52,64]:[value]} onChange={change} onReset={()=>change(null)}/><button id="save" onClick={()=>window.saved.push(ref.current)}>Lưu thay đổi</button></aside>;
+      return <aside className="right-panel" style={{width:300,padding:20}}><FontSizeControl value={value} actualSizes={value==null?measured:[value]} onChange={change} onReset={()=>change(null)}/><button id="save" onClick={()=>window.saved.push(ref.current)}>Lưu thay đổi</button></aside>;
     }createRoot(document.getElementById('root')).render(<App/>);`;
   const bundle = await esbuild.build({ stdin: { contents: source, resolveDir: front, loader: 'jsx' }, bundle: true, write: false, format: 'iife', loader: { '.js': 'jsx' }, jsx: 'automatic' });
   const css = [...fs.readFileSync(path.join(front, 'app/globals.css'), 'utf8').matchAll(/@import url\("(.+?)"\)/g)].map(m => fs.readFileSync(path.join(front, 'app', m[1]), 'utf8')).join('\n');
@@ -27,7 +27,12 @@ async function main() {
       await page.getByRole('button', { name: 'Theo mẫu', exact: true }).click();
       const reset = await save.boundingBox(); assert.ok(Math.abs(reset.y - before.y) < 1, 'Reset must not shift Save');
       await input.fill('46'); await save.click(); assert.deepEqual(await page.evaluate(() => window.saved), [45,44.5,46]);
-      await page.close(); console.log('PASS font blur/save first click, decimals, reset, stable button:', width);
+      // Số đo tới muộn (font/fit chạy xong sau) không được xóa số người dùng đang gõ.
+      await page.getByRole('button', { name: 'Theo mẫu', exact: true }).click();
+      await input.fill('45'); await page.evaluate(() => window.setMeasured([60])); await page.waitForTimeout(30);
+      assert.equal(await input.inputValue(), '45', 'Late measurement must not overwrite typed size');
+      await input.press('Enter'); await save.click(); assert.deepEqual(await page.evaluate(() => window.saved), [45,44.5,46,45]);
+      await page.close(); console.log('PASS font blur/save first click, decimals, reset, late measurement, stable button:', width);
     }
   } finally { await browser.close(); }
 }

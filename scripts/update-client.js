@@ -122,7 +122,23 @@ function launch(root) {
   const env = { ...process.env };
   delete env.DALAT_INSTALL_ROOT;
   delete env.DALAT_DATA_DIR;
-  spawn('cmd.exe', ['/d', '/c', path.join(root, 'start.bat')], { cwd: root, env, detached: true, windowsHide: true, stdio: 'ignore' }).unref();
+  // Mở bản mới trong cửa sổ dòng lệnh hiện bình thường như khi bấm start.bat, không
+  // ẩn: người dùng thấy tool đang chạy, đọc được lỗi và tắt tool đúng cách bằng cách
+  // đóng cửa sổ. Đường dẫn đi qua biến môi trường để không phải escape trong lệnh.
+  env.DALAT_LAUNCH_START_BAT = path.join(root, 'start.bat');
+  env.DALAT_LAUNCH_ROOT = root;
+  const script = "Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d', '/c', ('\"' + $env:DALAT_LAUNCH_START_BAT + '\"')) -WorkingDirectory $env:DALAT_LAUNCH_ROOT -WindowStyle Normal";
+  const encoded = Buffer.from(script, 'utf16le').toString('base64');
+  // Không dùng detached: PowerShell tách console (DETACHED_PROCESS) thì Start-Process
+  // không mở được cửa sổ cmd. Start-Process đã tạo cửa sổ độc lập, sống tiếp sau
+  // khi trình cập nhật thoát.
+  const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded], { cwd: root, env, windowsHide: true, stdio: 'ignore' });
+  // Chờ PowerShell mở xong cửa sổ trước khi bước tiếp theo (hoặc trình cập nhật) kết thúc.
+  return new Promise(resolve => {
+    const timer = setTimeout(resolve, 60_000);
+    child.once('error', () => { clearTimeout(timer); resolve(); });
+    child.once('exit', () => { clearTimeout(timer); resolve(); });
+  });
 }
 async function apply(rootArgument) {
   if (process.platform !== 'win32') fail('Trình cập nhật này chỉ hỗ trợ Windows.');
@@ -146,8 +162,10 @@ async function apply(rootArgument) {
   phase('restarting', 'Đang đóng tool và chuyển sang phiên bản mới.', { version: info.version });
   if (!isolatedTest) stopPreviousInstance({ sessionId: `updater-${process.pid}` });
   writeJsonAtomic(pointerFile, { release: nextRelease, version: info.version });
-  if (!isolatedTest) launch(root);
-  if (process.env.DALAT_UPDATE_TEST_HEALTH_FAIL !== '1' && (isolatedTest || await waitForHealth(info.version, 5 * 60_000))) {
+  if (!isolatedTest) await launch(root);
+  // Lần đầu sau cập nhật có thể phải cài thư viện và biên dịch giao diện; máy yếu
+  // mất hơn 5 phút. Chờ đủ lâu để không khôi phục nhầm một bản mới đang khởi động.
+  if (process.env.DALAT_UPDATE_TEST_HEALTH_FAIL !== '1' && (isolatedTest || await waitForHealth(info.version, 15 * 60_000))) {
     writeJsonAtomic(path.join(root, 'shared', 'data', 'app-update-state.json'), { scheduledAt: null });
     phase('complete', 'Cập nhật hoàn tất.', { version: info.version });
     return;
@@ -156,8 +174,8 @@ async function apply(rootArgument) {
   if (!isolatedTest) stopPreviousInstance({ sessionId: `updater-rollback-${process.pid}` });
   writeJsonAtomic(pointerFile, previous);
   if (!isolatedTest) {
-    launch(root);
-    await waitForHealth(previous.version, 5 * 60_000);
+    await launch(root);
+    await waitForHealth(previous.version, 15 * 60_000);
   }
   fail('Bản mới không khởi động đúng; đã khôi phục con trỏ bản cũ.');
 }
@@ -173,4 +191,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { apply, readCurrent, releasePath, validateZipEntries, inspectRelease };
+module.exports = { apply, launch, readCurrent, releasePath, validateZipEntries, inspectRelease };

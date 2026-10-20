@@ -69,8 +69,10 @@ export async function proxyBackendRequest(request, options = {}) {
         headers.set('Cache-Control', 'no-store');
       }
       if (requestUrl.pathname === '/api/health') {
-        const frontendSession = String(process.env.NEXT_PUBLIC_DALAT_SESSION_ID || '').trim();
-        const frontendVersion = String(process.env.NEXT_PUBLIC_DALAT_APP_VERSION || '').trim();
+        // Bản build (next build) đóng cứng NEXT_PUBLIC_* lúc build; mã phiên đổi mỗi lần mở tool
+        // nên phải đọc biến môi trường lúc chạy. NEXT_PUBLIC_* chỉ còn cho chế độ next dev cũ.
+        const frontendSession = String(process.env.DALAT_FRONTEND_SESSION_ID || process.env.NEXT_PUBLIC_DALAT_SESSION_ID || '').trim();
+        const frontendVersion = String(process.env.DALAT_FRONTEND_APP_VERSION || process.env.NEXT_PUBLIC_DALAT_APP_VERSION || '').trim();
         if (frontendSession) headers.set('X-Dalat-Frontend-Session', frontendSession);
         if (frontendVersion) headers.set('X-Dalat-Frontend-Version', frontendVersion);
       }
@@ -117,7 +119,8 @@ function isInfrastructureRoute(pathname) {
     || pathname === '/api/drive-cache/status'
     || pathname === '/api/drive-files/cache-status'
     || pathname === '/api/drive-files/prefetch'
-    || pathname === '/assets/drive-file';
+    || pathname === '/assets/drive-file'
+    || pathname === '/assets/drive-thumb';
 }
 
 function getForwardHeaders(request) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url), { chromium } = require('playwright'), esbuild = require('esbuild');
+const require = createRequire(import.meta.url), { chromium } = require('playwright'), esbuild = require('esbuild'), { APP_VERSION } = require('../lib/appVersion.js');
 const root = path.resolve(import.meta.dirname, '..'), data = path.resolve(root, '../backend/data');
 const saved = JSON.parse(fs.readFileSync(path.join(data, 'generated-caption-lists.dalat.json'), 'utf8'));
 const decks = ['spotlight-v6-green', 'spotlight-v6'].map(id => ({ id, lists: saved.decks[id]?.slice(0, 1) || [] }));
@@ -25,8 +25,9 @@ try {
  await page.route('**/*', async route => {
    const url = new URL(route.request().url());
    if(url.pathname === '/') return route.fulfill({contentType:'text/html',body:'<html><head><style>'+css+'</style></head><body></body></html>'});
-   if(url.pathname === '/api/health') return route.fulfill({json:{status:'ok',sessionId:'cached-v6-smoke',appVersion:'0.6.03'}});
+   if(url.pathname === '/api/health') return route.fulfill({json:{status:'ok',sessionId:'cached-v6-smoke',appVersion:APP_VERSION}});
    if(url.pathname === '/api/drive-cache/status') return route.fulfill({json:{phase:'ready',ready:true,destinationId:'dalat',total:1,completed:1,cached:1,failed:0,percent:100}});
+   if(url.pathname === '/api/night-sync/export-lease') return route.fulfill({json:{ok:true}});
    if(url.pathname === '/api/drive-files/cache-status') {
      const ids = route.request().postDataJSON().fileIds;
      const absent = ids.filter(id=>!fs.existsSync(path.join(data,'drive-file-cache',id+'.bin')));
@@ -44,14 +45,15 @@ try {
      const id=url.searchParams.get('id');
      if(!/^[\w-]+$/.test(id)) return route.abort();
      const file=path.join(data,'drive-file-cache',id+'.bin');
-     if(fs.existsSync(file)) return route.fulfill({body:fs.readFileSync(file)});
+     // Như backend: Content-Type lấy từ file .json cạnh ảnh (trình xuất từ chối ảnh thiếu Content-Type).
+     if(fs.existsSync(file)) return route.fulfill({contentType:JSON.parse(fs.readFileSync(file.replace(/\.bin$/,'.json'),'utf8')).contentType||'image/jpeg',body:fs.readFileSync(file)});
      missing.add(id); return route.abort();
    }
    if(url.pathname.startsWith('/fonts/')) {
      const file=path.join(root,'public',url.pathname);
      if(fs.existsSync(file)) return route.fulfill({body:fs.readFileSync(file)});
    }
-   external++; return route.abort();
+   external++; console.error('UNEXPECTED_EXPORT_REQUEST', route.request().method(), url.href); return route.abort();
  });
  await page.goto('http://localhost:3001/');
  await page.addScriptTag({content:bundle.outputFiles[0].text});

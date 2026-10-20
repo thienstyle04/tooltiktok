@@ -23,6 +23,8 @@ interface Options {
   initialized: (id: string) => boolean;
   automaticEligible?: (id: string) => boolean;
   busy: () => boolean;
+  /** Không bắt đầu lượt tự động mới (ví dụ tool sắp bị tắt để cài phiên bản mới). */
+  holdAutomatic?: () => boolean;
   run: (id: string, sheetDone: boolean, markSheetDone: () => void, progress: (value: SyncProgress) => void) => Promise<NightSourceResult>;
   now?: () => number;
 }
@@ -43,8 +45,14 @@ export class NightSyncCoordinator {
     this.state.sources ||= {};
     for (const entry of Object.values(this.state.sources)) {
       if (entry.phase === 'running' || entry.phase === 'paused') {
+        // Tool bị tắt giữa lượt (đóng cửa sổ, tắt máy, cài phiên bản mới). Bản đã
+        // công bố trước đó vẫn nguyên vẹn; lịch đêm tự thử lại lượt này.
         entry.phase = 'partial';
-        entry.progress = { stage: 'Lượt cập nhật bị ngắt; chờ thử lại' };
+        entry.result = undefined;
+        entry.retryAt = undefined;
+        entry.progress = { stage: entry.lastPublishedAt
+          ? 'Lượt cập nhật bị ngắt; vẫn dùng dữ liệu đã công bố trước đó, chờ thử lại'
+          : 'Lượt cập nhật bị ngắt; chờ thử lại' };
       }
     }
   }
@@ -121,6 +129,7 @@ export class NightSyncCoordinator {
     }
     for (const source of this.options.sources()) {
       if (this.options.automaticEligible?.(source.id) === false) continue;
+      if (this.options.holdAutomatic?.()) break;
       if (this.manualJobs.size) break;
       if (this.running) break;
       if (!vietnamSyncWindow(this.now()).allowed) break;

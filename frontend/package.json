@@ -1,6 +1,6 @@
 {
   "name": "dalat-carousel-next-frontend",
-  "version": "0.9.09",
+  "version": "0.10.04",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack -p 3001",
@@ -13,6 +13,7 @@
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "jszip": "^3.10.1",
+    "motion": "13.5.1",
     "next": "^16.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

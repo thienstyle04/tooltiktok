@@ -15,16 +15,17 @@ import { NightSyncCoordinator } from './sync/night-sync-coordinator';
 import { syncNightSource } from './sync/night-sync-source';
 import { publishSourceSnapshot } from './sync/published-source';
 
-import { CaptionBlocks, AddDestinationRequest, AddDestinationResponse, AddXlsxDestinationRequest, CoverPage, DatasetBuildContext, DeckPage, DeepSeekCaptionRequest, DeepSeekCaptionResponse, DeleteGeneratedListsResponse, GenerateBatchListsRequest, GenerateBatchListsResponse, GenerateCaptionDeckRequest, GenerateCaptionDeckResponse, GeneratePartnerSpotlightRequest, GeneratePartnerSpotlightResponse, PartnerRotationHistory, GuideDeck, GuideDeckList, GuideDataset, GuideItem, HinhNenImageUrlPools, ImageLibraryFolderEntry, ImageMappingFile, ListPage, PageItem, ReferenceSet, SectionKey, UpdateGeneratedListCoverRequest, UpdateGeneratedListCoverResponse, UpdatePageTextRequest, UpdatePageTextResponse, PageTextOverrideStore, WorkbookItemsBySection, DestinationId, DestinationListResponse, DestinationSummary, HookSourcesResponse, SetHookModeRequest, SetDestinationRequest, SetDestinationResponse } from '../../common/interfaces/guide.types';
+import { CaptionBlocks, AddDestinationRequest, AddDestinationResponse, AddXlsxDestinationRequest, CoverPage, DatasetBuildContext, DeckPage, DeepSeekCaptionRequest, DeepSeekCaptionResponse, DeleteGeneratedListsResponse, MarkListsExportedResponse, GenerateBatchListsRequest, GenerateBatchListsResponse, GenerateCaptionDeckRequest, GenerateCaptionDeckResponse, GeneratePartnerSpotlightRequest, GeneratePartnerSpotlightResponse, PartnerRotationHistory, GuideDeck, GuideDeckList, GuideDataset, GuideItem, HinhNenImageUrlPools, ImageLibraryFolderEntry, ImageMappingFile, ListPage, PageItem, ReferenceSet, SectionKey, UpdateGeneratedListCoverRequest, UpdateGeneratedListCoverResponse, UpdatePageTextRequest, UpdatePageTextResponse, PageTextOverrideStore, WorkbookItemsBySection, DestinationId, DestinationListResponse, DestinationSummary, HookSourcesResponse, SetHookModeRequest, SetDestinationRequest, SetDestinationResponse } from '../../common/interfaces/guide.types';
 
 
 import { buildImageLibraryEntries, getImageLibraryRoot, imageUrlsForDirectory, normalizeText, stableHash } from './logic/image-resolver';
 
-import { DataAllocator } from './logic/data-allocator';
+import { DataAllocator, itemNameUsageKey, itemUsageKey } from './logic/data-allocator';
+import { clearRequiredPartnerContext, missingRequiredPartners, normalizeRequiredPartners, partnerItemsByName, PartnerEligibilityResponse, requiredPartnerKey, RequiredPartnersError, setRequiredPartnerContext, withRequiredPartners } from './logic/required-partners';
 import { bootstrapPartnerHistory, restrictRotationPhotos, rotatePartnerList, rotationPhotoShortage, requiredPartnerCount, partnerSlotCount, sourcePhotoId } from './logic/partner-rotation';
-import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncatePov3V2StackTagline } from './logic/deck-builder';
+import { applyCaptionToPages, buildDecks, buildDeckList, buildPagesForDeck, buildSpotlightPartnerPages, createDeckBuildPools, isGrillOrHotpotItem, sanitizeCaptionBodyForPages, sanitizeDeckHeadline, SPOTLIGHT_PARTNER_TEMPLATE_VERSION, truncatePov3V2StackTagline } from './logic/deck-builder';
 import { spotlightV4VenueAvailability, summaryNoteDefaultCaption, setSpotlightV3BuildContext, clearSpotlightV3BuildContext } from './logic/deck-builder-v2';
-import { loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
+import { getSpotlightV3BuildContext, loadSpotlightV3Hooks, pickSpotlightV3Hook } from './sync/spotlight-hook-source';
 import { getDeckIdsForPremadeHookPool, getPremadeHookPoolKey, loadPremadeHookPool, PremadeHookPoolKey } from './sync/premade-hook-source';
 import { DriveFileAsset, clearDriveAccessibilityCache, clearKnownFailedDriveFileIds, configureDriveFileDiskCache, extractDriveFileIdFromProxyUrl, hasDriveFileDiskCache, listUncachedDriveFileIds, setCachedDriveFileAccessibility, uniqueCachedDriveFileIdsByVisualContent, warmDriveFileDiskCache } from './sync/drive-images';
 import { buildSheetDriveManifest, readSheetDriveManifest, SheetDriveImageManifest, writeSheetDriveManifest } from './sync/sheet-drive-manifest';
@@ -37,8 +38,9 @@ import {
   registerDestination,
   unregisterDestination,
   toDestinationInfo,
-  DALAT_TEST_SHEET_ID,
-  DALAT_THREADS_SHEET_ID,
+  BUILTIN_SOURCES,
+  firstDestinationId,
+  SourceKind,
   contentDestinationId,
   isDalatContentSource,
   isIsolatedSheetSource,
@@ -54,6 +56,8 @@ import { FestivalHookSourceStore, HookReservation, HookSourceUpload } from './sy
 import { GreenHookReservation, GreenHookSourceStore } from './sync/green-hook-source';
 import { DarkHookReservation, DarkHookSourceStore } from './sync/dark-hook-source';
 import { PersimmonHookReservation, PersimmonHookSourceStore } from './sync/persimmon-hook-source';
+import { CherryBlossomHookSourceStore } from './sync/cherry-blossom-hook-source';
+import { CHERRY_ID, CHERRY_NAME, cherryDeck, cherryHistory, buildCherryBlossom, assertCherryList } from './logic/spotlight-cherry-blossom';
 import { localizeDecks, setActiveDestinationLocalize, buildCaptionHashtags } from './sync/destination-localize';
 import { fetchWorkbookFromSheet, SheetWorkbookSource } from './sync/workbook-source';
 import { resolveBackendDataDir, resolveBackendRoot, resolveWorkspaceRoot } from '../../config';
@@ -67,13 +71,12 @@ import * as listDisplay from './list-display';
 import * as workbookStore from './workbook-store';
 import * as workbookItems from './workbook-items';
 import * as listStore from './generated-list-store';
-import { findLocalTemplate, listLocalTemplates, localTemplateAssetUrl, localTemplateBuilder, localTemplateDecks, validateLocalTemplateResources } from './local-templates';
+import { findLocalTemplate, listLocalTemplates, templateAllowsSource, localTemplateAssetUrl, localTemplateBuilder, localTemplateDecks, validateLocalTemplateResources } from './local-templates';
 import { syncFetch, withSyncPermit } from './sync/night-sync-policy';
 import * as crypto from 'node:crypto';
 import type { LocalWorkbookUpload } from './workbook-store';
 export type { LocalWorkbookUpload } from './workbook-store';
 
-const HOOK_DOC_ID = '1E1erto0ZzdOO3NLC5ss1_cj8Dr_E46BY1OVk_UW70Lc';
 const HOOK_SECTION_BY_DECK: Record<string, { key: string; headingIncludes: string[] }> = {
   'itinerary-3n2d': { key: 'hook-1', headingIncludes: ['Hook 1', '3N2Đ'] },
   'itinerary-timeline': { key: 'hook-1', headingIncludes: ['Hook 1', '3N2Đ'] },
@@ -95,14 +98,18 @@ const isGoogleDocHookDeck = (deckId: string): boolean =>
   deckId === 'spotlight-v6-diary' || isLegacyGoogleDocHookDeck(deckId) || isSectionedGoogleDocHookDeck(deckId);
 const isPremadeHookDeck = (deckId: string): boolean => getPremadeHookPoolKey(deckId) !== null;
 import { ITINERARY_NOTE_CAPTION, ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_CAPTION } from './logic/itinerary-note';
-import { DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryDescriptionLines } from './logic/spotlight-diary';
+import { DIARY_PAGE_COUNT, DIARY_CAPTION, diaryIdentity, diaryItemLines } from './logic/spotlight-diary';
 import { ITINERARY_NOTE_TIMED_CAPTION } from './logic/itinerary-note-timed';
 import { threadsNoteCaption } from './logic/itinerary-note-threads';
 import { THREADS_BUDGET_ID, threadsBudgetCaption } from './logic/itinerary-note-threads-budget';
+import { isThreadsExpense, threadsExpenseCaption } from './logic/threads-expense-sheet';
 import { THREADS_TOPLIST_ID, THREADS_TOPLIST_CAPTION } from './logic/threads-toplist';
 import { isThreadsLocalDeck, THREADS_CAFE_ID, THREADS_MIX_ID, THREADS_MIX_TEXT_ID, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from './logic/threads-food-local';
 import { CaptionTone, isSpotlightV5Deck, isTextNoteDeck } from './deck-kinds';
-const isNonAiDeck = (deckId: string): boolean => Boolean(findLocalTemplate(deckId)) || isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || isSpotlightV5Deck(deckId) || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
+import { isUpdateLocked } from '../../runtime-update-lock';
+import { applySourceLinks, hookDocId, updateBuiltinSourceLinks } from './sync/source-links';
+import { driveThumbnail } from './drive-thumbnails';
+const isNonAiDeck = (deckId: string): boolean => deckId === CHERRY_ID || Boolean(findLocalTemplate(deckId)) || isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === 'carousel-mau-1' || deckId === 'one-way-story' || isSpotlightV5Deck(deckId) || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps' || isTextNoteDeck(deckId);
 
 const SPOTLIGHT_PARTNER_POST_CAPTION = 'Bỏ túi ngay, kẻo đi Đà Lạt lại loay hoay 😉';
 const SPOTLIGHT_PARTNER_CAPTION_BODY = 'Nếu chỉ có 3 ngày ở Đà Lạt, cứ lưu list này trước. Các điểm được chia theo khung giờ để đi đỡ vòng và đỡ phát sinh.';
@@ -134,6 +141,25 @@ export interface DriveCacheWarmStatus {
   failed: number;
   percent: number;
   message: string;
+  /** Lượt cập nhật gần nhất lỗi/bị ngắt nhưng vẫn dùng được dữ liệu đã công bố trước đó. */
+  syncWarning?: string;
+  /**
+   * Data is usable (text templates work) but most photos are not on this machine
+   * yet, e.g. a new PC without the image cache: photo templates will fail until a
+   * manual update downloads them. The message explains this instead of "ready".
+   */
+  imagesMissing?: boolean;
+}
+
+export interface TemplateCapacityResult {
+  deckId: string;
+  navTitle?: string;
+  requested: number;
+  /** Số list liên tiếp dựng được trong lần chạy thử. */
+  possible: number;
+  /** false: mẫu có luồng tạo riêng nên không ước lượng. */
+  checked: boolean;
+  reason?: string;
 }
 
 @Injectable()
@@ -162,7 +188,7 @@ export class GuideService implements OnApplicationBootstrap {
   private diaryUsedLines: Record<string, string[]> = {};
   private readonly sourceHookStores = new Map<string, {
     festival: FestivalHookSourceStore; green: GreenHookSourceStore;
-    dark: DarkHookSourceStore; persimmon: PersimmonHookSourceStore;
+    dark: DarkHookSourceStore; persimmon: PersimmonHookSourceStore; cherry: CherryBlossomHookSourceStore;
   }>();
   private hooksForSource(id: DestinationId) {
     const key = isIsolatedSheetSource(id) ? id : 'dalat';
@@ -170,7 +196,7 @@ export class GuideService implements OnApplicationBootstrap {
     if (!stores) {
       const root = key === 'dalat' ? this.dataRoot : path.join(this.dataRoot, 'source-hooks', key);
       stores = { festival: new FestivalHookSourceStore(root), green: new GreenHookSourceStore(root),
-        dark: new DarkHookSourceStore(root), persimmon: new PersimmonHookSourceStore(root) };
+        dark: new DarkHookSourceStore(root), persimmon: new PersimmonHookSourceStore(root), cherry: new CherryBlossomHookSourceStore(root) };
       this.sourceHookStores.set(key, stores);
     }
     return stores;
@@ -182,6 +208,8 @@ export class GuideService implements OnApplicationBootstrap {
   private readonly batchGenerationRequests = new Map<string, Promise<GenerateBatchListsResponse>>();
   private generatedListsLoaded = false;
   private partnerRotation: Record<string, PartnerRotationHistory> = {};
+  /** Kết quả chạy thử đối tác theo mẫu; khóa gồm nguồn, mẫu và chữ ký dữ liệu. */
+  private partnerEligibilityCache = new Map<string, Promise<PartnerEligibilityResponse>>();
   private localTemplateState: Record<string, Record<string, unknown>> = {};
   private usedAllocator = new DataAllocator();
   private inventoryLoaded = false;
@@ -240,6 +268,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   constructor(private readonly runtimePerformance: RuntimePerformanceService = new RuntimePerformanceService()) {
     migrateColorEditStores(this.dataRoot);
+    applySourceLinks(this.dataRoot, this.toolRoot);
     this.loadCustomDestinations();
     migrateThreadsSourceStores(this.dataRoot);
     this.activeDestinationId = this.loadActiveDestinationId();
@@ -300,6 +329,8 @@ export class GuideService implements OnApplicationBootstrap {
       initialized: id => Object.keys(readSheetDriveManifest(this.dataRoot, id).items).length > 0,
       automaticEligible: id => !isIsolatedSheetSource(id) || Boolean(this.loadPreferredWorkbookSource(id)),
       busy: () => this.syncMustWait(),
+      // Sau khi trình cập nhật đóng băng tool, không mở lượt đêm mới để nó không bị cắt ngang.
+      holdAutomatic: () => isUpdateLocked(),
       run: (id, done, mark, progress) => syncNightSource(getDestinationConfig(id), done, mark, {
         progress,
         dataRoot: this.dataRoot,
@@ -308,7 +339,7 @@ export class GuideService implements OnApplicationBootstrap {
         save: source => this.saveWorkbookSnapshot(source, true),
         syncHooks: async manifest => {
           const errors: string[] = [];
-          for (const m of listLocalTemplates().filter(m => m.allowedSourceIds.includes(id))) {
+          for (const m of listLocalTemplates().filter(m => templateAllowsSource(m, id))) {
             try { await this.syncLocalTemplate(m.id, false); }
             catch (error) { errors.push(`${m.name}: ${error instanceof Error ? error.message : error}`); }
           }
@@ -318,7 +349,9 @@ export class GuideService implements OnApplicationBootstrap {
             ['green', 'Hook Mảng xanh', stores.green],
             ['dark', 'Hook Tone đen', stores.dark],
             ['persimmon', 'Hook Mùa hồng', stores.persimmon],
+            ['cherry-blossom', 'Hook hoa đào', stores.cherry],
           ] as const) {
+            if (key === 'cherry-blossom' && !getAllowedDeckIds(id).includes(CHERRY_ID)) continue;
             try {
               const url = manifest.hookSourceGroups?.[key];
               if (!url) throw new Error('Thiếu link Google Docs trong Sheet Hinh_nen.');
@@ -353,6 +386,14 @@ export class GuideService implements OnApplicationBootstrap {
   onModuleDestroy(): void { this.nightSync?.stop(); }
 
   private async warmUpDatasetCache(): Promise<void> {
+    if (!isDestinationId(this.activeDestinationId)) {
+      this.destinationDataLoading = false;
+      this.destinationDataError = '';
+      this.driveCacheWarmStatus = { ...this.driveCacheWarmStatus, phase: 'ready', ready: true, destinationId: '', total: 0, completed: 0, percent: 100,
+        message: 'Máy này chưa có nguồn dữ liệu. Hãy thêm link Google Sheet để bắt đầu.' };
+      console.log('[warmup] Chưa có nguồn dữ liệu trên máy này; chờ người dùng thêm nguồn.');
+      return;
+    }
     this.destinationDataLoading = true;
     this.destinationDataError = '';
     try {
@@ -376,7 +417,7 @@ export class GuideService implements OnApplicationBootstrap {
       console.log(`[warmup] Sẵn sàng phục vụ /api/guide-data (mất ${Date.now() - t0}ms). Session sticky=${this.SESSION_STICKY_DATASET}, autoSyncSheet=${this.AUTO_SYNC_ENABLED}.`);
     } catch (error) {
       console.error('[warmup] Làm nóng dữ liệu trước thất bại:', error);
-      if (this.activeDestinationId !== DEFAULT_DESTINATION_ID && !isIsolatedSheetSource(this.activeDestinationId)) {
+      if (this.activeDestinationId !== DEFAULT_DESTINATION_ID && isDestinationId(DEFAULT_DESTINATION_ID) && !isIsolatedSheetSource(this.activeDestinationId)) {
         const failedDestinationId = this.activeDestinationId;
         try {
           console.warn(`[warmup] Nguồn ${failedDestinationId} không sẵn sàng; tự quay về ${DEFAULT_DESTINATION_ID}.`);
@@ -406,7 +447,7 @@ export class GuideService implements OnApplicationBootstrap {
     if (!section) return [];
     return loadSpotlightV3Hooks({
       dataRoot: this.dataRoot,
-      docId: HOOK_DOC_ID,
+      docId: hookDocId('sections'),
       cacheFileName: `${section.key}-hooks.json`,
       sectionHeadingIncludes: section.headingIncludes,
       fallbackKey: section.key,
@@ -474,6 +515,8 @@ export class GuideService implements OnApplicationBootstrap {
       for (const entry of Object.values(manifest.items || {})) {
         const fileId = String(entry?.fileId || '').trim();
         if (fileId) ids.add(fileId);
+        for (const image of entry.themedImages?.['cherry-blossom']?.images || []) if (image.fileId) ids.add(image.fileId);
+        for (const image of entry.cherryRegularImages || []) if (image.fileId) ids.add(image.fileId);
       }
       const coverLimit = Math.max(0, Number(process.env.DALAT_DRIVE_CACHE_COVER_LIMIT || 120));
       for (const cover of (manifest.coverImages || []).slice(0, coverLimit)) {
@@ -488,7 +531,7 @@ export class GuideService implements OnApplicationBootstrap {
           0,
           Number(process.env.DALAT_DRIVE_CACHE_SPECIAL_COVER_LIMIT || 120),
         );
-        for (const group of ['dark', 'random'] as const) {
+        for (const group of ['dark', 'random', 'cherry-blossom', 'cherry-blossom-random'] as const) {
           for (const entry of (manifest.coverImageGroups?.[group] || []).slice(0, specialLimit)) {
             const fileId = String(entry?.fileId || '').trim();
             if (fileId) ids.add(fileId);
@@ -609,10 +652,21 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   getDriveCacheWarmStatus(): DriveCacheWarmStatus {
+    if (!isDestinationId(this.activeDestinationId)) {
+      // Máy chưa có nguồn: không có ảnh nào cần chờ; giao diện hiện màn thêm nguồn.
+      return { ...this.driveCacheWarmStatus, phase: 'ready', ready: true, destinationId: '', total: 0, completed: 0, percent: 100,
+        message: 'Máy này chưa có nguồn dữ liệu. Hãy thêm link Google Sheet để bắt đầu.' };
+    }
     const sync = this.getNightSyncStatus();
     const sourceSync = sync.sources.find(source => source.id === this.activeDestinationId);
-    if (sync.running === this.activeDestinationId || sync.queued.includes(this.activeDestinationId)
-      || sourceSync?.phase === 'error' || (sourceSync?.phase === 'partial' && !sourceSync.result)) {
+    const syncPending = sync.running === this.activeDestinationId || sync.queued.includes(this.activeDestinationId);
+    const syncIncomplete = sourceSync?.phase === 'error' || (sourceSync?.phase === 'partial' && !sourceSync.result);
+    // Dữ liệu đã công bố trước đó vẫn hợp lệ cho tới khi lượt mới công bố thay thế
+    // (publish là thao tác nguyên tử). Lượt sau đang chạy, bị ngắt (tắt tool/cập nhật
+    // phiên bản) hoặc lỗi mạng không được khóa tạo list; chỉ nguồn chưa từng có dữ
+    // liệu mới phải chờ cập nhật.
+    const publishedBefore = Boolean(sourceSync?.initialized && sourceSync.lastPublishedAt);
+    if ((syncPending || syncIncomplete) && !publishedBefore) {
       return { ...this.driveCacheWarmStatus, ready: false, destinationId: this.activeDestinationId,
         phase: sourceSync?.phase === 'error' || sourceSync?.phase === 'partial' ? 'error' : 'warming',
         message: sourceSync?.error || (sourceSync?.phase === 'partial'
@@ -627,10 +681,13 @@ export class GuideService implements OnApplicationBootstrap {
     const sourceIsReady = Boolean(this.workbookSource);
     // A completed sync publishes a validated dataset even when some images failed.
     // Generation independently filters every candidate against valid local cache.
-    const syncPublished = sourceSync?.initialized && Boolean(sourceSync.result)
-      && (sourceSync.phase === 'complete' || sourceSync.phase === 'partial');
+    const syncPublished = Boolean(sourceSync?.initialized && sourceSync.result
+      && (sourceSync.phase === 'complete' || sourceSync.phase === 'partial')) || publishedBefore;
     const cacheIsReady = syncPublished || (this.driveCacheWarmStatus.ready
       && this.driveCacheWarmStatus.phase === 'ready');
+    const syncWarning = syncIncomplete
+      ? `${sourceSync?.error ? `Lượt cập nhật gần nhất lỗi: ${sourceSync.error}` : 'Lượt cập nhật gần nhất bị ngắt giữa chừng.'} Đang dùng dữ liệu đã cập nhật lúc ${new Date(sourceSync!.lastPublishedAt!).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}; tool tự thử lại trong 23:00–06:00, hoặc cập nhật thủ công trong Dữ liệu & Cài đặt.`
+      : undefined;
     if (this.destinationDataLoading && !(sourceIsReady && cacheIsReady)) {
       return {
         ...this.driveCacheWarmStatus,
@@ -655,6 +712,10 @@ export class GuideService implements OnApplicationBootstrap {
       };
     }
     if (sourceIsReady && cacheIsReady) {
+      // A few permanently broken Drive files are normal; more than 10% missing
+      // means this machine simply has not downloaded the photos yet.
+      const imagesMissing = Boolean(localInventory && localInventory.total > 0 && localInventory.missing > localInventory.total * 0.1);
+      const label = getDestinationConfig(this.activeDestinationId).label;
       return {
         ...this.driveCacheWarmStatus,
         phase: 'ready',
@@ -662,7 +723,11 @@ export class GuideService implements OnApplicationBootstrap {
         destinationId: this.activeDestinationId,
         percent: 100,
         localInventory,
-        message: this.driveCacheWarmStatus.failed > 0
+        syncWarning,
+        ...(imagesMissing ? { imagesMissing } : {}),
+        message: imagesMissing
+          ? `${localInventory!.cached ? `Máy này mới có ${localInventory!.cached}/${localInventory!.total} ảnh` : `Máy này chưa có ảnh (0/${localInventory!.total})`} của nguồn ${label}. Mẫu có ảnh sẽ báo thiếu ảnh cho tới khi tải xong; mẫu chữ (Threads/Note) vẫn dùng được. ${getDestinationConfig(this.activeDestinationId).exportUrl ? 'Vào Dữ liệu & Cài đặt → “Cập nhật dữ liệu ngay” để tải ảnh (không cần chờ 23:00–06:00).' : 'Vào Dữ liệu & Cài đặt → thay lại file XLSX để tải ảnh.'}`
+          : this.driveCacheWarmStatus.failed > 0
           ? `Đã hoàn tất cache ảnh; ${this.driveCacheWarmStatus.failed} ảnh Drive không tải được đã bị loại khỏi pool tạo list.`
           : 'Đã tải xong ảnh Drive vào cache. Bạn có thể tạo list.',
       };
@@ -712,6 +777,8 @@ export class GuideService implements OnApplicationBootstrap {
   getWorkspaceAsset(relativePath: string): Buffer { return this.assets.getWorkspaceAsset(relativePath); }
   getLibraryAsset(relativePath: string, rootKey = 'main'): Buffer { return this.assets.getLibraryAsset(relativePath, rootKey); }
   getDriveFileAsset(fileId: string): Promise<DriveFileAsset> { return this.assets.getDriveFileAsset(fileId); }
+  /** Bản thu nhỏ cho thumbnail giao diện; xuất ảnh luôn dùng getDriveFileAsset. */
+  async getDriveFileThumbnail(fileId: string): Promise<DriveFileAsset> { return driveThumbnail(await this.getDriveFileAsset(fileId), this.dataRoot); }
   getColorEditedAsset(source: string, preset: string): Promise<Buffer> { return this.assets.getColorEditedAsset(source, preset); }
   getDriveFilesCacheStatus(fileIds: string[]) { return this.assets.getDriveFilesCacheStatus(fileIds); }
   prefetchDriveFiles(fileIds: string[]) { return this.assets.prefetchDriveFiles(fileIds); }
@@ -728,7 +795,7 @@ export class GuideService implements OnApplicationBootstrap {
 
   getDestinations(): DestinationListResponse {
     return {
-      active: this.getActiveDestinationSummary(),
+      active: isDestinationId(this.activeDestinationId) ? this.getActiveDestinationSummary() : null,
       destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
     };
   }
@@ -790,11 +857,19 @@ export class GuideService implements OnApplicationBootstrap {
     }
   }
 
+  private parseSourceKind(request: { kind?: unknown; dalatContent?: unknown } | undefined): { kind?: SourceKind; dalatContent: boolean } {
+    const raw = String(request?.kind ?? '').trim();
+    if (raw && raw !== 'standard' && raw !== 'threads') throw new BadRequestException('Loại nguồn chỉ có thể là Thường hoặc Threads.');
+    const dalatContent = request?.dalatContent === true || ['1', 'true', 'yes'].includes(String(request?.dalatContent ?? '').trim().toLowerCase());
+    return { ...(raw ? { kind: raw as SourceKind } : {}), dalatContent };
+  }
+
   async addDestination(request: AddDestinationRequest): Promise<AddDestinationResponse> {
     const label = String(request?.label || '').replace(/\s+/g, ' ').trim();
     if (label.length < 2 || label.length > 60) {
       throw new BadRequestException('Tên nguồn dữ liệu phải có từ 2 đến 60 ký tự.');
     }
+    const sourceKind = this.parseSourceKind(request);
 
     const sheet = this.parseGoogleSheetUrl(request?.sheetUrl);
     const duplicate = getDestinationList().find((entry) => this.extractSheetId(entry.sheetUrl) === sheet.sheetId);
@@ -813,20 +888,41 @@ export class GuideService implements OnApplicationBootstrap {
       workbookName: `Google Sheet - ${label}`,
       workbookFileName: `${label}.xlsx`,
       sourceType: 'google-sheet',
+      ...(sourceKind.kind ? { kind: sourceKind.kind } : {}),
+      ...(sourceKind.dalatContent ? { contentDestinationId: 'dalat' } : {}),
     };
     const previousDestinationId = this.activeDestinationId;
 
     let source: SheetWorkbookSource;
     try {
-      source = await fetchWorkbookFromSheet(config);
+      // Thêm nguồn là yêu cầu thủ công: được tải Sheet ngay, không chờ khung 23:00–06:00.
+      const permit = { manual: true, signal: AbortSignal.timeout(5 * 60 * 1000),
+        waitForIdle: async () => { while (this.syncMustWait()) await new Promise(resolve => setTimeout(resolve, 250)); } };
+      source = await withSyncPermit(permit, () => fetchWorkbookFromSheet(config));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new BadRequestException(
         `${message}. Hãy kiểm tra link và cấp quyền "Bất kỳ ai có đường liên kết đều có thể xem".`,
       );
     }
+    try {
+      this.validateWorkbookData(source);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    }
 
     registerDestination(config);
+    if (config.kind) {
+      // Nguồn tách biệt chỉ có dữ liệu sau một lượt cập nhật đầy đủ (Sheet + ảnh + công bố).
+      // Giao diện chạy “Tải dữ liệu & chuyển” ngay sau khi thêm.
+      this.persistCustomDestinations();
+      return {
+        active: isDestinationId(this.activeDestinationId) ? this.getActiveDestinationSummary() : null,
+        created: this.getDestinationSummary(id),
+        needsFirstSync: true,
+        destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
+      } as AddDestinationResponse;
+    }
     try {
       this.persistCustomDestinations();
       this.workbookSourceByDestination.set(id, source);
@@ -853,6 +949,7 @@ export class GuideService implements OnApplicationBootstrap {
     file: LocalWorkbookUpload | undefined,
   ): Promise<AddDestinationResponse> {
     const label = this.normalizeDestinationLabel(request?.label);
+    const sourceKind = this.parseSourceKind(request);
     const sheet = String(request?.sheetUrl || '').trim()
       ? this.parseGoogleSheetUrl(request.sheetUrl)
       : null;
@@ -867,6 +964,8 @@ export class GuideService implements OnApplicationBootstrap {
       workbookName: upload.originalname,
       workbookFileName: upload.originalname,
       sourceType: 'xlsx',
+      ...(sourceKind.kind ? { kind: sourceKind.kind } : {}),
+      ...(sourceKind.dalatContent ? { contentDestinationId: 'dalat' } : {}),
     };
     const source = this.createUploadedWorkbookSource(config, upload);
     this.validateWorkbookData(source);
@@ -878,6 +977,7 @@ export class GuideService implements OnApplicationBootstrap {
       this.persistCustomDestinations();
       this.workbookSourceByDestination.set(id, source);
       const switched = await this.setActiveDestination({ id });
+      this.startUploadedWorkbookImageSync(source);
       return {
         ...switched,
         destinations: getDestinationList().map((entry) => this.getDestinationSummary(entry.id)),
@@ -923,13 +1023,34 @@ export class GuideService implements OnApplicationBootstrap {
     this.workbookDerivedCacheByDestination.delete(id);
 
     if (this.activeDestinationId !== id) {
-      return this.setActiveDestination({ id });
+      const switched = await this.setActiveDestination({ id });
+      this.startUploadedWorkbookImageSync(source);
+      return switched;
     }
     await this.activateWorkbookSource(source, { retryKnownFailures: false });
-    return {
-      active: this.getActiveDestinationSummary(),
-      dataset: await this.getDataset(),
-    };
+    this.startUploadedWorkbookImageSync(source);
+    // Build first: the summary's item count is written by the rebuild.
+    const dataset = await this.getDataset();
+    return { active: this.getActiveDestinationSummary(), dataset };
+  }
+
+  /**
+   * Adding/replacing an XLSX is an explicit user request to use that workbook now.
+   * Read its Drive photo links and warm the image cache in the background (the
+   * night window only governs automatic updates). Without this, an XLSX source
+   * with no Google Sheet link never got photos and could not create any list.
+   */
+  private startUploadedWorkbookImageSync(source: SheetWorkbookSource): void {
+    const permit = { manual: true, signal: AbortSignal.timeout(60 * 60 * 1000),
+      waitForIdle: async () => { while (this.syncMustWait()) await new Promise(resolve => setTimeout(resolve, 250)); } };
+    void withSyncPermit(permit, () => this.refreshSheetDriveManifest(source, false, true))
+      .then(() => {
+        // The session-sticky dataset ignores background invalidation; this source
+        // had no photos to keep, so rebuild it now with the new manifest.
+        if (source.destinationId === this.activeDestinationId && this.workbookSource === source) this.invalidateDatasetCache({ immediate: true });
+        else this.workbookDerivedCacheByDestination.delete(source.destinationId);
+      })
+      .catch(error => console.error('[xlsx-source] Không đọc được ảnh Drive của workbook vừa nhập:', error));
   }
 
   async refreshDestinationFromSheet(idValue: string): Promise<SetDestinationResponse & { sync: ReturnType<NightSyncCoordinator['status']> }> {
@@ -1025,7 +1146,7 @@ export class GuideService implements OnApplicationBootstrap {
         setActiveDestinationLocalize(previousDestinationId);
         this.resetDestinationScopedState();
         this.workbookSource = this.workbookSourceByDestination.get(previousDestinationId)
-          || this.loadPreferredWorkbookSource(previousDestinationId);
+          || (isDestinationId(previousDestinationId) ? this.loadPreferredWorkbookSource(previousDestinationId) : null);
         if (this.workbookSource) {
           this.workbookSourceByDestination.set(previousDestinationId, this.workbookSource);
         }
@@ -1034,7 +1155,7 @@ export class GuideService implements OnApplicationBootstrap {
         this.workbookDerivedCacheTime = this.workbookDerivedCache ? Date.now() : 0;
         this.invalidateDatasetCache({ immediate: !this.workbookDerivedCache });
         this.destinationDataError = '';
-        this.scheduleWarmDriveFileDiskCache();
+        if (isDestinationId(previousDestinationId)) this.scheduleWarmDriveFileDiskCache();
       } else {
         this.destinationDataError = error instanceof Error ? error.message : String(error);
       }
@@ -1045,6 +1166,9 @@ export class GuideService implements OnApplicationBootstrap {
   }
 
   async getDataset(options: { refresh?: boolean } = {}): Promise<GuideDataset> {
+    if (!isDestinationId(this.activeDestinationId)) {
+      throw new ServiceUnavailableException({ code: 'NO_SOURCE', message: 'Máy này chưa có nguồn dữ liệu. Hãy thêm link Google Sheet để bắt đầu.' });
+    }
     const explicitRefresh = Boolean(options.refresh);
     if (explicitRefresh) {
       this.destinationDataLoading = true;
@@ -1258,6 +1382,26 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
+  /** Ghi mốc xuất file thành công cho list đã tạo; list chính và id không còn tồn tại được bỏ qua. */
+  markListsExported(groups: Array<{ deckId?: string; listIds?: string[] }> = []): MarkListsExportedResponse {
+    this.ensureGeneratedListsLoaded();
+    const exportedAt = new Date().toISOString();
+    let markedCount = 0;
+    for (const group of groups) {
+      const deckId = String(group?.deckId || '').trim();
+      const ids = new Set((group?.listIds || []).map(id => String(id || '').trim()).filter(Boolean));
+      const existing = deckId ? this.generatedListsByDeckId.get(deckId) : undefined;
+      if (!existing || !ids.size) continue;
+      this.generatedListsByDeckId.set(deckId, existing.map(list => {
+        if (!ids.has(list.id)) return list;
+        markedCount += 1;
+        return { ...list, exportedAt };
+      }));
+    }
+    if (markedCount) this.persistGeneratedLists();
+    return { exportedAt, markedCount };
+  }
+
   updateGeneratedListCover(
     deckId: string,
     listId: string,
@@ -1301,7 +1445,7 @@ export class GuideService implements OnApplicationBootstrap {
     const store = this.loadPageTextOverrides();
     store.decks[deckId] ||= {};
     store.decks[deckId][listId] ||= {};
-    const override = pageText.buildPageTextOverride(deckId, page, request, store.decks[deckId][listId][String(pageIndex)], derived.coverImageUrls);
+    const override = { ...pageText.buildPageTextOverride(deckId, page, request, store.decks[deckId][listId][String(pageIndex)], derived.coverImageUrls), editedAt: new Date().toISOString() };
     store.decks[deckId][listId][String(pageIndex)] = override;
     store.savedAt = new Date().toISOString();
     this.savePageTextOverrides(store);
@@ -1313,7 +1457,8 @@ export class GuideService implements OnApplicationBootstrap {
     this.assertTemplateAllowed(request.deckId);
     validatePhotoPreset(request.photoPreset, request.deckId);
     if (LEGACY_COLOR_DECKS[String(request.deckId)]) throw new BadRequestException('Mẫu Color Edit riêng đã chuyển thành lựa chọn Bảng màu. Chọn V5 hoặc V6.');
-    return aiProvider.run(() => this.generateDeckFromCaptionWithAi(request));
+    const requiredPartners = this.validateRequiredPartners(request.deckId, request.requiredPartners);
+    return aiProvider.run(() => this.generateDeckFromCaptionWithAi({ ...request, requiredPartners }));
   }
 
   async syncLocalTemplate(id: string, manual = true): Promise<unknown> {
@@ -1337,6 +1482,52 @@ export class GuideService implements OnApplicationBootstrap {
     } finally { this.invalidateDatasetCache({ immediate: true }); }
   }
 
+  private async generateCherryBlossom(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
+    await this.prepareWorkbookForDataset(false);
+    const context = await this.buildLocallyVerifiedGenerationContext(false, true);
+    const hookStore = this.hooksForSource(this.activeDestinationId).cherry;
+    await withLocalDataOnly(() => hookStore.ensureReady(''));
+    const existing = this.generatedListsByDeckId.get(CHERRY_ID) || [];
+    const history = cherryHistory(existing, context.itemsBySection, this.partnerRotation[CHERRY_ID]);
+    const requiredPartnerNames = request.requiredPartners || [];
+    this.assertRequiredPartnersAvailable(CHERRY_NAME, context.itemsBySection, requiredPartnerNames);
+    let built: ReturnType<typeof buildCherryBlossom>;
+    setRequiredPartnerContext(requiredPartnerNames);
+    try {
+      built = buildCherryBlossom({ items: context.itemsBySection, pools: context.hinhNenImagePools,
+        hooks: hookStore.getCachedHooks(), history, seed: crypto.randomUUID() });
+    } catch (error) {
+      if (requiredPartnerNames.length) throw new RequiredPartnersError(`${CHERRY_NAME}: không tìm được phương án có đủ đối tác bắt buộc (${requiredPartnerNames.join(', ')}). Mẫu này luôn có 1/2 Circle Coffee, D’Lart Garden, 1 cà phê đối tác có Mo_ta và 4 quán ăn đối tác; đối tác chọn thêm phải thuộc các ô đó và còn ảnh khác lần trước. ${error instanceof Error ? error.message : String(error)}`);
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+    } finally { clearRequiredPartnerContext(); }
+    const list = built.list;
+    const missingRequired = missingRequiredPartners(this.renderedPartnerNames(list), requiredPartnerNames);
+    if (missingRequired.length) throw new RequiredPartnersError(`${CHERRY_NAME}: không xếp được đối tác bắt buộc: ${missingRequired.join(', ')}. Chưa lưu list.`);
+    const parent = context.decks.find(deck => deck.id === CHERRY_ID);
+    if (parent) list.pages = inheritPageTypography(parent, list.pages, this.loadPageTextOverrides());
+    list.id = `${CHERRY_ID}-caption-${crypto.randomUUID()}`;
+    list.navTitle = `Mẫu ${String(existing.length + 1).padStart(2, '0')}`;
+    const hookIdentity = hookStore.getSourceIdentity();
+    if (!hookIdentity) throw new BadRequestException(`${CHERRY_NAME}: chưa xác định được phiên bản Hook hoa đào; hãy đồng bộ lại.`);
+    list.hookSnapshot = { mode: 'cherry-blossom', ...hookIdentity };
+    if (request.automationRunId) list.automationRunId = String(request.automationRunId).slice(0, 100);
+    if (request.automationPosition) list.automationPosition = String(request.automationPosition).slice(0, 100);
+    applyListPhotoPreset(list, request.photoPreset);
+    assertCherryList(list);
+    if (this.renderedPartnerNames(list).length !== 7) throw new BadRequestException(`${CHERRY_NAME}: cần đúng 7 đối tác thực sự hiển thị để xuất XLSX.`);
+    await this.assertGeneratedImageCache(list.pages, CHERRY_ID);
+    const oldHistory = this.partnerRotation[CHERRY_ID];
+    this.generatedListsByDeckId.set(CHERRY_ID, [...existing, list]);
+    this.partnerRotation[CHERRY_ID] = built.history;
+    try { this.persistGeneratedLists(); }
+    catch (error) {
+      this.generatedListsByDeckId.set(CHERRY_ID, existing);
+      if (oldHistory) this.partnerRotation[CHERRY_ID] = oldHistory; else delete this.partnerRotation[CHERRY_ID];
+      throw new BadRequestException(`${CHERRY_NAME}: không lưu được list; vòng hook/ảnh/vị trí chưa bị tiêu hao. ${error instanceof Error ? error.message : error}`);
+    }
+    return { deckId: CHERRY_ID, listId: list.id, navTitle: list.navTitle, title: list.title, warnings: list.warnings };
+  }
+
   private async generateLocalTemplate(request: GenerateCaptionDeckRequest): Promise<GenerateCaptionDeckResponse> {
     const m = findLocalTemplate(String(request.deckId))!;
     await this.prepareWorkbookForDataset(false);
@@ -1353,6 +1544,10 @@ export class GuideService implements OnApplicationBootstrap {
       return id && distinctCoverIds.has(id);
     }).map(url => [sourcePhotoId(url), { id: sourcePhotoId(url), url }])).values()];
     const savedCoverImageIds = existing.map(list => sourcePhotoId(list.pages.find(page => page.type === 'cover')?.backgroundImage || '')).filter(Boolean);
+    const savedLists = this.cloneJson(existing);
+    const parentDeck = localTemplateDecks(this.activeDestinationId).find(deck => deck.id === m.id);
+    const mainList = parentDeck && pageText.applyPageTextOverrides(m.id, parentDeck.lists, this.loadPageTextOverrides())
+      .find(list => list.id === `${m.id}-main`);
     const builder = localTemplateBuilder(m);
     let prepared: ReturnType<typeof builder.build> | undefined;
     let rotated: ReturnType<typeof rotatePartnerList> | undefined;
@@ -1361,7 +1556,8 @@ export class GuideService implements OnApplicationBootstrap {
       try {
         const seed = `${m.id}:${existing.length}:${crypto.randomUUID()}:${attempt}`;
         prepared = builder.build({ sourceId: this.activeDestinationId, itemsBySection: eligible, seed,
-          state, history: priorHistory, coverImages, savedCoverImageIds, assetUrl: name => localTemplateAssetUrl(m, name) });
+          state: this.cloneJson(state), history: priorHistory, coverImages, savedCoverImageIds, savedLists,
+          mainList: mainList ? this.cloneJson(mainList) : undefined, assetUrl: name => localTemplateAssetUrl(m, name) });
         rotated = rotatePartnerList(prepared.list, m.id, sources, priorHistory, seed, 1);
         if (!this.renderedPartnerNames(rotated.list).length) throw new Error(`${m.name}: thiếu đối tác thực sự hiển thị để ghi XLSX.`);
         break;
@@ -1372,7 +1568,6 @@ export class GuideService implements OnApplicationBootstrap {
     // Local builders bypass the workbook generation branch. Snapshot the
     // mother's saved typography here as well, without copying its copy/photos
     // or re-applying future template edits to already-approved children.
-    const parentDeck = localTemplateDecks(this.activeDestinationId).find(deck => deck.id === m.id);
     if (parentDeck) list.pages = inheritPageTypography(parentDeck, list.pages, this.loadPageTextOverrides());
     list.id = `${m.id}-caption-${crypto.randomUUID()}`;
     list.navTitle = `Mẫu ${String(existing.length + 1).padStart(2, '0')} · ${list.localTemplate?.recipeId || ''}`;
@@ -1403,6 +1598,7 @@ export class GuideService implements OnApplicationBootstrap {
     this.ensureGeneratedListsLoaded();
     const deckId = String(request.deckId ?? '').trim();
     if (findLocalTemplate(deckId)) return this.generateLocalTemplate(request);
+    if (deckId === CHERRY_ID) return this.generateCherryBlossom(request);
     if (deckId !== THREADS_TOPLIST_ID && deckId !== 'itinerary-note-timed' && !deckId.startsWith('itinerary-note-threads-')) {
       this.assertDriveCacheReady();
     }
@@ -1511,6 +1707,8 @@ export class GuideService implements OnApplicationBootstrap {
     const requestedTone = this.normalizeCaptionTone(request.tone);
     const seed = [deckId, generatedSuffix, String(existing.length), requestedTone, caption.coverTitle, caption.headline, caption.body, caption.hashtags.join(' '), timestamp].join('|');
     const sourceItems = this.cloneJson(context.itemsBySection);
+    const requiredPartnerNames = request.requiredPartners || [];
+    this.assertRequiredPartnersAvailable(currentDeck.navTitle, context.itemsBySection, requiredPartnerNames);
     const historicalLists = this.applyPageTextOverrides(deckId, this.cloneJson(existing), this.loadPageTextOverrides());
     const rotationHistory = bootstrapPartnerHistory(historicalLists, deckId, Object.values(sourceItems).flat(), this.partnerRotation[deckId]);
     let nextRotationHistory = rotationHistory;
@@ -1534,23 +1732,7 @@ export class GuideService implements OnApplicationBootstrap {
 
     try {
     this.ensureInventoryLoaded();
-    const deckUsage = this.createUsageScope();
-    currentDeck.lists.forEach((list) => {
-      const isPreviewList = /-main$/i.test(String(list.id || '')) || String(list.id || '').toLowerCase() === 'main';
-      if ((isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID) && isPreviewList) return;
-      this.markUsedInDeck(list.pages, deckUsage);
-    });
-    // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
-    for (const prevList of existing) {
-      if (isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID) this.markUsedInDeck(prevList.pages, deckUsage);
-      for (const page of prevList.pages) {
-        if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
-        if (page.type !== 'list') continue;
-        for (const item of page.items) {
-          if (item.imageUrl) deckUsage.imageUrls.add(item.imageUrl);
-        }
-      }
-    }
+    const deckUsage = this.deckUsageScope(deckId, currentDeck.lists, existing);
     if (deckId === 'spotlight-v6-green') {
       setSpotlightV3BuildContext({
         hooks: greenHookReservation ? [greenHookReservation.hook] : [],
@@ -1585,6 +1767,14 @@ export class GuideService implements OnApplicationBootstrap {
     let basePages: DeckPage[];
     const startingItemUsage = new Set(deckUsage.itemIds);
     const startingImageUsage = new Set(deckUsage.imageUrls);
+    // A required partner appears in every list, so it is always "used" by the
+    // previous one; never let that history push it behind other venues.
+    for (const items of partnerItemsByName(context.itemsBySection, requiredPartnerNames).values()) {
+      for (const item of items) [item.id, itemUsageKey(item), itemNameUsageKey(item)].forEach(key => startingItemUsage.delete(key));
+    }
+    const requiredSections = new Set<string>();
+    let requiredMissing: string[] | null = null;
+    setRequiredPartnerContext(requiredPartnerNames);
     try {
       basePages = buildPagesForDeck(
         deckId,
@@ -1609,6 +1799,11 @@ export class GuideService implements OnApplicationBootstrap {
             seed, new Set(startingItemUsage), new Set(startingImageUsage), context.coverImageUrls, context.hinhNenImagePools);
         } catch (error) {
           throw new BadRequestException(`${currentDeck.navTitle}: ${error instanceof Error ? error.message : String(error)}${rotationPhotoShortage(sourceItems, rotationHistory)}`);
+        }
+        const exhausted = [...partnerItemsByName(restricted, requiredPartnerNames)]
+          .filter(([, items]) => !items.some(item => item.imageUrl || isThreadsLocalDeck(deckId))).map(([name]) => name);
+        if (exhausted.length) {
+          throw new RequiredPartnersError(`${currentDeck.navTitle}: đối tác bắt buộc chưa có ảnh khác lần trước nên không thể xuất hiện ở list liền sau: ${exhausted.join(', ')}.${rotationPhotoShortage(sourceItems, rotationHistory)} Chưa lưu list.`);
         }
       }
       if (deckId === 'spotlight-v6-diary') {
@@ -1657,6 +1852,14 @@ export class GuideService implements OnApplicationBootstrap {
           const rotated = rotatePartnerList(draft,
             deckId, sourceItems, rotationHistory, `${seed}:rotation`, requiredPartners, requiredPartnerSlots);
           if (this.renderedPartnerNames(rotated.list).length < requiredPartners) throw new Error(`${currentDeck.navTitle}: chưa đủ ${requiredPartners} đối tác thực sự hiển thị để ghi XLSX. Đang thử bộ địa điểm khác.`);
+          if (requiredPartnerNames.length) {
+            for (const page of draft.pages) if (page.type === 'list') for (const item of page.items) if (item.sourceSectionKey) requiredSections.add(item.sourceSectionKey);
+            const missing = missingRequiredPartners(this.renderedPartnerNames(rotated.list), requiredPartnerNames);
+            if (missing.length) {
+              if (!requiredMissing || missing.length < requiredMissing.length) requiredMissing = missing;
+              throw new Error(`${currentDeck.navTitle}: chưa xếp được đối tác bắt buộc ${missing.join(', ')}. Đang thử bộ địa điểm khác.`);
+            }
+          }
           basePages = rotated.list.pages;
           nextRotationHistory = rotated.history;
           rotationWarnings = rotated.list.warnings || [];
@@ -1673,9 +1876,12 @@ export class GuideService implements OnApplicationBootstrap {
           else break;
         }
       }
-      if (rotationError) throw new BadRequestException(`${currentDeck.navTitle}: ${rotationError instanceof Error ? rotationError.message : String(rotationError)}`);
+      if (rotationError && requiredMissing) throw this.requiredPartnersFailure(currentDeck.navTitle, requiredMissing, context.itemsBySection, requiredSections);
+      // Như bước chạy thử: nêu đối tác hết ảnh mới, thay vì chỉ báo thiếu ô đối tác.
+      if (rotationError) throw new BadRequestException(`${currentDeck.navTitle}: ${rotationError instanceof Error ? rotationError.message : String(rotationError)}${rotationPhotoShortage(sourceItems, rotationHistory)}`);
     } finally {
       clearSpotlightV3BuildContext();
+      clearRequiredPartnerContext();
     }
     const hookCoverTitle = festivalReservation
       ? festivalReservation.hook
@@ -1762,6 +1968,9 @@ export class GuideService implements OnApplicationBootstrap {
     if (deckId === THREADS_BUDGET_ID) {
       generatedList.postCaption = threadsBudgetCaption(generatedNumber - 1);
     }
+    if (isThreadsExpense(deckId)) {
+      generatedList.postCaption = threadsExpenseCaption(deckId, generatedNumber - 1);
+    }
     if (deckId === THREADS_TOPLIST_ID) {
       generatedList.postCaption = THREADS_TOPLIST_CAPTION;
     }
@@ -1821,6 +2030,8 @@ export class GuideService implements OnApplicationBootstrap {
     }
     const sanitizedGeneratedList = this.cloneJson(this.sanitizeGeneratedListText(generatedList, deckId));
     if (this.renderedPartnerNames(sanitizedGeneratedList).length < requiredPartners || partnerSlotCount(sanitizedGeneratedList.pages) < requiredPartnerSlots) throw new BadRequestException(`${currentDeck.navTitle}: đối tác bị thiếu sau khi chuẩn bị trang; chưa lưu list.`);
+    const finalMissing = missingRequiredPartners(this.renderedPartnerNames(sanitizedGeneratedList), requiredPartnerNames);
+    if (finalMissing.length) throw new RequiredPartnersError(`${currentDeck.navTitle}: đối tác bắt buộc bị mất sau khi chuẩn bị trang: ${finalMissing.join(', ')}. Chưa lưu list.`);
     await this.assertGeneratedImageCache(sanitizedGeneratedList.pages, deckId);
     const previousRotation = this.partnerRotation[deckId];
     this.partnerRotation[deckId] = nextRotationHistory;
@@ -1832,7 +2043,7 @@ export class GuideService implements OnApplicationBootstrap {
         if (page.type !== 'list' || !page.items.length) continue;
         const key = diaryIdentity(page.items[0].rawName || page.items[0].name);
         const source = Object.values(context.itemsBySection).flat().find(item => item.id === page.items[0].id);
-        const choices = diaryDescriptionLines(source?.diaryDescriptionRaw || '');
+        const choices = source ? diaryItemLines(source) : [];
         const used = (nextLines[key] || []).filter(line => choices.includes(line));
         nextLines[key] = [...(choices.every(line => used.includes(line)) ? [] : used), page.title];
       }
@@ -1918,7 +2129,8 @@ export class GuideService implements OnApplicationBootstrap {
     this.assertTemplateAllowed(request.deckId);
     validatePhotoPreset(request.photoPreset, request.deckId);
     if (LEGACY_COLOR_DECKS[String(request.deckId)]) throw new BadRequestException('Chọn mẫu V5/V6 và bảng màu thay cho mẫu Color Edit riêng.');
-    return aiProvider.run(() => this.generateBatchListsWithAi(request));
+    const requiredPartners = this.validateRequiredPartners(request.deckId, request.requiredPartners);
+    return aiProvider.run(() => this.generateBatchListsWithAi({ ...request, requiredPartners }));
   }
 
   private async generateBatchListsWithAi(request: GenerateBatchListsRequest): Promise<GenerateBatchListsResponse> {
@@ -1971,6 +2183,7 @@ export class GuideService implements OnApplicationBootstrap {
             photoPreset: request.photoPreset,
             hookSelection: request.hookSelection,
             automationRunId: request.automationRunId,
+            requiredPartners: request.requiredPartners,
             automationPosition: `${deckId}:${i + 1}`,
           });
           results.push({ listId: generated.listId, navTitle: generated.navTitle, tone: 'không AI', warnings: generated.warnings });
@@ -1979,6 +2192,12 @@ export class GuideService implements OnApplicationBootstrap {
           console.warn(`[batch] Lỗi tạo ${deckId} ${i + 1}/${count}:`, message);
           errors.push({ index: i + 1, tone: 'lich_trinh_huu_ich', message });
           failCount += 1;
+          if (error instanceof RequiredPartnersError) {
+            const remaining = count - i - 1;
+            failCount += remaining;
+            if (remaining) errors.push({ index: i + 2, tone: 'lich_trinh_huu_ich', message: `Dừng ${remaining} list còn lại vì không xếp được đối tác bắt buộc. Hãy bỏ bớt hoặc chọn đối tác khác.` });
+            break;
+          }
         }
       }
       return { deckId, lists: results, successCount: results.length, failCount, errors };
@@ -2080,6 +2299,7 @@ export class GuideService implements OnApplicationBootstrap {
           photoPreset: request.photoPreset,
           hookSelection: request.hookSelection,
           automationRunId: request.automationRunId,
+          requiredPartners: request.requiredPartners,
           automationPosition: `${deckId}:${i + 1}`,
         });
 
@@ -2094,6 +2314,12 @@ export class GuideService implements OnApplicationBootstrap {
           const remaining = count - i - 1;
           failCount += remaining;
           if (remaining) errors.push({ index: i + 2, tone, message: `Dừng ${remaining} list còn lại do cấu hình/quota AI. Không tự đổi nhà cung cấp.` });
+          break;
+        }
+        if (error instanceof RequiredPartnersError) {
+          const remaining = count - i - 1;
+          failCount += remaining;
+          if (remaining) errors.push({ index: i + 2, tone, message: `Dừng ${remaining} list còn lại vì không xếp được đối tác bắt buộc. Hãy bỏ bớt hoặc chọn đối tác khác.` });
           break;
         }
       }
@@ -2125,6 +2351,197 @@ export class GuideService implements OnApplicationBootstrap {
         address: item.address,
         imageCount: (item.candidateImageUrls || []).length + (item.imageUrl && !(item.candidateImageUrls || []).includes(item.imageUrl) ? 1 : 0),
       }));
+  }
+
+  /**
+   * Đối tác nào hiển thị được trong mẫu: chạy thử chính builder của mẫu với từng
+   * đối tác là bắt buộc (vài seed, lịch sử trống). Không lưu list, không tiêu hao
+   * vòng ảnh/hook; kiểm tra lúc tạo list vẫn là chốt cuối (ảnh liền trước, số ô).
+   */
+  async getPartnerEligibility(deckIdRaw: unknown): Promise<PartnerEligibilityResponse> {
+    const deckId = String(deckIdRaw ?? '').trim();
+    this.assertTemplateAllowed(deckId);
+    if (findLocalTemplate(deckId) || deckId === 'spotlight-partner') throw new BadRequestException('Mẫu này không hỗ trợ chọn đối tác bắt buộc.');
+    await this.prepareWorkbookForDataset(false);
+    const textOnly = isTextNoteDeck(deckId) || isThreadsLocalDeck(deckId);
+    const context = await this.buildLocallyVerifiedGenerationContext(!textOnly, deckId === CHERRY_ID);
+    const partners = await this.getPartnerList();
+    const signature = crypto.createHash('sha1').update(JSON.stringify([
+      partners.map(p => [p.name, p.section, p.imageCount]),
+      Object.values(context.itemsBySection).flat().map(item => [item.id, item.name, item.isPartner, item.imageUrl, (item.candidateImageUrls || []).length,
+        item.theme, item.mapImageUrl, Boolean(item.diaryDescriptionRaw), item.address, item.type]),
+    ])).digest('hex');
+    const key = `${this.activeDestinationId}:${deckId}:${signature}`;
+    const cached = this.partnerEligibilityCache.get(key);
+    if (cached) return cached;
+    for (const old of [...this.partnerEligibilityCache.keys()]) if (old.startsWith(`${this.activeDestinationId}:${deckId}:`)) this.partnerEligibilityCache.delete(old);
+    const task = this.computePartnerEligibility(deckId, context, partners.map(p => p.name));
+    this.partnerEligibilityCache.set(key, task);
+    task.catch(() => this.partnerEligibilityCache.delete(key));
+    return task;
+  }
+
+  /**
+   * Chạy thử khô (không lưu list, vòng ảnh hay hook): mẫu tạo liên tiếp được bao nhiêu list với dữ liệu,
+   * đối tác và vòng xoay ảnh đối tác hiện tại của nguồn đang mở. Dùng để cảnh báo trước khi lưu lịch tự động;
+   * kết quả là ước lượng (lượt thật còn thử thêm bộ địa điểm khác) nên chỉ cảnh báo, không chặn.
+   */
+  async checkTemplatesCapacity(entries: Array<{ deckId: string; count: number; requiredPartners?: string[] }>): Promise<TemplateCapacityResult[]> {
+    // Dựng dữ liệu nguồn một lần cho cả lịch (trước đây mỗi mẫu dựng lại, 29 mẫu mất hơn 1 phút).
+    await this.prepareWorkbookForDataset(false);
+    const contexts = new Map<boolean, Promise<DatasetBuildContext>>();
+    const contextFor = (verifyImages: boolean) => {
+      if (!contexts.has(verifyImages)) contexts.set(verifyImages, this.buildLocallyVerifiedGenerationContext(verifyImages));
+      return contexts.get(verifyImages)!;
+    };
+    const results: TemplateCapacityResult[] = [];
+    for (const entry of entries) {
+      try { results.push(await this.checkTemplateCapacity(entry.deckId, entry.count, entry.requiredPartners || [], contextFor)); }
+      catch (error) { results.push({ deckId: entry.deckId, requested: entry.count, possible: 0, checked: true, reason: error instanceof Error ? error.message : String(error) }); }
+    }
+    return results;
+  }
+
+  async checkTemplateCapacity(deckIdRaw: unknown, countRaw: unknown, requiredPartnerNamesRaw: unknown = [],
+    contextFor?: (verifyImages: boolean) => Promise<DatasetBuildContext>): Promise<TemplateCapacityResult> {
+    const deckId = String(deckIdRaw ?? '').trim();
+    const requested = Math.max(1, Math.min(10, Math.trunc(Number(countRaw)) || 1));
+    this.assertTemplateAllowed(deckId);
+    this.ensureGeneratedListsLoaded();
+    // Mẫu riêng, Hoa anh đào và Spotlight Đối tác có luồng tạo riêng: không ước lượng.
+    if (findLocalTemplate(deckId) || deckId === CHERRY_ID || deckId === 'spotlight-partner') return { deckId, requested, possible: requested, checked: false };
+    const requiredPartnerNames = normalizeRequiredPartners(requiredPartnerNamesRaw);
+    const verifyImages = !isTextNoteDeck(deckId) && !isThreadsLocalDeck(deckId);
+    if (!contextFor) await this.prepareWorkbookForDataset(false);
+    const shared = contextFor ? await contextFor(verifyImages) : await this.buildLocallyVerifiedGenerationContext(verifyImages);
+    // Ngữ cảnh có thể dùng chung giữa các mẫu: chép phần builder có thể đọc/ghi.
+    const context = { ...shared, hinhNenImagePools: this.cloneJson(shared.hinhNenImagePools) };
+    const currentDeck = context.decks.find((deck) => deck.id === deckId);
+    const navTitle = currentDeck?.navTitle || deckId;
+    const sourceItems = this.cloneJson(context.itemsBySection);
+    const existing = this.generatedListsByDeckId.get(deckId) ?? [];
+    const historicalLists = this.applyPageTextOverrides(deckId, this.cloneJson(existing), this.loadPageTextOverrides());
+    let history = bootstrapPartnerHistory(historicalLists, deckId, Object.values(sourceItems).flat(), this.partnerRotation[deckId]);
+    const destinationId = contentDestinationId(this.activeDestinationId);
+    // Như computePartnerEligibility: đặt rồi trả lại ngữ cảnh dựng một cách đồng bộ để không ảnh hưởng lượt tạo đang chạy.
+    // Như lượt thật: list mới tránh địa điểm/ảnh đã dùng ở các list trước của mẫu (kể cả list vừa chạy thử).
+    const simulated: GuideDeckList[] = [];
+    let usedItems = new Set<string>(), usedImages = new Set<string>();
+    const refreshUsage = () => {
+      const usage = this.deckUsageScope(deckId, [...(currentDeck?.lists || []), ...simulated], [...existing, ...simulated]);
+      usedItems = new Set(usage.itemIds);
+      usedImages = new Set(usage.imageUrls);
+      for (const items of partnerItemsByName(context.itemsBySection, requiredPartnerNames).values()) {
+        for (const item of items) [item.id, itemUsageKey(item), itemNameUsageKey(item)].forEach(key => usedItems.delete(key));
+      }
+    };
+    const build = (items: WorkbookItemsBySection, seed: string): DeckPage[] => {
+      const previousHooks = { ...getSpotlightV3BuildContext() };
+      setSpotlightV3BuildContext({ hooks: ['Kiểm tra mẫu'], destinationId, usedHookTitles: [], diaryUsedLines: this.diaryUsedLines });
+      try {
+        return withRequiredPartners(requiredPartnerNames, () => buildPagesForDeck(deckId, items, context.imageUrls, context.imageLibraryEntries, seed,
+          new Set(usedItems), new Set(usedImages), context.coverImageUrls, context.hinhNenImagePools), { dryRun: true });
+      } finally { setSpotlightV3BuildContext(previousHooks); }
+    };
+    let lastError = '';
+    for (let index = 0; index < requested; index++) {
+      refreshUsage();
+      let built = false;
+      for (let attempt = 0; attempt < 6 && !built; attempt++) {
+        const seed = `capacity:${deckId}:${index}:${attempt}`;
+        try {
+          const unrestricted = build(sourceItems, seed);
+          const requiredPartners = requiredPartnerCount(deckId, sourceItems, unrestricted);
+          const requiredSlots = Math.max(1, partnerSlotCount(unrestricted));
+          const items = isTextNoteDeck(deckId) ? sourceItems : restrictRotationPhotos(sourceItems, history, isThreadsLocalDeck(deckId));
+          const pages = isTextNoteDeck(deckId) ? unrestricted : build(items, seed);
+          const rotated = rotatePartnerList(buildDeckList(deckId, `caption-capacity-${index + 1}`, '', '', '', pages),
+            deckId, sourceItems, history, `${seed}:rotation`, requiredPartners, requiredSlots);
+          history = rotated.history;
+          simulated.push(rotated.list);
+          built = true;
+        } catch (error) {
+          lastError = error instanceof Error ? error.message : String(error);
+        }
+        // Giữ server phản hồi (health, giao diện) trong lúc kiểm tra nhiều mẫu.
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      if (!built) {
+        return { deckId, navTitle, requested, possible: index, checked: true,
+          reason: `${lastError}${rotationPhotoShortage(sourceItems, history)}`.replace(/\s+/g, ' ').trim().slice(0, 600) };
+      }
+    }
+    return { deckId, navTitle, requested, possible: requested, checked: true };
+  }
+
+  private async computePartnerEligibility(deckId: string, context: DatasetBuildContext, partnerNames: string[]): Promise<PartnerEligibilityResponse> {
+    const items = this.cloneJson(context.itemsBySection);
+    const names = [...new Map(partnerNames.map(name => [requiredPartnerKey(name), name] as const)).values()];
+    const destinationId = contentDestinationId(this.activeDestinationId);
+    const seenSections = new Set<string>();
+    let buildError = '';
+    let anyBuilt = false;
+    // A dry run sets both build contexts synchronously and restores them, so a
+    // generation awaiting I/O between its own builds keeps its selection/hooks.
+    const dryRun = (name: string, seed: string): DeckPage[] => {
+      const previousHooks = { ...getSpotlightV3BuildContext() };
+      setSpotlightV3BuildContext({ hooks: ['Kiểm tra mẫu'], destinationId, usedHookTitles: [], diaryUsedLines: this.diaryUsedLines });
+      try {
+        return withRequiredPartners([name], () => deckId === CHERRY_ID
+          ? buildCherryBlossom({ items, pools: context.hinhNenImagePools, hooks: ['Kiểm tra mẫu'], history: {}, seed }).list.pages
+          : buildPagesForDeck(deckId, items, context.imageUrls, context.imageLibraryEntries, seed, new Set(), new Set(), context.coverImageUrls, context.hinhNenImagePools), { dryRun: true });
+      } finally { setSpotlightV3BuildContext(previousHooks); }
+    };
+    // A template that cannot be built even without a selection (missing shared
+    // data) is reported once instead of retrying every partner.
+    let baseline = '';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try { dryRun('', `eligibility:${deckId}:baseline:${attempt}`); baseline = ''; break; }
+      catch (error) { baseline = error instanceof Error ? error.message : String(error); }
+    }
+    if (baseline) {
+      return { deckId, error: baseline, partners: names.map(name => ({ name, sections: [...new Set((partnerItemsByName(items, [name]).get(name) || []).map(item => item.sectionKey))],
+        eligible: false, reason: 'Mẫu chưa tạo được với dữ liệu hiện tại' })) };
+    }
+    const results: PartnerEligibilityResponse['partners'] = [];
+    for (const name of names) {
+      const sources = partnerItemsByName(items, [name]).get(name) || [];
+      const sections = [...new Set(sources.map(item => item.sectionKey))];
+      if (!sources.length) {
+        results.push({ name, sections, eligible: false, reason: 'Chưa có ảnh hợp lệ trên máy hoặc thiếu dữ liệu mẫu này cần' });
+        continue;
+      }
+      let eligible = false;
+      for (let attempt = 0; attempt < 4 && !eligible; attempt++) {
+        try {
+          const pages = dryRun(name, `eligibility:${deckId}:${attempt}`);
+          anyBuilt = true;
+          for (const page of pages) for (const item of page.type === 'list' ? page.items : []) {
+            if (item.sourceSectionKey) seenSections.add(item.sourceSectionKey);
+            if (item.isPartner && requiredPartnerKey(item.rawName || item.name) === requiredPartnerKey(name)) eligible = true;
+          }
+        } catch (error) { buildError = error instanceof Error ? error.message : String(error); }
+      }
+      results.push({ name, sections, eligible });
+      // Keep the server responsive (health checks, UI) during a long first check.
+      await new Promise(resolve => setImmediate(resolve));
+    }
+    if (!anyBuilt) return { deckId, error: buildError || 'Mẫu chưa dựng được với dữ liệu hiện tại.', partners: results.map(entry => ({ ...entry, eligible: false, reason: entry.reason || 'Mẫu chưa dựng được với dữ liệu hiện tại' })) };
+    for (const entry of results) {
+      if (entry.eligible || entry.reason) continue;
+      const sources = partnerItemsByName(items, [entry.name]).get(entry.name) || [];
+      const theme = normalizeText(sources.map(item => item.theme).join(' '));
+      const labels = [...new Set(sources.map(item => item.sectionTitle || item.sectionKey))].join('/');
+      entry.reason = !entry.sections.some(section => seenSections.has(section)) ? `Mẫu này không có ô nhóm ${labels}`
+        : deckId === 'spotlight-v6-green' && !theme.includes('mang_xanh') ? 'Không thuộc chủ đề Mảng xanh'
+        : deckId === 'spotlight-v6-dark' && !theme.includes('tone_den') ? 'Không thuộc chủ đề Tone đen'
+        : deckId === 'spotlight-v6-maps' && !sources.some(item => item.mapImageUrl) ? 'Chưa có ảnh Google Maps'
+        : deckId === 'spotlight-v6-diary' && !sources.some(item => String(item.diaryDescriptionRaw || '').trim()) ? 'Chưa có dòng mô tả cho Nhật ký'
+        : !sources.some(item => String(item.address || '').trim()) ? 'Thiếu địa chỉ'
+        : sources.every(item => item.sectionKey === 'quan_an' && isGrillOrHotpotItem(item)) ? 'Quán nướng/lẩu không hợp ô quán ăn của mẫu này'
+        : 'Không đạt điều kiện hiển thị riêng của mẫu này';
+    }
+    return { deckId, partners: results };
   }
 
   async generatePartnerSpotlight(request: GeneratePartnerSpotlightRequest): Promise<GeneratePartnerSpotlightResponse> {
@@ -2348,6 +2765,7 @@ export class GuideService implements OnApplicationBootstrap {
     } finally {
       clearSpotlightV3BuildContext();
     }
+    if (getAllowedDeckIds(this.activeDestinationId).includes(CHERRY_ID)) baseDecks.push(cherryDeck(itemsBySection, hinhNenImagePools, this.hooksForSource(this.activeDestinationId).cherry.getCachedHooks()));
     baseDecks.forEach((deck) => this.markUsedInDeck(deck.lists.flatMap((list) => list.pages), renderUsage));
     if (this.hasGeneratedListsNeedingTemplateRefresh()) {
       this.refreshGeneratedLists(itemsBySection, imageUrls, imageLibraryEntries, coverImageUrls, renderUsage, baseDecks);
@@ -2388,6 +2806,34 @@ export class GuideService implements OnApplicationBootstrap {
     if (errors.length) throw new BadRequestException(`Chưa lưu list ${deckId}: ảnh cache thiếu/hỏng: ${errors.map(ref => `trang ${ref.page}, ${ref.place}, ${ref.id}`).join('; ')}. Hãy cập nhật dữ liệu.`);
   }
 
+  /** Chuẩn hóa tên đối tác bắt buộc; mẫu riêng (local-*) không nhận lựa chọn này. */
+  private validateRequiredPartners(deckId: unknown, raw: unknown): string[] {
+    const names = normalizeRequiredPartners(raw);
+    if (names.length && findLocalTemplate(String(deckId ?? '').trim())) {
+      throw new BadRequestException('Mẫu riêng không hỗ trợ chọn đối tác bắt buộc; hãy bỏ chọn đối tác.');
+    }
+    return names;
+  }
+
+  private assertRequiredPartnersAvailable(deckName: string, itemsBySection: WorkbookItemsBySection, names: string[]): void {
+    const missing = [...partnerItemsByName(itemsBySection, names)].filter(([, items]) => !items.length).map(([name]) => name);
+    if (missing.length) {
+      throw new RequiredPartnersError(`${deckName}: đối tác bắt buộc không có trong dữ liệu nguồn hiện tại, không còn đánh dấu đối tác hoặc chưa có ảnh hợp lệ trên máy: ${missing.join(', ')}. Hãy đồng bộ dữ liệu hoặc bỏ chọn. Chưa tạo list.`);
+    }
+  }
+
+  private requiredPartnersFailure(deckName: string, missing: string[], itemsBySection: WorkbookItemsBySection, seenSections: Set<string>): RequiredPartnersError {
+    const byName = partnerItemsByName(itemsBySection, missing);
+    const reasons = missing.map(name => {
+      const items = byName.get(name) || [];
+      const sections = [...new Set(items.map(item => item.sectionKey))];
+      if (!sections.length || sections.some(section => seenSections.has(section))) return name;
+      const labels = [...new Set(items.map(item => item.sectionTitle || item.sectionKey))].join('/');
+      return `${name} (mẫu này không có ô nhóm ${labels})`;
+    });
+    return new RequiredPartnersError(`${deckName}: không xếp được đối tác bắt buộc vào list: ${reasons.join(', ')}. Đã thử nhiều phương án; mẫu có thể không đủ ô đối tác cho số đối tác đã chọn, hoặc đối tác chưa đạt điều kiện riêng của mẫu (nhóm, chủ đề, ảnh Maps, mô tả, địa chỉ). Hãy bỏ bớt hoặc chọn đối tác khác. Chưa lưu list.`);
+  }
+
   private renderedPartnerNames(list: GuideDeckList): string[] {
     // The release ships frontend/lib alongside the backend. Node >=22.12 can
     // load this pure ESM contract synchronously; no browser, AI or I/O is invoked
@@ -2396,9 +2842,19 @@ export class GuideService implements OnApplicationBootstrap {
     return policy.collectPartnerNames(list);
   }
 
-  private async buildLocallyVerifiedGenerationContext(requirePlaceImages = true): Promise<DatasetBuildContext> {
+  private async buildLocallyVerifiedGenerationContext(requirePlaceImages = true, includeCherryImages = false): Promise<DatasetBuildContext> {
     // Clone before filtering: saved snapshots and the currently visible dataset must not change.
     const context = this.cloneJson(this.buildDatasetContext());
+    // Dedicated seasonal pools must neither enter an older/local template's
+    // cover candidates nor make it verify hundreds of unused new photographs.
+    if (!includeCherryImages) {
+      delete context.hinhNenImagePools['cherry-blossom'];
+      delete context.hinhNenImagePools['cherry-blossom-random'];
+      for (const items of Object.values(context.itemsBySection)) for (const item of items) {
+        delete item.themedImageUrls;
+        delete item.cherryRegularImageUrls;
+      }
+    }
     const pool = { items: context.itemsBySection, images: context.imageUrls, covers: context.coverImageUrls, backgrounds: context.hinhNenImagePools, library: context.imageLibraryEntries };
     const proxyId = (value: string): string => {
       let parsed: URL;
@@ -3093,6 +3549,28 @@ export class GuideService implements OnApplicationBootstrap {
     this.writeJsonFileSafe(this.getDestinationDataPath('used-inventory'), this.usedAllocator.snapshot());
   }
 
+  /** Địa điểm/ảnh đã dùng ở các list của mẫu (list mới ưu tiên cái chưa dùng). Dùng chung cho tạo thật và chạy thử khô. */
+  private deckUsageScope(deckId: string, deckLists: GuideDeckList[], existing: GuideDeckList[]): DataAllocator {
+    const deckUsage = this.createUsageScope();
+    deckLists.forEach((list) => {
+      const isPreviewList = /-main$/i.test(String(list.id || '')) || String(list.id || '').toLowerCase() === 'main';
+      if ((isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID || isThreadsExpense(deckId)) && isPreviewList) return;
+      this.markUsedInDeck(list.pages, deckUsage);
+    });
+    // Cùng mẫu: list mới ưu tiên DL chưa dùng ở list trước; nếu pool ít thì tái dùng DL + đổi ảnh (seed + imageUrls đã dùng).
+    for (const prevList of existing) {
+      if (isThreadsLocalDeck(deckId) || deckId === 'spotlight-v6-diary' || deckId === THREADS_BUDGET_ID || isThreadsExpense(deckId)) this.markUsedInDeck(prevList.pages, deckUsage);
+      for (const page of prevList.pages) {
+        if (page.backgroundImage) deckUsage.imageUrls.add(page.backgroundImage);
+        if (page.type !== 'list') continue;
+        for (const item of page.items) {
+          if (item.imageUrl) deckUsage.imageUrls.add(item.imageUrl);
+        }
+      }
+    }
+    return deckUsage;
+  }
+
   private createUsageScope(): DataAllocator {
     return new DataAllocator();
   }
@@ -3656,8 +4134,12 @@ export class GuideService implements OnApplicationBootstrap {
         const sourceType = entry.sourceType === 'xlsx' ? 'xlsx' : 'google-sheet';
         if (!/^(sheet|xlsx)-[a-z0-9]+$/.test(id) || !label) continue;
         if (sourceType === 'google-sheet' && (!sheetUrl || !exportUrl)) continue;
-        const isTest = sheetUrl.includes(`/d/${DALAT_TEST_SHEET_ID}/`);
-        const isThreads = sheetUrl.includes(`/d/${DALAT_THREADS_SHEET_ID}/`);
+        const sheetId = this.extractSheetId(sheetUrl);
+        const sameSheetAs = (builtinId: string) => Boolean(sheetId) && isDestinationId(builtinId) && this.extractSheetId(getDestinationConfig(builtinId).sheetUrl) === sheetId;
+        const kind = entry.kind === 'standard' || entry.kind === 'threads' ? entry.kind : undefined;
+        // Sheet trùng nguồn dựng sẵn của máy (Test/Threads): nhận nguồn đó, giữ id và list cũ.
+        const isThreads = sameSheetAs('dalat-threads');
+        const isTest = !isThreads && sameSheetAs('dalat-test');
         if (isTest) unregisterDestination('dalat-test');
         if (isThreads) unregisterDestination('dalat-threads');
         registerDestination({
@@ -3670,7 +4152,9 @@ export class GuideService implements OnApplicationBootstrap {
           workbookFileName: String(entry.workbookFileName || entry.workbookName || `${label}.xlsx`),
           sourceType,
           partnerFirst: Boolean(entry.partnerFirst),
-          ...(isTest || isThreads ? { contentDestinationId: 'dalat', partnerFirst: false } : {}),
+          ...(kind ? { kind } : {}),
+          ...(entry.contentDestinationId === 'dalat' ? { contentDestinationId: 'dalat' } : {}),
+          ...(isTest || isThreads ? { contentDestinationId: 'dalat', partnerFirst: false, kind: isThreads ? 'threads' as const : 'standard' as const } : {}),
         });
       }
     } catch (error) {
@@ -3683,9 +4167,8 @@ export class GuideService implements OnApplicationBootstrap {
 
   private persistCustomDestinations(): void {
     this.ensureDataRoot();
-    const destinations = getDestinationList().filter(
-      (entry) => entry.id !== 'dalat' && entry.id !== 'greenland' && entry.id !== 'dalat-test' && entry.id !== 'dalat-threads',
-    );
+    // Nguồn dựng sẵn giữ link trong source-links.json; ở đây chỉ nguồn người dùng tự thêm.
+    const destinations = getDestinationList().filter((entry) => !BUILTIN_SOURCES[entry.id]);
     fs.writeFileSync(
       this.customDestinationsPath,
       JSON.stringify({ version: 1, destinations }, null, 2),
@@ -3713,15 +4196,38 @@ export class GuideService implements OnApplicationBootstrap {
     };
   }
 
+  /** Nguồn mở mặc định: chỉ nguồn đã có dữ liệu trên máy (nguồn vừa thêm chưa tải xong chờ ở màn thêm nguồn). */
+  private defaultActiveDestinationId(): DestinationId {
+    const ready = getDestinationList().map(entry => entry.id)
+      .filter(id => fs.existsSync(this.workbookSnapshotPath(id)) || Boolean(this.bundledWorkbookPath(id)));
+    const preferred = firstDestinationId();
+    return ready.includes(preferred) ? preferred : ready[0] || '';
+  }
+
   private loadActiveDestinationId(): DestinationId {
-    if (!fs.existsSync(this.activeDestinationPath)) return DEFAULT_DESTINATION_ID;
+    if (!fs.existsSync(this.activeDestinationPath)) return this.defaultActiveDestinationId();
     try {
       const parsed = JSON.parse(fs.readFileSync(this.activeDestinationPath, 'utf-8')) as { id?: string };
       const id = String(parsed.id ?? '').trim();
-      return isDestinationId(id) ? id : DEFAULT_DESTINATION_ID;
+      return isDestinationId(id) ? id : this.defaultActiveDestinationId();
     } catch {
-      return DEFAULT_DESTINATION_ID;
+      return this.defaultActiveDestinationId();
     }
+  }
+
+  /** Đổi link Google Sheet của một nguồn trên máy này (link không nằm trong code). */
+  updateDestinationSheetLink(idValue: string, request: { sheetUrl?: unknown }): DestinationListResponse {
+    const id = String(idValue || '').trim();
+    if (!isDestinationId(id)) throw new NotFoundException('Nguồn dữ liệu không tồn tại.');
+    const sheet = this.parseGoogleSheetUrl(request?.sheetUrl);
+    const duplicate = getDestinationList().find((entry) => entry.id !== id && this.extractSheetId(entry.sheetUrl) === sheet.sheetId);
+    if (duplicate) throw new BadRequestException(`Google Sheet này đang dùng cho nguồn "${duplicate.label}".`);
+    const config = getDestinationConfig(id);
+    config.sheetUrl = sheet.sheetUrl;
+    config.exportUrl = sheet.exportUrl;
+    if (BUILTIN_SOURCES[id]) updateBuiltinSourceLinks(this.dataRoot, this.toolRoot, id, { sheetUrl: sheet.sheetUrl, exportUrl: sheet.exportUrl });
+    else this.persistCustomDestinations();
+    return this.getDestinations();
   }
 
   private saveActiveDestinationId(id: DestinationId): void {

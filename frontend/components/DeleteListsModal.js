@@ -1,6 +1,7 @@
 ﻿import { listIsMain } from '../lib/utils';
 
 import useStudioDialog from './useStudioDialog';
+import EmptyState from './ui/EmptyState';
 
 export default function DeleteListsModal({ open, dataset, selectedIds, setSelectedIds, busy, onClose, onDelete }) {
   const dialogRef = useStudioDialog(open, onClose);
@@ -24,10 +25,7 @@ export default function DeleteListsModal({ open, dataset, selectedIds, setSelect
           <p className="modal-description">Có thể chọn list AI ở nhiều mẫu. List chính của các mẫu sẽ được giữ lại.</p>
           <div id="deleteDeckList" className="export-deck-list delete-deck-list">
             {groups.length === 0 ? (
-              <div className="delete-empty-state">
-                <strong>Không có list AI để xóa</strong>
-                <span>Hiện chưa có mẫu nào có list AI. List chính của các mẫu sẽ luôn được giữ lại.</span>
-              </div>
+              <EmptyState icon="trash" title="Không có list AI để xóa">Hiện chưa có mẫu nào có list AI. List chính của các mẫu sẽ luôn được giữ lại.</EmptyState>
             ) : groups.map(({ deck, lists }) => {
               const allSelected = lists.every((list) => selectedIds.has(list.id));
               return (

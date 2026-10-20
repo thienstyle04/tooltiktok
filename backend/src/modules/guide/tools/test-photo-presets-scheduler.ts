@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {AutomationSchedulerService} from '../automation-scheduler.service';
+import {REFERENCE_PHOTO_PRESETS} from '../../../common/photo-preset-catalog';
 async function main(){
  const scheduler:any=Object.create(AutomationSchedulerService.prototype),requests:any[]=[];
  Object.assign(scheduler,{manualExportUntil:0,waitForExistingSync:async()=>{},assertOutputDirectory:()=>{},findBrowser:()=>({}),assertHookSelectionReady:()=>{},assertFrontendReady:async()=>{},waitForDriveCache:async()=>{},touch:()=>{},closeBrowser:async()=>{},persist:()=>{},launchRenderer:async(run:any)=>{run.status='completed';},guideService:{isGenerationBusy:()=>false,getDestinations:()=>({active:{id:'dalat'}}),enqueueGeneration:async(fn:any)=>fn(),generateBatchLists:async(request:any)=>{requests.push(request);return{successCount:request.count,failCount:0,lists:Array.from({length:request.count},(_,i)=>({listId:request.deckId+'-'+i})),errors:[]};}}});
@@ -13,6 +14,10 @@ async function main(){
  assert.equal(testRun.status,'completed');assert.equal(testRun.listIds.length,8);
  assert.deepEqual(switches,['dalat-test','dalat']);assert.equal(active,'dalat');
  assert.equal(requests[2].photoPreset,null);assert.equal(requests[3].photoPreset,'iphone-color-edit-v1');
+ const paletteRun:any={...run,id:'isolated-six-palettes',templates:REFERENCE_PHOTO_PRESETS.map(p=>({deckId:'grid-4',count:3,photoPreset:p.id})),generated:[],listIds:[],errors:[],status:'queued'};
+ await scheduler.executeWithAi(paletteRun);
+ assert.equal(paletteRun.status,'completed');
+ assert.deepEqual(requests.slice(4).map(r=>r.photoPreset),REFERENCE_PHOTO_PRESETS.map(p=>p.id));
  let hookTarget='';scheduler.guideService.getHookSources=(id:string)=>{hookTarget=id;return{sources:[{id:'test-only',cacheStatus:'ready'}]};};
  AutomationSchedulerService.prototype['assertHookSelectionReady'].call(scheduler,{destinationId:'dalat-test',hook:{mode:'festival',sourceId:'test-only'}});
  assert.equal(hookTarget,'dalat-test');

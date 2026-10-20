@@ -8,6 +8,7 @@ const front = path.resolve(__dirname, '..');
 const esbuild = require(path.join(front, '../backend/node_modules/esbuild'));
 const { chromium } = require('playwright');
 const helper = require('./exportClientTestHelper.cjs');
+const { APP_VERSION } = require('../lib/appVersion.js');
 
 const model = { templateId: 'local-paint-fixture', version: 1, width: 1080, height: 1440, fonts: [], nodes: [
   { kind: 'shape', x: 0, y: 0, width: 1080, height: 1440, style: { background: '#204020' } },
@@ -31,7 +32,7 @@ async function main() {
     await page.route('**/*', route => {
       const p = new URL(route.request().url()).pathname;
       if (p === '/') return route.fulfill({ contentType: 'text/html', body: `<style>${css}</style><div id="preview"></div>` });
-      if (p === '/api/health') return route.fulfill({ json: { status: 'ok', sessionId: 'paint-test', appVersion: '0.9.07' } });
+      if (p === '/api/health') return route.fulfill({ json: { status: 'ok', sessionId: 'paint-test', appVersion: APP_VERSION } });
       if (p === '/api/night-sync/export-lease') return route.fulfill({ json: { ok: true } });
       if (p.startsWith('/api/runtime-performance')) return route.fulfill({ json: { mode: 'modern', totalMemoryBytes: 16 * 1024 ** 3, freeMemoryBytes: 8 * 1024 ** 3, logicalCpuCount: 8 } });
       if (p === '/api/drive-cache/status') return route.fulfill({ json: { ready: true, phase: 'ready' } });

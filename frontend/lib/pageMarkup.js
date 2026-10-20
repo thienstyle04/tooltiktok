@@ -1,8 +1,10 @@
 import { renderThreadsToplistCover, renderThreadsToplistPage } from './threadsToplist.js';
 import { escapeHtml, sanitizeFilePart } from './utils.js';
 import { renderLocalTemplate } from './localTemplates.js';
+import { renderCherryBlossom } from './cherryBlossom.js';
 import { renderItineraryNotePage, renderItineraryNoteTimedPage } from './itineraryNote.js';
 import { renderThreadsBudgetPage } from './threadsBudget.js';
+import { renderThreadsExpensePage } from './threadsExpenseSheet.js';
 import { photoRenderArguments, strictPhotoMarkup } from './photoPresets.mjs';
 import { compactThreadsLocalAddress } from './threadsFoodExport.mjs';
 import { renderOneWayStoryCover, renderOneWayStoryPhoto, renderOneWayStoryRoad, renderOneWayStorySlope } from './markup/oneWayStory.js';
@@ -129,6 +131,7 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   }
   if (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day') return renderItineraryNotePage(page, index, listId);
   if (page.layoutVariant === 'itinerary-note-threads-budget') return renderThreadsBudgetPage(page, index, listId);
+  if (page.layoutVariant === 'threads-expense-sheet') return renderThreadsExpensePage(page, index, listId);
   if (page.layoutVariant === 'itinerary-note-timed-day') return renderItineraryNoteTimedPage(page, index, listId);
   if (page.layoutVariant === 'summary-note-page') {
     return renderSummaryNotePage(page, index, listId);
@@ -221,6 +224,7 @@ function withPageTextScale(html, page) {
  * @returns {string}
  */
 function renderCoverPageContent(page, index, total, listId, hashtags = [], list = null, coverImageUrls = []) {
+  if (page.imageRole) return renderCherryBlossom(page, index, listId);
   if (page.localRender) return renderLocalTemplate(page, index, listId);
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
   const coverTitle = polishShortVietnameseCopy(page.title);
@@ -414,6 +418,7 @@ export function renderListPage(page, ...args) {
  * @returns {string}
  */
 function renderListPageContent(page, index, total, listId, hashtags = [], list = null) {
+  if (page.imageRole) return renderCherryBlossom(page, index, listId);
   if (page.localRender) return renderLocalTemplate(page, index, listId);
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
   if (String(listId || '').startsWith('threads-food-local') || String(listId || '').startsWith('threads-cafe-local') || String(listId || '').startsWith('threads-mix-local') || String(listId || '').startsWith('threads-mix-text')) {

@@ -1,0 +1,749 @@
+/* Studio refresh — chuyển hiệu ứng từ bộ component hover.dev sang CSS thuần.
+   Chỉ áp dụng cho khung quản lý (sidebar, header, panel, nút, modal).
+   Không bao giờ nhắm vào .story-page, .slide-card-content hay markup xuất ảnh. */
+
+@property --ui-shimmer-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.studio-workflow {
+  --ui-radius-sm: 10px;
+  --ui-radius-md: 14px;
+  --ui-radius-lg: 20px;
+  --ui-ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ui-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --ui-clay-soft: color-mix(in srgb, var(--studio-clay) 16%, transparent);
+  --ui-clay-glow: color-mix(in srgb, var(--studio-clay) 38%, transparent);
+  --ui-shadow-1: 0 1px 2px #0000002e, 0 4px 14px #00000024;
+  --ui-shadow-2: 0 10px 30px #00000047, 0 2px 6px #0000002e;
+  --ui-shadow-3: 0 22px 48px #00000059, 0 4px 12px #00000033;
+  --ui-highlight: #ffffff0d;
+}
+.studio-workflow[data-studio-theme="light"] {
+  --ui-shadow-1: 0 1px 2px #2335240f, 0 4px 14px #2335240d;
+  --ui-shadow-2: 0 10px 28px #23352417, 0 2px 6px #2335240d;
+  --ui-shadow-3: 0 22px 44px #2335241f, 0 4px 12px #23352412;
+  --ui-highlight: #ffffffb3;
+}
+
+/* ---------- Thanh cuộn mảnh ---------- */
+.studio-workflow ::-webkit-scrollbar { width: 10px; height: 10px; }
+.studio-workflow ::-webkit-scrollbar-track { background: transparent; }
+.studio-workflow ::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: var(--studio-line-strong) padding-box; }
+.studio-workflow ::-webkit-scrollbar-thumb:hover { background-color: var(--studio-soft); }
+
+/* ---------- Sidebar (icon-side-nav + chip-tabs) ---------- */
+
+/* Chấm trạng thái kiểu other/ping-icon: vòng sóng lan ra liên tục. */
+.ui-ping { position: relative; flex-shrink: 0; }
+.ui-ping::before,
+.ui-ping::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  color: #33c46d;
+  opacity: 0;
+  animation: ui-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite;
+}
+.ui-ping::after { animation-delay: 1.2s; }
+.ui-ping.waiting { background: #e0a43c; }
+.ui-ping.waiting::before,
+.ui-ping.waiting::after { color: #e0a43c; }
+@keyframes ui-ping {
+  0% { transform: scale(1); opacity: .55; }
+  80%, 100% { transform: scale(3.2); opacity: 0; }
+}
+
+/* ---------- Header ---------- */
+
+.studio-workflow .section-title { letter-spacing: -.02em; }
+
+/* Nút sáng/tối kiểu toggles/slider-toggle. */
+.studio-workflow .ui-theme-toggle {
+  position: relative;
+  margin-top: 2px;
+  isolation: isolate;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 4px;
+  border: 1px solid var(--studio-line-strong);
+  border-radius: 999px;
+  background: var(--studio-surface);
+  box-shadow: var(--ui-shadow-1);
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.studio-workflow .ui-theme-toggle:hover:not(:disabled) { border-color: var(--studio-clay); background: var(--studio-surface); color: var(--studio-ink); transform: none; }
+.studio-workflow .ui-theme-option {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  color: var(--studio-muted);
+  transition: color 240ms ease;
+}
+.studio-workflow .ui-theme-option.current { color: var(--studio-bg); }
+.studio-workflow .ui-theme-track {
+  position: absolute;
+  inset: 4px;
+  z-index: 0;
+  display: flex;
+  pointer-events: none;
+}
+.studio-workflow .ui-theme-track.dark { justify-content: flex-end; }
+.studio-workflow .ui-theme-knob {
+  width: 50%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--studio-clay), var(--studio-clay-strong));
+  box-shadow: 0 4px 12px var(--ui-clay-glow);
+}
+
+/* ---------- Thanh trạng thái ---------- */
+
+@keyframes ui-status-in {
+  from { opacity: 0; filter: blur(3px); }
+  to { opacity: 1; filter: none; }
+}
+
+/* ---------- Tab & quy trình (chip-tabs + morph-stepped-progress) ---------- */
+.studio-workflow .studio-workflow-steps.ui-step-tabs {
+  position: relative;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: calc(100% - 56px);
+  gap: 4px;
+  margin: 14px 28px 0;
+  padding: 5px;
+  border: 1px solid var(--studio-line);
+  border-radius: 16px;
+  background: var(--studio-surface);
+  box-shadow: var(--ui-shadow-1);
+}
+.studio-workflow .automation-panel .studio-workflow-steps.ui-step-tabs { margin: 4px 0 14px; padding: 5px; }
+.studio-workflow .studio-workflow-steps.ui-step-tabs button {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--studio-muted);
+  font-weight: 700;
+  transition: color 220ms ease, background-color 220ms ease;
+}
+.studio-workflow .studio-workflow-steps.ui-step-tabs button:hover:not([aria-current]) { color: var(--studio-ink); background: var(--ui-highlight); }
+.studio-workflow .studio-workflow-steps.ui-step-tabs button[aria-current] { border: 0; background: transparent; color: var(--studio-bg); }
+.studio-workflow .ui-step-pill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--studio-clay), var(--studio-clay-strong));
+  box-shadow: 0 6px 16px var(--ui-clay-glow);
+}
+.studio-workflow .ui-step-index {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--studio-line-strong);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+  transition: border-color 220ms ease, background-color 220ms ease;
+}
+.studio-workflow .ui-step-index > * { grid-area: 1 / 1; }
+.studio-workflow .ui-step-tabs button[aria-current] .ui-step-index { border-color: color-mix(in srgb, var(--studio-bg) 45%, transparent); background: color-mix(in srgb, var(--studio-bg) 18%, transparent); }
+.studio-workflow .ui-step-tabs button[data-done] .ui-step-index { border-color: var(--studio-clay); background: var(--ui-clay-soft); color: var(--studio-clay); }
+.studio-workflow .ui-step-tabs button[data-done] .ui-step-number { opacity: 0; }
+.studio-workflow .ui-step-check { animation: ui-check-in 300ms var(--ui-ease-spring); }
+@keyframes ui-check-in {
+  from { opacity: 0; transform: rotate(-180deg) scale(.4); }
+  to { opacity: 1; transform: none; }
+}
+.studio-workflow .ui-step-progress {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: transparent;
+  pointer-events: none;
+}
+.studio-workflow .ui-step-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--studio-clay), var(--studio-clay-strong));
+}
+
+/* ---------- Panel & bố cục ---------- */
+.studio-workflow :is(.template-gallery-shell, .preview-selector-panel, .preview-panel, .inspector-shell, .settings-panel, .ai-panel, .automation-form, .studio-page-picker, .studio-selected-preview, .studio-library-group, .studio-library-row, .studio-library-filters) {
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-1);
+}
+
+.studio-workflow .workspace-grid > * { animation: ui-fade-in 380ms var(--ui-ease-out) backwards; }
+.studio-workflow .workspace-grid > :nth-child(2) { animation-delay: 70ms; }
+.studio-workflow .panel-kicker { letter-spacing: .1em; }
+
+@keyframes ui-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ui-rise {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ui-pop-in {
+  from { opacity: 0; transform: scale(.6) rotate(-12deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Thẻ mẫu (hover-tilt + shimmer-border-card) ---------- */
+
+.studio-workflow { --ui-shimmer-a: var(--studio-clay); --ui-shimmer-b: var(--studio-clay-strong); --ui-shimmer-gap: transparent; }
+/* Nền sáng: hai màu viền phải khác nhau rõ và phần "trống" vẫn có màu nhạt, nếu không viền chạy gần như biến mất. */
+.studio-workflow[data-studio-theme="light"] { --ui-shimmer-a: #c2541c; --ui-shimmer-b: #f4a57d; --ui-shimmer-gap: #f0d3c2; }
+
+@keyframes ui-shimmer { to { --ui-shimmer-angle: 360deg; } }
+
+/* ---------- Thống kê dữ liệu ---------- */
+.studio-workflow .stats-overview > * { border-radius: var(--ui-radius-md); animation: ui-rise 480ms var(--ui-ease-out) backwards; }
+.studio-workflow .stats-overview > :nth-child(2) { animation-delay: 50ms; }
+.studio-workflow .stats-overview > :nth-child(3) { animation-delay: 100ms; }
+.studio-workflow .stats-overview > :nth-child(4) { animation-delay: 150ms; }
+.studio-workflow .stats-card {
+  border-radius: var(--ui-radius-lg);
+  animation: ui-rise 520ms var(--ui-ease-out) backwards;
+  transition: transform 320ms var(--ui-ease-out), box-shadow 320ms var(--ui-ease-out), border-color 320ms ease;
+}
+.studio-workflow .stats-card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--studio-clay) 45%, var(--studio-line)); box-shadow: var(--ui-shadow-3); }
+.studio-workflow .stats-card-metrics > * { border-radius: var(--ui-radius-sm); }
+
+/* ---------- Nút (spotlight-button + gradient-shadow-button) ---------- */
+.studio-workflow .toolbar-button {
+  border-radius: var(--ui-radius-sm);
+  transition: transform 180ms var(--ui-ease-out), box-shadow 220ms ease, background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+}
+.studio-workflow .toolbar-button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--studio-clay); color: var(--studio-ink); box-shadow: var(--ui-shadow-1); }
+.studio-workflow .toolbar-button:active:not(:disabled) { transform: translateY(0) scale(.97); box-shadow: none; transition-duration: 80ms; }
+.studio-workflow :is(.toolbar-button.primary, .toolbar-button.secondary) {
+  border-color: transparent;
+  background-color: var(--studio-clay);
+  background-image: linear-gradient(135deg, var(--studio-clay), var(--studio-clay-strong));
+  box-shadow: 0 6px 16px var(--ui-clay-glow), inset 0 1px 0 #ffffff40;
+}
+.studio-workflow :is(.toolbar-button.primary, .toolbar-button.secondary):hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--studio-bg);
+  background-image:
+    radial-gradient(140px circle at var(--spot-x, 50%) var(--spot-y, 50%), #ffffff57, transparent 65%),
+    linear-gradient(135deg, var(--studio-clay), var(--studio-clay-strong));
+  box-shadow: 0 10px 24px var(--ui-clay-glow), inset 0 1px 0 #ffffff59;
+}
+.studio-workflow[data-studio-theme="light"] :is(.toolbar-button.primary, .toolbar-button.secondary),
+.studio-workflow[data-studio-theme="light"] :is(.toolbar-button.primary, .toolbar-button.secondary):hover:not(:disabled) { color: #fff; }
+.studio-workflow .ai-settings-card button {
+  min-height: 38px;
+  border-color: var(--studio-line-strong);
+  border-radius: var(--ui-radius-sm);
+  font-size: .82rem;
+  font-weight: 800;
+  transition: transform 180ms var(--ui-ease-out), box-shadow 220ms ease, border-color 220ms ease;
+}
+.studio-workflow .ai-settings-card button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--studio-clay); box-shadow: var(--ui-shadow-1); }
+.studio-workflow .ai-settings-card button:active:not(:disabled) { transform: scale(.97); box-shadow: none; }
+.studio-workflow .list-create-panel .list-create-primary { border-radius: var(--ui-radius-md); }
+.studio-workflow .list-create-panel .list-create-primary span { transition: transform 260ms var(--ui-ease-spring); }
+.studio-workflow .list-create-panel .list-create-primary:hover:not(:disabled) span { transform: translateX(5px); }
+
+/* ---------- Ô nhập (beam-input: viền sáng khi focus) ---------- */
+.studio-workflow :is(.page-inspector, .settings-panel, .automation-panel, .caption-tools, .ai-panel, .modal, .modal-card, .studio-library, .studio-library-filters, .template-gallery-shell, .studio-page-picker) :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea) {
+  border-radius: var(--ui-radius-sm);
+  transition: border-color 200ms ease, box-shadow 240ms ease, background-color 200ms ease;
+}
+.studio-workflow :is(.page-inspector, .settings-panel, .automation-panel, .caption-tools, .ai-panel, .modal, .modal-card, .studio-library, .studio-library-filters, .template-gallery-shell, .studio-page-picker) :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea):hover:not(:disabled, :focus) { border-color: var(--studio-soft); }
+.studio-workflow :is(.page-inspector, .settings-panel, .automation-panel, .caption-tools, .ai-panel, .modal, .modal-card, .studio-library, .studio-library-filters, .template-gallery-shell, .studio-page-picker) :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea):focus {
+  border-color: var(--studio-clay);
+  outline: none;
+  box-shadow: 0 0 0 4px var(--ui-clay-soft), 0 0 22px -4px var(--ui-clay-glow);
+}
+.studio-workflow :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--studio-clay); }
+.studio-workflow .modal-card select { min-height: 36px; padding: 6px 10px; border: 1px solid var(--studio-line-strong); border-radius: var(--ui-radius-sm); background: var(--studio-surface); color: var(--studio-ink); font: inherit; }
+
+/* ---------- Danh sách list (accordion) ---------- */
+
+/* ---------- Trang chỉnh sửa ---------- */
+
+/* ---------- Modal (spring-modal) ---------- */
+.studio-workflow .modal-overlay { background: color-mix(in srgb, var(--studio-bg) 62%, transparent); backdrop-filter: blur(8px) saturate(1.1); animation: ui-fade-in 220ms ease; }
+.studio-workflow .modal-card {
+  border: 1px solid var(--studio-line);
+  border-radius: 24px;
+  box-shadow: var(--ui-shadow-3), 0 0 0 1px var(--ui-highlight) inset;
+  animation: ui-spring-in 520ms var(--ui-ease-spring);
+}
+@keyframes ui-spring-in {
+  from { opacity: 0; transform: scale(.86) rotate(2.5deg); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: none; }
+}
+.studio-workflow .modal-close-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--studio-line-strong);
+  border-radius: 12px;
+  color: var(--studio-muted);
+  font-size: 1.4rem;
+  transition: transform 260ms var(--ui-ease-spring), color 200ms ease, border-color 200ms ease;
+}
+.studio-workflow .modal-close-btn:hover { transform: rotate(90deg); border-color: var(--studio-clay); color: var(--studio-clay); }
+
+.studio-workflow .cache-warm-overlay { animation: ui-fade-in 260ms ease; }
+.studio-workflow .cache-warm-dialog { border-radius: 26px; animation: ui-spring-in 560ms var(--ui-ease-spring); }
+.studio-workflow .cache-warm-icon { box-shadow: 0 10px 26px #f07f5a55; animation: ui-float 3s ease-in-out infinite; }
+@keyframes ui-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.studio-workflow .cache-warm-progress span,
+.studio-workflow .export-progress-bar {
+  background-image: linear-gradient(110deg, transparent 30%, #ffffff59 50%, transparent 70%), linear-gradient(90deg, var(--studio-clay), var(--studio-clay-strong));
+  background-size: 200% 100%, 100% 100%;
+  animation: ui-progress-shine 1.6s linear infinite;
+}
+@keyframes ui-progress-shine {
+  from { background-position: 150% 0, 0 0; }
+  to { background-position: -50% 0, 0 0; }
+}
+.studio-workflow .export-progress.failed .export-progress-bar { background-image: none; animation: none; }
+.studio-workflow .export-progress { border-radius: var(--ui-radius-md); }
+
+/* ---------- Thông báo trượt vào (slide-in-notifications) ---------- */
+.studio-workflow :is(.cache-ready-notice, .sync-warning-notice) {
+  border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-shadow-3);
+  animation: ui-slide-in 460ms var(--ui-ease-spring);
+}
+@keyframes ui-slide-in {
+  from { opacity: 0; transform: translateY(-14px) scale(.95); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Chuông cập nhật ---------- */
+/* Chuông phải đứng yên tuyệt đối (test-update-bell đo vị trí), chỉ biểu tượng bên trong được lắc. */
+.studio-workflow .app-update-bell { border-radius: 14px; box-shadow: var(--ui-shadow-1); transition: border-color 200ms ease, background-color 200ms ease; }
+.studio-workflow .app-update-bell:hover svg { animation: ui-bell 600ms ease; transform-origin: 50% 10%; }
+.studio-workflow .app-update-dot { animation: ui-dot-pulse 1.8s ease-out infinite; }
+@keyframes ui-bell {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-12deg); }
+  60% { transform: rotate(7deg); }
+  80% { transform: rotate(-4deg); }
+}
+@keyframes ui-dot-pulse {
+  0% { box-shadow: 0 0 0 0 #ef444499; }
+  80%, 100% { box-shadow: 0 0 0 7px #ef444400; }
+}
+.studio-workflow .app-update-notice { border-radius: 18px; transform-origin: top right; animation: ui-spring-in 460ms var(--ui-ease-spring); }
+
+/* ---------- Bar loader (loaders/bar-loader) ---------- */
+.ui-bar-loader { display: inline-flex; align-items: center; gap: 4px; height: 36px; }
+.ui-bar-loader > span {
+  width: 6px;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #ffb58f, #ef9a70);
+  animation: ui-bar 1s cubic-bezier(.55, 0, 1, .45) infinite alternate;
+  animation-delay: calc(var(--bar-index, 0) * 160ms);
+}
+@keyframes ui-bar {
+  from { transform: scaleY(.45); opacity: .35; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+.studio-boot-loading { gap: 16px; align-content: center; min-height: 100dvh; }
+.studio-boot-loading p { margin: 0; letter-spacing: .02em; }
+
+/* Skeleton: vệt sáng chạy ngang thay cho nền tĩnh. */
+.studio-workflow :is(.deck-skeleton-head, .deck-skeleton-card) :is(span, strong, em) {
+  background-image: linear-gradient(100deg, transparent 20%, var(--ui-highlight) 50%, transparent 80%);
+  background-size: 200% 100%;
+  animation: ui-progress-shine 1.4s linear infinite;
+}
+
+/* ---------- Thiết bị nhỏ ---------- */
+@media (max-width: 1023px) {
+  .studio-workflow .studio-workflow-steps.ui-step-tabs { margin: 12px 16px 0; max-width: calc(100% - 32px); }
+
+
+}
+@media (max-width: 600px) {
+  .studio-workflow .studio-workflow-steps.ui-step-tabs { align-self: stretch; width: auto; }
+  .studio-workflow .studio-workflow-steps.ui-step-tabs { flex-wrap: nowrap; }
+  .studio-workflow .studio-workflow-steps.ui-step-tabs button { flex: 1 1 auto; justify-content: center; padding: 8px 10px; }
+  .studio-workflow .ui-stepper button:not([aria-current]) { flex: 0 0 auto; }
+  .studio-workflow .ui-stepper button:not([aria-current]) .ui-step-label { display: none; }
+  .studio-workflow .ui-theme-option { padding: 6px 9px; }
+  /* Nút sáng/tối chỉ còn biểu tượng để nằm cùng hàng tiêu đề; tên nút vẫn từ aria-label. */
+  .studio-workflow .ui-theme-text { display: none; }
+  .studio-workflow .ui-theme-toggle { min-height: 36px; }
+  .studio-workflow .ui-theme-option { padding: 6px 11px; }
+  /* Menu trên cùng: lưới 2×2, mỗi mục một dòng, không cuộn ngang (tránh vùng chuông). */
+
+
+
+}
+
+/* ---------- Thanh trạng thái nằm trên hàng tiêu đề ---------- */
+/* CSS responsive cũ đổi header sang cột; ở đây luôn là hàng có xuống dòng để trạng thái tự chiếm hàng riêng khi hẹp. */
+
+/* Dưới 1024px chuông nằm trên hàng menu, header không cần chừa chỗ cho chuông. */
+
+/* ---------- Bộ lọc chip trong thư viện mẫu ---------- */
+
+/* ---------- Thẻ mẫu gọn hơn ---------- */
+
+/* ---------- Màn trống (EmptyState) ---------- */
+.ui-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  grid-column: 1 / -1;
+  padding: 36px 24px;
+  border: 1.5px dashed var(--studio-line-strong);
+  border-radius: var(--ui-radius-lg, 20px);
+  background: radial-gradient(70% 90% at 50% 0%, var(--ui-clay-soft, #ef9a7026), transparent 70%), var(--studio-surface);
+  color: var(--studio-muted);
+  text-align: center;
+}
+.ui-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--studio-clay), var(--studio-clay-strong));
+  color: var(--studio-bg);
+  box-shadow: 0 10px 24px var(--ui-clay-glow, #ef9a7060);
+  animation: ui-float 3.2s ease-in-out infinite;
+}
+.ui-empty-copy { display: grid; gap: 6px; max-width: 46ch; }
+.ui-empty-copy strong { color: var(--studio-ink); font-size: 1.02rem; }
+.ui-empty-copy p { margin: 0; font-size: .86rem; line-height: 1.55; }
+.ui-empty.compact { grid-template-columns: auto minmax(0, 1fr); justify-items: start; gap: 14px; padding: 16px 18px; text-align: left; }
+.ui-empty.compact .ui-empty-icon { width: 42px; height: 42px; border-radius: 13px; }
+.ui-empty.compact .ui-empty-icon svg { width: 20px; height: 20px; }
+
+/* ---------- Hộp xác nhận (spring-modal) ---------- */
+.studio-workflow .ui-confirm-overlay { z-index: 6000; align-items: center; padding: 24px; }
+.studio-workflow .ui-confirm-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(440px, 100%);
+  padding: 28px 26px 22px;
+  text-align: center;
+}
+.studio-workflow .ui-confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--studio-clay), var(--studio-clay-strong));
+  color: var(--studio-bg);
+  font-size: 1.6rem;
+  font-weight: 950;
+  box-shadow: 0 0 0 8px var(--ui-clay-soft);
+  animation: ui-pop-in 520ms var(--ui-ease-spring) 80ms backwards;
+}
+.studio-workflow .ui-confirm-card[data-tone="danger"] .ui-confirm-icon { background: linear-gradient(135deg, #f26d5b, #d4473a); color: #fff; box-shadow: 0 0 0 8px #ef44441f; }
+.studio-workflow .ui-confirm-card h3 { margin: 0; color: var(--studio-ink); font-size: 1.2rem; }
+.studio-workflow .ui-confirm-card p { margin: 0; color: var(--studio-muted); font-size: .9rem; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-line; max-height: min(60vh, 420px); overflow-y: auto; }
+.studio-workflow .ui-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 12px; }
+.studio-workflow .ui-confirm-actions .toolbar-button { min-height: 42px; }
+.studio-workflow .ui-danger-button { border-color: transparent; background: linear-gradient(135deg, #f26d5b, #d4473a); color: #fff; box-shadow: 0 6px 16px #d4473a55; }
+.studio-workflow .ui-danger-button:hover:not(:disabled) { border-color: transparent; color: #fff; box-shadow: 0 10px 22px #d4473a66; }
+
+/* ---------- Thanh bước trong hộp xuất file ---------- */
+
+.studio-workflow .studio-workflow-steps.ui-step-tabs button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---------- Phần "Chi tiết" thu gọn (ui-more) ---------- */
+.studio-workflow .ui-more { min-width: 0; }
+.studio-workflow .ui-more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 0;
+  color: var(--studio-clay);
+  font-size: .8rem;
+  font-weight: 800;
+  list-style: none;
+  cursor: pointer;
+}
+.studio-workflow .ui-more > summary::-webkit-details-marker { display: none; }
+.studio-workflow .ui-more > summary::before {
+  content: "i";
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 900;
+}
+.studio-workflow .ui-more > summary::after { content: ""; width: 6px; height: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform 240ms var(--ui-ease-spring); }
+.studio-workflow .ui-more[open] > summary::after { transform: translateY(1px) rotate(-135deg); }
+.studio-workflow .ui-more > summary:hover { color: var(--studio-clay-strong); }
+.studio-workflow .ui-more[open] > :not(summary) { animation: ui-fade-in 260ms ease; }
+.studio-workflow .ai-settings-card .ui-more { display: grid; gap: 10px; padding: 10px 14px; border: 1px solid var(--studio-line); border-radius: var(--ui-radius-md); background: var(--ui-highlight); }
+.studio-workflow .ai-settings-card .ui-more:not([open]) { padding-block: 6px; }
+
+/* ---------- Cỡ chữ gọn ---------- */
+.studio-workflow .font-size-control .font-size-summary {
+  margin: 8px 0 0;
+  overflow: hidden;
+  color: var(--studio-muted);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.studio-workflow .font-size-more { margin-top: 4px; }
+.studio-workflow .font-size-more .font-size-help { margin-top: 4px; }
+
+/* ---------- Nhãn trạng thái lưu ---------- */
+.studio-workflow .ui-save-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 6px 0 0;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid #33c46d55;
+  border-radius: 999px;
+  background: #33c46d1a;
+  color: #4fd486;
+  font-size: .76rem;
+  font-weight: 800;
+}
+.studio-workflow[data-studio-theme="light"] .ui-save-badge { color: #1f7a43; }
+.studio-workflow .ui-save-badge[data-state="saved"]::before { content: "✓"; font-weight: 900; }
+.studio-workflow .ui-save-badge[data-state="dirty"] { border-color: #e0a43c66; background: #e0a43c1f; color: #e7b04c; animation: ui-dirty-pulse 2s ease-in-out infinite; }
+.studio-workflow[data-studio-theme="light"] .ui-save-badge[data-state="dirty"] { color: #9a6410; }
+.studio-workflow .ui-save-badge[data-state="saving"] { border-color: var(--studio-line-strong); background: var(--ui-highlight); color: var(--studio-muted); }
+.studio-workflow .ui-save-badge[data-state="failed"] { border-color: #ef444466; background: #ef44441a; color: #f17b6c; }
+.studio-workflow[data-studio-theme="light"] .ui-save-badge[data-state="failed"] { color: #b3261e; }
+@keyframes ui-dirty-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 #e0a43c00; }
+  50% { box-shadow: 0 0 0 4px #e0a43c22; }
+}
+
+/* ---------- Mục lục dính (SectionNav) ---------- */
+.studio-workflow .ui-section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--studio-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--studio-surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--ui-shadow-1);
+  scrollbar-width: none;
+}
+.studio-workflow .ui-section-nav button {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 6px 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--studio-muted);
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease;
+}
+.studio-workflow .ui-section-nav button:hover { border-color: var(--studio-line-strong); background: var(--ui-highlight); color: var(--studio-clay); }
+.studio-workflow :is(.settings-card, .ai-settings-card) { scroll-margin-top: 72px; }
+.studio-workflow :is(.settings-card, .ai-settings-card):focus { outline: none; }
+.studio-workflow :is(.settings-card, .ai-settings-card):focus-visible { outline: 2px solid var(--studio-clay); outline-offset: 3px; }
+
+/* ---------- Bố cục Cài đặt ---------- */
+.studio-workflow .settings-card { border-radius: var(--ui-radius-lg); box-shadow: var(--ui-shadow-1); }
+.studio-workflow :is(.settings-cache-card, .settings-sync-card) { grid-column: 1 / -1; }
+.studio-workflow .settings-cache-card .settings-cache-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.studio-workflow .settings-sync-card { grid-template-columns: minmax(220px, .8fr) minmax(0, 2fr); }
+.studio-workflow .settings-sync-card .settings-sync-actions { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
+.studio-workflow .settings-sync-card .settings-sync-actions > :is(.settings-refresh-button, .settings-form-note, p) { grid-column: 1 / -1; }
+.studio-workflow .settings-night-sources > p { border-radius: var(--ui-radius-md); }
+@media (max-width: 900px) {
+  .studio-workflow .settings-sync-card { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Ô chọn file (FilePicker) ---------- */
+.ui-file-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 4px 12px 4px 4px;
+  border: 1.5px dashed var(--studio-line-strong);
+  border-radius: 12px;
+  background: var(--studio-surface);
+  color: var(--studio-muted);
+  cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+.ui-file-picker:hover:not([data-disabled]) { border-color: var(--studio-clay); background: color-mix(in srgb, var(--studio-clay) 7%, var(--studio-surface)); }
+.ui-file-picker[data-has-file] { border-style: solid; border-color: color-mix(in srgb, var(--studio-clay) 55%, var(--studio-line)); color: var(--studio-ink); }
+.ui-file-picker[data-disabled] { opacity: .55; cursor: not-allowed; }
+.ui-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.ui-file-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--studio-clay), var(--studio-clay-strong));
+  color: var(--studio-bg);
+  font-size: .78rem;
+  font-weight: 850;
+}
+[data-studio-theme="light"] .ui-file-button { color: #fff; }
+.ui-file-name { min-width: 0; overflow: hidden; font-size: .82rem; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+.ui-file-input:focus-visible ~ .ui-file-button { outline: 2px solid var(--studio-clay); outline-offset: 3px; }
+
+/* ---------- Hẹn giờ: thẻ chọn mẫu có ảnh ---------- */
+.studio-workflow .automation-template-grid { gap: 8px; max-height: 360px; padding: 2px; }
+.studio-workflow .automation-template-grid label {
+  grid-template-columns: auto 40px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 8px 10px 8px 8px;
+  border-radius: var(--ui-radius-md);
+  cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease, transform 200ms var(--ui-ease-out);
+}
+.studio-workflow .automation-template-grid label:hover { border-color: var(--studio-line-strong); transform: translateY(-1px); }
+.studio-workflow .automation-template-grid label.selected { box-shadow: 0 0 0 3px var(--ui-clay-soft); }
+.studio-workflow .automation-template-grid label > select { grid-column: 1 / -1; }
+.studio-workflow .automation-template-thumb {
+  display: block;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--studio-surface-3), var(--studio-surface-2));
+}
+.studio-workflow .automation-template-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.studio-workflow .automation-template-grid label.selected .automation-template-thumb { box-shadow: 0 0 0 2px var(--studio-clay); }
+@media (max-width: 900px) {
+  .studio-workflow .automation-template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .studio-workflow .automation-template-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Nút bị khóa: rõ là đang khóa nhưng vẫn đọc được ---------- */
+.studio-workflow .toolbar-button:disabled,
+.studio-workflow .ai-settings-card button:disabled {
+  opacity: 1;
+  border-color: var(--studio-line);
+  background: var(--studio-surface-2);
+  background-image: none;
+  color: var(--studio-soft);
+  box-shadow: none;
+  transform: none;
+}
+.studio-workflow :is(.toolbar-button.primary, .toolbar-button.secondary):disabled {
+  border: 1px dashed var(--studio-line-strong);
+  background: var(--studio-surface-2);
+  color: var(--studio-soft);
+}
+
+/* ---------- Modal & hộp tiến độ theo theme ---------- */
+/* Thân modal trước đây luôn nền tối, lệch với đầu/chân modal ở chế độ sáng. */
+.studio-workflow .modal-card .modal-body { background: var(--studio-bg); color: var(--studio-ink); }
+.studio-workflow .delete-modal-card .modal-foot { flex-direction: row; justify-content: flex-end; }
+.studio-workflow .delete-modal-card .modal-foot .toolbar-button { width: auto; }
+.studio-workflow .toolbar-button.danger:not(:disabled) {
+  border-color: transparent;
+  background: linear-gradient(135deg, #f26d5b, #d4473a);
+  color: #fff;
+  box-shadow: 0 6px 16px #d4473a55;
+}
+.studio-workflow .toolbar-button.danger:hover:not(:disabled) { border-color: transparent; color: #fff; box-shadow: 0 10px 22px #d4473a66; }
+.studio-workflow .cache-warm-overlay { background: color-mix(in srgb, var(--studio-bg) 78%, transparent); }
+.studio-workflow .cache-warm-dialog { border-color: var(--studio-line); background: var(--studio-surface); color: var(--studio-ink); box-shadow: var(--ui-shadow-3); }
+.studio-workflow :is(.cache-warm-message, .cache-warm-note) { color: var(--studio-muted); }
+.studio-workflow .cache-warm-stats { color: var(--studio-muted); }
+.studio-workflow .cache-warm-stats strong { color: var(--studio-ink); }
+.studio-workflow .cache-warm-progress { background: var(--studio-surface-3); }
+.studio-workflow[data-studio-theme="light"] .cache-warm-warning { color: #9a5a0c; }
+.studio-workflow .cache-warm-dialog > .toolbar-button { margin-top: 18px; }
+
+/* ---------- "Caption tùy chọn": mũi tên xoay thay dấu ▶ mặc định ---------- */
+.studio-workflow .list-create-advanced > summary { list-style: none; display: flex; align-items: center; flex-wrap: wrap; gap: 0 10px; }
+.studio-workflow .list-create-advanced > summary::-webkit-details-marker { display: none; }
+.studio-workflow .list-create-advanced > summary::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--studio-clay);
+  border-bottom: 2px solid var(--studio-clay);
+  transform: rotate(-45deg);
+  transition: transform 260ms var(--ui-ease-spring);
+}
+.studio-workflow .list-create-advanced[open] > summary::before { transform: rotate(45deg); }
+.studio-workflow .list-create-advanced > summary:hover { color: var(--studio-clay); }
+.studio-workflow .list-create-advanced > summary span { margin-left: 0; }
+.studio-workflow .list-create-advanced[open] > :not(summary) { animation: ui-fade-in 260ms ease; }
+
+/* ---------- Giảm chuyển động ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .studio-workflow *,
+  .studio-workflow *::before,
+  .studio-workflow *::after,
+  .studio-boot-loading * {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

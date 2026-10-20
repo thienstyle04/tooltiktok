@@ -18,6 +18,11 @@ export interface LocalTemplateBuildInput {
   /** Verified background photos from the active source, never another workbook. */
   coverImages: Array<{ id: string; url: string }>;
   savedCoverImageIds: string[];
+  /** Read-only copy of this template's saved lists, oldest first, so a builder
+   * can rebuild its own content rotation when no state was stored yet. */
+  savedLists?: GuideDeckList[];
+  /** Read-only snapshot of the main list with its saved page edits applied. */
+  mainList?: GuideDeckList;
   assetUrl: (name: string) => string;
 }
 export interface LocalTemplateBuildResult {
@@ -65,11 +70,17 @@ export function listLocalTemplates(): LocalTemplateManifest[] {
 export function findLocalTemplate(id: string): LocalTemplateManifest | undefined {
   return listLocalTemplates().find(m => m.id === id);
 }
+// Nguồn tương đương do destination-config khai báo (vd. nguồn Thường nội dung Đà Lạt ≈ dalat-test).
+let sourceAliases: (sourceId: string) => string[] = sourceId => [sourceId];
+export function setLocalTemplateSourceAliases(resolve: (sourceId: string) => string[]): void { sourceAliases = resolve; }
+export function templateAllowsSource(m: LocalTemplateManifest, sourceId: string): boolean {
+  return sourceAliases(sourceId).some(id => m.allowedSourceIds.includes(id));
+}
 export function localTemplateAllowedIds(sourceId: string): string[] {
-  return listLocalTemplates().filter(m => m.allowedSourceIds.includes(sourceId)).map(m => m.id);
+  return listLocalTemplates().filter(m => templateAllowsSource(m, sourceId)).map(m => m.id);
 }
 export function localTemplateDecks(sourceId: string): GuideDeck[] {
-  return listLocalTemplates().filter(m => m.allowedSourceIds.includes(sourceId)).map(m => {
+  return listLocalTemplates().filter(m => templateAllowsSource(m, sourceId)).map(m => {
     const builder = localTemplateBuilder(m);
     const sample = builder.mainList?.();
     if (sample && (!Array.isArray(sample.pages) || !sample.pages.length || (m.pageCount && sample.pages.length !== m.pageCount)

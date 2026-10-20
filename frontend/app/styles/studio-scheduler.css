@@ -22,7 +22,25 @@
 .automation-template-grid label { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 9px; border: 1px solid var(--studio-line); border-radius: 9px; font-size: .72rem; }
 .automation-template-grid label.selected { border-color: var(--studio-clay); background: rgba(240,127,90,.08); }
 .automation-template-grid input[type="number"] { width: 52px; min-height: 30px; padding: 0 5px; }
+.automation-required-partners { display: grid; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--studio-line); }
+.automation-required-partners > strong { font-size: .72rem; font-weight: 900; color: var(--studio-muted); }
+.automation-required-partners > p { margin: 0; color: var(--studio-muted); font-size: .7rem; line-height: 1.5; }
+.automation-required-row { display: grid; grid-template-columns: minmax(120px, 220px) minmax(0, 1fr); align-items: start; gap: 10px; font-size: .74rem; }
+.automation-required-row > span { padding-top: 9px; font-weight: 700; }
+@media (max-width: 900px) { .automation-required-row { grid-template-columns: 1fr; } .automation-required-row > span { padding-top: 0; } }
 .automation-form-actions { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+/* Chạy bù khi lỡ giờ: ô chọn nằm ngang, chữ giải thích nhỏ bên dưới. */
+.automation-form > label.automation-checkbox { display: flex; align-items: flex-start; gap: 10px; align-self: end; padding: 10px 12px; border: 1px solid var(--studio-line); border-radius: 10px; background: var(--studio-surface); cursor: pointer; }
+.automation-form > label.automation-checkbox input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--studio-clay); }
+.automation-form label.automation-checkbox > span { display: grid; gap: 3px; color: var(--studio-ink); font-size: .82rem; font-weight: 800; }
+.automation-form label.automation-checkbox small { color: var(--studio-muted); font-size: .72rem; font-weight: 500; line-height: 1.45; }
+.automation-hint { color: #9a5a12; font-size: .72rem; line-height: 1.45; }
+.automation-preflight { grid-column: 1 / -1; display: grid; gap: 6px; padding: 12px 14px; border: 1px solid color-mix(in srgb, #d08a1c 45%, var(--studio-line)); border-radius: 12px; background: color-mix(in srgb, #f6c35b 14%, var(--studio-surface)); }
+.automation-preflight strong { color: var(--studio-ink); font-size: .84rem; }
+.automation-preflight small { color: var(--studio-muted); font-size: .76rem; line-height: 1.5; overflow-wrap: anywhere; }
+.automation-preflight b { color: var(--studio-ink); }
+.automation-preflight-note { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border: 1px dashed var(--studio-line-strong); border-radius: 10px; color: var(--studio-muted); font-size: .76rem; line-height: 1.5; }
+[data-studio-theme="dark"] .automation-hint { color: #f1b45c; }
 .automation-form-actions span { color: var(--studio-muted); font-size: .74rem; }
 .automation-list { margin-top: 24px; }
 .automation-list h3 { font-size: 1rem; }
@@ -36,7 +54,5 @@
 .automation-run-progress span { display: block; height: 100%; background: var(--studio-clay); }
 .automation-path { color: #77d59a !important; }
 .automation-empty { color: var(--studio-muted); }
-.automation-lock-banner { position: fixed; z-index: 250; inset: auto 18px 18px auto; width: min(420px, calc(100vw - 36px)); padding: 14px 16px; border: 1px solid rgba(240,127,90,.55); border-radius: 13px; background: #1d2421; box-shadow: 0 16px 50px rgba(0,0,0,.32); color: var(--studio-ink); }
-.automation-lock-banner strong, .automation-lock-banner span { display: block; }
-.automation-lock-banner span { margin-top: 4px; color: var(--studio-muted); font-size: .72rem; }
+
 @media (max-width: 900px) { .automation-form { grid-template-columns: 1fr; } .automation-form > *, .automation-output, .automation-template-picker, .automation-form-actions { grid-column: 1; } .automation-template-grid { grid-template-columns: 1fr; } .automation-history article, .automation-list article { grid-template-columns: 1fr; } }

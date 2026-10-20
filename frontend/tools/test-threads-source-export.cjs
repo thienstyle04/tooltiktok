@@ -9,7 +9,8 @@ const reportPath = process.env.DALAT_TEST_REPORT;
 assert.ok(reportPath, 'Set DALAT_TEST_REPORT to the isolated test generation.json');
 const fixture = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
 assert.ok(['isolated source-specific synthetic data/images', 'isolated live Threads Sheet audit'].includes(fixture.fixture), 'An explicitly isolated fixture is required');
-assert.equal(fixture.lists.length, fixture.expectedCount || 48);
+// Fixture của test-threads-source: 4 list cho mỗi mẫu Threads/Note (số mẫu tăng theo thời gian).
+assert.equal(fixture.lists.length, fixture.expectedCount || 4 * new Set(fixture.lists.map(entry => entry.deckId)).size);
 const selectedDecks = new Set(String(process.env.DALAT_TEST_DECKS || '').split(',').filter(Boolean));
 if (selectedDecks.size) {
   fixture.lists = fixture.lists.filter(entry => selectedDecks.has(entry.deckId));
@@ -141,7 +142,7 @@ async function main() {
       const zip = await JSZip.loadAsync(fs.readFileSync(path.join(output, name)), { checkCRC32: true });
       for (const file of Object.values(zip.files).filter(file => /\.(png|jpg|webp)$/i.test(file.name))) { await sharp(await file.async('nodebuffer')).raw().toBuffer(); decoded++; }
     }
-    assert.equal(results.reduce((sum, result) => sum + result.inspected.length, 0), fixture.expectedCount || 48);
+    assert.equal(results.reduce((sum, result) => sum + result.inspected.length, 0), fixture.expectedCount || fixture.lists.length);
     console.log('PASS:', fixture.lists.length, 'lists exported in', results.length, 'actual browser batches; reopened CRC-checked ZIP/XLSX, exact partners, TXT, decoded images:', decoded, 'OUTPUT=' + output);
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }

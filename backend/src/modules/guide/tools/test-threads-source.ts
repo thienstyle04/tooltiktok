@@ -11,6 +11,8 @@ async function main() {
   const data = path.join(root, 'data'), cache = path.join(root, 'cache');
   fs.mkdirSync(data); fs.mkdirSync(cache);
   Object.assign(process.env, { DALAT_DATA_DIR: data, DALAT_DRIVE_FILE_CACHE_DIR: cache, DALAT_AUTO_SYNC_SHEET: 'false', DALAT_AUTO_WARM_DRIVE_CACHE: 'false' });
+  // Máy đang dùng: 4 nguồn dựng sẵn với link giả (code không chứa link thật).
+  require('../../../../../scripts/test-support/source-links-fixture.cjs').seedSourceLinks(process.env.DALAT_DATA_DIR as string);
   const { GuideService } = require('../guide.service');
   const { AutomationSchedulerService } = require('../automation-scheduler.service');
   const config = require('../sync/destination-config');
@@ -30,7 +32,7 @@ async function main() {
     const service: any = new GuideService();
     assert.equal(service.activeDestinationId, 'dalat');
     assert.equal(config.getDestinationConfig('dalat-threads').label, 'Đà Lạt Threads');
-    assert.match(config.getDestinationConfig('dalat-threads').exportUrl, /1eTupjLJX-C4V06Erwe8rGzgB9JyzfzjG/);
+    assert.ok(config.getDestinationConfig('dalat-threads').exportUrl.includes(require('../../../../../scripts/test-support/source-links-fixture.cjs').SHEET_IDS['dalat-threads']));
     assert.equal(getMarketingCopy('dalat-threads').label, 'Đà Lạt');
     assert.deepEqual(buildCaptionHashtags([], 'gen_z', 'dalat-threads', 'threads-food-local'), buildCaptionHashtags([], 'gen_z', 'dalat', 'threads-food-local'));
     await assert.rejects(service.setActiveDestination({ id: 'dalat-threads' }), /Tải dữ liệu/);
@@ -133,7 +135,7 @@ async function main() {
         entries.push({ sourceId: 'dalat-threads', deckId, list });
       }
     }
-    assert.equal(entries.length, 48);
+    assert.equal(entries.length, config.THREADS_NOTE_DECK_IDS.length * 4);
     const restarted: any = new GuideService();
     assert.equal(restarted.activeDestinationId, 'dalat-threads');
     const reload = await restarted.getDataset();

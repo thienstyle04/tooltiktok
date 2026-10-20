@@ -41,7 +41,29 @@ assert.equal(coldPreview?.pages.length, 12, 'Cold-start preview must not depend 
 assert.ok(coldPreview?.pages[0].title.trim());
 assert.throws(() => buildDiaryPages({ ...input, hook: '' }), /hook chung/, 'Generated lists must still reject missing hooks');
 assert.throws(() => buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection, check_in: [] } }), /Check-in.*0\/1/);
-assert.throws(() => buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection, check_in: [{ ...input.itemsBySection.check_in[0], name: 'food0' }] } }), /không trùng/);
+assert.throws(() => buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection, check_in: [{ ...input.itemsBySection.check_in[0], name: 'food0' }] } }), /không trùng.*food0 \(Quán ăn \+ Check-in\)/);
+// All lines used: the cycle restarts but never repeats the line used by the previous list.
+for (let seed = 0; seed < 8; seed++) {
+  const cycled = buildDiaryPages({ ...input, seed: 'cycle-' + seed, usedLines: { food0: ['Quán xinh', 'View Đà Lạt đẹp'] } });
+  assert.equal(cycled.find(p => (p as any).items?.[0]?.name === 'food0')?.title, 'Quán xinh', 'Cycle must skip the last used line');
+}
+// A partner without a usable Mo_ta line still fills its slot with "tên - địa chỉ".
+const noDescription = buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection,
+  quan_an: [...input.itemsBySection.quan_an.slice(0, 3), { ...item('food9', 'quan_an'), diaryDescriptionRaw: '' }] } });
+assert.equal(noDescription.find(p => (p as any).items?.[0]?.name === 'food9')?.title, 'food9 - 07 Trần Quang Diệu');
+// Only 7 distinct partners (cafe0 is in both Quán ăn and Cafe): cafe0 fills one Quán ăn and one Cafe slot,
+// with different photos and lines; all 8 partner slots and 12 distinct photos remain.
+const sharedPartner = buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection,
+  quan_an: [...input.itemsBySection.quan_an.slice(0, 3), { ...item('cafe0', 'quan_an'), imageUrl: image('cafe0-food') }] } });
+const cafe0Pages = sharedPartner.filter(p => (p as any).items?.[0]?.name === 'cafe0') as any[];
+assert.deepEqual(cafe0Pages.map(p => p.items[0].sourceSectionKey).sort(), ['cafe', 'quan_an']);
+assert.notEqual(cafe0Pages[0].backgroundImage, cafe0Pages[1].backgroundImage, 'Same venue twice uses different photos');
+assert.notEqual(cafe0Pages[0].title, cafe0Pages[1].title, 'Same venue twice uses different lines');
+assert.equal(sharedPartner.slice(3).filter(p => (p as any).items[0].isPartner).length, DIARY_PARTNER_COUNT);
+assert.equal(new Set(sharedPartner.map(p => diaryImageId(p.backgroundImage))).size, 12);
+assert.deepEqual(sharedPartner.slice(3).map(p => (p as any).items[0].sourceSectionKey), DIARY_ORDER);
+// Normal data still prefers 8 different venues.
+assert.equal(new Set(pages.slice(3, 11).map(p => diaryIdentity((p as any).items[0].name))).size, 8);
 // A venue shared by food and cafe cannot count twice; use a fifth cafe candidate.
 const sharedVenue = buildDiaryPages({ ...input, itemsBySection: { ...input.itemsBySection,
   cafe: [{ ...item('food0', 'cafe'), imageUrl: image('shared-food-cafe') }, ...input.itemsBySection.cafe] } });

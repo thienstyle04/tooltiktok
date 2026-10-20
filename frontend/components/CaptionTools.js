@@ -2,17 +2,22 @@ import { useState } from 'react';
 import { listIsMain } from '../lib/utils';
 import PhotoPresetPicker from './PhotoPresetPicker';
 import { supportsPhotoPreset } from '../lib/photoPresets.mjs';
+import RequiredPartnerPicker from './RequiredPartnerPicker';
+import EmptyState from './ui/EmptyState';
+import { supportsRequiredPartners } from '../lib/requiredPartners.mjs';
 
 const DATA_TEMPLATES = new Set([
   'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text',
   'carousel-mau-1', 'one-way-story', 'spotlight-v5', 'spotlight-v6-green',
   'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps', 'spotlight-v6-diary',
+  'spotlight-v6-cherry-blossom',
   'summary-note', 'itinerary-note-dark', 'itinerary-note-2days', 'itinerary-note-timed', 'threads-toplist-dalat',
 ]);
 
 export default function CaptionTools({
   photoPreset, photoPresets, onPhotoPresetChange, dataset, activeDeck, activeList,
-  selectedListId, tone, setTone, caption, setCaption, busy, cacheReady, partners,
+  selectedListId, tone, setTone, caption, setCaption, busy, cacheReady, partners, requiredPartners, onRequiredPartnersChange,
+  partnerEligibility, onPartnerPickerOpen, cacheNotice,
   onDeckSelect, onListSelect, onGeneratedListSelect, onRequestCaption,
   onCreateList, onCreateBatchLists, onCreatePartnerSpotlight, onCopy, onSyncLocalTemplate,
 }) {
@@ -84,6 +89,11 @@ export default function CaptionTools({
             <PhotoPresetPicker value={photoPreset} presets={photoPresets} onChange={onPhotoPresetChange} disabled={busy} />
           </div> : null}
         </div>
+        {!isPartner && supportsRequiredPartners(activeDeck) && onRequiredPartnersChange ? <div className="list-create-field list-create-required">
+          <span className="list-create-label">Đối tác bắt buộc</span>
+          <RequiredPartnerPicker partners={partners} value={requiredPartners} onChange={onRequiredPartnersChange} disabled={busy}
+            eligibility={partnerEligibility} onOpen={onPartnerPickerOpen} />
+        </div> : null}
         <div className="list-create-submit">
           <p>{isPartner ? 'Chọn đối tác bên dưới để tạo một bộ Spotlight riêng.'
             : activeDeck?.localTemplate ? 'Dùng bộ nội dung đã đồng bộ và dữ liệu của nguồn đang chọn. Không cần nhập caption.'
@@ -92,6 +102,7 @@ export default function CaptionTools({
           {!isPartner ? <button id="createDeckFromCaptionBtn" className="toolbar-button secondary list-create-primary"
             type="button" disabled={creationDisabled} onClick={create}>{busy ? 'Đang tạo…' : `Tạo ${batchCount} list`}<span aria-hidden="true">→</span></button> : null}
         </div>
+        {needsPhotoCache && cacheReady && cacheNotice ? <p className="list-create-notice list-create-warning" role="alert">{cacheNotice}</p> : null}
         {needsPhotoCache && !cacheReady ? <p className="list-create-notice" role="status">Đang chuẩn bị ảnh Drive. Bạn có thể chọn cấu hình trước; nút tạo sẽ mở khi ảnh sẵn sàng.</p> : null}
         {activeDeck?.localTemplate ? <div className="list-create-notice">
           <p>Mẫu riêng trên máy này · Nội dung tự luân phiên theo bộ.</p>
@@ -157,7 +168,7 @@ export default function CaptionTools({
               <span className="generated-list-copy"><strong>{list.navTitle || list.title}</strong><small>{list.pages?.length || 0} trang · {list.title}</small></span>
               <span className="generated-list-action">Mở →</span>
             </button>)}
-          </div> : <p className="list-create-empty">Chưa có list mới. List tạo xong sẽ xuất hiện tại đây.</p>}
+          </div> : <EmptyState compact title="Chưa có list mới">List tạo xong sẽ xuất hiện tại đây.</EmptyState>}
         </section>
       </div>
     </section>

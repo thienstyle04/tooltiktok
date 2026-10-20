@@ -5,6 +5,7 @@ import { RETIRED_DECK_IDS, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY,
 import { SPOTLIGHT_PARTNER_DECK_ID } from './shared';
 
 const V2_TEMPLATE_DECK_IDS = [
+  'spotlight-v6-cherry-blossom',
   'grid-6-quaytung',
   'grid-8-feed',
   'grid-8-quaytung',
@@ -19,7 +20,7 @@ const V2_TEMPLATE_DECK_IDS = [
   'spotlight-v6-maps',
   'spotlight-v6-diary',
   'summary-note',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
   'itinerary-note-timed',
   'one-way-story',
   'itinerary-4n3d-stack',
@@ -33,7 +34,7 @@ const DALAT_ONLY_CATALOG_DECK_IDS = new Set([
   'spotlight-v6-persimmon',
   'spotlight-v6-maps',
   'spotlight-v6-diary',
-  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
+  'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark',
   'itinerary-note-timed',
   'one-way-story',
 ]);
@@ -152,8 +153,18 @@ export function markCatalogRevisionStored() {
   }
 }
 
-export function needsTemplateCatalogRefresh(dataset) {
+export function needsTemplateCatalogRefresh(dataset, activeSource = null) {
   if (!Array.isArray(dataset?.source?.allowedDeckIds)) return true;
+  // A cache can have the current frontend revision but an older backend's
+  // permissions. Compare with the freshly loaded source, not its cached copy.
+  if (activeSource) {
+    if (activeSource.id && dataset.source.destinationId !== activeSource.id) return true;
+    if (Array.isArray(activeSource.allowedDeckIds)) {
+      const cachedIds = new Set(dataset.source.allowedDeckIds);
+      const currentIds = new Set(activeSource.allowedDeckIds);
+      if (cachedIds.size !== currentIds.size || [...currentIds].some((id) => !cachedIds.has(id))) return true;
+    }
+  }
   if (storedCatalogRevision() !== STUDIO_CATALOG_REVISION) return true;
   return hasEmptySpotlightPartnerDeck(dataset)
     || hasRetiredCatalogDecks(dataset)

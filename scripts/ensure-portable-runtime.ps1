@@ -180,6 +180,20 @@ function Strip-ApiKeyNamePrefix([string]$value) {
     return $value.Trim()
 }
 
+function Test-SavedAiKey {
+    # The app stores keys DPAPI-encrypted in this file; only presence is checked here.
+    $settings = Join-Path $env:LOCALAPPDATA 'DalatStudio\ai-settings.json'
+    if (-not (Test-Path -LiteralPath $settings)) { return $false }
+    try {
+        $config = Get-Content -LiteralPath $settings -Raw | ConvertFrom-Json
+        foreach ($name in @('deepseek', 'gemini')) {
+            $profile = $config.profiles.$name
+            if ($profile -and $profile.secret) { return $true }
+        }
+    } catch { }
+    return $false
+}
+
 function Test-DeepSeekApiKey([string]$key) {
     try {
         $resp = Invoke-WebRequest -Uri 'https://api.deepseek.com/v1/models' -Headers @{ Authorization = "Bearer $key" } -UseBasicParsing -TimeoutSec 15
@@ -210,14 +224,37 @@ function Ensure-DeepSeekApiKey([string]$envPath) {
         return
     }
 
+    # AI is optional for startup: Gemini (or a key saved in the app) is enough,
+    # and data templates never need AI. Never block a new machine on DeepSeek.
+    $geminiMatch = [regex]::Match($text, '(?m)^GEMINI_API_KEY=(.+)$')
+    if ($geminiMatch.Success -and $geminiMatch.Groups[1].Value.Trim()) {
+        Write-Host '> Da co GEMINI_API_KEY trong backend\.env; bo qua DeepSeek.'
+        return
+    }
+    if (Test-SavedAiKey) {
+        Write-Host '> Da co key AI luu trong app (Du lieu & Cai dat > Nha cung cap AI); bo qua nhap key.'
+        return
+    }
+    $skipMatch = [regex]::Match($text, '(?m)^AI_KEY_SETUP=(.*)$')
+    if ($skipMatch.Success -and $skipMatch.Groups[1].Value.Trim() -eq 'in-app') {
+        Write-Host '> Chua co key AI; da chon cau hinh trong app (Du lieu & Cai dat > Nha cung cap AI).'
+        return
+    }
+
     Write-Host ''
-    Write-Host '> Chua co DEEPSEEK_API_KEY hop le trong backend\.env.'
-    Write-Host '> Lay key tai: https://platform.deepseek.com/api_keys'
+    Write-Host '> Chua co key AI (DeepSeek/Gemini). Cac mau dung du lieu co san van chay binh thuong khong can AI.'
+    Write-Host '> Lay key DeepSeek tai: https://platform.deepseek.com/api_keys'
+    Write-Host '> Nhan Enter (de trong) de BO QUA va cau hinh sau trong app: Du lieu & Cai dat > Nha cung cap AI.'
     while ($true) {
-        $inputKey = Read-Host '> Dan DEEPSEEK_API_KEY vao day (chi dan gia tri key, khong dan ten bien)'
+        $inputKey = Read-Host '> Dan DEEPSEEK_API_KEY vao day, hoac nhan Enter de bo qua'
         $inputKey = Strip-ApiKeyNamePrefix $inputKey
-        if ([string]::IsNullOrWhiteSpace($inputKey) -or $inputKey -eq 'sk-your-deepseek-api-key-here') {
-            Write-Host '> Key rong hoac chua thay doi, vui long dan lai.'
+        if ([string]::IsNullOrWhiteSpace($inputKey)) {
+            Set-EnvValue $envPath 'AI_KEY_SETUP' 'in-app'
+            Write-Host '> Da bo qua. Lan sau se khong hoi lai; vao Du lieu & Cai dat > Nha cung cap AI de nhap key DeepSeek hoac Gemini.'
+            return
+        }
+        if ($inputKey -eq 'sk-your-deepseek-api-key-here') {
+            Write-Host '> Day la key mau, vui long dan key that hoac nhan Enter de bo qua.'
             continue
         }
         Write-Host '> Dang kiem tra key voi DeepSeek...'
@@ -238,7 +275,7 @@ function Ensure-DeepSeekApiKey([string]$envPath) {
 
 Ensure-DeepSeekApiKey $localEnv
 Copy-Item -LiteralPath $localEnv -Destination $sharedEnv -Force
-Write-Host '> Cau hinh backend\.env va DEEPSEEK_API_KEY da san sang.'
+Write-Host '> Cau hinh backend\.env da san sang.'
 
 $signature = Get-DependencySignature
 if ((Test-LocalDependencies) -and -not $ForceInstall) {

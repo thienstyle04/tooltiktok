@@ -1,6 +1,7 @@
 import type { GuideItem, SectionKey, ListPage, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { itemUsageKey } from './data-allocator';
 import { stableHash } from './image-resolver';
+import { isRequiredPartner } from './required-partners';
 
 export const ITINERARY_NOTE_TEMPLATE_VERSION = 2;
 export const ITINERARY_NOTE_CAPTION = 'Mình tổng hợp lịch trình Đà Lạt 2 ngày như hình bên dưới.\nMọi người xem giúp mình lịch này có ổn không, có điểm nào nên ghé thêm không ạ?';
@@ -57,6 +58,7 @@ export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsB
         return (counts[day][key] || 0) * 100
           + (position === 6 ? (key === 'choi_dem' ? 0 : 20) : (key === 'choi_dem' ? 20 : 0))
           + (item.isPartner ? 0 : 4)
+          - (isRequiredPartner(item) ? 3 : 0)
           + (common.globalUsedItemIds?.has(itemUsageKey(item)) || common.globalUsedItemIds?.has(item.id) ? 2 : 0);
       };
       return rank(a) - rank(b) || stableHash(seed + ':' + slot + ':' + a.id) - stableHash(seed + ':' + slot + ':' + b.id);

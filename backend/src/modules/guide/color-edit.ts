@@ -3,12 +3,14 @@ import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-export const COLOR_EDIT_PRESET = 'iphone-color-edit-v1';
-export const COLOR_EDIT_SETTINGS = Object.freeze({ exposure: -20, brilliance: -15, highlights: 15,
-  contrast: -4, brightness: -10, blackPoint: 8, sharpness: 15, definition: 18 });
+import { COLOR_EDIT_PRESET, COLOR_EDIT_SETTINGS, photoPresetSettings, type PhotoAdjustments } from '../../common/photo-preset-catalog';
+export { COLOR_EDIT_PRESET, COLOR_EDIT_SETTINGS } from '../../common/photo-preset-catalog';
 
 // Deterministic approximation, not Apple's proprietary slider conversion.
-export async function renderColorEdit(source: Buffer): Promise<Buffer> {
+export async function renderColorEdit(source: Buffer, preset: string = COLOR_EDIT_PRESET): Promise<Buffer> {
+  const settings = photoPresetSettings(preset);
+  if (!settings) throw new Error('Bộ màu không được hỗ trợ.');
+  if (preset !== COLOR_EDIT_PRESET) return renderReferencePreset(source, settings);
   const { data, info } = await sharp(source, { limitInputPixels: 40_000_000 }).rotate()
     .resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true })
     .toColourspace('srgb').removeAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -33,6 +35,44 @@ export async function renderColorEdit(source: Buffer): Promise<Buffer> {
     const delta = Math.max(-8, Math.min(8,
       (data[i] - fine[i]) * s.sharpness / 100 + (data[i] - broad[i]) * s.definition / 100));
     out[i] = Math.round(Math.max(data[i] * 0.5, Math.min(255, data[i] + delta)));
+  }
+  return sharp(out, { raw }).png().toBuffer();
+}
+
+async function renderReferencePreset(source: Buffer, settings: PhotoAdjustments): Promise<Buffer> {
+  const { data, info } = await sharp(source, { limitInputPixels: 40_000_000 }).rotate()
+    .resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true })
+    .toColourspace('srgb').removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const s = { exposure: 0, brilliance: 0, highlights: 0, shadows: 0, contrast: 0, brightness: 0,
+    blackPoint: 0, saturation: 0, warmth: 0, tint: 0, vibrance: 0, sharpness: 0, definition: 0, ...settings };
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+  for (let i = 0; i < data.length; i += 3) {
+    const y = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
+    let tone = y * Math.pow(2, s.exposure / 100);
+    tone += s.brilliance / 100 * 0.25 * Math.sin(Math.PI * y);
+    tone += s.highlights / 100 * 0.35 * Math.pow(y, 3);
+    tone += s.shadows / 100 * 0.35 * Math.pow(1 - y, 2);
+    tone = (tone - 0.5) * (1 + s.contrast / 100) + 0.5 + s.brightness / 100 * 0.3;
+    tone -= s.blackPoint / 100 * 0.25 * Math.pow(1 - y, 2);
+    tone = Math.max(y * 0.2, Math.min(1, tone));
+    const gain = y > 0 ? tone / y : 0;
+    const chroma = (Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2])) / 255;
+    const saturation = Math.max(0, 1 + s.saturation / 100 + s.vibrance / 100 * (1 - chroma));
+    for (let c = 0; c < 3; c++) {
+      let v = tone * 255 + (data[i + c] * gain - tone * 255) * saturation;
+      // Positive "Chỉnh xanh" in reference 02 means green tint, not blue warmth.
+      v *= 1 + (c === 0 ? s.warmth * 0.0015 - s.tint * 0.0005 : c === 1 ? s.tint * 0.001 : -s.warmth * 0.0015 - s.tint * 0.0005);
+      data[i + c] = clamp(v);
+    }
+  }
+  const raw = { width: info.width, height: info.height, channels: 3 as const };
+  if (!s.sharpness && !s.definition) return sharp(data, { raw }).png().toBuffer();
+  const fine = await sharp(data, { raw }).blur(0.6).raw().toBuffer();
+  const broad = await sharp(data, { raw }).blur(2).raw().toBuffer();
+  const out = Buffer.alloc(data.length);
+  for (let i = 0; i < data.length; i++) {
+    const delta = Math.max(-18, Math.min(18, (data[i] - fine[i]) * s.sharpness / 100 + (data[i] - broad[i]) * s.definition / 100));
+    out[i] = clamp(data[i] + delta);
   }
   return sharp(out, { raw }).png().toBuffer();
 }
@@ -82,7 +122,7 @@ async function limited<T>(work: () => Promise<T>): Promise<T> {
 }
 
 export async function getColorEditAsset(source: Buffer, dataRoot: string, preset: string): Promise<Buffer> {
-  if (preset !== COLOR_EDIT_PRESET) throw new Error('Bộ màu không được hỗ trợ.');
+  if (!photoPresetSettings(preset)) throw new Error('Bộ màu không được hỗ trợ.');
   const key = createHash('sha256').update(preset).update('pipeline-1').update(source).digest('hex');
   const folder = path.join(dataRoot, 'photo-preset-cache', preset);
   const target = path.join(folder, key + '.png');
@@ -100,7 +140,7 @@ export async function getColorEditAsset(source: Buffer, dataRoot: string, preset
       return cached;
     }
     catch { /* Missing or corrupt derived cache is regenerated. */ }
-    const body = await renderColorEdit(source);
+    const body = await renderColorEdit(source, preset);
     await fs.mkdir(folder, { recursive: true });
     const temporary = target + '.' + randomUUID() + '.tmp';
     try { await fs.writeFile(temporary, body); await fs.rename(temporary, target); }

@@ -10,10 +10,12 @@ async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'partner-rotation-failures-'));
   Object.assign(process.env, { DALAT_DATA_DIR: path.join(root, 'data'), DALAT_DRIVE_FILE_CACHE_DIR: path.join(root, 'cache'), DALAT_AUTO_SYNC_SHEET: 'false', DALAT_AUTO_WARM_DRIVE_CACHE: 'false' });
   fs.mkdirSync(path.join(root, 'cache')); fs.mkdirSync(path.join(root, 'data'));
+  // Máy đang dùng: 4 nguồn dựng sẵn với link giả (code không chứa link thật).
+  require('../../../../../scripts/test-support/source-links-fixture.cjs').seedSourceLinks(process.env.DALAT_DATA_DIR as string);
   const { GuideService } = require('../guide.service');
   const { AutomationSchedulerService } = require('../automation-scheduler.service');
   const { buildPagesForDeck } = require('../logic/deck-builder');
-  const { rotatePartnerList, partnerIdentity, sourcePhotoId } = require('../logic/partner-rotation');
+  const { rotatePartnerList, partnerIdentity, sourcePhotoId, photoKeys } = require('../logic/partner-rotation');
   const { setActiveDestinationLocalize } = require('../sync/destination-localize');
   const { verifyDriveFileCache } = require('../sync/drive-images');
   let context: any;
@@ -105,6 +107,30 @@ async function main() {
     const v4List = v4Service.generatedListsByDeckId.get('spotlight-v4').find((list: any) => list.id === v4Created.listId);
     const finalCoverId = sourcePhotoId(v4List.pages[0].backgroundImage);
     assert.ok(Object.values(v4Service.partnerRotation['spotlight-v4']).some((state: any) => state.lastPhotos.includes(finalCoverId)), 'Final cover belongs to recorded partner history');
+    // Every photo of a partner was in the previous list (page + cover): the error must name it,
+    // not only report "x/y ô đối tác".
+    const exhausted = v4Pool.find(item => item.isPartner);
+    v4Service.partnerRotation['spotlight-v4'][partnerIdentity(exhausted)].lastPhotos = exhausted.candidateImageUrls.flatMap(photoKeys);
+    await assert.rejects(v4Service.generateDeckFromCaption({ deckId: 'spotlight-v4', caption: { coverTitle: 'Đà Lạt đáng lưu' } }),
+      (error: any) => { assert.match(error.message, new RegExp(`Đối tác chưa có ảnh khác lần trước: ${exhausted.name} \\(6 ảnh hợp lệ\\)`)); return true; });
+    assert.equal(v4Service.generatedListsByDeckId.get('spotlight-v4').length, 1, 'Failed list is not saved');
+    // Spotlight V3 re-picks the venue photo after building; the (undisplayed) page background must follow it.
+    const v3Pages = buildPagesForDeck('spotlight-v3', v4Items, v4Covers, [], 'v3-fixture', new Set(), new Set(), v4Covers, {});
+    const v3Venues = v3Pages.filter((page: any) => page.type === 'list' && page.layoutVariant === 'spotlight-v3');
+    assert.ok(v3Venues.length >= 2);
+    for (const page of v3Venues) assert.equal(page.backgroundImage, page.items[0].imageUrl, `V3 background follows venue photo: ${page.title}`);
+    // Same, when the builder still succeeds by filling the slot with a regular venue and only the
+    // rotation check fails (Spotlight V3 with a single homestay partner).
+    const gridItems = { ...v4Items, quan_an: structuredClone(venues.filter((item, i) => !item.isPartner || i === 0)) };
+    const gridPartner = gridItems.quan_an.find((item: any) => item.isPartner);
+    context = { itemsBySection: gridItems, imageUrls: [], imageLibraryEntries: [], coverImageUrls: [], hinhNenImagePools: {},
+      decks: [{ id: 'grid-4', navTitle: 'Grid 4', lists: [{ id: 'grid-4-main', navTitle: 'List chính', title: '', description: '',
+        pages: buildPagesForDeck('grid-4', gridItems, [], [], 'grid-fixture', new Set(), new Set(), [], {}) }] }] };
+    const gridService = attach('dalat');
+    await gridService.generateDeckFromCaption({ deckId: 'grid-4', caption: { coverTitle: 'Quán ngon Đà Lạt' } });
+    gridService.partnerRotation['grid-4'][partnerIdentity(gridPartner)].lastPhotos = gridPartner.candidateImageUrls.flatMap(photoKeys);
+    await assert.rejects(gridService.generateDeckFromCaption({ deckId: 'grid-4', caption: { coverTitle: 'Quán ngon Đà Lạt' } }),
+      (error: any) => { assert.match(error.message, new RegExp(`Đối tác chưa có ảnh khác lần trước: ${gridPartner.name} \\(2 ảnh hợp lệ\\)`)); return true; });
     // Stable IDs survive cache loss; duplicated content under a new ID is excluded.
     const first = venues[0], simple = { id: 'x-caption', navTitle: '', title: '', description: '', pages: [{ type: 'list', chipText: '', layoutVariant: 'standard', items: [{ ...first, rawName: first.name, sourceSectionKey: first.sectionKey, label: '' }] }] };
     const rotated = rotatePartnerList(simple, 'grid-4', { quan_an: [first] }, {}, 'dup');

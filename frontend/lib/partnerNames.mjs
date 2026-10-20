@@ -3,6 +3,7 @@
 import { renderListPage } from './pageMarkup.js';
 import { escapeHtml } from './utils.js';
 import { isThreadsLocalDeck } from './threadsFoodExport.mjs';
+import { cherryBlossomCopy } from './cherryBlossom.js';
 
 function includesImage(markup, imageUrl) {
   const source = String(imageUrl || '').trim();
@@ -27,6 +28,9 @@ export function collectPartnerNames(list) {
       if (!name) return;
       const image = page.layoutVariant === 'spotlight-v5-place' ? String(page.backgroundImage || item.imageUrl || '').trim() : String(item.imageUrl || '').trim();
       if (!threads && image && !includesImage(markup, image)) return;
+      // An img alt/title is not visible copy. Count only the actual text used
+      // by this renderer, not a venue name merely present in metadata/alt.
+      if (page.imageRole && !cherryBlossomCopy(page).includes(name)) return;
       names.add(name);
     });
   });

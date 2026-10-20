@@ -13,6 +13,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { seedSourceLinks } = require('./test-support/source-links-fixture.cjs');
 
 const root = path.resolve(__dirname, '..');
 const backendRoot = path.join(root, 'backend');
@@ -49,8 +50,13 @@ const hasBrowserTools = () => (findBrowserPath() ? hasPlaywright() : 'không tì
 
 // ---------------------------------------------------------------- tầng unit
 const FRONTEND_UNIT = [
+  'tools/test-cherry-blossom-copy.mjs',
+  'tools/test-list-status.mjs',
   'tools/test-sync-status-label.mjs',
+  'tools/test-threads-expense-sheet.mjs',
   'tools/test-page-text-rendering.mjs',
+  'tools/test-local-template-contract.mjs',
+  'tools/test-local-list-set-number.mjs',
   'tools/test-summary-note.mjs',
   'tools/test-spotlight-v4.mjs',
   'tools/test-spotlight-v5.mjs',
@@ -59,6 +65,7 @@ const FRONTEND_UNIT = [
   'tools/test-spotlight-design.mjs',
   'tools/test-threads-food-export.mjs',
   'tools/test-manual-generation-queue.mjs',
+  'tools/test-catalog-source-refresh.mjs',
   'tools/test-runtime-session-proxy.mjs',
   'tools/test-sheet-sync-timeout.mjs',
   'tools/test-one-way-story.mjs',
@@ -78,8 +85,11 @@ const SCRIPTS_UNIT = [
   { file: 'scripts/test-page-text-scale.cjs' },
   { file: 'scripts/test-startup-image-recovery.js' },
   { file: 'scripts/test-runtime-instance.js' },
+  { file: 'scripts/test-ai-key-step.cjs', requires: isWindows },
   { file: 'scripts/test-update-apply.js', requires: hasSigningKey },
   { file: 'scripts/typecheck-frontend.js' },
+  { file: 'scripts/check-no-source-links.cjs' },
+  { file: 'scripts/test-pack-clean.cjs', requires: isWindows },
 ];
 // Mọi backend tools/test-*.ts đều thuộc tầng unit, trừ các file dưới đây.
 // Test unit chạy lâu (dựng hàng chục list cho mọi mẫu): 2,5–4 phút tùy máy bận.
@@ -90,7 +100,6 @@ const BACKEND_TS_EXCLUDED = {
   'test-photo-presets-reload.ts': 'live',          // khởi động AppModule, cần AUDIT_ROOT
   'test-startup-refresh-live.ts': 'live',          // khởi động AppModule
   'test-note-threads-tac-ke-hoa-live.ts': 'live',  // tải Google Sheet thật
-  'test-spotlight-v6-dark.ts': 'live',             // gọi backend :3000
   'test-spotlight-v6-green.ts': 'live',            // gọi backend :3000
   'test-spotlight-v6-persimmon.ts': 'live',        // gọi backend :3000
   'test-spotlight-v6-maps.ts': 'live',             // ghi kết quả vào outputs/
@@ -100,12 +109,24 @@ const BACKEND_TS_EXCLUDED = {
   //     src/modules/guide/tools/test-spotlight-diary-integration.ts  (đọc ./data, cần cache ảnh)
   'test-restructured-addresses.ts': 'manual',
   'test-spotlight-diary-integration.ts': 'manual',
+  // Bản sao dữ liệu thật + cache ảnh, chạy mọi mẫu (10–30 phút); không gọi mạng:
+  'test-required-partners-all-decks.ts': 'manual',
+  'test-partner-eligibility.ts': 'manual',
+  // Bản sao dữ liệu thật và GET Google Drive công khai thật (đọc link ảnh của XLSX):
+  'test-add-xlsx-source-e2e.ts': 'manual',
 };
 
 // ------------------------------------------------------------- tầng browser
 // Các test này nhận AUDIT_ROOT / DALAT_TEST_OUTPUT_DIR làm nơi ghi kết quả.
 const TEMP_OUTPUT_TESTS = new Set(['test-spotlight-icons-browser.mjs', 'test-spotlight-cover-placement.mjs', 'test-ai-settings.cjs']);
 const FRONTEND_BROWSER = [
+  'tools/test-v2-studio.cjs',
+  'tools/test-slide-thumb-images.cjs',
+  'tools/test-automation-export-parts.cjs',
+  'tools/test-automation-schedule-form.cjs',
+  'tools/test-reference-photo-presets.cjs',
+  'tools/test-catalog-layout-refresh.cjs',
+  'tools/test-cherry-blossom-preview.cjs',
   'tools/test-update-bell.cjs',
   'tools/test-update-bell-draft.cjs',
   'tools/test-font-size-save-click.cjs',
@@ -120,10 +141,11 @@ const FRONTEND_BROWSER = [
   'tools/test-local-template-export-paint.cjs',
   'tools/test-partner-export-gate.mjs',
   'tools/test-runtime-performance.mjs',
-  'tools/test-status-bar-layout.cjs',
+  'tools/test-task-center.cjs',
   'tools/test-threads-budget-fit.cjs',
   'tools/test-threads-fit.cjs',
   'tools/test-threads-source-ui.cjs',
+  'tools/test-first-source-setup-ui.mjs',
   'tools/test-threads-toplist-visual.cjs',
   'tools/test-spotlight-v4-v6-partners-export.mjs',
   'tools/test-spotlight-v5-partners-export.mjs',
@@ -132,6 +154,9 @@ const FRONTEND_BROWSER = [
   'tools/test-v6-export-quality.mjs',
   'tools/test-first-source-sync.mjs',
   'tools/test-threads-food-browser-export.mjs',
+  'tools/test-required-partners-ui.mjs',
+  'tools/test-add-xlsx-source-ui.mjs',
+  'tools/test-spotlight-v5-square-export.cjs',
 ];
 // Đọc đường dẫn tương đối theo thư mục gốc repo.
 const FRONTEND_BROWSER_FROM_ROOT = [
@@ -188,12 +213,14 @@ function buildManifest() {
   for (const file of FRONTEND_LIVE) {
     add({ tier: 'live', cwd: frontendRoot, file, name: `frontend/${file}`, requires: hasBrowserTools, timeoutMs: LIVE_TIMEOUT_MS });
   }
+  // Build giao diện thật (next build) trên bản sao tạm: ~30 giây, nên ở tầng browser.
+  add({ tier: 'browser', cwd: root, file: 'scripts/test-frontend-build.js', requires: isWindows, timeoutMs: BROWSER_TIMEOUT_MS });
   add({ tier: 'live', cwd: root, file: 'scripts/test-live-update-canary.js', requires: isWindows, timeoutMs: LIVE_TIMEOUT_MS });
   return tests;
 }
 
 // ------------------------------------------------- bảo vệ dữ liệu thật
-const SNAPSHOT_SKIP = /^(?:drive-file-cache|drive-file-cache-sim-.*|photo-preset-cache)$/;
+const SNAPSHOT_SKIP = /^(?:drive-file-cache|drive-file-cache-thumbs|drive-file-cache-sim-.*|photo-preset-cache)$/;
 function snapshotRealData() {
   const entries = new Map();
   if (!fs.existsSync(realDataDir)) return entries;
@@ -225,6 +252,8 @@ function runOne(test, verbose) {
     const skipReason = test.requires ? test.requires() : null;
     if (skipReason) return resolve({ test, status: 'skip', reason: skipReason, ms: 0, output: '' });
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-test-data-'));
+    // Máy đang dùng có source-links.json (link giả) để 4 nguồn dựng sẵn tồn tại như trước.
+    seedSourceLinks(dataDir);
     // Test ghi ảnh/báo cáo vào outputs/ khi chạy tay; qua runner thì ghi vào thư mục tạm rồi xóa.
     const outputDir = TEMP_OUTPUT_TESTS.has(path.basename(test.file)) ? fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-test-output-')) : '';
     // Hook ESM khiến Node nạp file .ts qua trình nạp ESM thay vì ts-node, nên

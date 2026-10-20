@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { studioConfirm } from './ui/confirmDialog';
 
 export default function AiSettingsPanel() {
   const [status,setStatus]=useState(null),[provider,setProvider]=useState('deepseek'),[model,setModel]=useState('deepseek-chat');
@@ -20,7 +21,7 @@ export default function AiSettingsPanel() {
       else {const r=await call('','PUT',kind==='remove'?{provider,removeKey:true}: {...input,activate:kind==='save'});setStatus(r);setKey('');setMessage(kind==='remove'?'Đã xóa key lưu riêng. Nếu có key môi trường, tool sẽ dùng key môi trường.':kind==='store'?'Đã lưu cấu hình trên máy, chưa kiểm tra kết nối. Không đổi nhà cung cấp đang dùng.':'Đã lưu và kích hoạt. Áp dụng cho tác vụ bắt đầu tiếp theo.');}
     }catch(e){setMessage(e.message);}finally{setBusy(false);}
   }
-  return <section className="settings-card ai-settings-card" aria-label="Nhà cung cấp AI">
+  return <section id="settings-ai" tabIndex={-1} className="settings-card ai-settings-card" aria-label="Nhà cung cấp AI">
     <h3>Nhà cung cấp AI</h3>
     <p>Đang dùng: <strong>{status?`${status.active} · ${status.profiles[status.active].model}`:loading?'Đang đọc cấu hình…':'Không đọc được cấu hình'}</strong>. Không tự chuyển khi hết tiền/quota.</p>
     {!status && !loading && <button type="button" onClick={()=>setReload(n=>n+1)}>Thử tải lại cấu hình</button>}
@@ -38,12 +39,15 @@ export default function AiSettingsPanel() {
         <button type="button" disabled={!model} onClick={()=>action('test')}>Kiểm tra kết nối</button>
         <button type="button" disabled={!model} onClick={()=>action('save')}>Lưu và sử dụng</button>
         <button type="button" onClick={()=>action('store')}>Lưu cấu hình</button>
-        <button type="button" disabled={status?.profiles[provider]?.keySource!=='saved'} onClick={()=>{if(window.confirm('Xóa key lưu riêng của nhà cung cấp này?'))action('remove');}}>Xóa key lưu riêng</button>
+        <button type="button" disabled={status?.profiles[provider]?.keySource!=='saved'} onClick={async()=>{if(await studioConfirm({title:'Xóa key lưu riêng?',message:'Xóa key lưu riêng của nhà cung cấp này? Bạn sẽ cần nhập lại key nếu muốn dùng tiếp.',confirmLabel:'Xóa key',tone:'danger'}))action('remove');}}>Xóa key lưu riêng</button>
       </div>
     </fieldset>
+    <details className="ui-more">
+    <summary>Lưu ý về key, chi phí và quota</summary>
     <p>Lưu cấu hình chỉ lưu key/model trên máy, không gọi API, không đổi nhà cung cấp đang dùng. Chọn lại nhà cung cấp để dùng cấu hình đã lưu, kể cả sau khi mở lại tool.</p>
     <p>Kiểm tra kết nối và Lưu và sử dụng đều gửi một yêu cầu AI ngắn, có thể tính phí. Không nhập key vào chat hoặc chia sẻ ảnh chụp key.</p>
     {provider==='gemini' && <p>Google AI Pro không xác nhận quota API. Tạo key tại <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">Google AI Studio</a> và kiểm tra quota/thanh toán của project. Nội dung gửi API tuân theo chính sách dữ liệu của gói API bạn chọn.</p>}
+    </details>
     <p role="status">{busy?'Đang xử lý…':message}</p>
   </section>;
 }

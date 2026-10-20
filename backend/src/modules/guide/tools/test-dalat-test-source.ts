@@ -12,6 +12,8 @@ async function main() {
   fs.mkdirSync(data); fs.mkdirSync(cache);
   Object.assign(process.env, { DALAT_DATA_DIR: data, DALAT_DRIVE_FILE_CACHE_DIR: cache,
     DALAT_AUTO_SYNC_SHEET: 'false', DALAT_AUTO_WARM_DRIVE_CACHE: 'false' });
+    // Máy đang dùng: 4 nguồn dựng sẵn với link giả (code không chứa link thật).
+    require('../../../../../scripts/test-support/source-links-fixture.cjs').seedSourceLinks(process.env.DALAT_DATA_DIR as string);
   const { GuideService } = require('../guide.service');
   const config = require('../sync/destination-config');
   const { setActiveDestinationLocalize, getMarketingCopy, buildCaptionHashtags } = require('../sync/destination-localize');
@@ -27,9 +29,9 @@ async function main() {
   enableNightSyncPolicy();
   const registry = { ...config.DESTINATIONS };
   try {
-    assert.match(config.getDestinationConfig('dalat').sheetUrl, /1-ECVLtuySSlCO5AShcJle1uP9j8XCA4l/);
+    assert.ok(config.getDestinationConfig('dalat').sheetUrl.includes(require('../../../../../scripts/test-support/source-links-fixture.cjs').SHEET_IDS.dalat), 'link nguồn lấy từ source-links.json của máy');
     assert.equal(config.getDestinationConfig('dalat-test').label, 'Đà Lạt Test');
-    assert.match(config.getDestinationConfig('dalat-test').exportUrl, /1QlMXQ1XH-uHS6bBEC7Pps5f1p9rYJ780/);
+    assert.ok(config.getDestinationConfig('dalat-test').exportUrl.includes(require('../../../../../scripts/test-support/source-links-fixture.cjs').SHEET_IDS['dalat-test']));
     assert.equal(getMarketingCopy('dalat-test').label, 'Đà Lạt');
     assert.deepEqual(buildCaptionHashtags([], 'gen_z', 'dalat-test', 'threads-food-local'), buildCaptionHashtags([], 'gen_z', 'dalat', 'threads-food-local'));
     const service: any = new GuideService();

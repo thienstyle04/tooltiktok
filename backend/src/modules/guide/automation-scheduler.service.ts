@@ -10,9 +10,12 @@ import { promisify } from 'node:util';
 import { pipeline } from 'node:stream/promises';
 import { getAppConfig, resolveBackendDataDir, resolveBackendRoot } from '../../config';
 import { getRuntimeSession } from '../../runtime-session';
-import { GuideService } from './guide.service';
+import { GuideService, TemplateCapacityResult } from './guide.service';
 import { isDalatContentSource } from './sync/destination-config';
+import { normalizeRequiredPartners } from './logic/required-partners';
+import { findLocalTemplate } from './local-templates';
 import {
+  AutomationExportPart,
   AutomationRun,
   AutomationRunError,
   AutomationSchedule,
@@ -26,6 +29,16 @@ const TIMEZONE_OFFSET_MS = 7 * 60 * 60 * 1000;
 const MIN_LISTS_PER_TEMPLATE = 3;
 const MAX_LISTS_PER_TEMPLATE = 5;
 const RUN_HISTORY_LIMIT = 100;
+// Mỗi phần ZIP chỉ chứa vài list: PNG ~30–40 MB/list, JPG ~7 MB/list. Cả lượt dồn vào một ZIP
+// trong bộ nhớ trình duyệt từng vượt giới hạn 2 GiB và mất trắng sau cả giờ chạy.
+const EXPORT_PART_SIZE: Record<'png' | 'jpg', number> = { png: 8, jpg: 20 };
+// Bước xuất chỉ bị dừng khi không có tiến độ quá lâu; giới hạn cứng 60 phút cũ cắt cả lịch lớn.
+const EXPORT_STALL_MS = 15 * 60 * 1000;
+const EXPORT_MINUTES_PER_LIST = 2;
+const EXPORT_MAX_MINUTES = 8 * 60;
+const CATCH_UP_WINDOW_MS = 6 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const FRONTEND_WAIT_MS = 10 * 60 * 1000;
 const ACTIVE_STATUSES = new Set(['queued', 'refreshing', 'warming', 'generating', 'awaiting-export', 'exporting']);
 
 type StoredState = { version: 1; schedules: AutomationSchedule[]; runs: AutomationRun[] };
@@ -76,7 +89,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       if (job.status !== 'queued') return;
       this.manualActiveId = job.id;
       job.status = 'running';
-      const previousDestination = this.guideService.getDestinations().active.id;
+      const previousDestination = this.guideService.getDestinations().active?.id || '';
       const previousHook = this.guideService.getHookSources();
       try {
         job.result = await this.guideService.enqueueGeneration(async () => {
@@ -87,7 +100,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
             if (input.kind === 'caption') return await this.guideService.generateDeckFromCaption(request);
             return await this.guideService.generatePartnerSpotlight(request);
           } finally {
-            if (this.guideService.getDestinations().active.id !== previousDestination) await this.guideService.setActiveDestination({ id: previousDestination });
+            if ((this.guideService.getDestinations().active?.id || '') !== previousDestination && previousDestination) await this.guideService.setActiveDestination({ id: previousDestination });
             const currentHook = this.guideService.getHookSources();
             if (isDalatContentSource(previousDestination) && (currentHook.mode !== previousHook.mode || currentHook.activeSourceId !== previousHook.activeSourceId)) this.guideService.setHookMode({ mode: previousHook.mode, sourceId: previousHook.activeSourceId });
           }
@@ -216,6 +229,20 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     return this.getState();
   }
 
+  /**
+   * Kiểm tra trước khi lưu lịch: chạy thử khô từng mẫu (không lưu gì) để cảnh báo mẫu không tạo đủ list,
+   * ví dụ thiếu đối tác hợp lệ hoặc đối tác chưa có ảnh khác cho các list liên tiếp.
+   */
+  async preflight(input: { destinationId?: string; templates?: AutomationTemplateRequest[] }): Promise<{ checked: boolean; reason?: string; templates: TemplateCapacityResult[] }> {
+    const destinationId = String(input?.destinationId || '').trim();
+    const templates = this.validateTemplates(input?.templates || []);
+    this.assertTemplatesAllowed(destinationId, templates);
+    if (destinationId !== (this.guideService.getDestinations().active?.id || '')) {
+      return { checked: false, reason: 'Chỉ kiểm tra trước được khi nguồn của lịch đang mở.', templates: [] };
+    }
+    return { checked: true, templates: await this.guideService.checkTemplatesCapacity(templates) };
+  }
+
   runNow(id: string): AutomationStateResponse {
     const schedule = this.requireSchedule(id);
     this.assertTemplatesAllowed(schedule.destinationId, schedule.templates);
@@ -246,7 +273,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const completedByDeck = new Map<string, number>();
     for (const item of previous.generated) completedByDeck.set(item.deckId, (completedByDeck.get(item.deckId) || 0) + 1);
     const remaining = previous.templates
-      .map((item) => ({ photoPreset: item.photoPreset, deckId: item.deckId, count: Math.max(0, item.count - (completedByDeck.get(item.deckId) || 0)) }))
+      .map((item) => ({ photoPreset: item.photoPreset, deckId: item.deckId, count: Math.max(0, item.count - (completedByDeck.get(item.deckId) || 0)),
+        ...(item.requiredPartners?.length ? { requiredPartners: [...item.requiredPartners] } : {}) }))
       .filter((item) => item.count > 0);
     const run = this.newRun(schedule, new Date().toISOString(), remaining.length ? remaining : [], previous.id);
     run.generated = [...previous.generated];
@@ -277,38 +305,69 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     return this.getState();
   }
 
-  getExportContext(runId: string, token: string): { runId: string; listIds: string[]; quality: 'optimized'; format: 'png' | 'jpg' } {
+  getExportContext(runId: string, token: string): { runId: string; listIds: string[]; quality: 'optimized'; format: 'png' | 'jpg'; parts: string[][] } {
     const run = this.authorizeExport(runId, token);
     if (!['awaiting-export', 'exporting'].includes(run.status)) throw new ConflictException('Lượt chưa sẵn sàng để xuất.');
-    return { runId: run.id, listIds: [...run.listIds], quality: 'optimized', format: run.format || 'png' };
+    return { runId: run.id, listIds: [...run.listIds], quality: 'optimized', format: run.format || 'png',
+      parts: (run.exportParts?.length ? run.exportParts : [{ index: 1, listIds: run.listIds }]).map((part) => [...part.listIds]) };
   }
 
-  reportProgress(runId: string, token: string, progress: number, phase: string, outcome?: Pick<AutomationRun, 'exportedLists' | 'skippedLists'>): void {
+  reportProgress(runId: string, token: string, progress: number, phase: string, outcome?: Pick<AutomationRun, 'exportedLists' | 'skippedLists'>, partRaw?: unknown): void {
     const run = this.authorizeExport(runId, token);
     if (!ACTIVE_STATUSES.has(run.status)) return;
+    const part = outcome ? this.exportPart(run, partRaw) : null;
     if (outcome) {
       const exported = outcome.exportedLists || [], skipped = outcome.skippedLists || [];
       const all = [...exported, ...skipped];
-      if (all.length !== run.listIds.length || new Set(all.map(item => item.listId)).size !== all.length || all.some(item => !run.generated.some(source => source.listId === item.listId && source.deckId === item.deckId))) throw new ConflictException('Kết quả xuất không khớp các list của lượt chạy.');
-      run.exportedLists = exported;
-      run.skippedLists = skipped;
+      const expected = part ? part.listIds : run.listIds;
+      if (all.length !== expected.length || new Set(all.map(item => item.listId)).size !== all.length
+        || all.some(item => !expected.includes(item.listId) || !run.generated.some(source => source.listId === item.listId && source.deckId === item.deckId))) {
+        throw new ConflictException('Kết quả xuất không khớp các list của lượt chạy.');
+      }
+      if (part) {
+        const ids = new Set(part.listIds);
+        run.exportedLists = [...(run.exportedLists || []).filter(item => !ids.has(item.listId)), ...exported];
+        run.skippedLists = [...(run.skippedLists || []).filter(item => !ids.has(item.listId)), ...skipped];
+        part.outcomeRecorded = true;
+        part.exportedCount = exported.length;
+      } else {
+        run.exportedLists = exported;
+        run.skippedLists = skipped;
+      }
     }
     run.status = 'exporting';
     run.progress = Math.min(98, Math.max(70, Number(progress) || 70));
     run.phase = String(phase || 'Đang xuất file...').slice(0, 240);
     run.updatedAt = new Date().toISOString();
     this.persist();
+    if (part) this.tryFinalizeExport(run);
   }
 
-  async acceptArchive(runId: string, token: string, request: any): Promise<{ outputPath: string; bytes: number }> {
+  /** Trạng thái "Đã xuất" ở màn Duyệt & Xuất; chỉ là siêu dữ liệu nên lỗi không làm hỏng lượt đã lưu ZIP. */
+  private markRunListsExported(run: AutomationRun, only?: AutomationExportPart): void {
+    const ids = only ? new Set(only.listIds) : null;
+    const lists = (run.exportedLists || run.generated || []).filter((item) => !ids || ids.has(item.listId));
+    const groups = new Map<string, string[]>();
+    for (const item of lists) groups.set(item.deckId, [...(groups.get(item.deckId) || []), item.listId]);
+    try { this.guideService.markListsExported([...groups].map(([deckId, listIds]) => ({ deckId, listIds }))); }
+    catch (error) { console.warn('[automation] Chưa ghi được trạng thái đã xuất:', error instanceof Error ? error.message : error); }
+  }
+
+  async acceptArchive(runId: string, token: string, request: any, partRaw?: unknown): Promise<{ outputPath: string; bytes: number }> {
     const run = this.authorizeExport(runId, token);
     if (run.cancelRequested) throw new ConflictException('Lượt đã bị hủy.');
-    if (run.exportedLists && !run.exportedLists.length) throw new ConflictException('Không có list xuất thành công; không nhận ZIP rỗng.');
+    const part = this.exportPart(run, partRaw);
+    const partCount = run.exportParts?.length || 1;
+    if (part?.outputPath) throw new ConflictException('Phần ZIP này đã được lưu; không ghi đè file đã xuất.');
+    if (part ? part.outcomeRecorded && !this.partExportedCount(run, part) : run.exportedLists && !run.exportedLists.length) {
+      throw new ConflictException('Không có list xuất thành công; không nhận ZIP rỗng.');
+    }
     const stamp = this.fileStamp(run.startedAt || run.createdAt);
     const runDir = path.join(run.outputDir, `${stamp}-${this.safeName(run.scheduleName)}-${run.id.slice(-8)}`);
     const createdRunDir = !fs.existsSync(runDir);
     fs.mkdirSync(runDir, { recursive: true });
-    const finalPath = path.join(runDir, run.outputFileName || `${stamp}.zip`);
+    const baseName = run.outputFileName || `${stamp}.zip`;
+    const finalPath = path.join(runDir, part && partCount > 1 ? this.partFileName(baseName, part.index, partCount) : baseName);
     const temporaryPath = `${finalPath}.partial-${process.pid}-${crypto.randomBytes(8).toString('hex')}`;
     let bytes = 0;
     let ownsTemporary = false;
@@ -335,14 +394,29 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       if (bytes < 100) throw new Error('ZIP nhận được rỗng hoặc không đầy đủ.');
       this.assertZipArchive(temporaryPath, bytes);
       fs.renameSync(temporaryPath, finalPath);
+      if (part) {
+        if (!part.outcomeRecorded) { part.outcomeRecorded = true; part.exportedCount = part.listIds.length; }
+        part.outputPath = finalPath;
+        part.bytes = bytes;
+        run.outputPaths = [...(run.outputPaths || []), finalPath];
+        run.outputPath = partCount > 1 ? runDir : finalPath;
+        run.updatedAt = new Date().toISOString();
+        this.persist();
+        // Mỗi phần lưu xong là list của phần đó "Đã xuất", kể cả khi phần sau lỗi.
+        if (partCount > 1) this.markRunListsExported(run, part);
+        this.tryFinalizeExport(run);
+        return { outputPath: finalPath, bytes };
+      }
       run.outputPath = finalPath;
+      run.outputPaths = [finalPath];
       run.progress = 100;
       run.status = run.errors.length || run.skippedLists?.length ? 'partial' : 'completed';
-      run.phase = run.exportedLists ? `Đã xuất ${run.exportedLists.length} list; bỏ qua ${run.skippedLists?.length || 0} list không hợp lệ. Xem báo cáo để biết tên mẫu, list và lý do.` : (run.errors.length ? 'Đã xuất phần tạo thành công; một số mẫu có lỗi.' : 'Đã tạo list và lưu ZIP thành công.');
+      run.phase = this.summarizeRun(run);
       run.completedAt = new Date().toISOString();
       run.updatedAt = run.completedAt;
       delete run.exportToken;
       this.persist();
+      this.markRunListsExported(run);
       return { outputPath: finalPath, bytes };
     } catch (error) {
       let cleanup = 'Không có file xuất dở được lưu.';
@@ -352,7 +426,13 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       }
       if (createdRunDir) { try { fs.rmdirSync(runDir); } catch { /* Never remove a nonempty folder or recurse into user files. */ } }
       const message = `${error instanceof Error ? error.message : String(error)} ${cleanup}`;
-      if (!['completed', 'partial'].includes(run.status)) this.failRun(run, `Xuất file thất bại: ${message}`);
+      if (part && partCount > 1 && ACTIVE_STATUSES.has(run.status)) {
+        // Một phần lỗi không xóa các phần đã lưu; lượt tiếp tục với phần sau.
+        this.failPart(run, part, `Xuất file thất bại: ${message}`);
+        run.errors.push({ message: `Phần ${part.index}/${partCount}: ${part.error}` });
+        this.touch(run);
+        this.tryFinalizeExport(run);
+      } else if (!['completed', 'partial'].includes(run.status)) this.failRun(run, `Xuất file thất bại: ${message}`);
       throw new Error(message);
     }
   }
@@ -383,10 +463,30 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     }
   }
 
-  reportExportFailure(runId: string, token: string, message: string): void {
+  reportExportFailure(runId: string, token: string, message: string, partRaw?: unknown): void {
     const run = this.authorizeExport(runId, token);
     if (!ACTIVE_STATUSES.has(run.status)) return;
-    this.failRun(run, `Xuất file thất bại: ${String(message || 'Không rõ lỗi.').slice(0, 500)}`);
+    const text = `Xuất file thất bại: ${String(message || 'Không rõ lỗi.').slice(0, 500)}`;
+    const partCount = run.exportParts?.length || 0;
+    if (partRaw !== undefined && partRaw !== null && partRaw !== '' && partCount > 1) {
+      const part = this.exportPart(run, partRaw)!;
+      // Phần đã có kết quả (lưu ZIP, hoặc mọi list bị bỏ qua) thì báo lỗi muộn không đổi nó.
+      if (this.partSettled(run, part)) return;
+      this.failPart(run, part, text);
+      run.errors.push({ message: `Phần ${part.index}/${partCount}: ${text}` });
+      this.touch(run);
+      this.tryFinalizeExport(run);
+      return;
+    }
+    if (partCount && run.exportParts!.every((part) => this.partSettled(run, part))) return;
+    this.abortExport(run, text);
+  }
+
+  private partFileName(baseName: string, index: number, total: number): string {
+    const extension = path.extname(baseName) || '.zip';
+    const stem = baseName.slice(0, baseName.length - path.extname(baseName).length) || 'xuat';
+    const width = String(total).length;
+    return `${stem}-phan-${String(index).padStart(width, '0')}-tren-${total}${extension}`;
   }
 
   async chooseOutputDirectory(): Promise<{ path: string; directory: string; fileName: string }> {
@@ -429,24 +529,56 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     const now = Date.now();
     for (const schedule of this.state.schedules) {
       if (!schedule.enabled || !schedule.nextRunAt) continue;
-      const due = Date.parse(schedule.nextRunAt);
-      if (!Number.isFinite(due) || due > now) continue;
-      const scheduledFor = schedule.nextRunAt;
+      const firstDue = Date.parse(schedule.nextRunAt);
+      if (!Number.isFinite(firstDue) || firstDue > now) continue;
+      // Tool tắt hơn một ngày: các lần hẹn cũ gộp thành một lượt "bị lỡ", chỉ lần gần nhất được xét chạy bù.
+      // (Trước đây lần kế tiếp tính từ lần hẹn cũ nên mỗi tick xử lý thêm một ngày cũ, có thể chạy bù nhầm ngày.)
+      const skippedDays = schedule.frequency === 'daily' ? Math.floor((now - firstDue) / DAY_MS) : 0;
+      const due = firstDue + skippedDays * DAY_MS;
+      if (skippedDays > 0) {
+        const older = this.newRun(schedule, schedule.nextRunAt);
+        older.status = 'missed';
+        older.phase = skippedDays === 1
+          ? `Tool không hoạt động lúc ${this.vietnamTime(firstDue)}; lượt đã được bỏ qua.`
+          : `Tool không hoạt động; đã bỏ qua ${skippedDays} lượt từ ${this.vietnamTime(firstDue)} đến ${this.vietnamTime(due - DAY_MS)}.`;
+        older.completedAt = new Date().toISOString();
+        older.updatedAt = older.completedAt;
+        this.state.runs.unshift(older);
+        this.trimRuns();
+      }
+      const scheduledFor = new Date(due).toISOString();
       const key = this.scheduleKey(schedule, due);
       schedule.lastScheduledKey = key;
-      if (now - due > 2 * 60 * 1000) {
+      const late = now - due > 2 * 60 * 1000;
+      if (late && !(schedule.catchUp && now - due <= CATCH_UP_WINDOW_MS)) {
         const missed = this.newRun(schedule, scheduledFor);
         missed.status = 'missed';
-        missed.phase = 'Tool không hoạt động đúng giờ; lượt đã được bỏ qua.';
+        missed.phase = schedule.catchUp
+          ? 'Tool không hoạt động đúng giờ và đã quá 6 tiếng; lượt đã được bỏ qua.'
+          : 'Tool không hoạt động đúng giờ; lượt đã được bỏ qua. Bật “Chạy bù khi lỡ giờ” trong lịch để tự chạy khi mở lại tool.';
         missed.completedAt = new Date().toISOString();
         missed.updatedAt = missed.completedAt;
         this.state.runs.unshift(missed);
         this.trimRuns();
       } else {
-        this.enqueue(this.newRun(schedule, scheduledFor));
+        const run = this.newRun(schedule, scheduledFor);
+        if (late) {
+          run.catchUp = true;
+          run.phase = `Chạy bù lượt lúc ${this.vietnamTime(due)} (tool không mở đúng giờ); đang chờ lượt trước hoàn tất...`;
+        }
+        // Lỗi xếp hàng (mẫu không còn thuộc nguồn...) không được làm dừng bộ hẹn giờ.
+        try { this.enqueue(run); }
+        catch (error) {
+          run.status = 'failed';
+          run.phase = error instanceof Error ? error.message : String(error);
+          run.errors.push({ message: run.phase });
+          run.completedAt = new Date().toISOString();
+          if (!this.state.runs.includes(run)) { this.state.runs.unshift(run); this.trimRuns(); }
+        }
       }
       if (schedule.frequency === 'once') schedule.enabled = false;
-      this.recalculateSchedule(schedule, due + 1_000);
+      // Lần kế tiếp luôn ở tương lai, kể cả khi giờ hẹn đã lưu lệch với giờ hằng ngày.
+      this.recalculateSchedule(schedule, Math.max(due, now) + 1_000);
       this.persist();
     }
   }
@@ -492,8 +624,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       this.assertOutputDirectory(run.outputDir);
       if (!this.findBrowser()) throw new Error('Không tìm thấy Chrome hoặc Edge để xuất tự động.');
       this.assertHookSelectionReady(run);
-      await this.assertFrontendReady();
-      previousDestination = this.guideService.getDestinations().active.id;
+      await this.waitForFrontendReady(run);
+      previousDestination = this.guideService.getDestinations().active?.id || '';
       run.status = 'refreshing'; run.progress = 3; run.phase = 'Đang mở dữ liệu cục bộ của nguồn...'; this.touch(run);
       // A scheduled generation is not an explicit manual sync. Refreshing here
       // also deadlocks: the sync coordinator yields while this run is active.
@@ -520,6 +652,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
             requestId: `automation:${run.id}:${template.deckId}`,
             hookSelection: run.hook,
             automationRunId: run.id,
+            requiredPartners: template.requiredPartners,
           }));
           for (const item of response.lists || []) {
             run.generated.push({ deckId: template.deckId, listId: item.listId });
@@ -530,7 +663,8 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
             }
           }
           if (response.failCount || response.successCount < template.count) {
-            run.errors.push({ deckId: template.deckId, requested: template.count, completed: response.successCount, message: (response.errors || []).map((item) => item.message).join('; ') || `Chỉ tạo được ${response.successCount}/${template.count} list.` });
+            const messages = [...new Set((response.errors || []).map((item) => String(item.message || '').trim()).filter(Boolean))];
+            run.errors.push({ deckId: template.deckId, requested: template.count, completed: response.successCount, message: messages.join('; ') || `Chỉ tạo được ${response.successCount}/${template.count} list.` });
           }
         } catch (error) {
           run.errors.push({ deckId: template.deckId, requested: template.count, completed: 0, message: error instanceof Error ? error.message : String(error) });
@@ -542,21 +676,28 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       if (!run.listIds.length) throw new Error(run.errors.map((entry) => `${entry.deckId}: ${entry.message}`).join(' | ') || 'Không tạo được list nào để xuất.');
 
       run.status = 'awaiting-export'; run.progress = 62; run.phase = `Đã tạo ${run.listIds.length} list; đang mở trình render ẩn...`;
+      run.exportParts = this.splitExportParts(run.listIds, run.format || 'png');
+      run.exportedLists = [];
+      run.skippedLists = [];
+      run.outputPaths = [];
       run.exportToken = crypto.randomBytes(32).toString('hex');
       this.touch(run);
       await this.launchRenderer(run);
       if (!['completed', 'partial'].includes(run.status)) throw new Error(run.phase || 'Phiên render kết thúc trước khi lưu ZIP.');
     } catch (error) {
+      const saved = run.outputPaths?.length || 0;
       if (run.cancelRequested) {
-        run.status = 'cancelled'; run.phase = 'Đã hủy lượt tự động.'; run.completedAt = new Date().toISOString(); this.touch(run);
+        run.status = 'cancelled';
+        run.phase = saved ? `Đã hủy lượt tự động; giữ lại ${saved} file ZIP đã lưu trước khi hủy.` : 'Đã hủy lượt tự động.';
+        run.completedAt = new Date().toISOString(); this.touch(run);
       } else if (!['completed', 'partial', 'failed'].includes(run.status)) {
-        this.failRun(run, error instanceof Error ? error.message : String(error));
+        this.abortExport(run, error instanceof Error ? error.message : String(error));
       }
     } finally {
       await this.closeBrowser();
       delete run.exportToken;
       this.touch(run);
-      if (previousDestination && previousDestination !== this.guideService.getDestinations().active.id) {
+      if (previousDestination && previousDestination !== this.guideService.getDestinations().active?.id) {
         await this.guideService.setActiveDestination({ id: previousDestination }).catch(() => undefined);
       }
       this.activeRunId = '';
@@ -589,11 +730,119 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     url.searchParams.set('automationRunId', run.id);
     url.searchParams.set('automationToken', run.exportToken);
     await page.goto(url.toString(), { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    const deadline = Date.now() + 60 * 60 * 1000;
-    while (Date.now() < deadline && ACTIVE_STATUSES.has(run.status) && !run.cancelRequested) {
-      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    run.updatedAt = new Date().toISOString();
+    await this.watchExport(run);
+  }
+
+  /** Chờ trình render xuất xong. Chỉ dừng khi không có tiến độ EXPORT_STALL_MS, kèm một trần rộng theo số list. */
+  private async watchExport(run: AutomationRun, pollMs = 1_000): Promise<void> {
+    const limitMinutes = Math.min(EXPORT_MAX_MINUTES, Math.max(60, run.listIds.length * EXPORT_MINUTES_PER_LIST));
+    const deadline = Date.now() + limitMinutes * 60 * 1000;
+    while (ACTIVE_STATUSES.has(run.status) && !run.cancelRequested) {
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+      if (!ACTIVE_STATUSES.has(run.status) || run.cancelRequested) return;
+      const idle = Date.now() - (Date.parse(run.updatedAt) || 0);
+      if (idle > EXPORT_STALL_MS) throw new Error(`Xuất tự động không có tiến độ trong ${Math.round(EXPORT_STALL_MS / 60_000)} phút nên đã dừng.`);
+      if (Date.now() > deadline) throw new Error(`Xuất tự động vượt quá ${limitMinutes} phút cho ${run.listIds.length} list.`);
     }
-    if (Date.now() >= deadline) throw new Error('Xuất tự động vượt quá 60 phút.');
+  }
+
+  private async waitForFrontendReady(run: AutomationRun): Promise<void> {
+    // Lượt chạy ngay lúc mở tool (chạy bù, lịch trùng giờ khởi động) phải chờ giao diện build/khởi động xong.
+    const deadline = Date.now() + FRONTEND_WAIT_MS;
+    for (;;) {
+      this.assertNotCancelled(run);
+      try { await this.assertFrontendReady(); return; }
+      catch (error) {
+        if (Date.now() >= deadline) throw new Error(`Giao diện tool chưa sẵn sàng sau ${Math.round(FRONTEND_WAIT_MS / 60_000)} phút: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      run.phase = 'Đang chờ giao diện tool khởi động xong...';
+      this.touch(run, false);
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+    }
+  }
+
+  private splitExportParts(listIds: string[], format: 'png' | 'jpg'): AutomationExportPart[] {
+    const size = EXPORT_PART_SIZE[format] || EXPORT_PART_SIZE.png;
+    const parts: AutomationExportPart[] = [];
+    for (let start = 0; start < listIds.length; start += size) parts.push({ index: parts.length + 1, listIds: listIds.slice(start, start + size) });
+    return parts;
+  }
+
+  private exportPart(run: AutomationRun, partRaw: unknown): AutomationExportPart | null {
+    const parts = run.exportParts;
+    if (!parts?.length) return null;
+    const index = partRaw === undefined || partRaw === null || partRaw === '' ? 1 : Math.trunc(Number(partRaw));
+    const part = parts[index - 1];
+    if (!part) throw new ConflictException('Phần xuất không hợp lệ.');
+    return part;
+  }
+
+  private partExportedCount(run: AutomationRun, part: AutomationExportPart): number {
+    const ids = new Set(part.listIds);
+    return (run.exportedLists || []).filter((item) => ids.has(item.listId)).length;
+  }
+
+  /** Phần lỗi: list của phần đó không được tính (và không được đánh dấu) là đã xuất. */
+  private failPart(run: AutomationRun, part: AutomationExportPart, message: string): void {
+    const ids = new Set(part.listIds);
+    part.error = message;
+    part.exportedCount = 0;
+    run.exportedLists = (run.exportedLists || []).filter((item) => !ids.has(item.listId));
+  }
+
+  private partSettled(run: AutomationRun, part: AutomationExportPart): boolean {
+    return Boolean(part.error || part.outputPath || (part.outcomeRecorded && !this.partExportedCount(run, part)));
+  }
+
+  /** Khi mọi phần đã có kết quả (lưu ZIP, toàn bộ list bị bỏ qua hoặc lỗi) thì chốt lượt. */
+  private tryFinalizeExport(run: AutomationRun): void {
+    if (!run.exportParts?.length || !ACTIVE_STATUSES.has(run.status)) return;
+    if (!run.exportParts.every((part) => this.partSettled(run, part))) return;
+    if (!run.outputPaths?.length) {
+      const reason = run.exportParts.map((part) => part.error).filter(Boolean)[0]
+        || (run.skippedLists?.length ? 'Tất cả list đều thiếu ảnh/dữ liệu hợp lệ.' : 'Không lưu được file ZIP nào.');
+      this.failRun(run, `Xuất file thất bại: ${reason} ${this.summarizeRun(run)}`.trim());
+      return;
+    }
+    run.status = run.errors.length || run.skippedLists?.length || run.exportParts.some((part) => part.error) ? 'partial' : 'completed';
+    run.progress = 100;
+    run.phase = this.summarizeRun(run);
+    run.completedAt = new Date().toISOString();
+    run.updatedAt = run.completedAt;
+    delete run.exportToken;
+    this.persist();
+    this.markRunListsExported(run);
+  }
+
+  /** Lỗi chung khi xuất: giữ các phần ZIP đã lưu (lượt thành "một phần"), chỉ thất bại hẳn khi chưa lưu được gì. */
+  private abortExport(run: AutomationRun, message: string): void {
+    if (!run.outputPaths?.length || !run.exportParts?.length) { this.failRun(run, message); return; }
+    for (const part of run.exportParts) if (!this.partSettled(run, part)) this.failPart(run, part, message);
+    run.errors.push({ message: `Xuất dừng giữa chừng: ${message}` });
+    this.tryFinalizeExport(run);
+  }
+
+  /** Tóm tắt kết quả cho lịch sử: tạo được bao nhiêu/yêu cầu, xuất bao nhiêu, vào mấy file, lỗi gì. */
+  private summarizeRun(run: AutomationRun): string {
+    const created = (run.generated || []).length;
+    const failedDecks = (run.errors || []).filter((entry) => entry.deckId && typeof entry.requested === 'number' && (entry.completed || 0) < entry.requested);
+    const missing = failedDecks.reduce((sum, entry) => sum + Math.max(0, (entry.requested || 0) - (entry.completed || 0)), 0);
+    const exported = run.exportedLists ? run.exportedLists.length : created;
+    const skipped = run.skippedLists?.length || 0;
+    const files = run.outputPaths?.length || (run.outputPath ? 1 : 0);
+    const failedParts = run.exportParts?.filter((part) => part.error).length || 0;
+    let text = `Đã tạo ${created}/${created + missing} list, xuất ${exported} list${files ? ` vào ${files} file ZIP` : ''}.`;
+    if (missing) text += ` Không tạo được ${missing} list ở ${failedDecks.length} mẫu.`;
+    if (skipped) text += ` Bỏ qua ${skipped} list lỗi ảnh/dữ liệu.`;
+    if (failedParts) text += ` ${failedParts} phần ZIP không lưu được.`;
+    if (missing || skipped || failedParts) text += ' Xem chi tiết bên dưới.';
+    return text;
+  }
+
+  private vietnamTime(time: number): string {
+    const local = new Date(time + TIMEZONE_OFFSET_MS);
+    return `${String(local.getUTCHours()).padStart(2, '0')}:${String(local.getUTCMinutes()).padStart(2, '0')} ${String(local.getUTCDate()).padStart(2, '0')}/${String(local.getUTCMonth() + 1).padStart(2, '0')}`;
   }
 
   private async waitForDriveCache(run: AutomationRun): Promise<void> {
@@ -629,6 +878,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
     if (!this.findBrowser()) throw new BadRequestException('Không tìm thấy Chrome hoặc Edge để xuất tự động.');
     const format = input.format ?? previous?.format ?? 'png';
     if (format !== 'png' && format !== 'jpg') throw new BadRequestException('Định dạng ảnh phải là PNG hoặc JPG.');
+    const catchUp = Boolean(input.catchUp ?? previous?.catchUp ?? false);
     const hookMode = input.hook?.mode ?? previous?.hook.mode ?? 'normal';
     const sourceId = String(input.hook?.sourceId ?? previous?.hook.sourceId ?? '').trim();
     if (hookMode === 'festival') {
@@ -651,6 +901,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       ...(outputFileName ? { outputFileName } : {}),
       format,
       enabled: input.enabled ?? previous?.enabled ?? true,
+      catchUp,
       templates,
       hook: { mode: hookMode, ...(hookMode === 'festival' ? { sourceId } : {}) },
       createdAt: previous?.createdAt || now,
@@ -670,7 +921,9 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
       if (merged.has(deckId)) throw new BadRequestException(`Mẫu ${deckId} đang bị chọn lặp trong cùng một lịch.`);
       if (LEGACY_COLOR_DECKS[deckId]) throw new BadRequestException('Chọn V5/V6 thay cho mẫu Color Edit riêng.');
       const photoPreset = validatePhotoPreset(raw.photoPreset, deckId);
-      merged.set(deckId, { deckId, count, ...(photoPreset ? { photoPreset } : {}) });
+      const requiredPartners = normalizeRequiredPartners(raw.requiredPartners);
+      if (requiredPartners.length && findLocalTemplate(deckId)) throw new BadRequestException('Mẫu riêng không hỗ trợ chọn đối tác bắt buộc; hãy bỏ chọn đối tác.');
+      merged.set(deckId, { deckId, count, ...(photoPreset ? { photoPreset } : {}), ...(requiredPartners.length ? { requiredPartners } : {}) });
     }
     return [...merged.values()];
   }

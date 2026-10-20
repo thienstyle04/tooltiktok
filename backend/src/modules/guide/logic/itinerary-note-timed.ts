@@ -1,6 +1,7 @@
 import type { GuideItem, ListPage, PageItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { itemUsageKey } from './data-allocator';
 import { stableHash } from './image-resolver';
+import { isRequiredPartner } from './required-partners';
 
 export const ITINERARY_NOTE_TIMED_TEMPLATE_VERSION = 1;
 export const ITINERARY_NOTE_TIMED_CAPTION = 'Lịch trình Đà Lạt 2 ngày theo khung giờ tham khảo mình đã tổng hợp ở bên dưới.\nMọi người xem giúp mình lịch trình này có ổn không ạ?';
@@ -119,8 +120,10 @@ export function buildItineraryNoteTimedPages(
         previouslyUsed: Boolean(common.globalUsedItemIds?.has(usageKey) || common.globalUsedItemIds?.has(item.id)),
       });
     }
+    // Required partners are always kept within the capped candidate set.
     const ranked = [...unique.values()].sort((left, right) => (
-      Number(left.previouslyUsed) - Number(right.previouslyUsed)
+      Number(isRequiredPartner(right.item)) - Number(isRequiredPartner(left.item))
+      || Number(left.previouslyUsed) - Number(right.previouslyUsed)
       || stableHash(`${seed}:pool:${sectionKey}:${left.item.id}`) - stableHash(`${seed}:pool:${sectionKey}:${right.item.id}`)
     ));
     // Có 13 slot trong cả list. Giữ tối đa 13 tên cho mỗi nhánh đối tác/thường
@@ -156,7 +159,7 @@ export function buildItineraryNoteTimedPages(
       const partnerPreference = candidate.item.isPartner
         ? (partnerNeeded > 0 ? 0 : 100)
         : (partnerNeeded >= remainingForDay ? 100 : 4);
-      return (candidate.previouslyUsed ? 50 : 0) + sameGroup + partnerPreference;
+      return (candidate.previouslyUsed ? 50 : 0) + sameGroup + partnerPreference - (isRequiredPartner(candidate.item) ? 60 : 0);
     };
     return candidates.sort((left, right) => (
       score(left) - score(right)

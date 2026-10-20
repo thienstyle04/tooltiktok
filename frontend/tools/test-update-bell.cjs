@@ -2,9 +2,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const front=path.resolve(__dirname,'..'),esbuild=require(path.join(front,'../backend/node_modules/esbuild')),{chromium}=require('playwright');
 async function main(){
- const source=`import React from 'react';import{createRoot}from'react-dom/client';import UpdateNotice from './components/UpdateNotice';import Sidebar from './components/Sidebar';
+ const source=`import React from 'react';import{createRoot}from'react-dom/client';import UpdateNotice from './components/UpdateNotice';import ThemeToggle from './components/ui/ThemeToggle';
  const root=createRoot(document.getElementById('root'));
- function App(){const[theme,setTheme]=React.useState('dark');window.theme=setTheme;return <main className="app-shell studio-workflow" data-studio-theme={theme}><Sidebar dataset={{}} activeView="templates"/><section className="studio-shell"><header className="studio-topbar"><h2>Đà Lạt Studio</h2><button className="studio-theme-toggle">Sáng / Tối</button></header><div id="anchor">Nội dung đang làm</div><UpdateNotice/><button id="outside" style={{marginTop:800}}>Ngoài bảng</button><div style={{height:1000}}/></section></main>}
+ function App(){const[theme,setTheme]=React.useState('dark');window.theme=setTheme;return <main className="app-shell studio-workflow studio-v2" data-studio-theme={theme} data-view="today">
+   <aside className="v2-sidebar"><div className="v2-brand"><b>ĐL</b><span>Dalat Studio<small>v0</small></span></div><nav className="v2-nav" aria-label="Điều hướng chính">{['Hôm nay','Tạo','Duyệt & Xuất','Tự động'].map(label=><button key={label} type="button"><span className="v2-nav-label">{label}</span></button>)}</nav></aside>
+   <section className="v2-workspace"><header className="v2-topbar"><div className="v2-title"><h2>Hôm nay</h2></div><div className="v2-top-actions"><ThemeToggle theme={theme} onToggle={()=>setTheme(theme==='dark'?'light':'dark')}/><button type="button" className="v2-icon-button v2-task-button">T</button></div></header>
+   <UpdateNotice/><div className="v2-content"><div id="anchor">Nội dung đang làm</div><button id="outside" style={{marginTop:800}}>Ngoài bảng</button><div style={{height:1000}}/></div></section></main>}
  window.mount=()=>root.render(<React.StrictMode><App/></React.StrictMode>);window.unmount=()=>root.unmount();window.mount();`;
  const bundle=await esbuild.build({stdin:{contents:source,resolveDir:front,loader:'jsx'},bundle:true,write:false,format:'iife',loader:{'.js':'jsx'},jsx:'automatic'});
  const css=[...fs.readFileSync(path.join(front,'app/globals.css'),'utf8').matchAll(/@import url\("(.+?)"\)/g)].map(m=>fs.readFileSync(path.join(front,'app',m[1]),'utf8')).join('\n');
@@ -45,9 +48,9 @@ async function main(){
    await bell.click();await page.waitForFunction(()=>document.querySelector('.app-update-notice ul')?.children.length===20);
    assert.deepEqual(await geometry(),before,'Floating update panel must not shift layout');
    const p=await panel.boundingBox();assert.ok(p.x>=0&&p.y>=0&&p.x+p.width<=width+1&&p.y+p.height<=901,'Panel must fit viewport');
-   for(const selector of ['.studio-theme-toggle','.sidebar-menu-item'])for(const n of await page.locator(selector).all()){const r=await n.boundingBox();if(r)assert.ok(r.x+r.width<=fixed.x||r.x>=fixed.x+fixed.width||r.y+r.height<=fixed.y||r.y>=fixed.y+fixed.height,'Bell must not overlap theme/menu');}
+   for(const selector of ['.studio-theme-toggle','.v2-task-button','.v2-nav button'])for(const n of await page.locator(selector).all()){const r=await n.boundingBox();if(r)assert.ok(r.x+r.width<=fixed.x||r.x>=fixed.x+fixed.width||r.y+r.height<=fixed.y||r.y>=fixed.y+fixed.height,'Bell must not overlap theme/menu');}
    await page.screenshot({path:path.join(output,`${width}-${theme}.png`)});
-   await page.keyboard.press('Escape');await page.evaluate(()=>document.querySelector('.studio-shell').scrollTop=500);assert.deepEqual(await bell.boundingBox(),fixed,'Bell must stay fixed while scrolling');await page.evaluate(()=>document.querySelector('.studio-shell').scrollTop=0);
+   await page.keyboard.press('Escape');await page.evaluate(()=>document.querySelector('.v2-content').scrollTop=500);assert.deepEqual(await bell.boundingBox(),fixed,'Bell must stay fixed while scrolling');await page.evaluate(()=>document.querySelector('.v2-content').scrollTop=0);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));console.log('PASS fixed layout',width,theme);
   }
   await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>{window.server.notes=[];window.server.busy=true;});await bell.click();await page.waitForFunction(()=>document.querySelector('.app-update-actions button')&&[...document.querySelectorAll('button')].some(b=>b.textContent==='Cập nhật ngay'&&b.disabled));

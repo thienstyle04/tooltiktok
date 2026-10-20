@@ -20,7 +20,8 @@ const executablePath = [process.env.PROGRAMFILES + '/Google/Chrome/Application/c
 const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 const created = [];
 try {
-  for (const deckId of ['spotlight-v6', 'spotlight-v4', 'summary-note']) {
+  // Ba cỡ khung trên cùng một nguồn thường (mẫu Note/summary-note chỉ còn ở nguồn Threads).
+  for (const deckId of ['spotlight-v6', 'spotlight-v4', 'spotlight-v5']) {
     const result = await api('/api/decks/generate-from-caption', 'POST', { deckId, tone: 'lich_trinh_huu_ich', caption: { coverTitle: 'Kiểm thử xuất hỗn hợp', headline: 'Kiểm thử', body: 'Kiểm thử', hashtags: [] } });
     assert.ok(result.listId);
     created.push({ deckId, listId: result.listId });

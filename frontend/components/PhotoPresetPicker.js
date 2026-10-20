@@ -13,7 +13,7 @@ export default function PhotoPresetPicker({value, onChange, disabled, presets=DE
     </button>
     {open&&!disabled?<fieldset id={pickerId} className="photo-preset-options"><legend>Chọn bảng màu cho list mới</legend>{presets.map(p=><label key={p.id||'original'} className={(value||null)===p.id?'selected':''}>
       <input type="radio" aria-label={p.label} name={pickerId} checked={(value||null)===p.id} onChange={()=>{onChange(p.id);closePicker();}} />
-      <span><strong>{p.label}</strong><small>{p.id?'Tông trầm, tăng nét và chi tiết':'Giữ màu ảnh từ dữ liệu nguồn'}</small></span>
-    </label>)}<p>Chỉ áp dụng cho list mới; giữ nguyên ảnh nguồn.</p></fieldset>:null}
+      <span><strong>{p.label}</strong><small>{p.description || (p.id?'Mô phỏng thông số chỉnh màu ảnh':'Giữ màu ảnh từ dữ liệu nguồn')}</small></span>
+    </label>)}<p>01–06 theo thứ tự ảnh tham khảo. Mô phỏng thông số iPhone; chỉ áp dụng cho ảnh của list mới, không đổi chữ hoặc ảnh nguồn.</p></fieldset>:null}
   </div>;
 }

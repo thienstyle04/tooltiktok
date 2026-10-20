@@ -37,31 +37,6 @@
   gap: 14px;
 }
 
-.export-quality-panel {
-  border-color: var(--studio-line);
-  border-radius: 8px;
-  background: var(--studio-surface-2);
-}
-
-.export-quality-options {
-  gap: 10px;
-}
-
-.export-quality-option {
-  border-color: var(--studio-line);
-  border-radius: 8px;
-  background: #fffdf8;
-}
-
-.export-quality-option.active {
-  border-color: rgba(240, 127, 90, 0.55);
-  background: rgba(240, 127, 90, 0.1);
-}
-
-.export-quality-option small {
-  color: var(--studio-muted);
-}
-
 .export-deck-group,
 .export-list-item {
   border-radius: 8px;
@@ -76,25 +51,6 @@
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-}
-
-.export-delete-toggle {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  color: var(--studio-muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
-  cursor: pointer;
-}
-
-.export-delete-toggle input {
-  margin-top: 3px;
-  flex: 0 0 auto;
-}
-
-.export-delete-toggle span {
-  flex: 1 1 auto;
 }
 
 .modal-foot .toolbar-button.primary {

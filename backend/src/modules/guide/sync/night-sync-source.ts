@@ -35,7 +35,8 @@ export async function syncNightSource(config: DestinationConfig, sheetDone: bool
   if (staged && !Object.keys(manifest.items).length) throw new Error(`${config.label} chưa đọc được ảnh địa điểm hợp lệ; chưa công bố dữ liệu.`);
   const ids = new Set<string>();
   for (const item of Object.values(manifest.items)) {
-    for (const id of [item.fileId, item.mapFileId, ...(item.candidateImages || []).map(e => e.fileId), ...(item.mapCandidateImages || []).map(e => e.fileId)]) {
+    for (const image of item.cherryRegularImages || []) if (image.fileId) ids.add(image.fileId);
+    for (const id of [item.fileId, item.mapFileId, ...(item.candidateImages || []).map(e => e.fileId), ...(item.mapCandidateImages || []).map(e => e.fileId), ...(item.themedImages?.['cherry-blossom']?.images || []).map(e => e.fileId)]) {
       if (id) ids.add(id);
     }
   }
@@ -50,7 +51,7 @@ export async function syncNightSource(config: DestinationConfig, sheetDone: bool
   if (!hasSyncPermit()) throw new Error('Đã hết khung giờ; ảnh hoàn chỉnh được giữ cho lượt sau.');
   if (staged && ids.size && !warmed.ok && !warmed.skipped) throw new Error(`${config.label} chưa tải được ảnh hợp lệ; giữ nguyên dữ liệu cũ và thử lại.`);
   hooks.progress?.({ stage: 'Đang cập nhật hook theo chủ đề' });
-  const hookErrors = await hooks.syncHooks?.(manifest) || [];
+  const hookErrors = [...(await hooks.syncHooks?.(manifest) || []), ...(manifest.syncWarnings || [])];
   hooks.progress?.({ stage: 'Đang công bố dữ liệu mới' });
   await hooks.publish(source, manifest);
   if (staged) markSheetDone();
