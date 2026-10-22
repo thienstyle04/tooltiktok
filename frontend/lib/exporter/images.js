@@ -7,6 +7,9 @@ import { fitSpotlightDiary } from '../spotlightDiary';
 import { fitThreadsToplist } from '../threadsToplist';
 import { checkLocalTemplateLayout, ensureLocalTemplateFonts } from '../localTemplates';
 import { checkCherryBlossomLayout } from '../cherryBlossom';
+import { checkThreadsGrid6Layout } from '../threadsGrid6';
+import { checkNoteDarkLayout } from '../threadsNoteDark';
+import { checkThreadsRecapLayout } from '../threadsRecap';
 import { ExportImageError } from '../exportImageValidation';
 import { EXPORT_FALLBACK_SOURCE_LIMIT, IMAGE_FETCH_TIMEOUT_MS, IMAGE_READY_TIMEOUT_MS, settleWithin } from './shared';
 
@@ -365,6 +368,7 @@ async function waitForImageReady(img) {
 
 /** Cho batch export: đợi ảnh trong trang load xong trước khi inline/fetch. */
 export async function waitForPageImagesSettled(node, timeoutMs = 20000) {
+  if (node.matches?.('.threads-grid6[data-photo-preset], .threads-recap[data-photo-preset]')) timeoutMs = Math.max(timeoutMs, 60000);
   if (node.matches?.('.local-template-page[data-photo-preset]')) timeoutMs = Math.max(timeoutMs, 60000);
   await ensureLocalTemplateFonts(node);
   await document.fonts.ready;
@@ -379,6 +383,9 @@ export async function waitForPageImagesSettled(node, timeoutMs = 20000) {
   fitThreadsToplist(node, true);
   checkLocalTemplateLayout(node, true);
   checkCherryBlossomLayout(node, true);
+  checkThreadsGrid6Layout(node, true);
+  checkNoteDarkLayout(node, true);
+  checkThreadsRecapLayout(node, true);
   const images = Array.from(node?.querySelectorAll?.('img') || []);
   if (!images.length) return;
   await Promise.all(images.map(async (img) => {
@@ -400,6 +407,10 @@ export async function waitForPageImagesSettled(node, timeoutMs = 20000) {
   if (node.matches?.('.local-template-page')) {
     const missing = images.find(img => img.dataset.localRequired === 'true' && (!img.complete || !img.naturalWidth));
     if (missing) throw new ExportImageError(`Mẫu local: ảnh thiếu/hỏng ở trang ${Number(node.dataset.pageIndex)+1}: ${missing.alt || missing.getAttribute('src')}. Không xuất bằng ảnh thay thế.`);
+  }
+  if (node.matches?.('.threads-grid6, .threads-recap')) {
+    const missing = images.find(img => !img.complete || !img.naturalWidth);
+    if (missing) throw new ExportImageError(`${node.matches('.threads-recap') ? 'Tổng kết chuyến đi 3N2Đ' : 'Threads · Lưới 6 ảnh'}: ảnh thiếu/hỏng ở trang ${Number(node.dataset.pageIndex) + 1}: ${missing.alt}. Không xuất bằng ảnh thay thế.`);
   }
 }
 
@@ -862,12 +873,13 @@ export function isThreadsPortraitPageNode(pageNode) {
 }
 
 export function isSpotlightV6PageNode(pageNode) {
+  if (pageNode?.classList?.contains('threads-note-dark') || pageNode?.classList?.contains('threads-grid6') || pageNode?.classList?.contains('threads-recap')) return true;
   if (pageNode?.classList?.contains('cherry-blossom-page')) return true;
   return Boolean(pageNode?.classList?.contains('spotlight-v6-cover') || pageNode?.classList?.contains('spotlight-v6-image') || pageNode?.classList?.contains('spotlight-v6-page') || pageNode?.classList?.contains('summary-note-page') || pageNode?.classList?.contains('itinerary-note-day') || pageNode?.classList?.contains('itinerary-note-timed-day'));
 }
 
 export function isSpotlightV6MapsPageNode(pageNode) {
-  return Boolean(pageNode?.classList?.contains('spotlight-v6-diary-page') || pageNode?.classList?.contains('spotlight-v6-map-page') || pageNode?.classList?.contains('spotlight-v6-map-place'));
+  return Boolean(pageNode?.classList?.contains('spotlight-v6-diary-page') || pageNode?.classList?.contains('spotlight-v6-map-page') || pageNode?.classList?.contains('spotlight-v6-map-place') || pageNode?.classList?.contains('threads-recap'));
 }
 export function canvasToBlob(canvas, imageFormat = 'image/png', imageQuality = 1) {
   return new Promise((resolve) => {

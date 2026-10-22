@@ -15,6 +15,7 @@ function formatCount(count) {
 function getSourceTypeLabel(entry) {
   const sourceType = String(entry?.sourceType || '').trim().toLowerCase();
   if (sourceType === 'xlsx') return 'XLSX cục bộ';
+  if (sourceType === 'server-json') return 'Server';
   if (sourceType === 'google-sheet' || sourceType === 'sheet') return 'Google Sheet';
   if (entry?.workbookFileName) return 'XLSX cục bộ';
   if (entry?.sheetUrl) return 'Google Sheet';
@@ -50,6 +51,7 @@ export default function SettingsPanel({
   onReplaceDestinationWorkbook,
   onRefreshFromSheet,
   onUpdateSheetLink,
+  onSetPartnerLogic,
   hookSourcesInfo,
   hookSourcesBusy,
   onCreateHookSource,
@@ -69,6 +71,8 @@ export default function SettingsPanel({
   const [replacing, setReplacing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [sheetRefreshing, setSheetRefreshing] = useState(false);
+  const [partnerLogicSaving, setPartnerLogicSaving] = useState(false);
+  const [partnerLogicError, setPartnerLogicError] = useState('');
   const [nightSync, setNightSync] = useState(null);
   useEffect(() => {
     let disposed = false;
@@ -110,7 +114,23 @@ export default function SettingsPanel({
     setRefreshError('');
     setLinkDraft('');
     setLinkError('');
+    setPartnerLogicError('');
   }, [activeDestinationId]);
+
+  // Chỉ nguồn tự thêm (id sheet-/xlsx-/server-) mới tạm tắt được logic đối tác.
+  const canTogglePartnerLogic = Boolean(onSetPartnerLogic && /^(sheet|xlsx|server)-/.test(activeDestination?.id || ''));
+  const togglePartnerLogic = async (off) => {
+    if (!activeDestination?.id) return;
+    setPartnerLogicError('');
+    setPartnerLogicSaving(true);
+    try {
+      await onSetPartnerLogic(activeDestination.id, off);
+    } catch (error) {
+      setPartnerLogicError(error?.message || 'Không đổi được logic đối tác.');
+    } finally {
+      setPartnerLogicSaving(false);
+    }
+  };
 
   const submitSheetLink = async (event) => {
     event.preventDefault();
@@ -507,6 +527,21 @@ export default function SettingsPanel({
             <p className="settings-help">
               Thay file XLSX để cập nhật workbook cục bộ. Tải mới từ Google Sheet chỉ khả dụng khi nguồn này có link dự phòng.
             </p>
+            {canTogglePartnerLogic ? (
+              <label className="settings-partner-logic">
+                <input
+                  type="checkbox"
+                  checked={Boolean(activeDestination.partnerLogicOff)}
+                  disabled={busy || partnerLogicSaving}
+                  onChange={(event) => { void togglePartnerLogic(event.target.checked); }}
+                />
+                <span>
+                  {partnerLogicSaving ? 'Đang dựng lại mẫu...' : 'Tạm tắt logic đối tác'}
+                  <small>Dùng khi nguồn mới chưa có dữ liệu đối tác: bỏ qua cột Doi_tac, mẫu lấy toàn địa điểm thường, không đòi hay xoay vòng đối tác. List đã lưu giữ nguyên.</small>
+                </span>
+              </label>
+            ) : null}
+            {partnerLogicError ? <p className="settings-form-error" role="alert">{partnerLogicError}</p> : null}
           </div>
 
           <div className="settings-sync-actions">
@@ -521,7 +556,7 @@ export default function SettingsPanel({
                     aria-label={`Google Sheet của ${activeDestination?.label || 'nguồn đang chọn'}`}
                   />
                   <a href={activeSheetUrl} target="_blank" rel="noreferrer">
-                    Mở đúng Google Sheet {activeDestination?.label}
+                    {activeDestination?.sourceType === 'server-json' ? 'Mở link dữ liệu server' : `Mở đúng Google Sheet ${activeDestination?.label || ''}`}
                   </a>
                 </>
               ) : (
@@ -533,12 +568,12 @@ export default function SettingsPanel({
                     type="url"
                     value={linkDraft}
                     onChange={(event) => setLinkDraft(event.target.value)}
-                    placeholder="https://docs.google.com/spreadsheets/d/..."
-                    aria-label={`Link Google Sheet mới cho ${activeDestination.label}`}
+                    placeholder={activeDestination.sourceType === 'server-json' ? 'https://.../api/guide-data' : 'https://docs.google.com/spreadsheets/d/...'}
+                    aria-label={`${activeDestination.sourceType === 'server-json' ? 'Link server' : 'Link Google Sheet'} mới cho ${activeDestination.label}`}
                     disabled={busy || linkSaving}
                   />
                   <button type="submit" className="toolbar-button secondary" disabled={busy || linkSaving || !linkDraft.trim()}>
-                    {linkSaving ? 'Đang lưu...' : activeSheetUrl ? 'Đổi link Sheet' : 'Lưu link Sheet'}
+                    {linkSaving ? 'Đang lưu...' : activeDestination.sourceType === 'server-json' ? 'Đổi link server' : activeSheetUrl ? 'Đổi link Sheet' : 'Lưu link Sheet'}
                   </button>
                 </form>
               ) : null}

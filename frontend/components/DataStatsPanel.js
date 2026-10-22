@@ -59,7 +59,7 @@ export default function DataStatsPanel({ dataset, activeDeckId, onPreviewDeck })
               <article key={deck.id} className={`stats-card ${active ? 'active' : ''}`}>
                 <div className="stats-card-head">
                   <div>
-                    <span className="stats-card-kicker">{deck.navTitle}</span>
+                    {deck.navTitle && deck.navTitle !== deck.title ? <span className="stats-card-kicker">{deck.navTitle}</span> : null}
                     <h4>{deck.title}</h4>
                   </div>
                   <button className="toolbar-button" type="button" onClick={() => onPreviewDeck?.(deck)}>Xem preview</button>

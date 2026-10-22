@@ -67,6 +67,10 @@ export default function PageInspector({
   const fallbackCount = itemsWithImages.filter((item) => imageSourceClass(item) === 'fallback').length;
   const partnerCount = items.filter((item) => item.isPartner).length;
   const isThreadsToplist = deck.id === 'threads-toplist-dalat';
+  const isNoteDark = deck.id === 'threads-note-dark-list';
+  const isThreadsGrid6 = deck.id === 'threads-grid6-collage';
+  const isRecap = deck.id === 'threads-trip-recap-3n2d';
+  const isRecapNote = page.layoutVariant === 'threads-recap-note';
   const pageBackground = isThreadsToplist ? (page.type === 'cover' ? page.backgroundImage : '') : isThreadsBudget || isExpenseSheet ? '' : isPortableImageUrl(page.backgroundImage)
     ? page.backgroundImage
     : firstPortableListImage(list) || page.backgroundImage || '';
@@ -74,7 +78,7 @@ export default function PageInspector({
   const isSpotlightV4ImagePage = page.layoutVariant === 'spotlight-v4-image' || page.layoutVariant === 'spotlight-v6-map-page';
   const canEditPage = typeof onPageTextChange === 'function' && !isSpotlightV4ImagePage;
   const canSavePage = canEditPage && typeof onPageTextSave === 'function';
-  const titleLimit = page.imageRole ? 4000 : page.spotlightDesignRevision === 1 && page.type === 'cover' ? 220 : page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
+  const titleLimit = isThreadsGrid6 ? 4000 : page.imageRole ? 4000 : page.spotlightDesignRevision === 1 && page.type === 'cover' ? 220 : page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
     ? 110
     : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
       ? 220
@@ -83,7 +87,7 @@ export default function PageInspector({
   const pageSubtitle = String(page.subtitle || '');
   const isTimedNote = page.layoutVariant === 'itinerary-note-timed-day';
   const isDarkNote = page.layoutVariant === 'itinerary-note-dark-day';
-  const hideSubtitleEditor = deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || (deck.id === 'spotlight-v5' || deck.id === 'spotlight-v5-color-edit') || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-dark' || (deck.id === 'itinerary-note-2days' || deck.id.startsWith('itinerary-note-threads-')) || deck.id === 'itinerary-note-timed' || isThreadsToplist) || (deck.id === 'spotlight-v2' && page.type === 'cover');
+  const hideSubtitleEditor = isRecap || isNoteDark || isThreadsGrid6 || deck.id === 'spotlight-v6-diary' || deck.id === 'spotlight-v4' || (deck.id === 'spotlight-v5' || deck.id === 'spotlight-v5-color-edit') || deck.id === 'spotlight-v6' || deck.id === 'spotlight-v6-green' || deck.id === 'spotlight-v6-dark' || deck.id === 'spotlight-v6-persimmon' || deck.id === 'spotlight-v6-maps' || (deck.id === 'summary-note' || deck.id === 'itinerary-note-dark' || (deck.id === 'itinerary-note-2days' || deck.id.startsWith('itinerary-note-threads-')) || deck.id === 'itinerary-note-timed' || isThreadsToplist) || (deck.id === 'spotlight-v2' && page.type === 'cover');
 
   return (
     <>
@@ -104,7 +108,7 @@ export default function PageInspector({
       </div> : null}
       {canEditPage ? (
         <div className="inspector-cover-editor inspector-page-editor">
-          {!isTimedNote && !isDarkNote && !isThreadsBudget ? <label className="inspector-field">
+          {!isTimedNote && !isDarkNote && !isNoteDark && !isThreadsBudget && (!isThreadsGrid6 || page.type === 'cover') && (!isRecap || isRecapNote) ? <label className="inspector-field">
             <span className="inspector-field-head"><span>Tiêu đề trang</span><span>{pageTitle.length}/{titleLimit}</span></span>
             <textarea data-edit-target="title" value={pageTitle} placeholder="Nhập tiêu đề trang..." rows={2} maxLength={titleLimit} onChange={(event) => onPageTextChange({ title: event.target.value })} />
           </label> : isTimedNote ? (
@@ -113,6 +117,10 @@ export default function PageInspector({
               <input data-edit-target="chipText" value={page.chipText ?? ''} maxLength={40} onChange={(event) => onPageTextChange({ chipText: event.target.value })} />
             </label>
           ) : null}
+          {(isNoteDark || isThreadsGrid6 && page.type === 'cover') ? <label className="inspector-field"><span>{isNoteDark ? 'Vị trí nội dung' : 'Vị trí hook'}</span><select value={page.titlePlacement || (isNoteDark ? 'top-left' : 'mid-left')} onChange={event => onPageTextChange({ titlePlacement: event.target.value })}>
+            <option value="top-left">Trên trái</option><option value="mid-left">Giữa trái (mặc định)</option><option value="bottom-left">Dưới trái</option><option value="top-center">Trên giữa</option><option value="center">Giữa</option><option value="bottom-center">Dưới giữa</option><option value="top-right">Trên phải</option><option value="mid-right">Giữa phải</option><option value="bottom-right">Dưới phải</option>
+          </select></label> : null}
+          {(isNoteDark || isThreadsGrid6 || isRecapNote) && page.type === 'list' ? items.map((item, i) => <label className="inspector-field" key={i}><span>{isRecapNote ? `Dòng ${i + 1}` : `Tên địa điểm ${i + 1}`}{isNoteDark || isRecapNote ? '' : ' (tối đa hai dòng)'}</span><input value={item.name} onChange={event => onPageTextChange({ items: items.map((row, j) => j === i ? { ...row, name: event.target.value } : row) })} /></label>) : null}
           {!hideSubtitleEditor && !page.imageRole ? (
             <label className="inspector-field">
               <span className="inspector-field-head"><span>Mô tả trang</span><span>{pageSubtitle.length}/{page.localRender ? 4000 : 220}</span></span>

@@ -12,6 +12,12 @@ export function isThreadsTextOnlyDeck(deckId) {
   return deckId === THREADS_MIX_TEXT_DECK_ID;
 }
 
+// Preserve the saved street address in both preview and TXT. Unlike the legacy
+// note formatter below, Threads Local must not discard streets in favor of wards.
+export function threadsLocalAddress(address) {
+  return String(address || '').replace(/\s+/g, ' ').trim();
+}
+
 export function compactThreadsLocalAddress(address) {
   const fullAddress = String(address || '').replace(/\s+/g, ' ').trim();
   const parts = fullAddress.split(',').map((part) => part.trim()).filter(Boolean);
@@ -48,7 +54,9 @@ export function threadsFoodPayload(list) {
   const partnerPhotos = photos.filter((item) => item.isPartner === true);
   const otherPhotos = photos.filter((item) => item.isPartner !== true && (isMix || item.isLocal === true));
   const balanced = !isMix && pages[0]?.threadsPartnerPolicy === 'balanced-local-v1';
-  const validRatio = balanced ? partners.length >= 1 && partners.length <= 5 && others.length === 10 - partners.length
+  // Source with partner logic off: lists hold only regular venues (Local first).
+  const partnerOff = list?.partnerOptional === true && partners.length === 0;
+  const validRatio = partnerOff ? true : balanced ? partners.length >= 1 && partners.length <= 5 && others.length === 10 - partners.length
     : partners.length === targetPartners && others.length === targetPartners;
   if (items.length !== targetCount || !validRatio
     || names.some((name) => !name) || new Set(names.map((name) => name.toLocaleLowerCase('vi'))).size !== targetCount) {
@@ -61,7 +69,7 @@ export function threadsFoodPayload(list) {
   if (isMix && new Set(items.map((item) => item.sourceSectionKey)).size < 4) {
     throw new Error('List Threads ' + templateName + ' phải có địa điểm từ ít nhất 4 nhóm dữ liệu. Hãy tạo lại list.');
   }
-  if (photos.length !== targetPhotos || (!isTextOnly && !balanced && (partnerPhotos.length !== 3 || otherPhotos.length !== 3))
+  if (photos.length !== targetPhotos || (!isTextOnly && !balanced && !partnerOff && (partnerPhotos.length !== 3 || otherPhotos.length !== 3))
     || new Set(photos.map((item) => item.imageUrl)).size !== targetPhotos
     || photos.some((item) => item.imageMapped !== true || item.imageSource !== 'manual')) {
     throw new Error(isTextOnly ? 'List Threads Tổng hợp chữ không được chứa ảnh. Hãy tạo lại list.'
@@ -71,7 +79,7 @@ export function threadsFoodPayload(list) {
   if (!caption) throw new Error('List Threads ' + templateName + ' đang thiếu hook/caption. Hãy tạo lại list.');
   const txt = '\uFEFF' + caption + '\r\n\r\n'
     + items.map((item) => '- ' + String(item.name).trim()
-      + (item.isPartner ? ' (' + compactThreadsLocalAddress(item.metaPrimary) + ')' : '')).join('\r\n') + '\r\n';
+      + (item.isPartner ? ' (' + threadsLocalAddress(item.metaPrimary) + ')' : '')).join('\r\n') + '\r\n';
   return { txt, photos, partnerNames: partners.map((item) => String(item.name).trim()) };
 }
 
@@ -80,9 +88,9 @@ export async function addThreadsFoodFiles(folder, list, loadPhoto, safeName = (n
   if (typeof createPartnerXlsx !== 'function') throw new Error('Chưa cấu hình tạo XLSX đối tác cho mẫu Threads Local.');
   const downloaded = [];
   for (const item of photos) downloaded.push({ item, ...(await loadPhoto(item)) });
-  const partnerXlsx = await createPartnerXlsx(partnerNames);
   folder.file('noi-dung.txt', txt);
-  folder.file('doi-tac.xlsx', partnerXlsx);
+  // Only a partner-off source reaches here with no partners; skip the empty XLSX.
+  if (partnerNames.length) folder.file('doi-tac.xlsx', await createPartnerXlsx(partnerNames));
   if (downloaded.length) {
     const images = folder.folder('anh');
     downloaded.forEach(({ item, blob, extension }, index) => {

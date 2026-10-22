@@ -64,6 +64,7 @@ const FRONTEND_UNIT = [
   'tools/test-spotlight-v6-maps.mjs',
   'tools/test-spotlight-design.mjs',
   'tools/test-threads-food-export.mjs',
+  'tools/test-deck-default-photo-presets.mjs',
   'tools/test-manual-generation-queue.mjs',
   'tools/test-catalog-source-refresh.mjs',
   'tools/test-runtime-session-proxy.mjs',
@@ -120,6 +121,9 @@ const BACKEND_TS_EXCLUDED = {
 // Các test này nhận AUDIT_ROOT / DALAT_TEST_OUTPUT_DIR làm nơi ghi kết quả.
 const TEMP_OUTPUT_TESTS = new Set(['test-spotlight-icons-browser.mjs', 'test-spotlight-cover-placement.mjs', 'test-ai-settings.cjs']);
 const FRONTEND_BROWSER = [
+  'tools/test-threads-grid6-browser.cjs',
+    'tools/test-threads-note-dark-browser.cjs',
+  'tools/test-threads-recap-browser.cjs',
   'tools/test-v2-studio.cjs',
   'tools/test-slide-thumb-images.cjs',
   'tools/test-automation-export-parts.cjs',

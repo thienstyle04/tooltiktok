@@ -2,6 +2,7 @@ import type { GuideItem, ListPage, PageItem, SectionKey, WorkbookItemsBySection 
 import { itemUsageKey } from './data-allocator';
 import { stableHash } from './image-resolver';
 import { isRequiredPartner } from './required-partners';
+import { getActiveDestinationLocalize, partnerLogicOff } from '../sync/destination-localize';
 
 export const ITINERARY_NOTE_TIMED_TEMPLATE_VERSION = 1;
 export const ITINERARY_NOTE_TIMED_CAPTION = 'Lịch trình Đà Lạt 2 ngày theo khung giờ tham khảo mình đã tổng hợp ở bên dưới.\nMọi người xem giúp mình lịch trình này có ổn không ạ?';
@@ -15,7 +16,7 @@ type TimedCandidate = {
   previouslyUsed: boolean;
 };
 
-const DAY_SLOTS: VenueSlot[][] = [
+const DAY_SLOT_TEMPLATE: VenueSlot[][] = [
   [
     { time: '07:00–07:45', groups: ['quan_an'] },
     { time: '08:15–09:15', groups: ['cafe'] },
@@ -34,7 +35,7 @@ const DAY_SLOTS: VenueSlot[][] = [
     { time: '12:30–13:30', groups: ['quan_an'] },
   ],
 ];
-const PARTNER_TARGETS = [4, 3] as const;
+const PARTNER_DAY_TARGETS = [4, 3] as const;
 
 function normalizeIdentity(value: string): string {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '');
@@ -86,7 +87,14 @@ export function buildItineraryNoteTimedPages(
     (common.itemsBySection[sectionKey] || []).filter((item) => item.name?.trim() && item.address?.trim()),
   ])) as Record<SectionKey, GuideItem[]>;
 
-  const requiredCounts: Partial<Record<SectionKey, number>> = { quan_an: 4, cafe: 2, choi_dem: 1 };
+  // Nguồn ngoài Đà Lạt chưa có tab Chơi đêm: khung tối dùng quán cà phê thay vì báo thiếu.
+  const nightCafe = !pools.choi_dem.length && getActiveDestinationLocalize() !== 'dalat';
+  const DAY_SLOTS = nightCafe
+    ? DAY_SLOT_TEMPLATE.map(slots => slots.map(slot => slot.groups.includes('choi_dem') ? { ...slot, groups: ['cafe'] as SectionKey[] } : slot))
+    : DAY_SLOT_TEMPLATE;
+  // Nguồn tạm tắt logic đối tác: 13 điểm đều là địa điểm thường.
+  const PARTNER_TARGETS = partnerLogicOff() ? [0, 0] as const : PARTNER_DAY_TARGETS;
+  const requiredCounts: Partial<Record<SectionKey, number>> = nightCafe ? { quan_an: 4, cafe: 3 } : { quan_an: 4, cafe: 2, choi_dem: 1 };
   for (const [sectionKey, required] of Object.entries(requiredCounts) as Array<[SectionKey, number]>) {
     const available = new Set(pools[sectionKey].map((item) => normalizeIdentity(item.name))).size;
     if (available < required) throw new Error(`Lịch trình Note theo giờ thiếu dữ liệu ${sectionKey}: cần ${required}, hiện có ${available} địa điểm hợp lệ có tên và địa chỉ.`);
@@ -94,7 +102,7 @@ export function buildItineraryNoteTimedPages(
   const visitAvailable = new Set(VISIT_SECTIONS.flatMap((key) => pools[key]).map((item) => normalizeIdentity(item.name))).size;
   if (visitAvailable < 6) throw new Error(`Lịch trình Note theo giờ cần 6 điểm tham quan/trải nghiệm không trùng, hiện có ${visitAvailable}.`);
   const partnerAvailable = new Set(ALL_SECTIONS.flatMap((key) => pools[key]).filter((item) => item.isPartner).map((item) => normalizeIdentity(item.name))).size;
-  if (partnerAvailable < 7) throw new Error(`Lịch trình Note theo giờ cần đúng 7 đối tác khác nhau, hiện chỉ có ${partnerAvailable} đối tác hợp lệ trong các nhóm được dùng.`);
+  if (PARTNER_TARGETS[0] && partnerAvailable < 7) throw new Error(`Lịch trình Note theo giờ cần đúng 7 đối tác khác nhau, hiện chỉ có ${partnerAvailable} đối tác hợp lệ trong các nhóm được dùng.`);
 
   const flatSlots = DAY_SLOTS.flatMap((slots, day) => slots.map((slot) => ({ day, slot })));
   const chosenBySlot: Array<GuideItem | undefined> = new Array(flatSlots.length);
@@ -214,7 +222,7 @@ export function buildItineraryNoteTimedPages(
     return false;
   }
 
-  if (!select(0)) throw new Error('Không thể tạo Lịch trình Note theo giờ đúng ràng buộc: Ngày 1 cần 4 đối tác, Ngày 2 cần 3 đối tác; tổng 13 địa điểm không trùng, đúng nhóm và tối đa 2 điểm cùng nhóm tham quan mỗi ngày.');
+  if (!select(0)) throw new Error('Không thể tạo Lịch trình Note theo giờ đúng ràng buộc: ' + (PARTNER_TARGETS[0] ? 'Ngày 1 cần 4 đối tác, Ngày 2 cần 3 đối tác; ' : '') + 'tổng 13 địa điểm không trùng, đúng nhóm và tối đa 2 điểm cùng nhóm tham quan mỗi ngày.');
   const chosen = chosenBySlot.filter((item): item is GuideItem => Boolean(item));
   chosen.forEach((item) => { common.globalUsedItemIds?.add(itemUsageKey(item)); common.globalUsedItemIds?.add(item.id); });
 

@@ -44,7 +44,7 @@ import type { TitlePlacement } from '../../../common/interfaces/guide.types';
 import { BUNDLED_ONE_WAY_HOOKS, BUNDLED_SPOTLIGHT_HOOKS } from '../sync/hook-fallbacks';
 import { buildDiaryPages, DIARY_TEMPLATE_VERSION, DIARY_CAPTION } from './spotlight-diary';
 import { getActiveDestinationLocalize, getActiveSourceId } from '../sync/destination-localize';
-import { isDeckAllowedForSource } from '../sync/destination-config';
+import { isDalatThreadsSource, isDeckAllowedForSource } from '../sync/destination-config';
 import { buildThreadsNotePages, buildThreadsNoteExample, isThreadsNote, threadsNoteCaption } from './itinerary-note-threads';
 import { buildThreadsBudgetPages, buildThreadsBudgetExample, THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION, threadsBudgetCaption } from './itinerary-note-threads-budget';
 import { buildThreadsExpenseExample, buildThreadsExpensePages, isThreadsExpense, THREADS_EXPENSE_2N1D_ID, THREADS_EXPENSE_3N2D_ID, THREADS_EXPENSE_TEMPLATE_VERSION, threadsExpenseCaption } from './threads-expense-sheet';
@@ -54,6 +54,10 @@ import { buildThreadsCafePages, buildThreadsFoodPages, buildThreadsMixPages, bui
 import { buildItineraryNotePages, buildItineraryNoteDarkPages, ITINERARY_NOTE_TEMPLATE_VERSION, ITINERARY_NOTE_CAPTION, ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_TEMPLATE_VERSION, ITINERARY_NOTE_DARK_CAPTION } from './itinerary-note';
 import { buildItineraryNoteTimedPages, ITINERARY_NOTE_TIMED_TEMPLATE_VERSION, ITINERARY_NOTE_TIMED_CAPTION } from './itinerary-note-timed';
 import { isRequiredPartner } from './required-partners';
+import { coverImagesForDeck } from './cover-exclusions';
+import { buildThreadsRecapExample, buildThreadsRecapPages, pickThreadsRecapCaption, recapTotals, THREADS_RECAP_ID, THREADS_RECAP_NAME, THREADS_RECAP_VERSION } from './threads-trip-recap';
+import { buildThreadsGrid6Pages, buildThreadsGrid6Example, pickThreadsGrid6Hook, threadsGrid6Hooks, threadsGrid6PostCaption, THREADS_GRID6_ID, THREADS_GRID6_VERSION } from './threads-grid6-collage';
+import { NOTE_DARK_ID, NOTE_DARK_NAME, NOTE_DARK_VERSION, buildNoteDarkPages, noteDarkExample, pickNoteCaption } from './threads-note-dark-list';
 export const GRID_8_FEED_TEMPLATE_VERSION = 17;
 export const GRID_8_FEED_DEFAULT_POST_CAPTION = 'đều là những chọn lựa có tâm';
 
@@ -73,7 +77,7 @@ export function normalizeGrid8FeedPostCaption(value: string): string {
   return clean;
 }
 export const GRID_6_QUAYTUNG_TEMPLATE_VERSION = 6;
-export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 8;
+export const GRID_8_QUAYTUNG_TEMPLATE_VERSION = 9;
 export const SPOTLIGHT_V2_TEMPLATE_VERSION = 18;
 export const SPOTLIGHT_V3_TEMPLATE_VERSION = 3;
 export const SPOTLIGHT_V4_TEMPLATE_VERSION = 5;
@@ -92,6 +96,8 @@ export const ITINERARY_TIMELINE_TEMPLATE_VERSION = 10;
 export const ONE_WAY_STORY_TEMPLATE_VERSION = 2;
 
 export const V2_DECK_IDS = [
+  NOTE_DARK_ID,
+  THREADS_GRID6_ID,
   'grid-6-quaytung',
   'grid-8-feed',
   'grid-8-quaytung',
@@ -115,6 +121,7 @@ export const V2_DECK_IDS = [
   THREADS_BUDGET_ID,
   THREADS_EXPENSE_2N1D_ID,
   THREADS_EXPENSE_3N2D_ID,
+  THREADS_RECAP_ID,
   THREADS_TOPLIST_ID,
   THREADS_FOOD_ID,
   THREADS_CAFE_ID,
@@ -220,6 +227,8 @@ export function tuneSpotlightV2Cover(
   seedPrefix: string,
 ): DeckPage[] {
   const coverGridImages = collectSpotlightV2CoverGridImages(coverImageUrls, seedPrefix);
+  const collageCover = (deckId: string) => collectSpotlightV2CoverGridImages(coverImagesForDeck(deckId, coverImageUrls), seedPrefix);
+  const v2CoverGridImages = collageCover('spotlight-v2');
   const coverSingleImage = collectSpotlightV3CoverImage(coverImageUrls, `${seedPrefix}|v3-single`);
 
   return pages.map((page) => {
@@ -238,22 +247,24 @@ export function tuneSpotlightV2Cover(
     if (variant === 'spotlight-v2') {
       return {
         ...page,
-        coverImages: coverGridImages,
-        backgroundImage: coverGridImages[0] || page.backgroundImage,
+        coverImages: v2CoverGridImages,
+        backgroundImage: v2CoverGridImages[0] || page.backgroundImage,
       };
     }
     if (variant === 'grid-8-feed') {
+      const images = collageCover('grid-8-feed');
       return {
         ...page,
-        coverImages: coverGridImages,
-        backgroundImage: coverGridImages[0] || page.backgroundImage,
+        coverImages: images,
+        backgroundImage: images[0] || page.backgroundImage,
       };
     }
     if (variant === 'itinerary-4n3d-stack-cover') {
+      const images = collageCover('itinerary-4n3d-stack');
       return {
         ...page,
-        coverImages: coverGridImages,
-        backgroundImage: coverGridImages[0] || page.backgroundImage,
+        coverImages: images,
+        backgroundImage: images[0] || page.backgroundImage,
       };
     }
     return page;
@@ -2155,6 +2166,8 @@ export function buildBudget4N3DWalletPages(common: DeckBuildCommon, seedPrefix: 
 }
 
 const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
+  [THREADS_GRID6_ID]: THREADS_GRID6_VERSION,
+  [NOTE_DARK_ID]: NOTE_DARK_VERSION,
   'grid-6-quaytung': GRID_6_QUAYTUNG_TEMPLATE_VERSION,
   'grid-8-feed': GRID_8_FEED_TEMPLATE_VERSION,
   'grid-8-quaytung': GRID_8_QUAYTUNG_TEMPLATE_VERSION,
@@ -2176,6 +2189,7 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
   'itinerary-note-threads-3n2d': 3,
   'itinerary-note-threads-2n1d': 3,
   [THREADS_BUDGET_ID]: THREADS_BUDGET_TEMPLATE_VERSION,
+  [THREADS_RECAP_ID]: THREADS_RECAP_VERSION,
   [THREADS_EXPENSE_2N1D_ID]: THREADS_EXPENSE_TEMPLATE_VERSION,
   [THREADS_EXPENSE_3N2D_ID]: THREADS_EXPENSE_TEMPLATE_VERSION,
   [THREADS_TOPLIST_ID]: THREADS_TOPLIST_TEMPLATE_VERSION,
@@ -2192,6 +2206,8 @@ const V2_TEMPLATE_VERSIONS: Record<V2DeckId, number> = {
 };
 
 const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: string; listName: string }> = {
+  [THREADS_GRID6_ID]: { nav: 'Threads · Lưới 6 ảnh', title: 'Threads · Lưới 6 ảnh', description: '5 trang 9:16: bìa, 12 điểm đi chơi, 6 cà phê và 6 quán ăn. Mỗi trang tối đa 2 đối tác; chỉ nguồn Threads Đà Lạt.', listName: 'Threads · Lưới 6 ảnh' },
+  [NOTE_DARK_ID]: {nav:NOTE_DARK_NAME,title:NOTE_DARK_NAME,description:'Một trang ghi chú đen: 6 cà phê, 6 đi chơi/check-in và 6 quán ăn; chỉ tên, không cần ảnh hoặc địa chỉ.',listName:NOTE_DARK_NAME},
   'grid-6-quaytung': {
     nav: 'Lưới 6 Quaytung',
     title: 'Bộ lưới 6 ô — bản Quaytung (V2)',
@@ -2286,6 +2302,7 @@ const V2_DECK_META: Record<V2DeckId, { nav: string; title: string; description: 
   'itinerary-note-threads-3n2d': { nav: 'Note Threads 3N2Đ', title: 'Note Threads 3N2Đ', description: '1 trang bảng khổ 3:4, 18 địa điểm không trùng chia đều 3 ngày; đối tác phân bổ linh hoạt. Không cần ảnh.', listName: 'Note Threads 3N2Đ' },
   'itinerary-note-threads-2n1d': { nav: 'Note Threads 2N1Đ', title: 'Note Threads 2N1Đ', description: '1 trang bảng khổ 3:4, 18 địa điểm không trùng chia đều 2 ngày; đối tác phân bổ linh hoạt. Không cần ảnh.', listName: 'Note Threads 2N1Đ' },
   [THREADS_BUDGET_ID]: { nav: 'Chi phí Threads 3N2Đ', title: 'Bảng chi phí Threads 3N2Đ', description: '1 trang bảng 3:4: di chuyển, một chỗ lưu trú theo giá đầu người, chi tiêu 3 ngày và các dòng tổng. Giá không có trong cột Giá đầu người để trống cho người dùng nhập. Không cần ảnh.', listName: 'Chi phí Threads 3N2Đ' },
+  [THREADS_RECAP_ID]: { nav: THREADS_RECAP_NAME, title: THREADS_RECAP_NAME, description: '9 trang 3:4: note trắng kiểu Ghi chú iPhone liệt kê chi phí 3N2Đ cho 2 người (Giá đầu người × 2, tự cộng tổng và chia mỗi người) + 8 ảnh riêng của đúng các địa điểm trong note, theo thứ tự dòng.', listName: THREADS_RECAP_NAME },
   [THREADS_EXPENSE_2N1D_ID]: { nav: 'Bảng chi tiêu Threads 2N1Đ', title: 'Bảng chi tiêu Threads 2N1Đ', description: '1 trang 3:4 kiểu ảnh chụp Google Sheet: Nội dung · Số tiền · Ghi chú cho 2 người. Giá đầu người trong Sheet × 2, tự cộng tổng và chia mỗi người. Không cần ảnh.', listName: 'Bảng chi tiêu Threads 2N1Đ' },
   [THREADS_EXPENSE_3N2D_ID]: { nav: 'Bảng chi tiêu Threads 3N2Đ', title: 'Bảng chi tiêu Threads 3N2Đ', description: '1 trang 3:4 kiểu ảnh chụp Google Sheet: Nội dung · Số tiền · Ghi chú cho 2 người, 3 ngày 2 đêm. Giá đầu người trong Sheet × 2, tự cộng tổng và chia mỗi người. Không cần ảnh.', listName: 'Bảng chi tiêu Threads 3N2Đ' },
   [THREADS_TOPLIST_ID]: { nav: 'Top list Đà Lạt', title: 'Top list các địa điểm Đà Lạt', description: '4 trang khổ 4:5: bìa cửa đỏ nguyên bản và 3 trang giấy kẻ dòng, mỗi trang 5 địa điểm Quán ăn, Cà phê, Check-in. Không cần ảnh địa điểm, hook hay AI.', listName: 'Top list Đà Lạt' },
@@ -2341,7 +2358,7 @@ export function buildItineraryTimelineDeckPages(common: DeckBuildCommon, seedPre
     seedPrefix,
     common.globalUsedItemIds,
     common.globalUsedImageUrls,
-    common.coverImageUrls,
+    coverImagesForDeck('itinerary-timeline', common.coverImageUrls),
   );
 }
 
@@ -2383,6 +2400,12 @@ export function buildPagesForDeckV2(
   };
 
   switch (deckId) {
+    case NOTE_DARK_ID: return buildNoteDarkPages(itemsBySection,seedPrefix);
+    case THREADS_GRID6_ID: {
+      const context = getSpotlightV3BuildContext();
+      const hooks = threadsGrid6Hooks();
+      return buildThreadsGrid6Pages({ itemsBySection, coverImageUrls, seed: seedPrefix, hook: pickThreadsGrid6Hook(hooks, context.usedHookTitles || [], seedPrefix), usedImages: globalUsedImageUrls, usedItems: globalUsedItemIds, previousPages: context.grid6History });
+    }
     case 'grid-6-quaytung':
       return buildGrid6QuaytungDeckPages(common, seedPrefix);
     case 'grid-8-feed':
@@ -2428,6 +2451,8 @@ export function buildPagesForDeckV2(
     case 'itinerary-note-threads-3n2d':
     case 'itinerary-note-threads-2n1d':
       return buildThreadsNotePages(common, deckId, seedPrefix, getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt');
+    case THREADS_RECAP_ID:
+      return buildThreadsRecapPages(itemsBySection, seedPrefix, getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt', common.globalUsedItemIds, common.globalUsedImageUrls);
     case THREADS_BUDGET_ID:
       return buildThreadsBudgetPages(itemsBySection, seedPrefix, getActiveDestinationLocalize() === 'greenland' ? 'Green Land' : 'Đà Lạt', common.globalUsedItemIds);
     case THREADS_EXPENSE_2N1D_ID:
@@ -2518,6 +2543,8 @@ export function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): Guid
     pages,
   );
   list.templateVersion = V2_TEMPLATE_VERSIONS[deckId];
+  if(deckId===NOTE_DARK_ID){list.canvasPreset='tiktok-9x16';list.postCaption=pickNoteCaption([],'main');list.captionBody='';list.captionHashtags=[];}
+  if (deckId === THREADS_GRID6_ID) { list.canvasPreset = 'tiktok-9x16'; list.postCaption = threadsGrid6PostCaption(pages[0].title); list.captionBody = ''; list.captionHashtags = []; }
   if (deckId === 'spotlight-v6-color-edit' || deckId === 'spotlight-v5-color-edit') {
     list.photoPreset = 'iphone-color-edit-v1';
     list.canvasPreset = deckId === 'spotlight-v5-color-edit' ? 'tiktok-4x5' : 'tiktok-9x16';
@@ -2544,6 +2571,12 @@ export function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): Guid
   if (isThreadsNote(deckId)) {
     list.canvasPreset = 'tiktok-3x4';
     list.postCaption = threadsNoteCaption(deckId);
+    list.captionBody = '';
+    list.captionHashtags = [];
+  }
+  if (deckId === THREADS_RECAP_ID) {
+    list.canvasPreset = 'tiktok-3x4';
+    list.postCaption = pickThreadsRecapCaption([], 'main', recapTotals(pages[0] as ListPage));
     list.captionBody = '';
     list.captionHashtags = [];
   }
@@ -2584,6 +2617,8 @@ export function buildV2MainList(deckId: V2DeckId, common: DeckBuildCommon): Guid
 
 export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
   const activeDestinationId = getActiveDestinationLocalize();
+  // Mẫu Note/Threads dùng chữ chung (địa danh được đổi theo nguồn): mở cho mọi nguồn Threads, không chỉ Đà Lạt.
+  const noteTemplatesOpen = activeDestinationId === 'dalat' || isDalatThreadsSource(getActiveSourceId());
   const v4VenueCount = spotlightV4VenuePool(createDeckBuildPools(common.itemsBySection)).length;
   const v5VenuePool = spotlightV5VenuePool(createDeckBuildPools(common.itemsBySection));
   const v5VenueCount = v5VenuePool.length;
@@ -2599,11 +2634,11 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
     .filter(deckId => deckId !== 'spotlight-v5-color-edit' && deckId !== 'spotlight-v6-color-edit')
     .filter((deckId) => deckId !== 'carousel-mau-1')
     .filter((deckId) => deckId !== 'spotlight-v6-diary' || activeDestinationId === 'dalat')
-    .filter((deckId) => deckId !== 'itinerary-note-2days' || activeDestinationId === 'dalat')
-    .filter((deckId) => deckId !== ITINERARY_NOTE_DARK_ID || activeDestinationId === 'dalat')
-    .filter((deckId) => deckId !== 'itinerary-note-timed' || activeDestinationId === 'dalat')
+    .filter((deckId) => deckId !== 'itinerary-note-2days' || noteTemplatesOpen)
+    .filter((deckId) => deckId !== ITINERARY_NOTE_DARK_ID || noteTemplatesOpen)
+    .filter((deckId) => deckId !== 'itinerary-note-timed' || noteTemplatesOpen)
     .filter((deckId) => deckId !== THREADS_TOPLIST_ID || activeDestinationId === 'dalat')
-    .filter((deckId) => !isThreadsLocalDeck(deckId) || activeDestinationId === 'dalat')
+    .filter((deckId) => !isThreadsLocalDeck(deckId) || noteTemplatesOpen)
     // Không làm hỏng lần nạp dataset chung khi máy đang có pool Hinh_nen/ảnh
     // venue chưa sẵn sàng. List mới vẫn đi qua builder strict và trả lỗi rõ ràng;
     // catalog chỉ bỏ tạm mẫu không thể dựng khung cho đến lần sync kế tiếp.
@@ -2647,7 +2682,7 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
     .filter((deckId) => deckId !== 'spotlight-v6-maps' || (
       activeDestinationId === 'dalat'
     ))
-    .filter((deckId) => deckId !== 'summary-note' || ((activeDestinationId === 'dalat' || activeDestinationId === 'greenland') && summaryNoteCafeCount >= 4 && summaryNoteQuanAnCount >= 4))
+    .filter((deckId) => deckId !== 'summary-note' || ((noteTemplatesOpen || activeDestinationId === 'greenland') && summaryNoteCafeCount >= 4 && summaryNoteQuanAnCount >= 4))
     .filter((deckId) => deckId !== 'one-way-story' || activeDestinationId === 'dalat')
     .map((deckId) => {
     const meta = V2_DECK_META[deckId];
@@ -2657,6 +2692,17 @@ export function getV2DeckDefinitions(common: DeckBuildCommon): GuideDeck[] {
       // Catalog loading must not prevent opening a source to repair its data.
       // Generation still uses the strict builder and rejects missing requirements.
       previewError = error instanceof Error ? error.message : String(error);
+      if(deckId===NOTE_DARK_ID){mainList=buildDeckList(deckId,'main','List chính',meta.listName,`Mẫu minh họa — ${previewError}`,noteDarkExample());mainList.templateVersion=NOTE_DARK_VERSION;mainList.canvasPreset='tiktok-9x16';mainList.postCaption=pickNoteCaption([],'main');mainList.captionBody='';mainList.captionHashtags=[];}
+      if (deckId === THREADS_GRID6_ID) {
+        mainList = buildDeckList(deckId, 'main', 'List chính', meta.listName, `Mẫu minh họa — ${previewError}`, buildThreadsGrid6Example());
+        mainList.templateVersion = THREADS_GRID6_VERSION; mainList.canvasPreset = 'tiktok-9x16'; mainList.postCaption = threadsGrid6PostCaption(mainList.pages[0].title); mainList.captionBody = ''; mainList.captionHashtags = [];
+      }
+      if (deckId === THREADS_RECAP_ID) {
+        const pages = buildThreadsRecapExample(activeDestinationId === 'greenland' ? 'Green Land' : 'Đà Lạt');
+        mainList = buildDeckList(deckId, 'main', 'Mẫu minh họa', meta.listName, `Dữ liệu minh họa, không phải list đã tạo. ${previewError}`, pages);
+        mainList.templateVersion = THREADS_RECAP_VERSION; mainList.canvasPreset = 'tiktok-3x4';
+        mainList.postCaption = pickThreadsRecapCaption([], 'main', recapTotals(pages[0] as ListPage)); mainList.captionBody = ''; mainList.captionHashtags = [];
+      }
       if (isThreadsNote(deckId) || deckId === THREADS_BUDGET_ID || isThreadsExpense(deckId) || deckId === THREADS_TOPLIST_ID) {
         mainList = buildDeckList(deckId, 'main', 'Mẫu minh họa', meta.listName,
           `Dữ liệu minh họa, không phải list đã tạo. ${previewError}`,

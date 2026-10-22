@@ -265,13 +265,14 @@
   word-break: break-word;
   text-shadow: var(--carousel-text-shadow);
   -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.7);
-  font-size: 0.64rem;
+  /* Chữ nhỏ hơn theo góp ý 2026-10-22 (trước 0.64rem). */
+  font-size: 0.56rem;
 }
 
 .story-page.grid8-feed-page .grid8-feed-meta {
   margin-top: 0;
   font-family: var(--grid8-feed-meta-font);
-  font-size: 0.48rem;
+  font-size: 0.42rem;
   font-weight: 600;
   line-height: 1.2;
   color: #fff;

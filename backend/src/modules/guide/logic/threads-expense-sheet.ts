@@ -89,16 +89,25 @@ export function formatThousands(vnd: number): string {
 }
 
 function rank(seed: string, slot: string, item: GuideItem): number {
-  return createHash('sha256').update(`${seed}|${slot}|${itemUsageKey(item)}`).digest().readUInt32BE(0);
+  return rankText(seed, `${slot}|${itemUsageKey(item)}`);
 }
 
-/** Chưa dùng ở list trước → đối tác → thứ tự theo seed (mỗi lần tạo ra bộ khác). */
+function rankText(seed: string, value: string): number {
+  return createHash('sha256').update(`${seed}|${value}`).digest().readUInt32BE(0);
+}
+
+/**
+ * Chưa dùng ở list trước → đối tác → thứ tự theo seed (mỗi lần tạo ra bộ khác).
+ * Giữa các quán đã dùng không ưu tiên đối tác, để một đối tác không chiếm mãi một ô;
+ * mức tối thiểu 1 đối tác/list do buildThreadsExpensePages bảo đảm.
+ */
 function prefer(items: GuideItem[], seed: string, slot: string, used?: Set<string>, extra?: (item: GuideItem) => number): GuideItem[] {
+  const isUsed = (item: GuideItem) => Boolean(used && hasItemKey(used, item));
   return [...items].sort((a, b) =>
     requiredPartnerRank(a) - requiredPartnerRank(b)
-    || Number(Boolean(used && hasItemKey(used, a))) - Number(Boolean(used && hasItemKey(used, b)))
+    || Number(isUsed(a)) - Number(isUsed(b))
     || (extra ? extra(a) - extra(b) : 0)
-    || Number(!a.isPartner) - Number(!b.isPartner)
+    || (isUsed(a) ? 0 : Number(!a.isPartner) - Number(!b.isPartner))
     || rank(seed, slot, a) - rank(seed, slot, b));
 }
 
@@ -140,10 +149,37 @@ export function buildThreadsExpensePages(
   usedItemIds?: Set<string>,
 ): ListPage[] {
   const plan = PLANS[deckId];
+  const rows = buildExpenseRows(deckId, itemsBySection, seed, usedItemIds);
+  // Mỗi list cần ít nhất 1 đối tác. Mẫu dùng nhiều ô nên vài list đầu đã dùng hết đối tác
+  // "chưa dùng"; khi đó dành một ô ăn/cà phê cho đối tác (được dùng lại), ô chọn xoay theo seed.
+  if (!rows.some(item => item.isPartner)) {
+    const slots = plan.slots.map((slot, index) => ({ slot, index }))
+      .filter(({ slot }) => slot.kind === 'meal' || slot.kind === 'cafe')
+      .sort((a, b) => rankText(seed, `partner-slot|${a.index}`) - rankText(seed, `partner-slot|${b.index}`));
+    for (const { index } of slots) {
+      let forced: PageItem[];
+      try { forced = buildExpenseRows(deckId, itemsBySection, seed, usedItemIds, index); } catch { continue; }
+      if (forced.some(item => item.isPartner)) return expensePages(deckId, destination, forced);
+    }
+  }
+  return expensePages(deckId, destination, rows);
+}
+
+function buildExpenseRows(
+  deckId: ThreadsExpenseId,
+  itemsBySection: WorkbookItemsBySection,
+  seed: string,
+  usedItemIds?: Set<string>,
+  partnerSlot = -1,
+): PageItem[] {
+  const plan = PLANS[deckId];
   const people = THREADS_EXPENSE_PEOPLE;
   const taken = new Set<string>();
   const pick = (pool: GuideItem[], slot: string, label: string, extra?: (item: GuideItem) => number): GuideItem => {
-    const choice = prefer(pool.filter(item => named(item) && headPriceVnd(item) !== null && !taken.has(identity(item))), seed, slot, usedItemIds, extra)[0];
+    // Ô dành cho đối tác: chỉ xét đối tác, bỏ qua việc đã dùng ở list trước.
+    const forced = slot === `${partnerSlot}-${plan.slots[partnerSlot]?.kind}`;
+    const choice = prefer(pool.filter(item => named(item) && headPriceVnd(item) !== null && !taken.has(identity(item)) && (!forced || item.isPartner)),
+      seed, slot, forced ? undefined : usedItemIds, extra)[0];
     if (!choice) throw new Error(`Bảng chi tiêu Threads thiếu ${label} có Giá đầu người. Hãy cập nhật dữ liệu.`);
     taken.add(identity(choice));
     return choice;
@@ -173,9 +209,11 @@ export function buildThreadsExpensePages(
   plan.slots.forEach((slot, index) => {
     const slotKey = `${index}-${slot.kind}`;
     if (slot.kind === 'meal') {
+      const partnersOnly = index === partnerSlot;
+      const open = (item: GuideItem) => !taken.has(identity(item)) && (!partnersOnly || item.isPartner);
       const exact = foods.filter(ofType(MEAL_TYPE[slot.meal]));
       const fallback = foods.filter(item => !ofType(MEAL_TYPE.vặt)(item));
-      const pool = exact.some(item => !taken.has(identity(item))) ? exact : slot.meal === 'vặt' ? foods : fallback;
+      const pool = exact.some(open) ? exact : slot.meal === 'vặt' ? foods : fallback;
       const item = pick(pool, slotKey, slot.meal === 'vặt' ? 'quán ăn vặt' : `quán ăn ${slot.meal}`);
       const name = slot.meal === 'vặt' ? `ăn vặt ${named(item)}` : slot.meal === 'tối' ? `tối ăn ${named(item)}` : `ăn ${slot.meal} ${named(item)}`;
       rows.push(row('Ăn uống', name, headPriceVnd(item)! * people, shortNote(item.signatureDish || ''), item));
@@ -190,9 +228,11 @@ export function buildThreadsExpensePages(
       const name = activity ? named(item).charAt(0).toLocaleLowerCase('vi') + named(item).slice(1) : price > 0 ? `vé ${named(item)}` : named(item);
       rows.push(row('Tham quan', name, price * people, price > 0 ? '' : 'free', item));
     } else if (slot.kind === 'night') {
-      const item = pick(section('choi_dem'), slotKey, 'chỗ chơi đêm', candidate => Number(!(headPriceVnd(candidate)! > 0)));
+      // Sheet chưa có tab Chơi đêm (vd. nguồn mới ngoài Đà Lạt): buổi tối ghé một điểm tham quan.
+      const nightlife = section('choi_dem').some(item => named(item) && headPriceVnd(item) !== null && !taken.has(identity(item)));
+      const item = pick(nightlife ? section('choi_dem') : visits, slotKey, 'chỗ chơi đêm', candidate => Number(!(headPriceVnd(candidate)! > 0)));
       const price = headPriceVnd(item)!;
-      rows.push(row('Buổi tối', `tối lên ${named(item)}`, price * people, price > 0 ? (/bar|pub/.test(fold(String(item.type || ''))) ? 'bar' : '') : 'free', item));
+      rows.push(row('Buổi tối', `${nightlife ? 'tối lên' : 'tối ghé'} ${named(item)}`, price * people, price > 0 ? (/bar|pub/.test(fold(String(item.type || ''))) ? 'bar' : '') : 'free', item));
     } else {
       const item = optional(gifts, slotKey, 'chỗ mua đặc sản');
       if (item) rows.push(row('Quà', `quà ${named(item)}`, headPriceVnd(item)! * people, 'mang về', item));
@@ -202,10 +242,14 @@ export function buildThreadsExpensePages(
   // Vị trí dòng mang nghĩa (bữa sáng/trưa/tối theo ngày): mỗi dòng một nhóm riêng
   // để bước xoay vị trí đối tác không đổi chỗ các dòng.
   rows.forEach((item, index) => { item.rotationGroup = `threads-expense-${index}`; });
+  return rows;
+}
+
+function expensePages(deckId: ThreadsExpenseId, destination: string, rows: PageItem[]): ListPage[] {
   return [{
     type: 'list', layoutVariant: 'threads-expense-sheet', canvasPreset: 'tiktok-3x4',
     titlePlacement: 'top-left', title: threadsExpenseTitle(deckId, destination),
-    subtitle: '', chipText: `${people} người`, chipTone: 'slate', backgroundImage: '',
+    subtitle: '', chipText: `${THREADS_EXPENSE_PEOPLE} người`, chipTone: 'slate', backgroundImage: '',
     items: rows,
   }];
 }

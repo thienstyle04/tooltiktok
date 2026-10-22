@@ -6,10 +6,12 @@ export interface DestinationSummary {
   label: string;
   shortLabel: string;
   sheetUrl: string;
-  sourceType: 'xlsx' | 'google-sheet';
+  sourceType: 'xlsx' | 'google-sheet' | 'server-json';
   workbookFileName: string;
   contentDestinationId?: DestinationId;
   kind?: 'standard' | 'threads';
+  /** Nguồn tự thêm đang tạm tắt logic đối tác. */
+  partnerLogicOff?: boolean;
   allowedDeckIds: string[];
   hasLocalWorkbook: boolean;
   hasSheetFallback: boolean;
@@ -39,6 +41,8 @@ export interface AddDestinationRequest {
   kind?: 'standard' | 'threads';
   /** Nội dung Đà Lạt: mở chữ/hook Đà Lạt và mẫu riêng Đà Lạt. */
   dalatContent?: boolean | string;
+  /** 'server': sheetUrl là link JSON /api/guide-data của server (tự nhận khi link không phải Google Sheet). */
+  sourceType?: 'sheet' | 'server';
 }
 
 export interface AddXlsxDestinationRequest {
@@ -204,7 +208,7 @@ export interface CoverPage {
   backgroundImage: string;
   /** Spotlight V2 cover: lưới 2×2 — chỉ ảnh nền (pool Hinh_nen). */
   coverImages?: string[];
-  layoutVariant?: 'threads-toplist-cover' | 'standard' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung-cover' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung-cover' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-cover' | 'itinerary-timeline-cover' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-cover' | 'spotlight-v5-cover' | 'spotlight-v6-cover' | 'carousel-mau-1-cover' | 'one-way-story-cover' | 'spotlight-partner' | 'spotlight-partner-v2' | 'pov-maikem' | 'pov-3-v2-cover' | 'budget-3n2d' | 'budget-3n2d-story' | 'budget-wallet-cover';
+  layoutVariant?: 'threads-grid6-cover' | 'threads-toplist-cover' | 'standard' | 'photomode' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung-cover' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung-cover' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-cover' | 'itinerary-timeline-cover' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-cover' | 'spotlight-v5-cover' | 'spotlight-v6-cover' | 'carousel-mau-1-cover' | 'one-way-story-cover' | 'spotlight-partner' | 'spotlight-partner-v2' | 'pov-maikem' | 'pov-3-v2-cover' | 'budget-3n2d' | 'budget-3n2d-story' | 'budget-wallet-cover';
   titlePlacement?: TitlePlacement;
   canvasPreset?: 'default' | 'tiktok-3x4' | 'tiktok-4x5' | 'tiktok-9x16' | 'landscape-4x3';
 }
@@ -225,7 +229,7 @@ export interface ListPage {
   subtitle: string;
   items: PageItem[];
   backgroundImage: string;
-  layoutVariant?: 'threads-toplist-page' | 'itinerary-note-threads-budget' | 'threads-expense-sheet' | 'itinerary-note-threads-day' | 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-dark-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
+  layoutVariant?: 'threads-recap-note' | 'threads-recap-photo' | 'threads-note-dark-list' | 'threads-grid6-page' | 'threads-toplist-page' | 'itinerary-note-threads-budget' | 'threads-expense-sheet' | 'itinerary-note-threads-day' | 'spotlight-v6-diary-page' | 'standard' | 'dense' | 'itinerary' | 'compact' | 'photomode' | 'pov-maikem' | 'pov-3-v2-stack' | 'pov-3-v2-grid' | 'pov-3-v2-grid-food' | 'grid-6' | 'grid-6-zigzag' | 'grid-6-quaytung' | 'grid-8' | 'grid-8-feed' | 'grid-8-quaytung' | 'grid-8-quaytung-menu' | 'grid-4' | 'grid-4-mutant' | 'grid-5' | 'journey-4n3d' | 'itinerary-4n3d-stack-page' | 'itinerary-timeline-day' | 'journey-4n2d-grid8' | 'spotlight' | 'spotlight-v2' | 'spotlight-v3' | 'spotlight-v4-image' | 'spotlight-v4-page' | 'spotlight-v5-playlist' | 'spotlight-v5-place' | 'spotlight-v6-image' | 'spotlight-v6-page' | 'spotlight-v6-map-page' | 'spotlight-v6-map-place' | 'summary-note-page' | 'itinerary-note-day' | 'itinerary-note-dark-day' | 'itinerary-note-timed-day' | 'carousel-mau-1-page' | 'one-way-story-road' | 'one-way-story-slope' | 'one-way-story-photo' | 'spotlight-list' | 'spotlight-v2-list' | 'spotlight-partner' | 'spotlight-partner-v2' | 'spotlight-partner-info' | 'spotlight-partner-v2-info' | 'budget-3n2d-table' | 'budget-3n2d-gallery' | 'budget-3n2d-day' | 'budget-3n2d-total' | 'budget-wallet-day' | 'budget-wallet-fixed' | 'budget-wallet-bill';
   titlePlacement?: TitlePlacement;
   contentStyle?: MutantContentStyle;
   playlistLines?: string[];
@@ -297,6 +301,8 @@ export interface GuideDataset {
     destinationId: DestinationId;
     destinationLabel: string;
     contentDestinationId?: DestinationId;
+    /** Nguồn tạm tắt logic đối tác: frontend cho xuất list 0 đối tác, không ghi XLSX đối tác rỗng. */
+    partnerLogicOff?: boolean;
     allowedDeckIds: string[];
     imageCount: number;
     coverImageCount: number;

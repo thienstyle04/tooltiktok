@@ -717,3 +717,9 @@
   color: var(--studio-ink);
   font: inherit;
 }
+
+/* Công tắc tạm tắt logic đối tác của nguồn tự thêm (cùng kiểu ô chọn của Tự động). */
+.settings-partner-logic { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--studio-line); border-radius: 10px; background: var(--studio-surface); cursor: pointer; }
+.settings-partner-logic input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--studio-clay); }
+.settings-partner-logic > span { display: grid; gap: 3px; color: var(--studio-ink); font-size: .82rem; font-weight: 800; }
+.settings-partner-logic small { color: var(--studio-muted); font-size: .72rem; font-weight: 500; line-height: 1.45; }

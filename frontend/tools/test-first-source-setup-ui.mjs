@@ -78,7 +78,7 @@ try {
 
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline && calls.switch < 1) await page.waitForTimeout(250);
-  assert.deepEqual(addBody, { label: 'Sài Gòn Threads', sheetUrl: created.sheetUrl, kind: 'threads', dalatContent: true });
+  assert.deepEqual(addBody, { label: 'Sài Gòn Threads', sheetUrl: created.sheetUrl, kind: 'threads', dalatContent: true, sourceType: 'sheet' });
   assert.equal(calls.sync, 1, 'Tải dữ liệu lần đầu ngay sau khi thêm');
   assert.equal(calls.switch, 1, 'Tự chuyển sang nguồn mới khi tải xong');
   await dialog.waitFor({ state: 'detached', timeout: 10000 });

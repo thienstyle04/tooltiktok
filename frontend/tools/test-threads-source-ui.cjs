@@ -30,7 +30,7 @@ async function main() {
       await page.locator('.automation-form select').first().selectOption(source.id);
       await page.waitForFunction(() => document.querySelectorAll('.automation-template-grid input[type=checkbox]').length > 0);
       const titles = await page.locator('.automation-template-grid label > span').allTextContents();
-      if (source.id === 'dalat-threads') assert.equal(titles.length, 14); // 12 + 2 Bảng chi tiêu Threads (2N1Đ, 3N2Đ)
+      if (source.id === 'dalat-threads') { assert.equal(titles.length, cfg.THREADS_NOTE_DECK_IDS.length); assert.ok(titles.includes('Threads · Lưới 6 ảnh')); }
       else assert.ok(!titles.some(title => /Threads|Note|Tổng hợp địa điểm|Top list/.test(title)), source.id);
       await page.locator('.automation-template-grid input[type=checkbox]').first().check();
       await page.locator('.automation-form select').first().selectOption(source.id === 'dalat-threads' ? 'dalat' : 'dalat-threads');

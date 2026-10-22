@@ -6,6 +6,9 @@ import { coverReviewError } from '../spotlightCoverReview.mjs';
 import { isThreadsLocalDeck, threadsFoodPayload } from '../threadsFoodExport.mjs';
 import { budget72HListHasLegacyScheduleCosts, listIsMain } from '../utils';
 import { resolveExportList } from './shared';
+import { assertThreadsGrid6Export } from '../threadsGrid6';
+import { assertNoteDarkExport } from '../threadsNoteDark';
+import { assertThreadsRecapExport } from '../threadsRecap';
 
 export function isResourceExportError(error) {
   const message = String(error?.message || error || '').toLowerCase();
@@ -111,6 +114,9 @@ export function assertSpotlightV4V6PartnerExportReady(list, deckId = '') {
 }
 
 export function assertPartnerExportReady(list, deckId = '') {
+  if(deckId==='threads-note-dark-list'){assertNoteDarkExport(list);return;}
+  if (deckId === 'threads-grid6-collage') assertThreadsGrid6Export(list);
+  if (deckId === 'threads-trip-recap-3n2d') assertThreadsRecapExport(list);
   const coverError = coverReviewError(list);
   if (coverError) throw new Error(coverError);
   // Use exactly the names written to this template's XLSX, not a raw count of
@@ -118,7 +124,7 @@ export function assertPartnerExportReady(list, deckId = '') {
   const names = isThreadsLocalDeck(deckId)
     ? (list.pages || []).flatMap(page => (page.items || []).filter(item => item.isPartner === true).map(item => String(item.name || '').trim())).filter(Boolean)
     : collectPartnerNames(list);
-  if (!names.length) {
+  if (!names.length && !list?.partnerOptional) {
     const label = String(list?.navTitle || list?.title || list?.id || deckId).trim();
     const error = /** @type {Error & { code?: string }} */ (new Error(`Không thể xuất list “${label}”: không có đối tác hiển thị hợp lệ để ghi XLSX. Hãy tạo lại list có đối tác rồi xuất lại.`));
     error.code = 'EXPORT_PARTNER_REQUIRED';
@@ -178,7 +184,7 @@ export function formatSkippedListSummary(skippedLists = []) {
 }
 
 export function assertItineraryNoteDarkPartnerExportReady(list, deckId = '') {
-  if (deckId !== 'itinerary-note-dark') return;
+  if (deckId !== 'itinerary-note-dark' || list?.partnerOptional) return;
   const pages = (list.pages || []).filter((page) => page?.layoutVariant === 'itinerary-note-dark-day');
   const dailyCounts = pages.map((page) => (page.items || []).filter((item) => item?.isPartner && String(item.rawName || item.name || '').trim()).length);
   const names = collectPartnerNames(list);

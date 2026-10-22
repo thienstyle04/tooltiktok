@@ -1,8 +1,9 @@
 import type { DeckPage, GuideItem, PageItem, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { hasItemKey, itemUsageKey } from './data-allocator';
 import { normalizeText, stableHash } from './image-resolver';
-import { getActiveDestinationLocalize } from '../sync/destination-localize';
+import { getActiveDestinationLocalize, partnerLogicOff } from '../sync/destination-localize';
 import { requiredPartnerRank } from './required-partners';
+import { threadsVenueAddress } from './threads-address';
 
 export const THREADS_FOOD_ID = 'threads-food-local';
 export const THREADS_FOOD_TEMPLATE_VERSION = 3;
@@ -103,9 +104,11 @@ function buildThreadsLocalPages(itemsBySection: WorkbookItemsBySection, seed: st
   const templateName = isCafe ? 'Cà phê' : 'Quán ăn';
   const sectionKey = isCafe ? 'cafe' : 'quan_an';
   const venues = itemsBySection[sectionKey] || [];
-  const balanced = getActiveDestinationLocalize() === 'dalat';
-  const selection = balanced ? chooseBalancedLocal(venues, seed, used, templateName) : null;
-  const partners = selection?.partners || chooseGroup(venues.filter((item) => item.isPartner && String(item.address || '').trim()), seed + ':partner:', used, templateName, 'quán đối tác có địa chỉ');
+  const noPartners = partnerLogicOff();
+  const balanced = !noPartners && getActiveDestinationLocalize() === 'dalat';
+  const selection = noPartners ? chooseWithoutPartners(venues, seed, used, templateName)
+    : balanced ? chooseBalancedLocal(venues, seed, used, templateName) : null;
+  const partners = selection?.partners || chooseGroup(venues.filter((item) => item.isPartner && threadsVenueAddress(item)), seed + ':partner:', used, templateName, 'quán đối tác có địa chỉ');
   const partnerNames = new Set(partners.map((entry) => normalizeText(entry.item.name)));
   const locals = selection?.locals || chooseGroup(
     venues.filter((item) => !item.isPartner && normalizeText(item.classification || '') === 'local' && !partnerNames.has(normalizeText(item.name))),
@@ -113,7 +116,7 @@ function buildThreadsLocalPages(itemsBySection: WorkbookItemsBySection, seed: st
     new Set(partners.filter((entry) => entry.photo).map((entry) => entry.item.imageUrl)),
   );
   const ordered: Array<{ item: GuideItem; photo: boolean }> = [];
-  if (balanced) ordered.push(...partners, ...locals);
+  if (balanced || noPartners) ordered.push(...partners, ...locals);
   else for (let index = 0; index < 5; index += 1) ordered.push(partners[index], locals[index]);
   const photoUrls = ordered.filter((entry) => entry.photo).map((entry) => entry.item.imageUrl);
   if (new Set(photoUrls).size !== 6) throw new Error('Threads ' + templateName + ' cần 6 ảnh khác nhau; dữ liệu ảnh hiện đang trùng.');
@@ -124,7 +127,7 @@ function buildThreadsLocalPages(itemsBySection: WorkbookItemsBySection, seed: st
     label: photo ? 'Ảnh minh họa' : '',
     name: item.name.trim(),
     rawName: item.name.trim(),
-    metaPrimary: item.isPartner ? item.address.trim() : '',
+    metaPrimary: item.isPartner ? threadsVenueAddress(item) : '',
     metaSecondary: '',
     imageUrl: photo ? item.imageUrl : '',
     imageMapped: photo,
@@ -139,7 +142,9 @@ function buildThreadsLocalPages(itemsBySection: WorkbookItemsBySection, seed: st
     chipText: 'TXT + 6 ảnh + XLSX',
     chipTone: 'terracotta',
     title: isCafe ? 'Cà phê nào ở Đà Lạt?' : 'Ăn gì ở Đà Lạt?',
-    subtitle: `10 ${isCafe ? 'quán cà phê' : 'quán ăn'} · ${partners.length} đối tác + ${locals.length} Local`,
+    subtitle: noPartners
+      ? `10 ${isCafe ? 'quán cà phê' : 'quán ăn'} · ${items.filter(item => item.isLocal).length} Local`
+      : `10 ${isCafe ? 'quán cà phê' : 'quán ăn'} · ${partners.length} đối tác + ${locals.length} Local`,
     ...(balanced ? { threadsPartnerPolicy: 'balanced-local-v1' as const } : {}),
     items,
     backgroundImage: '',
@@ -148,8 +153,23 @@ function buildThreadsLocalPages(itemsBySection: WorkbookItemsBySection, seed: st
   }];
 }
 
+/** Logic đối tác tạm tắt: 10 quán thường (ưu tiên Local), 6 quán có ảnh riêng không trùng. */
+function chooseWithoutPartners(venues: GuideItem[], seed: string, used: Set<string>, templateName: string) {
+  const isLocal = (item: GuideItem) => normalizeText(item.classification || '') === 'local';
+  const pool = uniqueNames(venues.filter(item => !item.isPartner && threadsVenueAddress(item)));
+  const ordered = [...ranked(pool.filter(isLocal), seed + ':local', used), ...ranked(pool.filter(item => !isLocal(item)), seed + ':other', used)];
+  if (ordered.length < 10) throw new Error(`Threads ${templateName} cần 10 quán không trùng có địa chỉ; hiện có ${ordered.length}.`);
+  const photoUrls = new Set<string>();
+  const photos = ordered.filter(item => ownPhoto(item) && !photoUrls.has(item.imageUrl) && Boolean(photoUrls.add(item.imageUrl))).slice(0, 6);
+  if (photos.length < 6) throw new Error(`Threads ${templateName} cần 6 ảnh riêng hợp lệ không trùng; hiện có ${photos.length}.`);
+  const names = new Set(photos.map(item => normalizeText(item.name)));
+  const rest = ordered.filter(item => !names.has(normalizeText(item.name))).slice(0, 4);
+  return { partners: [] as Array<{ item: GuideItem; photo: boolean }>,
+    locals: [...photos.map(item => ({ item, photo: true })), ...rest.map(item => ({ item, photo: false }))] };
+}
+
 function chooseBalancedLocal(venues: GuideItem[], seed: string, used: Set<string>, templateName: string) {
-  const partners = ranked(uniqueNames(venues.filter(item => item.isPartner && item.address.trim())), seed + ':partner', used);
+  const partners = ranked(uniqueNames(venues.filter(item => item.isPartner && threadsVenueAddress(item))), seed + ':partner', used);
   const partnerNames = new Set(partners.map(item => normalizeText(item.name)));
   const locals = ranked(uniqueNames(venues.filter(item => !item.isPartner
     && normalizeText(item.classification) === 'local' && !partnerNames.has(normalizeText(item.name)))), seed + ':local', used);
@@ -207,7 +227,7 @@ function chooseMixedGroup(
   const groups = sectionKeys.map((key) => ({
     key,
     items: ranked(uniqueNames((itemsBySection[key] || []).filter((item) => item.isPartner === partner
-      && (!partner || String(item.address || '').trim()))), `${seed}:${key}:`, used),
+      && (!partner || threadsVenueAddress(item)))), `${seed}:${key}:`, used),
   }));
   const selected: Array<{ item: GuideItem; photo: boolean }> = [];
   const take = (group: typeof groups[number], photo: boolean): boolean => {
@@ -248,7 +268,8 @@ function buildMixedPages(itemsBySection: WorkbookItemsBySection, seed: string, u
   const photoUrls = new Set<string>();
   const perGroup = textOnly ? 6 : 5;
   const photosPerGroup = textOnly ? 0 : 3;
-  const partners = chooseMixedGroup(itemsBySection, MIX_PARTNER_SECTIONS, true, `${seed}:partner`, used, names, photoUrls, perGroup, photosPerGroup);
+  // Logic đối tác tạm tắt: nửa đầu lấy địa điểm thường ở cùng các nhóm vốn dành cho đối tác.
+  const partners = chooseMixedGroup(itemsBySection, MIX_PARTNER_SECTIONS, !partnerLogicOff(), `${seed}:partner`, used, names, photoUrls, perGroup, photosPerGroup);
   const others = chooseMixedGroup(itemsBySection, MIX_OTHER_SECTIONS, false, `${seed}:other`, used, names, photoUrls, perGroup, photosPerGroup);
   const ordered: Array<{ item: GuideItem; photo: boolean }> = [];
   for (let index = 0; index < perGroup; index += 1) ordered.push(partners[index], others[index]);
@@ -259,7 +280,7 @@ function buildMixedPages(itemsBySection: WorkbookItemsBySection, seed: string, u
     label: photo ? 'Ảnh minh họa' : '',
     name: item.name.trim(),
     rawName: item.name.trim(),
-    metaPrimary: item.isPartner ? item.address.trim() : '',
+    metaPrimary: item.isPartner ? threadsVenueAddress(item) : '',
     metaSecondary: '',
     imageUrl: photo ? item.imageUrl : '',
     imageMapped: photo,

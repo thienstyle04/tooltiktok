@@ -57,6 +57,20 @@
 /* SettingsPanel có tiêu đề riêng; trong V2 tiêu đề trang đã nói điều đó, chỉ giữ nhãn trạng thái. */
 .studio-v2 .settings-panel-head > div { display: none; }
 .studio-v2 .settings-panel-head { justify-content: flex-end; }
+/* Thống kê dùng chung khung với SettingsPanel: bỏ grid-area "stats" của bố cục cũ (đẩy tab sang cột ngầm) và thanh cuộn riêng. */
+.studio-v2 .stats-shell { grid-area: auto; display: grid; gap: 20px; width: 100%; max-width: 1500px; margin-inline: auto; padding: clamp(18px, 3vw, 36px); overflow: visible; border: 1px solid var(--studio-line); border-radius: var(--ui-radius-lg); background: var(--studio-surface); box-shadow: var(--ui-shadow-1); }
+.studio-v2 .stats-shell > .panel-head { display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 0; border: 0; background: transparent; }
+.studio-v2 .stats-shell .panel-title { margin: 4px 0 0; }
+.studio-v2 .stats-body { display: grid; gap: 16px; padding: 0; overflow: visible; scrollbar-gutter: auto; background: transparent; }
+.studio-v2 .stats-overview { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); margin: 0; }
+.studio-v2 :is(.stats-overview > div, .stats-card) { border: 1px solid var(--studio-line); background: var(--ui-highlight, rgba(255, 255, 255, 0.025)); }
+.studio-v2 .stats-overview > div { padding: 18px 22px; }
+.studio-v2 .stats-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+.studio-v2 .stats-card { display: grid; align-content: start; gap: 14px; padding: 22px; }
+.studio-v2 .stats-card-head { margin: 0; }
+.studio-v2 .stats-card-head .toolbar-button { flex-shrink: 0; white-space: nowrap; }
+.studio-v2 .stats-card.active { border-color: color-mix(in srgb, var(--studio-clay) 55%, var(--studio-line)); background: var(--ui-clay-soft); box-shadow: inset 3px 0 0 var(--studio-clay); }
+.studio-v2 .stats-card-metrics span { background: var(--studio-surface-2); }
 .studio-v2 .v2-task-button b { position: absolute; top: -6px; right: -6px; min-width: 20px; padding: 1px 5px; border-radius: 999px; background: var(--studio-clay); color: var(--studio-bg); font-size: 11px; }
 .studio-v2 .export-progress { margin: 10px 28px 0; }
 .studio-v2 .v2-content { flex: 1; min-height: 0; overflow: auto; padding: 22px 28px 32px; }

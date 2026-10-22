@@ -399,38 +399,6 @@ export function renderGrid8FeedItems(items, centerHook, showAddress = true) {
   return ordered.join('');
 }
 
-function grid8FeedPageBgImages(page, backgroundImage, listId = '', coverImageUrls = []) {
-  // Nền Grid 8 Feed là một nguồn dữ liệu riêng: chỉ được lấy từ sheet/thư mục
-  // Hình_nền (coverImageUrls). Không mượn imageUrl/backgroundImage của địa điểm,
-  // nếu không quá trình inline lúc xuất sẽ "claim" ảnh chính trước các ô quán và
-  // buộc ô quán dùng candidate chưa cache, dẫn đến trắng ảnh trên máy khác.
-  const pool = (coverImageUrls.length > 0 ? coverImageUrls : spotlightV2CoverImagePool).filter(Boolean);
-  const seed = `${listId || page?.chipText || 'grid8-feed-page'}|${page?.title || page?.chipText || 'bg'}`;
-  const backgroundPool = pickUniqueCoverGridImages(pool, seed, 4);
-  if (backgroundPool.length > 0) {
-    const padded = [...backgroundPool];
-    while (padded.length < 4) padded.push(padded[padded.length % backgroundPool.length]);
-    return padded.slice(0, 4);
-  }
-  return [];
-}
-
-export function renderGrid8FeedPageBackground(page, backgroundImage, listId = '', coverImageUrls = []) {
-  let tiles = grid8FeedPageBgImages(page, backgroundImage, listId, coverImageUrls);
-  while (tiles.length < 4) tiles.push('');
-  tiles = tiles.slice(0, 4);
-  const label = page?.title || page?.chipText || 'background';
-  return `
-    <div class="grid8-feed-page-bg-grid">
-      ${tiles.map((url, tileIndex) => `
-        <div class="grid8-feed-page-bg-cell">
-          ${url ? renderPreviewImage(url, `${label} ${tileIndex + 1}`) : ''}
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
-
 function grid8FeedCoverGridImages(page, backgroundImage, listId = '', coverImageUrls = []) {
   const fromPage = Array.isArray(page?.coverImages) ? page.coverImages.filter(Boolean) : [];
   const uniqueFromPage = [...new Set(fromPage)];

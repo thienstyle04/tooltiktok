@@ -1,6 +1,9 @@
 import { fitItineraryNote, fitItineraryNoteTimed } from '../lib/itineraryNote';
 import { fitSpotlightDiary } from '../lib/spotlightDiary';
 import { checkCherryBlossomLayout } from '../lib/cherryBlossom';
+import { checkThreadsGrid6Layout } from '../lib/threadsGrid6';
+import { checkNoteDarkLayout } from '../lib/threadsNoteDark';
+import { checkThreadsRecapLayout } from '../lib/threadsRecap';
 import { fitThreadsToplist } from '../lib/threadsToplist';
 import { checkLocalTemplateLayout } from '../lib/localTemplates';
 import { applyPageTextScale, resetPageTextScale } from '../lib/pageTextScale';
@@ -108,6 +111,9 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     fitSpotlightDiary(root);
     applyPageTextScale(root);
     checkCherryBlossomLayout(root);
+    checkThreadsGrid6Layout(root);
+    checkNoteDarkLayout(root);
+    checkThreadsRecapLayout(root);
     if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root);
     fitThreadsToplist(root);
     checkLocalTemplateLayout(root);
@@ -123,7 +129,7 @@ function SlideCard({ list, page, index, selected, onSelect, coverImageUrls = [] 
     if (root.innerHTML !== html) root.innerHTML = html;
 
     repairBudget72StoryText(root, page, index);
-    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); checkCherryBlossomLayout(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); fitThreadsToplist(root); checkLocalTemplateLayout(root); };
+    const fitNotes = () => { resetPageTextScale(root); fitItineraryNote(root); fitItineraryNoteTimed(root); fitSpotlightDiary(root); applyPageTextScale(root); checkCherryBlossomLayout(root); checkThreadsGrid6Layout(root); checkNoteDarkLayout(root); if (root.querySelector('.itinerary-note-threads-day')) fitItineraryNote(root); fitThreadsToplist(root); checkLocalTemplateLayout(root); };
     fitNotes();
     const noteFitFrame = window.requestAnimationFrame(fitNotes);
     const noteFitTimer = window.setTimeout(fitNotes, 120);

@@ -5,6 +5,7 @@ import * as os from 'node:os';
 import { AiProvider, AiError, aiProvider, isTextModel, safeAiDetail } from '../ai-provider';
 import { GuideService } from '../guide.service';
 import { AiSettingsController } from '../ai-settings.controller';
+process.env.DALAT_SHOW_HIDDEN_DECKS = '1'; // Spotlight V4 đang tạm ẩn khỏi thư viện nhưng vẫn là mẫu thử của test này.
 
 async function main() {
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'dalat-ai-test-'));

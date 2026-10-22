@@ -18,7 +18,7 @@ try {
   const page = await browser.newPage();
   let active = 'dalat', photosPolls = -1;
   const counts = { guideAfterAdd: 0, partnersAfterAdd: 0 };
-  let added = false, addBody = '';
+  let added = false, addBody = '', serverBody = null;
   await page.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
     if (request.isNavigationRequest()) return route.fulfill({ contentType: 'text/html', body: '<div id="root"></div>' });
@@ -28,6 +28,10 @@ try {
       active = 'xlsx-nt'; added = true; photosPolls = 0; addBody = request.postData() || '';
       body = { active: { id: 'xlsx-nt', label: 'Nha Trang thử', totalItems: 271 }, dataset: datasetFor('xlsx-nt', 'Nha Trang thử'), destinations: [{ id: 'dalat', label: 'Đà Lạt', allowedDeckIds: ['grid-6'] }, { id: 'xlsx-nt', label: 'Nha Trang thử', allowedDeckIds: ['grid-6'] }] };
       return route.fulfill({ status: 201, json: body });
+    }
+    if (url.pathname === '/api/destinations' && request.method() === 'POST') {
+      serverBody = request.postDataJSON();
+      return route.fulfill({ status: 400, json: { message: 'Không tải được dữ liệu từ server (Đà Lạt server). HTTP 404. Hãy kiểm tra link server mở được từ máy này (trả về JSON /api/guide-data).' } });
     }
     if (url.pathname === '/api/drive-cache/status') {
       // After the add: two "reading photos" polls, then ready for the new source.
@@ -67,8 +71,21 @@ try {
   assert.match(addBody, /name="dalatContent"\r?\n\r?\nfalse/, 'gửi lựa chọn nội dung Đà Lạt');
   assert.ok(counts.guideAfterAdd >= 1, `catalog reloaded after photos were ready (${counts.guideAfterAdd})`);
   assert.ok(counts.partnersAfterAdd >= 2, `partners reloaded after photos were ready (${counts.partnersAfterAdd})`);
+  // Link server: nhãn/gợi ý riêng, gửi sourceType=server; lỗi server hiện ngay trên form.
+  await form.getByRole('radio', { name: 'Link server' }).check();
+  assert.equal(await form.locator('input[type=file]').count(), 0);
+  const link = form.locator('input[type=url]');
+  assert.equal(await link.getAttribute('placeholder'), 'https://.../api/guide-data');
+  assert.match(await form.locator('label:has(input[type=url])').innerText(), /Link dữ liệu server/);
+  await form.locator('input[placeholder="Ví dụ: Nha Trang"]').fill('Đà Lạt server');
+  await link.fill('https://113.161.254.76/api/guide-data');
+  await form.getByRole('radio', { name: /^Có/ }).check();
+  await form.getByRole('button', { name: 'Thêm và sử dụng' }).click();
+  await page.locator('.settings-form-error').waitFor();
+  assert.deepEqual(serverBody, { label: 'Đà Lạt server', sheetUrl: 'https://113.161.254.76/api/guide-data', kind: 'standard', dalatContent: true, sourceType: 'server' });
+  assert.match(await page.locator('.settings-form-error').innerText(), /link server/);
   const settled = { ...counts };
   await page.waitForTimeout(6000);
   assert.deepEqual(counts, settled, 'Reload happens once, not on every later "ready" poll');
-  console.log(`PASS add XLSX source UI: .xlsx-only picker; after photos ready the catalog (${counts.guideAfterAdd}×) and partners reloaded once; no repeated reloads.`);
+  console.log(`PASS add XLSX/server source UI: server link sends sourceType=server and shows the error; .xlsx-only picker; after photos ready the catalog (${counts.guideAfterAdd}×) and partners reloaded once; no repeated reloads.`);
 } finally { await browser.close(); }

@@ -15,6 +15,7 @@ export function inheritPageTypography(deck: GuideDeck, pages: DeckPage[], store:
       ...(source.textFontSize !== undefined ? { textFontSize: source.textFontSize } : {}),
       ...(source.textScale !== undefined ? { textScale: source.textScale } : {}),
       ...(source.diaryFontSize !== undefined ? { diaryFontSize: source.diaryFontSize } : {}),
+      ...((deck.id === 'threads-grid6-collage' || deck.id === 'threads-note-dark-list') && source.titlePlacement ? { titlePlacement: source.titlePlacement } : {}),
     };
   });
 }

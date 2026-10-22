@@ -24,11 +24,18 @@ function choiceRank(seed: string, slot: string, item: GuideItem): number {
   return createHash('sha256').update(`${seed}|${slot}|${itemUsageKey(item)}`).digest().readUInt32BE(0);
 }
 
+function slotRank(seed: string, index: number): number {
+  return createHash('sha256').update(`${seed}|partner-slot|${index}`).digest().readUInt32BE(0);
+}
+
+// Giữa các quán đã dùng không ưu tiên đối tác (tránh một đối tác chiếm mãi một ô);
+// mức tối thiểu 1 đối tác/list do buildThreadsBudgetPages bảo đảm.
 function preferFreshItems(items: GuideItem[], seed: string, slot: string, usedItemIds?: Set<string>): GuideItem[] {
+  const isUsed = (item: GuideItem) => Boolean(usedItemIds && hasItemKey(usedItemIds, item));
   return [...items].sort((a, b) =>
     requiredPartnerRank(a) - requiredPartnerRank(b)
-    || Number(Boolean(usedItemIds && hasItemKey(usedItemIds, a))) - Number(Boolean(usedItemIds && hasItemKey(usedItemIds, b)))
-    || Number(!a.isPartner) - Number(!b.isPartner)
+    || Number(isUsed(a)) - Number(isUsed(b))
+    || (isUsed(a) ? 0 : Number(!a.isPartner) - Number(!b.isPartner))
     || choiceRank(seed, slot, a) - choiceRank(seed, slot, b));
 }
 
@@ -92,24 +99,28 @@ export function buildThreadsBudgetPages(
     const available = new Set(pools.flat().filter(item => keys.includes(item.sectionKey)).map(identity)).size;
     if (available < needed) throw new Error(`Threads chi phí thiếu ${label}: cần ${needed}, hiện có ${available}. Hãy cập nhật dữ liệu.`);
   }
-  const ranked = pools.map((pool, index) => preferFreshItems(pool, seed, `day-${index}`, usedItemIds));
-  const owners = new Map<string, number>();
-  const chosen: GuideItem[] = new Array(slots.length);
-  function assign(slot: number, seen: Set<string>): boolean {
-    for (const item of ranked[slot]) {
-      const key = identity(item);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const owner = owners.get(key);
-      if (owner === undefined || assign(owner, seen)) {
-        owners.set(key, slot); chosen[slot] = item; return true;
+  const freshRanked = pools.map((pool, index) => preferFreshItems(pool, seed, `day-${index}`, usedItemIds));
+  const assignDays = (ranked: GuideItem[][]): GuideItem[] => {
+    const owners = new Map<string, number>();
+    const chosen: GuideItem[] = new Array(slots.length);
+    function assign(slot: number, seen: Set<string>): boolean {
+      for (const item of ranked[slot]) {
+        const key = identity(item);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const owner = owners.get(key);
+        if (owner === undefined || assign(owner, seen)) {
+          owners.set(key, slot); chosen[slot] = item; return true;
+        }
       }
+      return false;
     }
-    return false;
-  }
-  for (const index of slots.map((_, i) => i).sort((a, b) => ranked[a].length - ranked[b].length)) {
-    if (!assign(index, new Set())) throw new Error('Threads chi phí không đủ địa điểm không trùng đúng nhóm. Hãy cập nhật dữ liệu.');
-  }
+    for (const index of slots.map((_, i) => i).sort((a, b) => ranked[a].length - ranked[b].length)) {
+      if (!assign(index, new Set())) throw new Error('Threads chi phí không đủ địa điểm không trùng đúng nhóm. Hãy cập nhật dữ liệu.');
+    }
+    return chosen;
+  };
+  let chosen = assignDays(freshRanked);
 
   const service = distinctPlaces(preferFreshItems((itemsBySection.dich_vu || [])
     .filter(item => String(item.name || '').trim() && /xe|grab|taxi|bus|di chuyển/i.test(`${item.name} ${item.type}`)), seed, 'transport', usedItemIds));
@@ -117,6 +128,22 @@ export function buildThreadsBudgetPages(
     .filter(item => String(item.name || '').trim() && lodgingPerPersonPrice(item)), seed, 'lodging', usedItemIds));
   const stay = stayCandidates[0];
   if (!stay) throw new Error(`Threads chi phí thiếu Homestay có giá đầu người: cần 1, hiện có ${stayCandidates.length}. Hãy cập nhật dữ liệu.`);
+  // Mỗi list cần ít nhất 1 đối tác. 12 ô/ngày nên vài list đầu đã dùng hết đối tác "chưa dùng";
+  // khi đó dành một ô Quán ăn/Cafe cho đối tác (được dùng lại), ô chọn xoay theo seed.
+  if (![...chosen, stay, service[0], service[1]].some(item => item?.isPartner)) {
+    const partnerSlots = slots.map((slot, index) => ({ slot, index }))
+      .filter(({ slot }) => slot.groups.includes('quan_an') || slot.groups.includes('cafe'))
+      .sort((a, b) => slotRank(seed, a.index) - slotRank(seed, b.index));
+    for (const { index } of partnerSlots) {
+      const partners = freshRanked[index].filter(item => item.isPartner)
+        .sort((a, b) => requiredPartnerRank(a) - requiredPartnerRank(b) || choiceRank(seed, `partner-${index}`, a) - choiceRank(seed, `partner-${index}`, b));
+      if (!partners.length) continue;
+      try {
+        chosen = assignDays(freshRanked.map((ranked, slot) => (slot === index ? partners : ranked)));
+        break;
+      } catch { /* ô này không xếp được; thử ô khác */ }
+    }
+  }
   const transport = [0, 1].map(index => service[index]
     ? row('Di chuyển', service[index].name, priceFromSource(service[index]), service[index], String(index))
     : row('Di chuyển', index === 0 ? 'Xe khách (khứ hồi)' : 'Di chuyển nội thành', '', undefined, String(index)));

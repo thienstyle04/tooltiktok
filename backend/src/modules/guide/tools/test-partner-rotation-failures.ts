@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import crypto from 'node:crypto';
+process.env.DALAT_SHOW_HIDDEN_DECKS = '1'; // Spotlight V4 đang tạm ẩn khỏi thư viện nhưng vẫn là mẫu thử của test này.
 
 async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'partner-rotation-failures-'));
@@ -31,7 +32,7 @@ async function main() {
   const venues: any[] = [];
   for (let i = 0; i < 22; i++) {
     const urls = [await photo('food-' + i + '-0', i + 1), await photo('food-' + i + '-1', i + 70)];
-    venues.push({ id: 'food-' + i, sectionKey: 'quan_an', name: 'Quán thử ' + i, address: '12 Đường thử, Xuân Hương - Đà Lạt', type: 'Ăn sáng ăn trưa ăn tối',
+    venues.push({ id: 'food-' + i, sectionKey: 'quan_an', name: 'Quán thử ' + i, address: '12 Đường thử, Xuân Hương - Đà Lạt', streetAddress: '12 Đường thử', type: 'Ăn sáng ăn trưa ăn tối',
       isPartner: i < 7, partnerFlag: i < 7 ? 'x' : '', classification: 'Local', imageUrl: urls[0], candidateImageUrls: urls,
       imageMappingKey: 'food-' + i, imageMapped: true, imageSource: 'manual', headPrice: '100000', price: '100000' });
   }

@@ -866,27 +866,6 @@ export function pageItemWithResolver(
   };
 }
 
-function pageItemMenuTextOnly(item: GuideItem, label: string): PageItem {
-  const [metaPrimary, metaSecondary] = item.sectionKey === 'homestay' || item.sectionKey === 'dich_vu'
-    ? serviceMetaText(item)
-    : metaText(item);
-  return {
-    label,
-    id: item.id,
-    sourceKey: itemUsageKey(item),
-    sourceSectionKey: item.sectionKey,
-    name: item.name,
-    metaPrimary,
-    metaSecondary,
-    imageUrl: '',
-    imageMapped: false,
-    imageSource: 'fallback',
-    imageNote: '',
-    isPartner: item.isPartner,
-    rawName: item.name,
-  };
-}
-
 export function schedulePageItemWithResolver(
   time: string,
   prefix: string,
@@ -4607,39 +4586,7 @@ export function buildGrid8QuaytungPages(
     );
   });
 
-  const menuSections = [
-    { title: 'QUÁN ĂN SÁNG', pool: pools.morningFoodItems.length > 0 ? pools.morningFoodItems : pools.daytimeFoodItems, count: 7, seed: '-menu-sang' },
-    { title: 'CƠM NHÀ SIU NGON', pool: pools.lunchItems.length > 0 ? pools.lunchItems : pools.daytimeFoodItems, count: 5, seed: '-menu-com' },
-    { title: 'MẤY MÓN NGON KHÁC', pool: pools.lightMealItems.length > 0 ? pools.lightMealItems : pools.foodItems, count: 5, seed: '-menu-khac' },
-    { title: 'BBQ - LẨU NƯỚNG', pool: pools.grillHotpotItems.length > 0 ? pools.grillHotpotItems : pools.dinnerItems, count: 7, seed: '-menu-bbq' },
-  ];
-  const menuItems: PageItem[] = [];
-  for (const section of menuSections) {
-    const picked = pickMixedItemsWithPartnerQuota(
-      scopedPool(section.pool),
-      section.count,
-      `${seedPrefix}${section.seed}`,
-      pick,
-      GRID_8_QUAYTUNG_PARTNER_CAP,
-    );
-    markPicked(picked);
-    const sectionPages = picked.map((item) => pageItemWithResolver(item, section.title, imageResolver));
-    const photoIndex = sectionPages.findIndex((item) => hasDisplayText(item.imageUrl));
-    sectionPages.forEach((item, index) => {
-      menuItems.push(index === photoIndex ? item : pageItemMenuTextOnly(picked[index], section.title));
-    });
-  }
-
-  const menuPage = buildListPage(
-    'Ăn uống',
-    'berry',
-    'ĐỊA ĐIỂM ĂN UỐNG NGON',
-    'Tổng hợp quán ăn theo buổi để lưu nhanh.',
-    menuItems,
-    '',
-    'grid-8-quaytung-menu',
-  );
-
+  // Trang 7 "Địa điểm ăn uống ngon" (danh sách chữ) đã bỏ theo góp ý 2026-10-22: lạc kiểu so với 6 trang ảnh.
   return [
     {
       ...buildCoverPage(
@@ -4650,7 +4597,6 @@ export function buildGrid8QuaytungPages(
       layoutVariant: 'grid-8-quaytung-cover',
     },
     ...gridPages,
-    menuPage,
   ];
 }
 

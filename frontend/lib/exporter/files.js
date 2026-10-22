@@ -291,7 +291,8 @@ export async function addListMetadataFiles(folder, list, setIndex = parseListSet
         : (isSpotlightPartnerList ? SPOTLIGHT_PARTNER_CAPTION_HASHTAGS : []),
     });
   folder.file(`caption-${setLabel}.txt`, captionText || coverTitle);
-  folder.file(`partners-${setLabel}.xlsx`, await createHorizontalXlsx(collectPartnerNames(list)));
+  const partnerNames=collectPartnerNames(list);
+  if(partnerNames.length||deckId!=='threads-note-dark-list'&&!list.partnerOptional)folder.file(`partners-${setLabel}.xlsx`, await createHorizontalXlsx(partnerNames));
   if ((list.pages || []).some((page) => page?.layoutVariant === 'carousel-mau-1-page')) {
     const rows = (list.pages || []).flatMap((page, pageIndex) => (page.items || []).map((item) => [
       String(pageIndex + 1),

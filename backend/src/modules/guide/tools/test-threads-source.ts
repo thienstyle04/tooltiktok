@@ -48,6 +48,7 @@ async function main() {
           rows.push([name, '12 Đường thử', 'Xuân Hương - Đà Lạt', i < count ? 'x' : '', 'Local', 100000, section === 'homestay' ? 'Homestay' : section, '06:00 - 23:00', 'Mảng xanh']);
           const key = itemMappingKey(section, name, address), fileId = `${id}-${section}-${i}`;
           manifest.items[key] = { key, sectionKey: section, name, address, fileId, fileName: fileId + '.png', sourceLink: 'https://drive.google.com/file/d/' + fileId, candidateImages: [{ fileId, fileName: fileId + '.png', viewUrl: '' }] };
+          if (id === 'dalat-threads') manifest.items[key].candidateImages.push({ fileId: fileId + '-second', fileName: fileId + '-second.png', viewUrl: '' });
         }
         XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), sheet);
       }
@@ -60,7 +61,7 @@ async function main() {
       service.workbookSourceByDestination.set(id, source);
       if (id === service.activeDestinationId) service.workbookSource = source;
       fixtures.push({ id, source, manifest });
-      for (const fileId of [...Object.values(manifest.items).map((item: any) => item.fileId), ...Object.values(manifest.coverImageGroups).flat().map((item: any) => item.fileId)]) {
+      for (const fileId of [...Object.values(manifest.items).flatMap((item: any) => item.candidateImages.map((photo: any) => photo.fileId)), ...Object.values(manifest.coverImageGroups).flat().map((item: any) => item.fileId)]) {
         const hash = crypto.createHash('sha256').update(fileId).digest();
         const pixels = Buffer.from(Array.from({ length: 80 * 60 * 3 }, (_, i) => hash[(i + Math.floor(i / 240)) % hash.length]));
         const image = await sharp(pixels, { raw: { width: 80, height: 60, channels: 3 } }).png().toBuffer();
@@ -72,7 +73,7 @@ async function main() {
       await service.setActiveDestination({ id });
       const dataset = await service.getDataset();
       assert.ok(dataset.decks.every((deck: any) => !config.THREADS_NOTE_DECK_IDS.includes(deck.id)), id);
-      assert.ok(dataset.decks.some((deck: any) => deck.id === (id === 'sheet-other' ? 'grid-4' : 'spotlight-v4')));
+      assert.ok(dataset.decks.some((deck: any) => deck.id === 'grid-4'));
       const before = fs.existsSync(path.join(data, `used-inventory.${id}.json`)) ? fs.readFileSync(path.join(data, `used-inventory.${id}.json`)) : null;
       for (const deckId of config.THREADS_NOTE_DECK_IDS) {
         await assert.rejects(service.generateDeckFromCaption({ deckId, caption: {} }), /Đà Lạt Threads/);
@@ -115,6 +116,7 @@ async function main() {
     assert.ok(publishedSourcePaths(data, 'dalat-threads'));
     // All real creation entrypoints funnel through the same strict builder.
     for (const deckId of config.THREADS_NOTE_DECK_IDS) {
+      if (deckId === 'threads-grid6-collage') require('../sync/spotlight-hook-source').setCachedSpotlightV3Hooks(['Hook thường Threads fixture 1', 'Hook thường Threads fixture 2', 'Hook thường Threads fixture 3', 'Hook thường Threads fixture 4']);
       const photoPreset = deckId === 'threads-cafe-local' ? 'iphone-color-edit-v1' : null;
       const batch = await service.generateBatchLists({ deckId, count: 4, photoPreset, hookSelection: { mode: 'normal' } });
       assert.equal(batch.successCount, 4, deckId + ': ' + JSON.stringify(batch.errors));

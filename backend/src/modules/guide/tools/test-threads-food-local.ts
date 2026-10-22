@@ -2,13 +2,15 @@ import assert from 'node:assert/strict';
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { buildThreadsCafePages, buildThreadsFoodPages, buildThreadsMixPages, buildThreadsMixTextPages, threadsCafeCaption, threadsFoodCaption, threadsMixCaption, threadsMixTextCaption } from '../logic/threads-food-local';
 import { setActiveDestinationLocalize } from '../sync/destination-localize';
+import { threadsVenueAddress } from '../logic/threads-address';
+import { requiredPartnerCount } from '../logic/partner-rotation';
 
 function food(index: number, partner: boolean, classification = 'Local'): GuideItem {
   const id = (partner ? 'partner-' : 'local-') + index;
   const imageUrl = 'https://example.invalid/' + id + '.jpg';
   return {
     id, sectionKey: 'quan_an', sectionTitle: 'Quán ăn', name: 'Quán ' + id,
-    address: partner ? '12 Đường Quán ' + index + ', Đà Lạt' : '', type: 'Quán ăn', openHours: '', style: '', highlight: '',
+    address: partner ? '12 Đường Quán ' + index + ', Đà Lạt' : '', streetAddress: partner ? '12 Đường Quán ' + index + ', Đà Lạt' : '', type: 'Quán ăn', openHours: '', style: '', highlight: '',
     partnerFlag: partner ? 'x' : '', isPartner: partner, classification,
     headPrice: '', hasHeadPriceColumn: false, price: '', phone: '',
     imageUrl, imageMapped: true, imageMappingKey: id, imageSource: 'manual',
@@ -88,7 +90,7 @@ assert.equal(twoPhotos.items.filter(item => item.isLocal && item.imageUrl).lengt
 for (const item of noPhoto.quan_an) item.imageMapped = false;
 assert.throws(() => buildThreadsFoodPages(noPhoto, 'no-photos'), /6 ảnh riêng hợp lệ/);
 const noAddress = pool(7, 10);
-for (const item of noAddress.quan_an.filter((item) => item.isPartner).slice(4)) item.address = '';
+for (const item of noAddress.quan_an.filter((item) => item.isPartner).slice(4)) { item.address = ''; item.streetAddress = ''; }
 const fourAddresses = buildThreadsFoodPages(noAddress, 'no-address')[0];
 if (fourAddresses.type !== 'list') throw new Error('Expected list');
 assert.equal(fourAddresses.items.filter(item => item.isPartner).length, 4);
@@ -141,4 +143,33 @@ assert.ok(new Set(textPages[0].items.map((item) => item.sourceSectionKey)).size 
 assert.equal(new Set(textPages[0].items.map((item) => item.name)).size, 12);
 assert.ok(threadsMixTextCaption().includes('?'));
 assert.throws(() => buildThreadsMixTextPages({ check_in: mixPool.check_in } as WorkbookItemsBySection, 'text-no-partner'), /6 đối tác có địa chỉ/);
-console.log('Threads food source selection OK');
+// Dia_chi is authoritative, including an explicitly blank cell. Do not render
+// Ten_phuong in place of the street or mutate the workbook's composed address.
+assert.equal(threadsVenueAddress({ streetAddress: ' 51 Trần Bình Trọng ', address: 'Cam Ly - Đà Lạt' }), '51 Trần Bình Trọng');
+assert.equal(threadsVenueAddress({ streetAddress: '', address: 'Cam Ly - Đà Lạt' }), '');
+assert.equal(threadsVenueAddress({ address: '12 Đường cũ, Tên phường' }), '');
+for (const [builder, source] of [
+  [buildThreadsFoodPages, pool(7, 10)], [buildThreadsCafePages, cafePool],
+  [buildThreadsMixPages, mixPool], [buildThreadsMixTextPages, mixPool],
+] as const) {
+  const raw = structuredClone(source);
+  for (const group of Object.values(raw)) for (const item of group) {
+    item.streetAddress = `51 Đường kiểm thử ${item.id}`;
+    item.address = 'CHỈ TÊN PHƯỜNG';
+  }
+  const before = JSON.stringify(raw), result = builder(raw, 'street-address')[0];
+  if (result.type !== 'list') throw Error('Expected Threads list');
+  for (const item of result.items.filter(i => i.isPartner)) {
+    assert.equal(item.metaPrimary, `51 Đường kiểm thử ${item.id}`);
+    assert.ok(!item.metaPrimary.includes('TÊN PHƯỜNG'));
+  }
+  assert.equal(JSON.stringify(raw), before);
+  for (const group of Object.values(raw)) for (const item of group) if (item.isPartner) item.streetAddress = '';
+  assert.throws(() => builder(raw, 'missing-street'), /đối tác/);
+}
+const quotaPool = pool(5, 12);
+quotaPool.quan_an.forEach(item => { if (item.isPartner) item.streetAddress = ''; });
+quotaPool.quan_an[0].streetAddress = '1 Địa chỉ thật';
+const quotaPages = buildThreadsFoodPages(quotaPool, 'real-address-quota');
+assert.equal(requiredPartnerCount('threads-food-local', quotaPool, quotaPages), 1);
+console.log('Threads food source selection and Dia_chi (not Ten_phuong) OK');

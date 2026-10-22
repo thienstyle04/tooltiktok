@@ -7,6 +7,9 @@ import EmptyState from './ui/EmptyState';
 import { supportsRequiredPartners } from '../lib/requiredPartners.mjs';
 
 const DATA_TEMPLATES = new Set([
+  'threads-note-dark-list',
+  'threads-grid6-collage',
+  'threads-trip-recap-3n2d',
   'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text',
   'carousel-mau-1', 'one-way-story', 'spotlight-v5', 'spotlight-v6-green',
   'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps', 'spotlight-v6-diary',
@@ -31,7 +34,7 @@ export default function CaptionTools({
   const selectedCaptionList = sourceLists.find(list => list.id === activeList?.id) || sourceLists[0];
   const isPartner = activeDeck?.id === 'spotlight-partner';
   const isDataTemplate = Boolean(activeDeck?.localTemplate) || DATA_TEMPLATES.has(activeDeck?.id) || activeDeck?.id?.startsWith('itinerary-note-threads-');
-  const needsPhotoCache = activeDeck?.id !== 'threads-toplist-dalat'
+  const needsPhotoCache = activeDeck?.id !== 'threads-note-dark-list' && activeDeck?.id !== 'threads-toplist-dalat'
     && activeDeck?.id !== 'itinerary-note-timed' && !activeDeck?.id?.startsWith('itinerary-note-threads-');
   const creationDisabled = busy || !activeDeck || (needsPhotoCache && !cacheReady);
   const templateName = activeDeck?.navTitle || activeDeck?.title || 'mẫu';

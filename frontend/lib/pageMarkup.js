@@ -6,10 +6,13 @@ import { renderItineraryNotePage, renderItineraryNoteTimedPage } from './itinera
 import { renderThreadsBudgetPage } from './threadsBudget.js';
 import { renderThreadsExpensePage } from './threadsExpenseSheet.js';
 import { photoRenderArguments, strictPhotoMarkup } from './photoPresets.mjs';
-import { compactThreadsLocalAddress } from './threadsFoodExport.mjs';
+import { threadsLocalAddress } from './threadsFoodExport.mjs';
+import { renderThreadsGrid6 } from './threadsGrid6.js';
+import { renderNoteDark } from './threadsNoteDark.js';
+import { renderThreadsRecap } from './threadsRecap.js';
 import { renderOneWayStoryCover, renderOneWayStoryPhoto, renderOneWayStoryRoad, renderOneWayStorySlope } from './markup/oneWayStory.js';
 import { isSpotlightLayout, isSpotlightPartnerCover, renderCarouselMau1Cover, renderCarouselMau1Page, renderSpotlightDiaryPage, renderSpotlightListPage, renderSpotlightPage, renderSpotlightPartnerInfoPage, renderSpotlightPartnerPage, renderSpotlightPartnerV2InfoPage, renderSpotlightPartnerV2Page, renderSpotlightV2Cover, renderSpotlightV2ListPage, renderSpotlightV2Page, renderSpotlightV4Cover, renderSpotlightV4ImagePage, renderSpotlightV4VenuePage, renderSpotlightV5Cover, renderSpotlightV5PlacePage, renderSpotlightV5PlaylistPage, renderSpotlightV6Cover, renderSpotlightV6ImagePage, renderSpotlightV6MapPage, renderSpotlightV6MapPlace, renderSpotlightV6VenuePage, renderSummaryNotePage } from './markup/spotlight.js';
-import { grid8FeedCenterHook, grid8IntroForPage, isGrid4FeaturePage, isGridLayout, renderGrid4FeaturePage, renderGrid4MutantContentPage, renderGrid4MutantCover, renderGrid5Cover, renderGrid5Page, renderGrid6Items, renderGrid6QuaytungCover, renderGrid6QuaytungPageBody, renderGrid8FeedCover, renderGrid8FeedItems, renderGrid8FeedPageBackground, renderGrid8Items, renderGrid8QuaytungCover, renderGrid8QuaytungItems, renderGrid8QuaytungMenuPage, renderPhotomodeItems, renderZigzagContentPage, renderZigzagCover } from './markup/grid.js';
+import { grid8FeedCenterHook, grid8IntroForPage, isGrid4FeaturePage, isGridLayout, renderGrid4FeaturePage, renderGrid4MutantContentPage, renderGrid4MutantCover, renderGrid5Cover, renderGrid5Page, renderGrid6Items, renderGrid6QuaytungCover, renderGrid6QuaytungPageBody, renderGrid8FeedCover, renderGrid8FeedItems, renderGrid8Items, renderGrid8QuaytungCover, renderGrid8QuaytungItems, renderGrid8QuaytungMenuPage, renderPhotomodeItems, renderZigzagContentPage, renderZigzagCover } from './markup/grid.js';
 import { isJourneyGrid8Layout, journeyGrid8Intro, renderItinerary4N3DStackCover, renderItinerary4N3DStackPage, renderItineraryItems, renderItineraryTimelineCover, renderItineraryTimelineDay, renderJourney4N3DItems } from './markup/itinerary.js';
 import { renderPov3V2Cover, renderPov3V2GridPage, renderPov3V2StackPage, renderPovMaikemCover, renderPovMaikemPage } from './markup/pov.js';
 import { cleanStoryText, isBudget3N2DCover, isBudget3N2DStoryCover, renderBudget3N2DDayPage, renderBudget3N2DGalleryCornerPage, renderBudget3N2DTablePage, renderBudget3N2DTotalPage, renderBudgetWalletBillPage, renderBudgetWalletCover, renderBudgetWalletDayPage, renderBudgetWalletFixedPage } from './markup/budget.js';
@@ -88,12 +91,9 @@ function renderListPageV2(page, index, listId, list, pageSubtitle) {
   if (page.layoutVariant === 'grid-8-feed') {
     const centerHook = grid8FeedCenterHook(page, list);
     const showAddress = !isActivityListPage(page);
-    const backgroundImage = page.backgroundImage || page.items?.[0]?.imageUrl || coverBackgroundImage(page, list);
-    const coverImageUrls = list?.coverImageUrls || [];
+    // Nền tối trơn, không còn lưới 4 ảnh mờ phía sau (góp ý 2026-10-22: "hơi rối mắt, hình ảnh đơn giản hơn").
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-feed-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
-        ${renderGrid8FeedPageBackground(page, backgroundImage, listId, coverImageUrls)}
-        <div class="grid8-feed-page-dim" aria-hidden="true"></div>
         <div class="grid8-feed-matrix">
           ${renderGrid8FeedItems(page.items, centerHook, showAddress)}
         </div>
@@ -224,6 +224,7 @@ function withPageTextScale(html, page) {
  * @returns {string}
  */
 function renderCoverPageContent(page, index, total, listId, hashtags = [], list = null, coverImageUrls = []) {
+  if (page.layoutVariant === 'threads-grid6-cover') return renderThreadsGrid6(page, index, listId);
   if (page.imageRole) return renderCherryBlossom(page, index, listId);
   if (page.localRender) return renderLocalTemplate(page, index, listId);
   const coverSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || []);
@@ -418,6 +419,9 @@ export function renderListPage(page, ...args) {
  * @returns {string}
  */
 function renderListPageContent(page, index, total, listId, hashtags = [], list = null) {
+  if(page.layoutVariant==='threads-note-dark-list')return renderNoteDark(page,index,listId);
+  if (page.layoutVariant === 'threads-recap-note' || page.layoutVariant === 'threads-recap-photo') return renderThreadsRecap(page, index, listId);
+  if (page.layoutVariant === 'threads-grid6-page') return renderThreadsGrid6(page, index, listId);
   if (page.imageRole) return renderCherryBlossom(page, index, listId);
   if (page.localRender) return renderLocalTemplate(page, index, listId);
   const pageSubtitle = sanitizeSubtitleForDisplay(page.subtitle, list?.pages || [page]);
@@ -434,7 +438,7 @@ function renderListPageContent(page, index, total, listId, hashtags = [], list =
       + ', XLSX ' + items.filter(item => item.isPartner).length + ' đối tác' + (isTextOnly ? '; không có ảnh' : page.photoPreset ? ' và 6 ảnh Color Edit' : ' và 6 ảnh gốc') + '; không xuất khung preview này.</p></div>'
       + '<ul class="threads-food-preview-list">'
       + items.map((item) => '<li>' + escapeHtml(item.name || '')
-        + (item.isPartner && item.metaPrimary ? ' (' + escapeHtml(compactThreadsLocalAddress(item.metaPrimary)) + ')' : '') + '</li>').join('')
+        + (item.isPartner && item.metaPrimary ? ' (' + escapeHtml(threadsLocalAddress(item.metaPrimary)) + ')' : '') + '</li>').join('')
       + '</ul>' + (isTextOnly ? '' : '<div class="threads-food-preview-photos">'
         + items.filter((item) => item.imageUrl).map((item) => '<img src="' + escapeHtml(item.imageUrl)
           + '" alt="' + escapeHtml(item.name || '') + '" loading="lazy" />').join('')
@@ -513,14 +517,15 @@ function renderListPageContent(page, index, total, listId, hashtags = [], list =
   }
 
   if (isJourneyGrid8Layout(page)) {
-    const hideCenterChip = page.chipText === 'Lưu trú' || page.chipText === 'Homestay' || page.chipText === 'Dịch vụ';
-    const showJourneyServiceLabel = isServiceOrStayListPage(page) || hideCenterChip;
+    // Trang Dịch vụ/Homestay dùng cùng nhãn cam ở ô giữa như Day 01–04 (góp ý 2026-10-22: "ảnh 6, 7 chỉnh chữ đồng bộ").
+    const serviceCenterPage = page.chipText === 'Lưu trú' || page.chipText === 'Homestay' || page.chipText === 'Dịch vụ';
+    const showJourneyServiceLabel = isServiceOrStayListPage(page) || serviceCenterPage;
     const showAddress = !isActivityListPage(page);
     const journeyBackground = page.backgroundImage || firstPortablePageImage(page) || coverBackgroundImage(page, list);
     return `
       <article class="${escapeHtml(storyPageClass(listId, 'grid8-page', 'journey-grid8-page'))}" data-list-id="${escapeHtml(listId)}" data-page-index="${index}" data-export-name="${String(index + 1).padStart(2, '0')}-${sanitizeFilePart(page.chipText)}.png">
         <div class="grid8-matrix">
-          ${renderGrid8Items(page.items, page.title, page.chipText, journeyBackground, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: !hideCenterChip, showLabel: showJourneyServiceLabel, showAddress })}
+          ${renderGrid8Items(page.items, serviceCenterPage ? '' : page.title, page.chipText, journeyBackground, journeyGrid8Intro(page), { showTime: false, showMeta: true, showCenterChip: true, showLabel: showJourneyServiceLabel, showAddress })}
         </div>
       </article>
     `;

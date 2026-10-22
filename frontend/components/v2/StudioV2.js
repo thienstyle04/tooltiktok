@@ -51,7 +51,7 @@ export default function StudioV2({ studio }) {
     exportImageInspection, answerExportImages, deleteModalOpen, setDeleteModalOpen, selectedListsForDelete, setSelectedListsForDelete,
     deleteSelectedLists, busy, partners, partnerEligibility, ensurePartnerEligibility, destinationOptions, hookSourcesInfo, automationState,
     setAutomationState, activeDestinationId, resolveDestinationCount, driveCacheStatus, destinationScrollBusy, refreshing, switchDestination,
-    setStatus, addSource, replaceDestinationWorkbook, refreshDestinationFromSheet, updateSheetLink, createHookSource, updateHookSource,
+    setStatus, addSource, replaceDestinationWorkbook, refreshDestinationFromSheet, updateSheetLink, setPartnerLogic, createHookSource, updateHookSource,
     refreshHookSource, deleteHookSource, changeHookMode, hookSourcesBusy, loadDataset, activeDeckId,
   } = studio;
   const view = v2View(activeView);
@@ -178,7 +178,7 @@ export default function StudioV2({ studio }) {
                 cacheStatus={driveCacheStatus} busy={destinationScrollBusy} refreshing={refreshing} hookSourcesInfo={hookSourcesInfo} hookSourcesBusy={hookSourcesBusy}
                 onDestinationChange={destinationId => { switchDestination(destinationId).catch(error => setStatus(error.message)); }}
                 onAddDestination={addSource} onReplaceDestinationWorkbook={(destinationId, file) => replaceDestinationWorkbook(destinationId, file)}
-                onRefreshFromSheet={destinationId => refreshDestinationFromSheet(destinationId)} onUpdateSheetLink={updateSheetLink}
+                onRefreshFromSheet={destinationId => refreshDestinationFromSheet(destinationId)} onUpdateSheetLink={updateSheetLink} onSetPartnerLogic={setPartnerLogic}
                 onCreateHookSource={createHookSource} onUpdateHookSource={updateHookSource} onRefreshHookSource={refreshHookSource}
                 onDeleteHookSource={deleteHookSource} onChangeHookMode={changeHookMode}
                 onRefresh={() => { loadDataset('Đang tải lại dữ liệu workbook...', {}, true).catch(error => setStatus(error.message)); }} />

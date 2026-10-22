@@ -187,7 +187,6 @@ function testCssMarkers() {
   const checks = [
     ['grid8-feed-cover-grid', 'grid8feed cover 2×2'],
     ['grid8-feed-cover-dim', 'grid8feed overlay'],
-    ['grid8-feed-page-bg-grid', 'grid8feed list background'],
     ['Quicksand', 'font Quicksand'],
     ['rgba(0, 0, 0, 0.5)', 'overlay 50%'],
     ['pov-3-v2-stack-name', 'pov stack title'],
@@ -207,7 +206,6 @@ function testMarkupSource() {
   const markup = readFileSync(frontendLib, 'utf8');
   const checks = [
     ['grid8-feed-cover-grid', 'grid-8-feed cover grid'],
-    ['grid8-feed-page-bg-grid', 'grid-8-feed list background'],
     ['grid8-quaytung-cover-title', 'grid-8-quaytung cover title'],
     ['spotlight-v2-cover-grid', 'spotlight-v2 cover grid'],
     ['pov-3-v2-stack-row', 'pov-3-v2 stack row'],

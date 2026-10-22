@@ -72,7 +72,7 @@ async function main() {
           const name = sectionKey === 'homestay' && i < 3 ? ['Lagom Homestay', 'Little Fish Dalat', 'Tori Wooden House'][i]
             : sectionKey === 'dich_vu' ? `${sourceId} Thuê xe ${i}` : sectionKey === 'check_in' && i === 0 ? `${sourceId} Dốc thử` : `${sourceId} ${sectionKey} ${i}`;
           items[sectionKey].push({ id, sectionKey, sectionTitle: sectionKey, name,
-            address: `${i} Đường thử, Xuân Hương - Đà Lạt`, type: sectionKey === 'quan_an' ? 'Ăn sáng ăn trưa ăn tối' : sectionKey === 'homestay' ? 'Homestay' : sectionKey,
+            address: `${i} Đường thử, Xuân Hương - Đà Lạt`, streetAddress: `${i} Đường thử`, type: sectionKey === 'quan_an' ? 'Ăn sáng ăn trưa ăn tối' : sectionKey === 'homestay' ? 'Homestay' : sectionKey,
             style: 'Chill', highlight: 'Tham quan', theme: 'Mảng xanh', classification: 'Local', openHours: '06:00 - 23:00', phone: '000',
             partnerFlag: isPartner ? 'x' : '', isPartner, headPrice: '100000', price: '100000', hasHeadPriceColumn: true,
             imageUrl: urls[0], candidateImageUrls: urls, imageMapped: true, imageMappingKey: id, imageSource: 'manual',

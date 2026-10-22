@@ -20,7 +20,7 @@ export default function AddSourceForm({ busy = false, onSubmit, submitLabel = 'T
   const [adding, setAdding] = useState(false);
   const disabled = busy || adding;
   const ready = label.trim().length >= 2 && dalatContent !== null
-    && (mode === 'sheet' ? Boolean(sheetUrl.trim()) : Boolean(file));
+    && (mode === 'xlsx' ? Boolean(file) : Boolean(sheetUrl.trim()));
 
   const submit = async (event) => {
     event.preventDefault();
@@ -34,6 +34,7 @@ export default function AddSourceForm({ busy = false, onSubmit, submitLabel = 'T
         file: mode === 'xlsx' ? file : null,
         kind,
         dalatContent: dalatContent === true,
+        sourceType: mode === 'server' ? 'server' : 'sheet',
       });
       setLabel('');
       setSheetUrl('');
@@ -53,6 +54,7 @@ export default function AddSourceForm({ busy = false, onSubmit, submitLabel = 'T
           <legend>Lấy dữ liệu từ</legend>
           <label><input type="radio" name="add-source-mode" checked={mode === 'sheet'} onChange={() => setMode('sheet')} /> Link Google Sheet</label>
           <label><input type="radio" name="add-source-mode" checked={mode === 'xlsx'} onChange={() => setMode('xlsx')} /> File XLSX</label>
+          <label><input type="radio" name="add-source-mode" checked={mode === 'server'} onChange={() => setMode('server')} /> Link server</label>
         </fieldset>
         <label>
           <span>Tên hiển thị</span>
@@ -80,14 +82,14 @@ export default function AddSourceForm({ busy = false, onSubmit, submitLabel = 'T
           </label>
         ) : null}
         <label>
-          <span>{mode === 'sheet' ? 'Link Google Sheet' : 'Link Google Sheet dự phòng (tùy chọn)'}</span>
+          <span>{mode === 'sheet' ? 'Link Google Sheet' : mode === 'server' ? 'Link dữ liệu server' : 'Link Google Sheet dự phòng (tùy chọn)'}</span>
           <input
             type="url"
             value={sheetUrl}
             onChange={(event) => setSheetUrl(event.target.value)}
-            placeholder="https://docs.google.com/spreadsheets/d/..."
+            placeholder={mode === 'server' ? 'https://.../api/guide-data' : 'https://docs.google.com/spreadsheets/d/...'}
             disabled={disabled}
-            required={mode === 'sheet'}
+            required={mode !== 'xlsx'}
           />
         </label>
         <fieldset className="add-source-choice" disabled={disabled}>
@@ -110,7 +112,7 @@ export default function AddSourceForm({ busy = false, onSubmit, submitLabel = 'T
       </form>
       {error ? <p className="settings-form-error" role="alert">{error}</p> : null}
       <p className="settings-form-note">
-        Sheet cần chia sẻ “Bất kỳ ai có đường liên kết đều có thể xem”. Sau khi thêm, tool tải dữ liệu và ảnh lần đầu rồi tự chuyển sang nguồn mới. File XLSX tối đa 20 MB.
+        Sheet cần chia sẻ “Bất kỳ ai có đường liên kết đều có thể xem”. Link server trả về JSON /api/guide-data; Hình nền, Chủ đề và ảnh Maps lấy từ Sheet Đà Lạt trên máy khi chọn nội dung Đà Lạt. Sau khi thêm, tool tải dữ liệu và ảnh lần đầu rồi tự chuyển sang nguồn mới. File XLSX tối đa 20 MB.
       </p>
     </>
   );

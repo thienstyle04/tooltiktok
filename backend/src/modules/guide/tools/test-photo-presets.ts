@@ -12,7 +12,7 @@ assert.equal(validatePhotoPreset(undefined),undefined);
 assert.throws(()=>validatePhotoPreset('bogus'),/không được hỗ trợ/);
 assert.throws(()=>validatePhotoPreset('iphone-color-edit-v1','threads-mix-text'),/chỉ có chữ/);
 assert.ok(supportsPhotoPreset('threads-cafe-local'));
-assert.equal(photoPresetsCatalog().presets.length,8);
+assert.equal(photoPresetsCatalog().presets.length,9);
 const list:any={id:'unchanged',pages:[{type:'cover',backgroundImage:'/assets/drive-file?id=source'},{type:'list',items:[{imageUrl:'/assets/library?path=source'}]}]};
 const original=JSON.stringify(list);
 applyListPhotoPreset(list,'iphone-color-edit-v1');assert(list.pages.every((page:any)=>page.photoPreset===list.photoPreset));
