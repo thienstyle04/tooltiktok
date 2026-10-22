@@ -467,7 +467,15 @@ async function exportBatchAttempt(context, callbacks = {}) {
         throw new Error('Thiếu trang khi dựng layout; đã dừng xuất để tránh ZIP không đầy đủ.');
       }
       // Đợi ảnh preview/load xong trước khi inline — tránh fetch lại Drive rồi ra nền xám.
-      await Promise.all(validChunk.map((task) => waitForPageImagesSettled(task.pageNode, BATCH_IMAGE_SETTLE_TIMEOUT_MS)));
+      await Promise.all(validChunk.map(async (task) => {
+        try { await waitForPageImagesSettled(task.pageNode, BATCH_IMAGE_SETTLE_TIMEOUT_MS); }
+        catch (error) {
+          if (task.deckId !== 'threads-grid6-collage' && !task.pageNode.classList.contains('threads-grid6') && !task.pageNode.classList.contains('threads-note-dark') && !task.pageNode.classList.contains('threads-recap')) throw error;
+          const entry = orderedLists[task.listIndex];
+          if (!skippedLists.some(skip => skip.listId === task.list.id)) skippedLists.push(lateImageListFailure(entry, task, error));
+        }
+      }));
+      validChunk = validChunk.filter(task => !skippedLists.some(skip => skip.listId === task.list.id));
       const preparedImages = [];
       try {
       // Keep image caches/profile selection isolated in mixed-template batches.
@@ -485,7 +493,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
         uniqueObjectUrl: true,
       }));
         } catch (error) {
-          if (error?.code !== 'EXPORT_IMAGE_UNAVAILABLE') throw error;
+          if (error?.code !== 'EXPORT_IMAGE_UNAVAILABLE' && !task.pageNode.classList.contains('threads-grid6') && !task.pageNode.classList.contains('threads-note-dark') && !task.pageNode.classList.contains('threads-recap')) throw error;
           const entry = orderedLists[task.listIndex];
           if (!skippedLists.some(skip => skip.listId === task.list.id)) skippedLists.push(lateImageListFailure(entry, task, error));
         }
@@ -515,7 +523,7 @@ async function exportBatchAttempt(context, callbacks = {}) {
           renderedPages += 1;
           cb.updateProgress(3 + (renderedPages / totalPages) * 86, `Đang render ${qualityProfile.label} ${renderedPages}/${totalPages} trang...`);
           } catch (error) {
-            if (error?.code !== 'EXPORT_IMAGE_UNAVAILABLE') throw error;
+            if (error?.code !== 'EXPORT_IMAGE_UNAVAILABLE' && !task.pageNode.classList.contains('threads-grid6') && !task.pageNode.classList.contains('threads-note-dark') && !task.pageNode.classList.contains('threads-recap')) throw error;
             const entry = orderedLists[task.listIndex];
             if (!skippedLists.some(skip => skip.listId === task.list.id)) skippedLists.push(lateImageListFailure(entry, task, error));
           }

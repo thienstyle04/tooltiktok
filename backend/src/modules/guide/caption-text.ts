@@ -421,7 +421,7 @@ export function sanitizeContentText(value: string): string {
 export function sanitizeGeneratedListText(destinationId: DestinationId, list: GuideDeckList, deckId?: string): GuideDeckList {
   const resolvedDeckId = deckId || resolveDeckIdFromListId(list.id);
   // Diary text is an exact source snapshot, not marketing text to rewrite.
-  if (resolvedDeckId === 'spotlight-v6-diary') return cloneJson(list);
+  if (resolvedDeckId === 'spotlight-v6-diary' || resolvedDeckId === 'threads-grid6-collage' || resolvedDeckId === 'threads-trip-recap-3n2d') return cloneJson(list);
   const pages = Array.isArray(list.pages)
     ? list.pages.map((page) => sanitizeDeckPageText(destinationId, page))
     : [];

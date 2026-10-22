@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import { syncFetch } from './night-sync-policy';
 
 import { BUILTIN_SOURCES, DestinationConfig, DEFAULT_DESTINATION_ID, DestinationId } from './destination-config';
+import { SERVER_GUIDE_DATA_MAX_BYTES, ServerGuideData, serverGuideDataToWorkbook, serverSourceSupplement } from './server-json-source';
 
 // Link Sheet nằm trong cấu hình của từng máy (source-links.json), không có hằng link ở đây.
 export const PREFERRED_WORKBOOK_NAME = BUILTIN_SOURCES[DEFAULT_DESTINATION_ID].workbookName;
@@ -19,7 +20,7 @@ export interface SheetWorkbookSource {
   fetchedAt: number;
   sourceUrl: string;
   workbookBuffer?: Buffer;
-  sourceType?: 'runtime-xlsx' | 'bundled-xlsx' | 'google-sheet';
+  sourceType?: 'runtime-xlsx' | 'bundled-xlsx' | 'google-sheet' | 'server-json';
 }
 
 export function parseWorkbookBuffer(
@@ -92,7 +93,33 @@ function isTransientSheetFetchError(error: unknown): boolean {
   );
 }
 
+async function fetchServerWorkbookOnce(destination: DestinationConfig): Promise<SheetWorkbookSource> {
+  const timeout = createTimeoutSignal(SHEET_FETCH_TIMEOUT_MS);
+  const response = await syncFetch(destination.exportUrl, {
+    headers: { Accept: 'application/json', 'User-Agent': 'Dalat Carousel Server Reader' },
+    signal: timeout.signal,
+  }).finally(timeout.cancel);
+  if (!response.ok) throw new Error(`Không tải được dữ liệu từ server (${destination.label}). HTTP ${response.status}`);
+  const body = Buffer.from(await response.arrayBuffer());
+  if (body.byteLength > SERVER_GUIDE_DATA_MAX_BYTES) throw new Error('Dữ liệu server vượt quá giới hạn 20 MB.');
+  let data: unknown;
+  try { data = JSON.parse(body.toString('utf8').replace(/^﻿/, '')); } catch { throw new Error('Server không trả về JSON hợp lệ.'); }
+  // Hình nền/Chủ đề/ảnh Maps server chưa có: chỉ ghép từ Sheet Đà Lạt khi nguồn có nội dung Đà Lạt.
+  const supplement = destination.contentDestinationId === 'dalat' ? serverSourceSupplement() : null;
+  const { buffer } = serverGuideDataToWorkbook(data as ServerGuideData, supplement);
+  return parseWorkbookBuffer(buffer, {
+    workbookName: destination.workbookName,
+    destinationId: destination.id,
+    sourceUrl: destination.exportUrl,
+    sourceType: 'server-json',
+  });
+}
+
 async function fetchWorkbookOnce(destination: DestinationConfig): Promise<SheetWorkbookSource> {
+  if (destination.sourceType === 'server-json') {
+    if (!destination.exportUrl) throw new Error(`Nguồn ${destination.label} chưa có link server.`);
+    return fetchServerWorkbookOnce(destination);
+  }
   if (!destination.exportUrl) {
     throw new Error(`Nguồn ${destination.label} chưa có link Google Sheet dự phòng.`);
   }

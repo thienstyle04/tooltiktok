@@ -194,6 +194,7 @@ export function setCachedSpotlightV3Hooks(hooks: string[], docId = hookDocId('sp
 }
 
 export type SpotlightV3BuildContext = {
+  grid6History?: import('../../../common/interfaces/guide.types').DeckPage[][];
   diaryUsedLines?: Record<string, string[]>;
   hooks?: string[];
   usedHookTitles?: string[];

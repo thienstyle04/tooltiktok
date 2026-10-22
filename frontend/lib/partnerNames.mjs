@@ -19,12 +19,19 @@ export function collectPartnerNames(list) {
   const threads = ['threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text'].some(deck => isThreadsLocalDeck(deck) && (id === deck || id.startsWith(deck + '-')));
   list.pages?.forEach((page, index) => {
     if (page?.type !== 'list') return;
-    const hasImages = !threads && page.items?.some(item => String(item?.imageUrl || '').trim());
+    // Tổng kết chuyến đi: ảnh của dòng nằm ở trang ảnh phía sau; tên đối tác phải hiện trên dòng note.
+    const recap = page.layoutVariant === 'threads-recap-note';
+    const hasImages = !threads && !recap && page.items?.some(item => String(item?.imageUrl || '').trim());
     const markup = hasImages ? renderListPage(page, index, list.pages.length, list.id, list.captionHashtags || [], list) : '';
     page.items?.forEach(item => {
       if (!item?.isPartner) return;
-      const raw = String(threads ? item.name || '' : item.rawName || item.name || '');
-      const name = (threads ? raw : raw.replace(/^[^:]{1,30}:\s*/, '')).trim();
+      if (recap) {
+        const source = String(item.rawName || item.name || '').trim();
+        if (source && String(item.name || '').toLocaleLowerCase('vi').includes(source.toLocaleLowerCase('vi'))) names.add(source);
+        return;
+      }
+      const raw = String(threads || (page.layoutVariant === 'threads-note-dark-list' || page.layoutVariant === 'threads-grid6-page') ? item.name || '' : item.rawName || item.name || '');
+      const name = (threads || (page.layoutVariant === 'threads-note-dark-list' || page.layoutVariant === 'threads-grid6-page') ? raw : raw.replace(/^[^:]{1,30}:\s*/, '')).trim();
       if (!name) return;
       const image = page.layoutVariant === 'spotlight-v5-place' ? String(page.backgroundImage || item.imageUrl || '').trim() : String(item.imageUrl || '').trim();
       if (!threads && image && !includesImage(markup, image)) return;

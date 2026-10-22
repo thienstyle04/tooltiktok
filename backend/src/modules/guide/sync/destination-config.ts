@@ -1,6 +1,7 @@
 import { localTemplateAllowedIds, findLocalTemplate, setLocalTemplateSourceAliases } from '../local-templates';
 export type DestinationId = string;
-export type DestinationSourceType = 'xlsx' | 'google-sheet';
+/** server-json: JSON /api/guide-data từ server, đổi thành workbook như Sheet (xem server-json-source.ts). */
+export type DestinationSourceType = 'xlsx' | 'google-sheet' | 'server-json';
 /** standard: mẫu thường; threads: chỉ mẫu Threads/Note. Nguồn có kind có dữ liệu tách biệt (công bố theo lượt). */
 export type SourceKind = 'standard' | 'threads';
 
@@ -22,6 +23,8 @@ export interface DestinationConfig {
   partnerFirst?: boolean;
   /** Không có ở nguồn cũ (Đà Lạt, Green Land, Sheet tự thêm trước đây): dùng chung dữ liệu gốc như trước. */
   kind?: SourceKind;
+  /** Tạm tắt logic đối tác (nguồn mới chưa có đối tác): mọi địa điểm coi là thường, không đòi/xoay vòng đối tác. */
+  partnerLogicOff?: boolean;
 }
 
 export interface DestinationInfo {
@@ -33,22 +36,33 @@ export interface DestinationInfo {
   workbookFileName: string;
   contentDestinationId?: DestinationId;
   kind?: SourceKind;
+  partnerLogicOff?: boolean;
   allowedDeckIds: string[];
 }
 
 export const DEFAULT_DESTINATION_ID: DestinationId = 'dalat';
 export const CHERRY_BLOSSOM_DECK_ID = 'spotlight-v6-cherry-blossom';
 export const THREADS_NOTE_DECK_LABELS: Record<string, string> = {
+  'threads-note-dark-list': 'Note 01 · Đen tối giản',
+  'threads-grid6-collage': 'Threads · Lưới 6 ảnh',
   'threads-food-local': 'Quán ăn Threads Local', 'threads-cafe-local': 'Cà phê Threads Local',
   'threads-mix-local': 'Tổng hợp Threads', 'threads-mix-text': 'Tổng hợp Threads chữ',
   'threads-toplist-dalat': 'Top list Đà Lạt',
   'itinerary-note-threads-3n2d': 'Note Threads 3N2Đ', 'itinerary-note-threads-2n1d': 'Note Threads 2N1Đ',
   'itinerary-note-threads-budget-3n2d': 'Chi phí Threads 3N2Đ',
+  'threads-trip-recap-3n2d': 'Tổng kết chuyến đi 3N2Đ',
   'itinerary-note-threads-expense-2n1d': 'Bảng chi tiêu Threads 2N1Đ', 'itinerary-note-threads-expense-3n2d': 'Bảng chi tiêu Threads 3N2Đ',
   'summary-note': 'Tổng hợp địa điểm', 'itinerary-note-2days': 'Lịch trình Note 2 ngày',
   'itinerary-note-dark': 'Lịch trình Note nền đen', 'itinerary-note-timed': 'Lịch trình Note theo giờ',
 };
 export const THREADS_NOTE_DECK_IDS = Object.keys(THREADS_NOTE_DECK_LABELS);
+// Tạm ẩn theo Sheet góp ý của người dùng (2026-10-22, phân loại "Bỏ"): không tạo mới, không hiện trong
+// thư viện/Hẹn giờ. List đã lưu vẫn giữ để xem, sửa, xuất. Xóa id khỏi đây để bật lại.
+export const HIDDEN_DECK_LABELS: Record<string, string> = {
+  'grid-6-zigzag': 'Mẫu Zigzag 6', 'grid-5': 'Mẫu Lưới 5 Ô', 'spotlight-guide': 'Mẫu Spotlight', 'spotlight-v4': 'Spotlight V4',
+};
+// Test cần chạy mã của mẫu đang ẩn (vd. Spotlight V4 làm mẫu thử) đặt DALAT_SHOW_HIDDEN_DECKS=1.
+export const isHiddenDeck = (deckId: string): boolean => process.env.DALAT_SHOW_HIDDEN_DECKS !== '1' && Object.prototype.hasOwnProperty.call(HIDDEN_DECK_LABELS, deckId);
 // Permission catalog, independent of whether a source currently has enough data.
 const OTHER_DECK_IDS = [
   'itinerary-3n2d', 'budget-3n2d', 'budget-72h-summary', 'budget-3n2d-story',
@@ -120,6 +134,11 @@ export function isDalatThreadsSource(id: DestinationId): boolean {
   return registry()[id]?.kind === 'threads';
 }
 
+/** Nguồn đang tạm tắt logic đối tác (chỉ nguồn tự thêm). */
+export function isPartnerLogicOff(id: DestinationId): boolean {
+  return Boolean(registry()[id]?.partnerLogicOff);
+}
+
 export function isIsolatedSheetSource(id: DestinationId): boolean {
   return Boolean(registry()[id]?.kind);
 }
@@ -132,8 +151,8 @@ setLocalTemplateSourceAliases(templateSourceKeys);
 
 export function getAllowedDeckIds(id: DestinationId): string[] {
   if (!registry()[id]) return [];
-  const threads = THREADS_NOTE_DECK_IDS.filter(deckId => deckId !== 'threads-toplist-dalat' || isDalatContentSource(id));
-  return [...(isDalatThreadsSource(id) ? threads : OTHER_DECK_IDS), ...(isDalatTestSource(id) ? [CHERRY_BLOSSOM_DECK_ID] : []), ...localTemplateAllowedIds(id)];
+  const threads = THREADS_NOTE_DECK_IDS.filter(deckId => !['threads-toplist-dalat', 'threads-grid6-collage', 'threads-note-dark-list'].includes(deckId) || isDalatContentSource(id));
+  return [...(isDalatThreadsSource(id) ? threads : OTHER_DECK_IDS.filter(deckId => !isHiddenDeck(deckId))), ...(isDalatTestSource(id) ? [CHERRY_BLOSSOM_DECK_ID] : []), ...localTemplateAllowedIds(id)];
 }
 
 export function isDeckAllowedForSource(id: DestinationId, deckId: string): boolean {
@@ -141,9 +160,12 @@ export function isDeckAllowedForSource(id: DestinationId, deckId: string): boole
 }
 
 export function sourceTemplateError(id: DestinationId, deckId: string): string {
+  if(deckId==='threads-note-dark-list')return 'Note 01 · Đen tối giản chỉ dùng nguồn loại Threads có nội dung Đà Lạt (như Đà Lạt Threads); không dùng nguồn Thường hoặc Green Land.';
+  if (deckId === 'threads-grid6-collage') return 'Threads · Lưới 6 ảnh chỉ dùng nguồn loại Threads có nội dung Đà Lạt (như Đà Lạt Threads); không dùng nguồn Thường hoặc Green Land.';
   if (deckId === CHERRY_BLOSSOM_DECK_ID) return 'Mẫu Spotlight Mùa hoa đào chỉ được tạo trên nguồn Thường có nội dung Đà Lạt (như Đà Lạt Test). Hãy chọn nguồn đó và đồng bộ dữ liệu.';
   const local = findLocalTemplate(deckId);
   if (local) return `Mẫu ${local.name} chỉ được tạo trên nguồn ${local.allowedSourceIds.map(id => registry()[id]?.label || id).join(', ')}${local.allowedSourceIds.includes('dalat-test') ? ' hoặc nguồn Thường có nội dung Đà Lạt' : ''} và máy đã cài gói mẫu riêng.`;
+  if (isHiddenDeck(deckId) && !isDalatThreadsSource(id)) return `${HIDDEN_DECK_LABELS[deckId]} đang tạm ẩn theo góp ý; không tạo list mới. List đã lưu vẫn xem và xuất được. Hãy bỏ mẫu này khỏi lịch Hẹn giờ.`;
   if (deckId === 'spotlight-partner') return 'Mẫu Spotlight Đối tác đã ngừng sử dụng. Hãy chọn mẫu khác; list đã lưu vẫn được giữ nguyên.';
   const name = THREADS_NOTE_DECK_LABELS[deckId] || deckId;
   const threadsSources = Object.values(registry()).filter(config => config.kind === 'threads').map(config => config.label).join(', ');
@@ -202,6 +224,7 @@ export function toDestinationInfo(config: DestinationConfig): DestinationInfo {
     workbookFileName: config.workbookFileName || config.workbookName,
     contentDestinationId: contentDestinationId(config.id),
     ...(config.kind ? { kind: config.kind } : {}),
+    ...(config.partnerLogicOff ? { partnerLogicOff: true } : {}),
     allowedDeckIds: getAllowedDeckIds(config.id),
   };
 }

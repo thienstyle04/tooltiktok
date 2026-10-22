@@ -90,7 +90,7 @@ function paethPredictor(left: number, above: number, upperLeft: number): number 
  * same picture under two file IDs with different PNG metadata/compression, so
  * an ordinary SHA hash would incorrectly treat them as different images.
  */
-function pngPixelFingerprint(body: Buffer): string | null {
+function pngPixelFingerprint(body: Buffer, exact = false): string | null {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   if (body.length < 33 || !body.subarray(0, 8).equals(signature)) return null;
   let offset = 8;
@@ -147,6 +147,7 @@ function pngPixelFingerprint(body: Buffer): string | null {
     }
     sourceOffset += stride;
   }
+  if (exact) return `pixels:${width}x${height}x${channels}:` + crypto.createHash('sha256').update(pixels).digest('hex');
   const samplesAcross = 8;
   const luminance = Array.from({ length: 8 }, () => Array<number>(9).fill(0));
   const pixelLuminance = (x: number, y: number): number => {
@@ -217,6 +218,17 @@ export function getCachedDriveFileVisualFingerprint(fileId: string): string {
   } catch {
     return '';
   }
+}
+
+const exactContentFingerprints = new Map<string, { size: number; mtime: number; fingerprint: string }>();
+/** Strict content identity: never equate distinct shots merely by their dHash. */
+export function getCachedDriveFileContentFingerprint(fileId: string): string {
+  try {
+    const { binPath } = diskCachePaths(fileId), stat = fs.statSync(binPath), prior = exactContentFingerprints.get(binPath);
+    if (prior && prior.size === stat.size && prior.mtime === stat.mtimeMs) return prior.fingerprint;
+    const body = fs.readFileSync(binPath), fingerprint = pngPixelFingerprint(body, true) || `bytes:${crypto.createHash('sha256').update(body).digest('hex')}`;
+    exactContentFingerprints.set(binPath, { size: stat.size, mtime: stat.mtimeMs, fingerprint }); return fingerprint;
+  } catch { return ''; }
 }
 
 export function uniqueCachedDriveFileIdsByVisualContent(fileIds: string[]): string[] {
@@ -906,6 +918,19 @@ function rankDriveEntries(
 export async function resolveDriveLinkToEntries(link: string, placeName: string, address: string, maxEntries = 6): Promise<DriveFolderEntry[]> {
   const text = String(link ?? '').trim();
   if (!text) return [];
+
+  // Một ô có nhiều link (vd driveUrl của nguồn server, cách nhau bằng ;): gộp ảnh theo thứ tự link, bỏ trùng.
+  const links = text.split(/[;\r\n]+/).map((entry) => entry.trim()).filter((entry) => /^https?:\/\//i.test(entry));
+  if (links.length > 1) {
+    const merged: DriveFolderEntry[] = [];
+    for (const entry of links) {
+      if (merged.length >= maxEntries) break;
+      for (const found of await resolveDriveLinkToEntries(entry, placeName, address, maxEntries)) {
+        if (!merged.some((existing) => existing.fileId === found.fileId)) merged.push(found);
+      }
+    }
+    return merged.slice(0, maxEntries);
+  }
 
   // 1) Link file tường minh: /file/d/<id>
   const explicitFileId = text.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] || '';

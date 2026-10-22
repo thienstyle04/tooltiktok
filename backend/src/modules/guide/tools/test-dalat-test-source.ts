@@ -5,6 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import * as XLSX from 'xlsx';
 import sharp from 'sharp';
+process.env.DALAT_SHOW_HIDDEN_DECKS = '1'; // Spotlight V4 đang tạm ẩn khỏi thư viện nhưng vẫn là mẫu thử của test này.
 
 async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-test-source-'));

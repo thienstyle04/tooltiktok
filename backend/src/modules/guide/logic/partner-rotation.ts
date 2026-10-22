@@ -3,6 +3,16 @@ import { normalizeText, stableHash } from './image-resolver';
 import { extractDriveFileIdFromProxyUrl, getCachedDriveFileVisualFingerprint, uniqueCachedDriveFileIdsByVisualContent } from '../sync/drive-images';
 import { DIARY_PARTNER_COUNT } from './spotlight-diary';
 import { requiredPartnerKeys } from './required-partners';
+import { partnerLogicOff } from '../sync/destination-localize';
+import { threadsVenueAddress } from './threads-address';
+import { getCachedDriveFileContentFingerprint } from '../sync/drive-images';
+
+let exactPhotoIdentity = false;
+// Synchronous, exception-safe scope; never held across I/O or another request.
+export function withExactCachedPhotoIdentity<T>(run: () => T): T {
+  const prior = exactPhotoIdentity; exactPhotoIdentity = true;
+  try { return run(); } finally { exactPhotoIdentity = prior; }
+}
 
 export const PARTNER_ROTATION_VERSION = 1;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -30,7 +40,7 @@ export function sourcePhotoId(url: string): string {
 // alias also prevents a re-upload of the same picture being counted as new.
 export function photoKeys(url: string): string[] {
   const id = sourcePhotoId(url), driveId = id.startsWith('drive:') ? id.slice(6) : '';
-  const fingerprint = driveId ? getCachedDriveFileVisualFingerprint(driveId) : '';
+  const fingerprint = driveId ? (exactPhotoIdentity ? getCachedDriveFileContentFingerprint(driveId) : getCachedDriveFileVisualFingerprint(driveId)) : '';
   return fingerprint ? [id, `content:${fingerprint}`] : [id];
 }
 
@@ -55,7 +65,7 @@ function ownPhotos(item: GuideItem): string[] {
   const seen = new Set<string>();
   const urls = [item.imageUrl, ...(item.candidateImageUrls || []), ...(item.diaryImageUrls || [])].filter(Boolean);
   const driveIds = urls.map(url => extractDriveFileIdFromProxyUrl(url)).filter(Boolean);
-  const distinct = new Set(uniqueCachedDriveFileIdsByVisualContent(driveIds));
+  const distinct = new Set(exactPhotoIdentity ? driveIds : uniqueCachedDriveFileIdsByVisualContent(driveIds));
   return urls.filter(url => {
     const id = sourcePhotoId(url), driveId = extractDriveFileIdFromProxyUrl(url);
     if (!id || seen.has(id) || (driveId && !distinct.has(driveId))) return false;
@@ -181,6 +191,9 @@ function unitsFor(pages: DeckPage[], deckId: string, sources: GuideItem[] = []):
       const mixedThreads = deckId === 'threads-mix-local' || deckId === 'threads-mix-text';
       unit.group = unit.refs.map(ref => {
         const p = pages[ref.page] as ListPage, slot = p.items[ref.item];
+        // A grid partner may occupy any of its page's six eligible cells.
+        // Keep the page quota intact, not the initially selected partner slots.
+        if (deckId === 'threads-grid6-collage') return `grid6:${ref.page}`;
         // A mixed page can move a partner into a regular's equivalent slot while
         // retaining its quota. Homogeneous day/meal groups can swap across days
         // without altering each day's partner count. Do not declare a singleton
@@ -195,6 +208,7 @@ function unitsFor(pages: DeckPage[], deckId: string, sources: GuideItem[] = []):
 }
 
 export function bootstrapPartnerHistory(lists: GuideDeckList[], deckId: string, sources: GuideItem[], existing: PartnerRotationHistory = {}): PartnerRotationHistory {
+  if (deckId === 'threads-grid6-collage' && !exactPhotoIdentity) return withExactCachedPhotoIdentity(() => bootstrapPartnerHistory(lists, deckId, sources, existing));
   const history = clone(existing);
   // Persisted array order is creation order; the IDs are not sortable timestamps.
   for (const list of lists) {
@@ -210,7 +224,8 @@ export function bootstrapPartnerHistory(lists: GuideDeckList[], deckId: string, 
   return history;
 }
 
-export function restrictRotationPhotos(items: WorkbookItemsBySection, history: PartnerRotationHistory, optionalPhotos = false): WorkbookItemsBySection {
+export function restrictRotationPhotos(items: WorkbookItemsBySection, history: PartnerRotationHistory, optionalPhotos = false, exact = false): WorkbookItemsBySection {
+  if (exact && !exactPhotoIdentity) return withExactCachedPhotoIdentity(() => restrictRotationPhotos(items, history, optionalPhotos));
   const result = clone(items);
   const sources = Object.values(items).flat();
   for (const pool of Object.values(result)) for (const item of pool) {
@@ -248,6 +263,7 @@ export function partnerSlotCount(pages: DeckPage[]): number {
 }
 
 export function requiredPartnerCount(deckId: string, items: WorkbookItemsBySection, baseline: DeckPage[]): number {
+  if (partnerLogicOff()) return 0;
   if (['spotlight-v4', 'spotlight-v6', 'spotlight-v6-maps'].includes(deckId)) return 4;
   if (deckId === 'spotlight-v5') return 7;
   // 8 ô đối tác luôn bắt buộc (kiểm bằng requiredSlots); khi thiếu quán khác nhau, một quán có cả Quán ăn và
@@ -259,7 +275,7 @@ export function requiredPartnerCount(deckId: string, items: WorkbookItemsBySecti
   if (deckId === 'spotlight-v6-persimmon') return Math.max(1, visiblePartnerCount(baseline));
   if (deckId === 'threads-food-local' || deckId === 'threads-cafe-local') {
     const pool = items[deckId === 'threads-cafe-local' ? 'cafe' : 'quan_an'] || [];
-    return Math.max(1, Math.min(5, new Set(pool.filter(item => item.isPartner && item.address.trim()).map(item => normalizeText(item.name))).size));
+    return Math.max(1, Math.min(5, new Set(pool.filter(item => item.isPartner && threadsVenueAddress(item)).map(item => normalizeText(item.name))).size));
   }
   if (deckId === 'summary-note') return Math.max(1, ['quan_an', 'cafe'].reduce((sum, key) => sum + Math.min(2,
     new Set((items[key as keyof WorkbookItemsBySection] || []).filter(item => item.isPartner && item.address.trim()).map(item => normalizeText(item.name))).size), 0));
@@ -271,6 +287,9 @@ export function requiredPartnerCount(deckId: string, items: WorkbookItemsBySecti
 
 export function rotatePartnerList(input: GuideDeckList, deckId: string, items: WorkbookItemsBySection,
   previous: PartnerRotationHistory, seed: string, requiredPartners = 1, requiredSlots = requiredPartners, positionsOnly = false): { list: GuideDeckList; history: PartnerRotationHistory } {
+  if (deckId === 'threads-grid6-collage' && !exactPhotoIdentity) return withExactCachedPhotoIdentity(() => rotatePartnerList(input, deckId, items, previous, seed, requiredPartners, requiredSlots, positionsOnly));
+  // Nguồn tạm tắt logic đối tác: không có đối tác để xếp, giữ nguyên list và lịch sử.
+  if (partnerLogicOff()) return { list: clone(input), history: clone(previous) };
   const list = clone(input), history = clone(previous), sources = Object.values(items).flat();
   // Information rows are labels (address/hours/price), not extra partner venues.
   // Only the new list is normalized; old saved lists remain untouched.
@@ -278,7 +297,9 @@ export function rotatePartnerList(input: GuideDeckList, deckId: string, items: W
     page.items.forEach(item => { item.isPartner = false; });
   }
   const units = unitsFor(list.pages, deckId, sources), warnings: string[] = [];
-  if (visiblePartnerCount(list.pages) < requiredPartners) throw new Error(`${deckId}: cần ít nhất ${requiredPartners} đối tác hợp lệ; hiện có ${visiblePartnerCount(list.pages)}. Hãy bổ sung đối tác đúng nhóm, không giảm tỷ lệ để tạo list.`);
+  // Nguồn không có đối tác nào (thường là nguồn mới): chỉ cách tắt logic đối tác thay vì bắt bổ sung dữ liệu.
+  const noPartnerHint = sources.some(item => item.isPartner) ? '' : ' Nguồn này chưa có đối tác nào: nếu là nguồn mới, vào Cài đặt → Nguồn đang dùng và tick "Tạm tắt logic đối tác".';
+  if (visiblePartnerCount(list.pages) < requiredPartners) throw new Error(`${deckId}: cần ít nhất ${requiredPartners} đối tác hợp lệ; hiện có ${visiblePartnerCount(list.pages)}. Hãy bổ sung đối tác đúng nhóm, không giảm tỷ lệ để tạo list.${noPartnerHint}`);
   if (partnerSlotCount(list.pages) < requiredSlots) throw new Error(`${deckId}: chỉ có ${partnerSlotCount(list.pages)}/${requiredSlots} ô đối tác theo quy tắc mẫu. Không giảm tỷ lệ; hãy bổ sung ảnh/đối tác đúng nhóm.`);
   const groups = new Map<string, Unit[]>();
   units.forEach(unit => groups.set(unit.group, [...(groups.get(unit.group) || []), unit]));
@@ -348,6 +369,7 @@ export function rotatePartnerList(input: GuideDeckList, deckId: string, items: W
     const page = list.pages[ref.page] as ListPage;
     return page.items[ref.item].imageUrl ? photoKeys(page.items[ref.item].imageUrl) : [];
   })));
+  if (deckId === 'threads-grid6-collage') photoKeys(list.pages[0].backgroundImage).forEach(key => usedInList.add(key));
   type PhotoRequest = { key: string; refs: Ref[]; choices: string[] };
   const requests: PhotoRequest[] = [];
   const photoStates = new Map<string, { unit: Unit; pool: string[]; old: PartnerRotationHistory[string]; used: Set<string> }>();
@@ -357,7 +379,7 @@ export function rotatePartnerList(input: GuideDeckList, deckId: string, items: W
     const source = unit.source;
     const pool = source ? venuePhotos(source, sources) : [];
     const refsByPhoto = new Map<string, Ref[]>();
-    for (const ref of [...unit.refs, ...extraPhotoRefs(list.pages, source, sources)]) {
+    for (const ref of [...unit.refs, ...(deckId === 'threads-grid6-collage' ? [] : extraPhotoRefs(list.pages, source, sources))]) {
       const url = photoAt(list.pages, ref);
       if (url) refsByPhoto.set(sourcePhotoId(url), [...(refsByPhoto.get(sourcePhotoId(url)) || []), ref]);
     }

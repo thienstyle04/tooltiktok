@@ -2,6 +2,7 @@ import type { GuideItem, SectionKey, ListPage, WorkbookItemsBySection } from '..
 import { itemUsageKey } from './data-allocator';
 import { stableHash } from './image-resolver';
 import { isRequiredPartner } from './required-partners';
+import { partnerLogicOff } from '../sync/destination-localize';
 
 export const ITINERARY_NOTE_TEMPLATE_VERSION = 2;
 export const ITINERARY_NOTE_CAPTION = 'Mình tổng hợp lịch trình Đà Lạt 2 ngày như hình bên dưới.\nMọi người xem giúp mình lịch này có ổn không, có điểm nào nên ghé thêm không ạ?';
@@ -9,7 +10,7 @@ export const ITINERARY_NOTE_DARK_ID = 'itinerary-note-dark';
 export const ITINERARY_NOTE_DARK_TEMPLATE_VERSION = 4;
 export const ITINERARY_NOTE_DARK_CAPTION = 'Tuiiiii xếp lịch Đà Lạt 2 ngày nè. Đi vậy có quá sức khum? Mấy ní thấy nên đổi chỗ nào thì cmt cứu tui zới 👇';
 const visits: SectionKey[] = ['check_in', 'khu_du_lich', 'hoat_dong', 'dia_diem_lich_su', 'choi_dem'];
-const PARTNER_TARGETS = [4, 3] as const;
+const PARTNER_DAY_TARGETS = [4, 3] as const;
 const identity = (item: GuideItem) => item.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '');
 
 export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsBySection; globalUsedItemIds?: Set<string> }, seed: string, now = new Date()): ListPage[] {
@@ -20,10 +21,12 @@ export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsB
   const used = new Set<string>();
   const counts: Record<string, number>[] = [{}, {}];
   const partners = [0, 0];
+  // Nguồn tạm tắt logic đối tác: 14 điểm đều là địa điểm thường.
+  const PARTNER_TARGETS = partnerLogicOff() ? [0, 0] as const : PARTNER_DAY_TARGETS;
   const partnerAvailable = new Set(Object.values(pools).flat()
     .filter(item => item.isPartner)
     .map(identity)).size;
-  if (partnerAvailable < 7) {
+  if (PARTNER_TARGETS[0] && partnerAvailable < 7) {
     throw new Error(`Lịch trình Note 2 ngày cần đúng 7 đối tác khác nhau, hiện chỉ có ${partnerAvailable} đối tác hợp lệ trong các nhóm được dùng.`);
   }
   let attempts = 0;
@@ -73,7 +76,8 @@ export function buildItineraryNotePages(common: { itemsBySection: WorkbookItemsB
     }
     return false;
   }
-  if (!select(0)) throw new Error('Lịch trình Note 2 ngày không đủ địa điểm hợp lệ, không trùng để tạo đúng 4 đối tác ngày 1 và 3 đối tác ngày 2; vẫn cần 4 Quán ăn, 2 Cafe, 8 điểm tham quan/trải nghiệm và mỗi nhóm tối đa 2/ngày.');
+  if (!select(0)) throw new Error((PARTNER_TARGETS[0] ? 'Lịch trình Note 2 ngày không đủ địa điểm hợp lệ, không trùng để tạo đúng 4 đối tác ngày 1 và 3 đối tác ngày 2; vẫn cần' : 'Lịch trình Note 2 ngày không đủ địa điểm hợp lệ, không trùng; cần')
+    + ' 4 Quán ăn, 2 Cafe, 8 điểm tham quan/trải nghiệm và mỗi nhóm tối đa 2/ngày.');
   chosen.forEach(item => { common.globalUsedItemIds?.add(itemUsageKey(item)); common.globalUsedItemIds?.add(item.id); });
   const month = new Intl.DateTimeFormat('en-US', { month: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }).format(now);
   return [0, 1].map(day => ({

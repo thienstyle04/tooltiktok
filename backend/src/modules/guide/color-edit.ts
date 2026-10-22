@@ -55,11 +55,14 @@ async function renderReferencePreset(source: Buffer, settings: PhotoAdjustments)
     tone = (tone - 0.5) * (1 + s.contrast / 100) + 0.5 + s.brightness / 100 * 0.3;
     tone -= s.blackPoint / 100 * 0.25 * Math.pow(1 - y, 2);
     tone = Math.max(y * 0.2, Math.min(1, tone));
-    const gain = y > 0 ? tone / y : 0;
+    // Lifting near-black pixels gives a huge tone/y gain. Applying it to colour as well
+    // turned sensor noise into blue/black blotches (presets 01/02 on night photos).
+    // Luminance follows the full curve; chroma gain is capped. Unchanged for gain <= 2.
+    const chromaGain = y > 0 ? Math.min(tone / y, 2) : 0;
     const chroma = (Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2])) / 255;
     const saturation = Math.max(0, 1 + s.saturation / 100 + s.vibrance / 100 * (1 - chroma));
     for (let c = 0; c < 3; c++) {
-      let v = tone * 255 + (data[i + c] * gain - tone * 255) * saturation;
+      let v = tone * 255 + (data[i + c] - y * 255) * chromaGain * saturation;
       // Positive "Chỉnh xanh" in reference 02 means green tint, not blue warmth.
       v *= 1 + (c === 0 ? s.warmth * 0.0015 - s.tint * 0.0005 : c === 1 ? s.tint * 0.001 : -s.warmth * 0.0015 - s.tint * 0.0005);
       data[i + c] = clamp(v);
@@ -123,7 +126,7 @@ async function limited<T>(work: () => Promise<T>): Promise<T> {
 
 export async function getColorEditAsset(source: Buffer, dataRoot: string, preset: string): Promise<Buffer> {
   if (!photoPresetSettings(preset)) throw new Error('Bộ màu không được hỗ trợ.');
-  const key = createHash('sha256').update(preset).update('pipeline-1').update(source).digest('hex');
+  const key = createHash('sha256').update(preset).update(preset === COLOR_EDIT_PRESET ? 'pipeline-1' : 'pipeline-2').update(source).digest('hex');
   const folder = path.join(dataRoot, 'photo-preset-cache', preset);
   const target = path.join(folder, key + '.png');
   if (pending.has(target)) return pending.get(target)!;

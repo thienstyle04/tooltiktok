@@ -160,7 +160,8 @@ createRoot(document.getElementById('root')).render(<Studio initialDataset={windo
     await page.locator('button[type=submit]').click();
     await page.waitForFunction(() => document.querySelector('.automation-form-actions span')?.textContent.includes('Đã tạo lịch'));
     assert.equal(schedules.length, 1);
-    assert.deepEqual(schedules[0].templates, [{ deckId: 'grid-6', count: 3, requiredPartners: ['Quán một'] }]);
+    // grid-6 có bộ màu chọn sẵn theo Sheet góp ý 2026-10-22 (06 · Sân vườn dịu).
+    assert.deepEqual(schedules[0].templates, [{ deckId: 'grid-6', count: 3, photoPreset: 'photo-ref-06-courtyard-calm-v1', requiredPartners: ['Quán một'] }]);
     // A schedule for another source cannot offer this source's partners.
     await page.locator('.automation-form select').first().selectOption('greenland');
     assert.equal(await page.locator('.automation-template-grid label').filter({ hasText: 'Spotlight V4' }).count(), 1, 'Other sources keep the full allowed list');

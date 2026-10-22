@@ -5,6 +5,9 @@ import { RETIRED_DECK_IDS, STUDIO_CATALOG_REVISION, STUDIO_CATALOG_REVISION_KEY,
 import { SPOTLIGHT_PARTNER_DECK_ID } from './shared';
 
 const V2_TEMPLATE_DECK_IDS = [
+  'threads-note-dark-list',
+  'threads-grid6-collage',
+  'threads-trip-recap-3n2d',
   'spotlight-v6-cherry-blossom',
   'grid-6-quaytung',
   'grid-8-feed',
@@ -28,6 +31,9 @@ const V2_TEMPLATE_DECK_IDS = [
 ];
 
 const DALAT_ONLY_CATALOG_DECK_IDS = new Set([
+  'threads-note-dark-list',
+  'threads-grid6-collage',
+  'threads-trip-recap-3n2d',
   'spotlight-v5',
   'spotlight-v6-green',
   'spotlight-v6-dark',
@@ -92,8 +98,8 @@ function needsGrid8QuaytungCatalogRefresh(dataset) {
   if (!deck) return true;
   const main = (deck.lists || []).find((list) => listIsMain(list));
   if (!main) return true;
-  if (Number(main.templateVersion || 0) < 3) return true;
-  if ((main.pages || []).length < 7) return true;
+  if (Number(main.templateVersion || 0) < 9) return true;
+  if ((main.pages || []).length < 6) return true;
   const cover = main.pages.find((page) => page.type === 'cover');
   return cover?.layoutVariant !== 'grid-8-quaytung-cover';
 }
@@ -159,6 +165,8 @@ export function needsTemplateCatalogRefresh(dataset, activeSource = null) {
   // permissions. Compare with the freshly loaded source, not its cached copy.
   if (activeSource) {
     if (activeSource.id && dataset.source.destinationId !== activeSource.id) return true;
+    // Export reads this flag to accept zero-partner lists; a stale cache would block them.
+    if (Boolean(dataset.source.partnerLogicOff) !== Boolean(activeSource.partnerLogicOff)) return true;
     if (Array.isArray(activeSource.allowedDeckIds)) {
       const cachedIds = new Set(dataset.source.allowedDeckIds);
       const currentIds = new Set(activeSource.allowedDeckIds);

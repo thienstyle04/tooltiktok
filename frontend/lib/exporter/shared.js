@@ -98,7 +98,7 @@ export function exportQualityProfile(quality, deckId, runtimeMode = 'modern', fo
       ? { ...profile, label: 'Cân bằng tương thích', compatibility: true, imagePrepareConcurrency: 1, renderChunkSize: 1, captureConcurrency: 1 }
       : profile;
   }
-  const isV6Family = deckId === 'spotlight-v6-cherry-blossom' || deckId === 'spotlight-v6-diary' || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
+  const isV6Family = deckId === 'threads-note-dark-list' || deckId === 'threads-trip-recap-3n2d' || deckId === 'threads-grid6-collage' || deckId === 'spotlight-v6-cherry-blossom' || deckId === 'spotlight-v6-diary' || (deckId === 'spotlight-v6' || deckId === 'spotlight-v6-color-edit') || deckId === 'spotlight-v6-green' || deckId === 'spotlight-v6-dark' || deckId === 'spotlight-v6-persimmon' || deckId === 'spotlight-v6-maps';
   return { ...profile, label: 'Cân bằng mới', losslessSource: true, fullResolutionV6: isV6Family,
     pixelRatio: isV6Family ? 1080 / 397 + 1e-9 : profile.pixelRatio,
     sourceImageMaxDimension: 0, sourceImageFormat: 'image/png', sourceImageQuality: 1 };
@@ -195,5 +195,7 @@ export function batchCaptureConcurrencyForProfile(profile) {
 }
 
 export function resolveExportList(deck, list, dataset = null) {
-  return resolveBudget72HExportList(deck, list, dataset);
+  const resolved = resolveBudget72HExportList(deck, list, dataset);
+  // Nguồn đang tạm tắt logic đối tác: list 0 đối tác vẫn xuất được, chỉ bỏ XLSX đối tác rỗng.
+  return resolved && dataset?.source?.partnerLogicOff ? { ...resolved, partnerOptional: true } : resolved;
 }

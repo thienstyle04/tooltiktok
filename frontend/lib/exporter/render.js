@@ -34,6 +34,7 @@ export function prepareQualityLayout(nodes, profile) {
 }
 
 function isV6ExportPage(pageNode) {
+  if (pageNode?.classList?.contains('threads-note-dark') || pageNode?.classList?.contains('threads-grid6') || pageNode?.classList?.contains('threads-recap')) return true;
   if (pageNode?.classList?.contains('cherry-blossom-page')) return true;
   return ['spotlight-v6-diary-page', 'spotlight-v6-cover', 'spotlight-v6-image', 'spotlight-v6-page', 'spotlight-v6-map-page', 'spotlight-v6-map-place']
     .some((name) => pageNode?.classList?.contains(name));
@@ -42,6 +43,7 @@ function isV6ExportPage(pageNode) {
 // Full-bleed photo templates: the preview card's rounded corners are UI only and
 // must never be cut into the exported image (Spotlight V5 4:5 and the V6 family).
 function isFullBleedExportPage(pageNode) {
+  if (pageNode?.classList?.contains('threads-note-dark') || pageNode?.classList?.contains('threads-grid6') || pageNode?.classList?.contains('threads-recap')) return true;
   return isV6ExportPage(pageNode)
     || ['spotlight-v5-cover', 'spotlight-v5-playlist', 'spotlight-v5-place'].some((name) => pageNode?.classList?.contains(name));
 }

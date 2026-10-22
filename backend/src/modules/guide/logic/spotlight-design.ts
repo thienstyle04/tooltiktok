@@ -1,5 +1,6 @@
 import type { GuideDeckList, TitlePlacement } from '../../../common/interfaces/guide.types';
 import catalog from '../config/spotlight-cover-labels.json';
+import { coverImagesForDeck } from './cover-exclusions';
 
 export const SPOTLIGHT_DESIGN_DECKS = ['spotlight-guide', 'spotlight-v2', 'spotlight-v3', 'spotlight-v4', 'spotlight-v5', 'spotlight-v5-color-edit'];
 export interface CoverLabel { place: string | null; topics: string[]; titlePlacement?: TitlePlacement }
@@ -27,7 +28,7 @@ export function prepareSpotlightDesign(list: GuideDeckList, deckId: string, pool
   const cover = list.pages.find(p => p.type === 'cover');
   if (!cover || cover.type !== 'cover') return list;
   const topic = spotlightHookTopic(cover.title);
-  const urls = [...new Map([...pool, ...(cover.coverImages || []), cover.backgroundImage].filter(Boolean).map(url => [coverSourceId(url), url])).values()];
+  const urls = [...new Map(coverImagesForDeck(deckId, [...pool, ...(cover.coverImages || []), cover.backgroundImage].filter(Boolean)).map(url => [coverSourceId(url), url])).values()];
   const backgroundIds = new Set(list.pages.filter(page => page.layoutVariant === 'spotlight-v4-image').map(page => coverSourceId(page.backgroundImage)));
   // The new V5 copy must not reselect the playlist/venue photo as its cover.
   // Keep legacy V5 selection untouched for compatibility.

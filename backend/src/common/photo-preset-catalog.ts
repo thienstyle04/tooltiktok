@@ -8,7 +8,7 @@ export interface PhotoAdjustments {
   warmth?: number; tint?: number; vibrance?: number; sharpness?: number; definition?: number;
 }
 
-// Values transcribed from the six supplied references, in attachment order.
+// Values transcribed from the supplied references, in attachment order.
 // Unspecified sliders are neutral. Conversion is an approximation, not Apple's pipeline.
 export const REFERENCE_PHOTO_PRESETS = [
   { id: 'photo-ref-01-food-bright-v1', label: '01 · Món ăn sáng nét', description: 'Sáng, ấm, nổi màu món ăn',
@@ -23,6 +23,8 @@ export const REFERENCE_PHOTO_PRESETS = [
     settings: { exposure: -23, brilliance: -48, highlights: 34, shadows: -16, contrast: 30, blackPoint: 10, saturation: -25, warmth: -10, sharpness: 35, definition: 45 } },
   { id: 'photo-ref-06-courtyard-calm-v1', label: '06 · Sân vườn dịu', description: 'Cảnh sân vườn dịu, giảm độ rực',
     settings: { exposure: -15, vibrance: -15, contrast: 10, brightness: -5, blackPoint: 7, saturation: -10 } },
+  { id: 'photo-ref-07-dark-crisp-v1', label: '07 · Dark Crisp — Tối rõ nét', description: 'Tông tối, tương phản mạnh, rõ chi tiết',
+    settings: { exposure: -23, brilliance: -48, highlights: 34, shadows: -16, contrast: 42, blackPoint: 10, saturation: -25, warmth: -10, sharpness: 35, definition: 65 } },
 ] as const;
 
 export type PhotoPresetId = typeof COLOR_EDIT_PRESET | typeof REFERENCE_PHOTO_PRESETS[number]['id'];

@@ -3,7 +3,7 @@
 // Toàn bộ trạng thái và thao tác của studio (tách nguyên văn từ DeckStudio).
 // Giao diện Classic và V2 cùng dùng hook này, nên hành vi tạo/lưu/xuất chỉ có một nơi.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isKnownPhotoPreset, DEFAULT_PHOTO_PRESETS, supportsPhotoPreset } from '../../lib/photoPresets.mjs';
+import { isKnownPhotoPreset, DEFAULT_PHOTO_PRESETS, defaultPhotoPreset, supportsPhotoPreset } from '../../lib/photoPresets.mjs';
 import { cleanRequiredPartners, loadRequiredPartnerChoices, saveRequiredPartnerChoices, supportsRequiredPartners } from '../../lib/requiredPartners.mjs';
 import { apiFetch, fetchGuideDataset, formatApiError } from '../../lib/apiClient';
 import { emptyCaption, normalizeHashtagInput, normalizeSelection, readStoredSelection } from '../../lib/selection';
@@ -46,7 +46,8 @@ export default function useStudioController({ initialDataset = null } = {}) {
       setPhotoPresets(value.presets);
     }).catch(()=>setPhotoPresets([{id:null,label:'Ảnh gốc'}]));
   }, []);
-  const selectedPhotoPreset = supportsPhotoPreset(activeDeckId) && photoPresets.some(p => p.id === photoPresetChoices[activeDeckId]) ? photoPresetChoices[activeDeckId] || null : null;
+  const chosenPhotoPreset = Object.prototype.hasOwnProperty.call(photoPresetChoices, activeDeckId || '') ? photoPresetChoices[activeDeckId] : defaultPhotoPreset(activeDeckId);
+  const selectedPhotoPreset = supportsPhotoPreset(activeDeckId) && photoPresets.some(p => p.id === chosenPhotoPreset) ? chosenPhotoPreset || null : null;
   const changePhotoPreset = useCallback(value => {
     setPhotoPresetChoices(previous=>{ const next={...previous,[activeDeckId]:value};
       try { localStorage.setItem('dalat-photo-presets-v1',JSON.stringify(next)); } catch { /* still usable in this session */ }
@@ -235,7 +236,7 @@ export default function useStudioController({ initialDataset = null } = {}) {
   const applyDataset = useCallback((nextDataset, preferredSelection = {}) => {
     const sanitized = sanitizeDataset(nextDataset);
     if (sanitized?.decks) sanitized.decks = sanitized.decks.filter(deck =>
-      templateAllowed(sanitized.source, deck.id) || (deck.id === SPOTLIGHT_PARTNER_DECK_ID && deck.creationDisabled));
+      templateAllowed(sanitized.source, deck.id) || deck.creationDisabled);
     setSpotlightV2CoverImagePool(sanitized?.source?.coverImageUrls || []);
     const normalized = normalizeSelection(sanitized, {
       ...currentSelectionRef.current,
@@ -657,18 +658,19 @@ export default function useStudioController({ initialDataset = null } = {}) {
 
   // Link Google Sheet do người dùng nhập; tool không kèm link nào. Nguồn Thường/Threads
   // mới chỉ có dữ liệu sau lượt cập nhật đầu tiên, rồi mới chuyển sang.
-  const addSource = useCallback(async ({ label, sheetUrl, file, kind, dalatContent }) => {
+  const addSource = useCallback(async ({ label, sheetUrl, file, kind, dalatContent, sourceType = 'sheet' }) => {
     if (file) return addDestination({ label, sheetUrl, file, kind, dalatContent });
     if (switchingDestination) return null;
-    setStatus(`Đang kiểm tra Google Sheet ${label}...`);
+    const sourceName = sourceType === 'server' ? 'dữ liệu server' : 'Google Sheet';
+    setStatus(`Đang kiểm tra ${sourceName} ${label}...`);
     const response = await apiFetch('/api/destinations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label, sheetUrl, kind, dalatContent }),
+      body: JSON.stringify({ label, sheetUrl, kind, dalatContent, sourceType }),
       cache: 'no-store',
     });
     const payload = await readApiPayload(response);
-    if (!response.ok) throw new Error(apiErrorMessage(payload, `Không thêm được Google Sheet: HTTP ${response.status}`));
+    if (!response.ok) throw new Error(apiErrorMessage(payload, `Không thêm được ${sourceName}: HTTP ${response.status}`));
     if (payload?.needsFirstSync && payload?.created?.id) {
       setDestinationInfo((previous) => ({
         active: previous?.active || payload.active || null,
@@ -693,6 +695,23 @@ export default function useStudioController({ initialDataset = null } = {}) {
     setStatus('Đã lưu link Google Sheet trên máy này.');
     return payload;
   }, []);
+
+  // Nguồn mới chưa có đối tác: tạm tắt logic đối tác rồi dựng lại mẫu theo dữ liệu thường.
+  const setPartnerLogic = useCallback(async (destinationId, off) => {
+    const response = await apiFetch(`/api/destinations/${encodeURIComponent(destinationId)}/partner-logic`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ off: Boolean(off) }),
+      cache: 'no-store',
+    });
+    const payload = await readApiPayload(response);
+    if (!response.ok) throw new Error(apiErrorMessage(payload, `Không đổi được logic đối tác: HTTP ${response.status}`));
+    setDestinationInfo(payload);
+    clearCachedDataset();
+    await loadDataset(off ? 'Đã tạm tắt logic đối tác. Đang dựng lại mẫu...' : 'Đã bật lại logic đối tác. Đang dựng lại mẫu...');
+    setPartnersRevision((value) => value + 1);
+    return payload;
+  }, [loadDataset]);
 
   useEffect(() => {
     const stored = readStoredSelection();
@@ -1016,11 +1035,11 @@ export default function useStudioController({ initialDataset = null } = {}) {
               if (index !== selectedPageIndex) return page;
               return {
                 ...page,
-                ...(updates.items !== undefined && (page.localRender || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-expense-sheet' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
+                ...(updates.items !== undefined && (page.layoutVariant === 'threads-note-dark-list' || page.layoutVariant === 'threads-recap-note' || page.layoutVariant === 'threads-grid6-page' || page.localRender || (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'threads-toplist-page') || page.layoutVariant === 'itinerary-note-timed-day' || page.layoutVariant === 'spotlight-v6-diary-page' || page.layoutVariant === 'spotlight-v6-map-place' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-expense-sheet' || (activeDeckId === 'spotlight-v6-persimmon' && page.layoutVariant === 'spotlight-v6-page')) ? { items: page.items.map((item, i) => ({ ...item, ...updates.items[i] })) } : {}),
                 ...(updates.chipText !== undefined && page.layoutVariant === 'itinerary-note-timed-day' ? { chipText: updates.chipText } : {}),
                 ...(updates.title !== undefined ? { title: updates.title } : {}),
                 ...(updates.subtitle !== undefined ? { subtitle: updates.subtitle } : {}),
-                ...(updates.titlePlacement !== undefined && (page.imageRole || page.layoutVariant === 'spotlight-v6-diary-page' || page.spotlightDesignRevision === 1) ? { titlePlacement: updates.titlePlacement } : {}),
+                ...(updates.titlePlacement !== undefined && (page.layoutVariant === 'threads-note-dark-list' || page.layoutVariant === 'threads-grid6-cover' || page.imageRole || page.layoutVariant === 'spotlight-v6-diary-page' || page.spotlightDesignRevision === 1) ? { titlePlacement: updates.titlePlacement } : {}),
                 ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && updates.coverImages ? { coverImages: updates.coverImages, backgroundImage: updates.coverImages[0] } : {}),
                 ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && updates.coverApproval !== undefined ? { coverApproval: updates.coverApproval } : {}),
                 ...(updates.textScale !== undefined ? { textScale: updates.textScale } : {}),
@@ -1066,14 +1085,14 @@ export default function useStudioController({ initialDataset = null } = {}) {
           title: activePage.title || '',
           textScale: activePage.textScale ?? 100,
           textFontSize: pageToSave.textFontSize ?? null,
-          ...(activePage.imageRole ? { titlePlacement: activePage.titlePlacement } : {}),
+          ...(activePage.layoutVariant === 'threads-note-dark-list' || activePage.layoutVariant === 'threads-grid6-cover' || activePage.imageRole ? { titlePlacement: activePage.titlePlacement } : {}),
           ...(activePage.type === 'cover' && activePage.spotlightDesignRevision === 1 ? { coverImages: activePage.coverImages?.length ? activePage.coverImages : [activePage.backgroundImage], coverApproval: activePage.coverApproval || '', titlePlacement: activePage.titlePlacement } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { diaryFontSize: activePage.diaryFontSize ?? 13 } : {}),
           subtitle: activePage.subtitle || '',
           ...(activePage.localRender && activePage.type === 'list' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-diary-page' ? { titlePlacement: activePage.titlePlacement, items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { chipText: activePage.chipText || '' } : {}),
-          ...((activePage.layoutVariant === 'itinerary-note-day' || activePage.layoutVariant === 'itinerary-note-dark-day' || activePage.layoutVariant === 'itinerary-note-threads-day' || activePage.layoutVariant === 'threads-toplist-page') ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
+          ...((activePage.layoutVariant === 'threads-note-dark-list' || activePage.layoutVariant === 'threads-recap-note' || activePage.layoutVariant === 'threads-grid6-page' || activePage.layoutVariant === 'itinerary-note-day' || activePage.layoutVariant === 'itinerary-note-dark-day' || activePage.layoutVariant === 'itinerary-note-threads-day' || activePage.layoutVariant === 'threads-toplist-page') ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           ...(activePage.layoutVariant === 'itinerary-note-timed-day' ? { items: activePage.items.map(({ name, metaPrimary, scheduleTime }) => ({ name, metaPrimary, scheduleTime })) } : {}),
           ...(activePage.layoutVariant === 'spotlight-v6-map-place' ? { items: activePage.items.map(({ name, metaPrimary }) => ({ name, metaPrimary })) } : {}),
           // Bảng chi phí/chi tiêu Threads: số tiền (metaSecondary) cũng là nội dung người dùng sửa.
@@ -1152,11 +1171,13 @@ export default function useStudioController({ initialDataset = null } = {}) {
       setStatus('Chưa có deck để tạo list AI mới.');
       return;
     }
-    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'threads-toplist-dalat' && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
+    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'threads-note-dark-list' && activeDeck.id !== 'threads-toplist-dalat' && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
     const isNonAiTemplate = Boolean(activeDeck.localTemplate) || activeDeck.id === 'threads-food-local'
+      || activeDeck.id === 'threads-note-dark-list'
+      || activeDeck.id === 'threads-grid6-collage'
       || activeDeck.id === 'threads-cafe-local'
       || activeDeck.id === 'threads-mix-local'
       || activeDeck.id === 'threads-mix-text'
@@ -1237,7 +1258,7 @@ export default function useStudioController({ initialDataset = null } = {}) {
       setStatus('Chưa có deck để tạo batch list.');
       return;
     }
-    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'threads-toplist-dalat' && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
+    if (!automationState.locked && !driveCacheStatus.ready && activeDeck.id !== 'threads-note-dark-list' && activeDeck.id !== 'threads-toplist-dalat' && activeDeck.id !== 'itinerary-note-timed' && !activeDeck.id.startsWith('itinerary-note-threads-')) {
       setStatus('Đang đồng bộ ảnh Google Drive vào cache, tạm thời chưa thể tạo list.');
       return;
     }
@@ -1749,6 +1770,7 @@ export default function useStudioController({ initialDataset = null } = {}) {
   }[driveCacheStatus.destinationId] || studioShort;
   const cacheStatusDestinationId = driveCacheStatus.destinationId || activeDestinationId;
   const showCacheWarmOverlay = !driveCacheStatus.ready
+    && activeDeck?.id !== 'threads-note-dark-list'
     && !automationState.locked
     && dismissedCacheDestinationId !== cacheStatusDestinationId;
 
@@ -1903,6 +1925,7 @@ export default function useStudioController({ initialDataset = null } = {}) {
     refreshDestinationFromSheet,
     addSource,
     updateSheetLink,
+    setPartnerLogic,
     pushSelectionSnapshot,
     restoreSelectionSnapshot,
     handleDeckSelect,

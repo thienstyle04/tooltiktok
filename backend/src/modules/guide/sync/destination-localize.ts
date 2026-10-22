@@ -1,4 +1,4 @@
-import { DestinationId, DEFAULT_DESTINATION_ID, getDestinationConfig, contentDestinationId } from './destination-config';
+import { DestinationId, DEFAULT_DESTINATION_ID, getDestinationConfig, contentDestinationId, isPartnerLogicOff } from './destination-config';
 import { GuideDeck, GuideDeckList, DeckPage, PageItem } from '../../../common/interfaces/guide.types';
 
 export interface DestinationMarketingCopy {
@@ -333,13 +333,21 @@ export function getActiveDestinationLocalize(): DestinationId {
   return activeDestinationId;
 }
 
+/** Nguồn đang dùng tạm tắt logic đối tác: builder bỏ chỉ tiêu đối tác, lấy toàn địa điểm thường. */
+export function partnerLogicOff(): boolean {
+  return isPartnerLogicOff(activeSourceId);
+}
+
 export function getMarketingCopy(id: DestinationId = activeDestinationId): DestinationMarketingCopy {
   id = contentDestinationId(id);
   const existing = DESTINATION_MARKETING_COPY[id];
   if (existing) return existing;
 
   const config = getDestinationConfig(id);
-  const label = config.label;
+  // Tên nhập toàn chữ thường ("phan thiết") vẫn hiện trên trang như địa danh: "Phan Thiết".
+  const label = config.label === config.label.toLocaleLowerCase('vi-VN')
+    ? config.label.replace(/(^|\s)(\S)/g, (_, space: string, char: string) => space + char.toLocaleUpperCase('vi-VN'))
+    : config.label;
   const labelUpper = label.toLocaleUpperCase('vi-VN');
   const hashtagKey = label
     .normalize('NFD')
@@ -347,6 +355,9 @@ export function getMarketingCopy(id: DestinationId = activeDestinationId): Desti
     .replace(/đ/gi, 'd')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '');
+  // Nguồn tự thêm trùng địa danh đã có bộ chữ riêng (vd. "phan thiết" → phanthiet): dùng bộ đó.
+  const known = hashtagKey && hashtagKey !== 'greenland' ? DESTINATION_MARKETING_COPY[hashtagKey] : undefined;
+  if (known) return (DESTINATION_MARKETING_COPY[id] = known);
   const tag = hashtagKey || 'dulich';
   const customCopy: DestinationMarketingCopy = {
     label,

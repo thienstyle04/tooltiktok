@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../lib/apiClient';
 import { listIsMain } from '../lib/utils';
-import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET, isKnownPhotoPreset } from '../lib/photoPresets.mjs';
+import { DEFAULT_PHOTO_PRESETS, supportsPhotoPreset, COLOR_EDIT_PRESET, isKnownPhotoPreset, defaultPhotoPreset } from '../lib/photoPresets.mjs';
 import { filterSourceTemplates, forbiddenTemplateSelections } from '../lib/sourceTemplatePolicy.mjs';
 import RequiredPartnerPicker from './RequiredPartnerPicker';
 import StepTabs from './ui/StepTabs';
@@ -13,11 +13,16 @@ import { studioConfirm } from './ui/confirmDialog';
 import { cleanRequiredPartners, supportsRequiredPartners } from '../lib/requiredPartners.mjs';
 
 const DALAT_ONLY_DECKS = new Set([
+  'threads-note-dark-list',
+  'threads-grid6-collage',
+  'threads-trip-recap-3n2d',
   'spotlight-v6-diary', 'spotlight-v5', 'spotlight-v6-green', 'spotlight-v6-dark', 'spotlight-v6-persimmon', 'spotlight-v6-maps',
   'spotlight-v6-cherry-blossom',
   'itinerary-note-threads-3n2d', 'itinerary-note-threads-2n1d', 'itinerary-note-threads-budget-3n2d', 'itinerary-note-threads-expense-2n1d', 'itinerary-note-threads-expense-3n2d', 'threads-toplist-dalat', 'threads-food-local', 'threads-cafe-local', 'threads-mix-local', 'threads-mix-text', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'carousel-mau-1', 'one-way-story',
 ]);
 const DALAT_EXTRA_DECKS = [
+  { id: 'threads-note-dark-list', navTitle: 'Note 01 · Đen tối giản' },
+  { id: 'threads-grid6-collage', navTitle: 'Threads · Lưới 6 ảnh' },
   { id: 'spotlight-v5', navTitle: 'Spotlight V5' },
   { id: 'spotlight-v6-green', navTitle: 'Spotlight V6 Mảng xanh' },
   { id: 'spotlight-v6-dark', navTitle: 'Spotlight V6 Tone đen' },
@@ -29,6 +34,7 @@ const DALAT_EXTRA_DECKS = [
   { id: 'itinerary-note-threads-3n2d', navTitle: 'Note Threads 3N2Đ' },
   { id: 'itinerary-note-threads-2n1d', navTitle: 'Note Threads 2N1Đ' },
   { id: 'itinerary-note-threads-budget-3n2d', navTitle: 'Chi phí Threads 3N2Đ' },
+  { id: 'threads-trip-recap-3n2d', navTitle: 'Tổng kết chuyến đi 3N2Đ' },
   { id: 'itinerary-note-threads-expense-2n1d', navTitle: 'Bảng chi tiêu Threads 2N1Đ' },
   { id: 'itinerary-note-threads-expense-3n2d', navTitle: 'Bảng chi tiêu Threads 3N2Đ' },
   { id: 'threads-toplist-dalat', navTitle: 'Top list Đà Lạt' },
@@ -187,7 +193,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     : form.templates.length < 1
     ? 'Hãy chọn ít nhất một mẫu.'
     : forbiddenTemplateSelections(form.templates, targetSource).length
-    ? 'Có mẫu không thuộc nguồn đang chọn. Hãy bỏ mẫu đó hoặc chọn đúng nguồn.'
+    ? `Không dùng được cho nguồn này (sai nguồn hoặc mẫu đang tạm ẩn): ${forbiddenTemplateSelections(form.templates, targetSource).map(entry => templateLabel(entry.deckId)).join(', ')}. Hãy bỏ mẫu đó hoặc chọn đúng nguồn.`
     : form.templates.some((entry) => Number(entry.count) < minListsPerTemplate || Number(entry.count) > maxListsPerTemplate)
     ? `Mỗi mẫu phải có từ ${minListsPerTemplate} đến ${maxListsPerTemplate} list.`
     : '';
@@ -231,7 +237,7 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
     return {
       ...current,
       templates: checked
-        ? [...current.templates, { deckId, count: minListsPerTemplate }]
+        ? [...current.templates, { deckId, count: minListsPerTemplate, ...(defaultPhotoPreset(deckId) ? { photoPreset: defaultPhotoPreset(deckId) } : {}) }]
         : current.templates.filter((entry) => entry.deckId !== deckId),
     };
   });
@@ -264,7 +270,8 @@ export default function AutomationSchedulerPanel({ dataset, destinations, hookSo
 
   const save = async (event) => {
     event.preventDefault();
-    if (forbiddenTemplateSelections(form.templates, targetSource).length) { setMessage('Lỗi: Mẫu đã chọn không thuộc nguồn này. Threads và Note chỉ dùng Đà Lạt Threads.'); return; }
+    const forbidden = forbiddenTemplateSelections(form.templates, targetSource);
+    if (forbidden.length) { setMessage(`Lỗi: ${forbidden.map(entry => templateLabel(entry.deckId)).join(', ')} không dùng được cho nguồn này (Threads và Note chỉ dùng nguồn Threads; mẫu đang tạm ẩn theo góp ý thì bỏ khỏi lịch).`); return; }
     if (!form.templates.length || form.templates.some((entry) => Number(entry.count) < minListsPerTemplate || Number(entry.count) > maxListsPerTemplate)) {
       setMessage(`Lỗi: Mỗi mẫu phải có từ ${minListsPerTemplate} đến ${maxListsPerTemplate} list.`);
       return;

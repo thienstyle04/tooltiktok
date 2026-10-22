@@ -846,6 +846,7 @@ export class AutomationSchedulerService implements OnApplicationBootstrap, OnApp
   }
 
   private async waitForDriveCache(run: AutomationRun): Promise<void> {
+    if(run.templates.every(template=>template.deckId==='threads-note-dark-list'))return;
     const deadline = Date.now() + 15 * 60 * 1000;
     while (Date.now() < deadline) {
       this.assertNotCancelled(run);

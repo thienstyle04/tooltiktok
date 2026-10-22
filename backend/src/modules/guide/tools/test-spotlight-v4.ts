@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { GuideItem, SectionKey, WorkbookItemsBySection } from '../../../common/interfaces/guide.types';
 import { buildSpotlightV4Pages, getV2DeckDefinitions, V2_DECK_IDS } from '../logic/deck-builder-v2';
 import { setActiveDestinationLocalize } from '../sync/destination-localize';
+process.env.DALAT_SHOW_HIDDEN_DECKS = '1'; // Spotlight V4 đang tạm ẩn khỏi thư viện nhưng vẫn là mẫu thử của test này.
 
 const sectionKeys: SectionKey[] = ['quan_an', 'cafe', 'homestay', 'check_in', 'dich_vu', 'choi_dem', 'hoat_dong', 'dia_diem_lich_su', 'khu_du_lich'];
 

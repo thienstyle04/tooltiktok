@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import http from 'node:http';
-import { compactThreadsLocalAddress } from '../lib/threadsFoodExport.mjs';
+import { threadsLocalAddress } from '../lib/threadsFoodExport.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -108,7 +108,7 @@ try {
       if (Object.keys(actualPhotos).length) assert.equal(result.decoded, 6);
       assert.ok(!result.xml.includes('Xuân Hương'));
       assert.equal(result.txt.split(/\r?\n/).filter(line => line.startsWith('- ')).length, 10);
-      for (const partner of partners) assert.ok(result.txt.includes('(' + compactThreadsLocalAddress(partner.metaPrimary) + ')'));
+      for (const partner of partners) assert.ok(result.txt.includes('(' + threadsLocalAddress(partner.metaPrimary) + ')'));
       assert.ok(!result.txt.includes('Đường thử'));
     }
     console.log('PASS: 16 saved backend lists exported in two source batches; reopened actual XLSX/TXT/ZIP: partner cells/count/order, compact addresses, 6 photos.');
@@ -117,7 +117,7 @@ try {
     const items = Array.from({ length: 10 }, (_, index) => ({
       name: `Quán ${index + 1}`,
       sourceSectionKey: ['quan_an', 'check_in', 'cafe', 'khu_du_lich', 'homestay'][index % 5],
-      metaPrimary: index % 2 === 0 ? 'Tổ 19 An Sơn, Xuân Hương - Đà Lạt' : '',
+      metaPrimary: index % 2 === 0 ? 'Tổ 19 An Sơn' : '',
       isPartner: index % 2 === 0,
       isLocal: index % 2 !== 0,
       imageUrl: index < 6 ? `https://example.invalid/${index}.jpg` : '',
@@ -158,8 +158,9 @@ try {
     assert.equal(result.partnerCells, result.textOnly ? 6 : 5);
     assert.equal(result.partnerNames, result.textOnly ? 6 : 5);
     assert.equal(result.xlsxContainsAddress, false);
-    assert.ok(result.txt.includes('- Quán 1 (Xuân Hương - Đà Lạt)'));
-    assert.ok(!result.txt.includes('Tổ 19 An Sơn'));
+    assert.ok(result.txt.includes('- Quán 1 (Tổ 19 An Sơn)'));
+    assert.ok(!result.txt.includes('Xuân Hương'));
+    assert.ok(!result.txt.includes('- Quán 1 (Xuân Hương - Đà Lạt)'));
     assert.ok(result.txt.includes(result.textOnly ? '- Quán 12' : '- Quán 10'));
   }
   console.log('Threads food/cafe/mix/text browser ZIP OK: XLSX chỉ tên đối tác; mẫu chữ không có ảnh.');

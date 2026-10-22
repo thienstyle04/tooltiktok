@@ -22,15 +22,16 @@ const API = process.env.TEST_API_URL || 'http://127.0.0.1:3000/api/guide-data?re
 const DECK_SPECS = {
   'grid-8-quaytung': {
     label: 'Lưới 8 Quaytung',
-    expectedVersion: 8,
+    expectedVersion: 9,
     expectedGridHooks: ['CAFE SÁNG', 'MẢNG XANH', 'CHƠI ĐÊM', 'CHỖ NGHỈ XINH', 'ĂN VẶT'],
     forbiddenGridHooks: ['CHẤT LIỆU', 'CAFE ĐẸP'],
-    expectedPages: 7,
+    // Trang menu chữ đã bỏ (góp ý 2026-10-22): bìa + 5 trang lưới.
+    expectedPages: 6,
     coverVariant: 'grid-8-quaytung-cover',
     listVariant: 'grid-8-quaytung',
-    menuVariant: 'grid-8-quaytung-menu',
+    menuVariant: null,
     listPageCount: 5,
-    hasMenuPage: true,
+    hasMenuPage: false,
     itemsPerListPage: 8,
     coverPageClass: 'grid8-quaytung-cover',
     coverMustHave: ['grid8-quaytung-cover-photo'],

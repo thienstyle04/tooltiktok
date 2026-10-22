@@ -46,6 +46,7 @@ export function readPageTextOverrides(filePath: string): PageTextOverrideStore {
 
 /** Trang có các dòng dữ liệu (tên/địa chỉ...) người dùng được sửa trực tiếp. */
 function hasEditableRows(deckId: string, page: DeckPage): boolean {
+  if (page.layoutVariant === 'threads-note-dark-list' || page.layoutVariant === 'threads-grid6-page' || page.layoutVariant === 'threads-recap-note') return true;
   if (page.localRender) return true;
   return (page.layoutVariant === 'itinerary-note-day' || page.layoutVariant === 'itinerary-note-dark-day' || page.layoutVariant === 'itinerary-note-threads-day' || page.layoutVariant === 'itinerary-note-threads-budget' || page.layoutVariant === 'threads-expense-sheet' || page.layoutVariant === 'threads-toplist-page')
     || page.layoutVariant === 'itinerary-note-timed-day'
@@ -65,12 +66,14 @@ export function buildPageTextOverride(
   prior: PageTextOverride | undefined,
   coverImageUrls: string[],
 ): PageTextOverride {
-  const titleLimit = page.imageRole ? 4000 : page.spotlightDesignRevision === 1 && page.type === 'cover' ? 220 : page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
+  const titleLimit = page.layoutVariant === 'threads-grid6-cover' ? 4000 : page.imageRole ? 4000 : page.spotlightDesignRevision === 1 && page.type === 'cover' ? 220 : page.layoutVariant === 'spotlight-v6-diary-page' ? 220 : page.layoutVariant === 'one-way-story-cover'
     ? 110
     : page.layoutVariant === 'one-way-story-road' || page.layoutVariant === 'one-way-story-slope'
       ? 220
       : page.type === 'cover' ? 60 : 90;
   const normalizedTitle = normalizeEditablePageText(request.title ?? page.title);
+  if(page.layoutVariant==='threads-note-dark-list'&&normalizedTitle.length>titleLimit)throw new BadRequestException('Tiêu đề note quá dài; hãy rút gọn, không tự cắt chữ.');
+  if (page.layoutVariant === 'threads-grid6-cover' && normalizedTitle.length > titleLimit) throw new BadRequestException('Hook quá dài; không tự cắt chữ.');
   if (page.imageRole && normalizedTitle.length > titleLimit) throw new BadRequestException('Nội dung vượt 4000 ký tự; hãy rút gọn, không tự cắt chữ.');
   const title = normalizedTitle.slice(0, titleLimit);
   const subtitle = (page.localRender || page.layoutVariant === 'one-way-story-road'
@@ -99,7 +102,7 @@ export function buildPageTextOverride(
     throw new BadRequestException('Ảnh bìa phải khác nhau và thuộc kho ảnh nền hiện tại.');
   }
   if (coverApproval !== undefined && (typeof coverApproval !== 'string' || coverApproval.length > 4000)) throw new BadRequestException('Xác nhận ảnh bìa không hợp lệ.');
-  const titlePlacement = page.imageRole || page.layoutVariant === 'spotlight-v6-diary-page' || editableSpotlightCover
+  const titlePlacement = page.layoutVariant === 'threads-note-dark-list' || page.layoutVariant === 'threads-grid6-cover' || page.imageRole || page.layoutVariant === 'spotlight-v6-diary-page' || editableSpotlightCover
     ? request.titlePlacement ?? prior?.titlePlacement ?? page.titlePlacement
     : undefined;
   if (titlePlacement && !TITLE_PLACEMENTS.includes(titlePlacement)) throw new BadRequestException('Vị trí chữ không hợp lệ.');
@@ -131,7 +134,7 @@ export function applyPageTextOverrides(
       return { ...page, title: ownOverride.title, subtitle: ownOverride.subtitle,
         ...(ownOverride.textScale !== undefined ? { textScale: ownOverride.textScale } : {}),
         ...(ownOverride.textFontSize !== undefined ? { textFontSize: ownOverride.textFontSize } : {}),
-        ...((page.imageRole || page.layoutVariant === 'spotlight-v6-diary-page' || page.spotlightDesignRevision === 1) && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
+        ...((page.layoutVariant === 'threads-note-dark-list' || page.layoutVariant === 'threads-grid6-cover' || page.imageRole || page.layoutVariant === 'spotlight-v6-diary-page' || page.spotlightDesignRevision === 1) && ownOverride.titlePlacement ? { titlePlacement: ownOverride.titlePlacement } : {}),
         ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && ownOverride.coverImages ? { coverImages: ownOverride.coverImages, backgroundImage: ownOverride.coverImages[0] } : {}),
         ...(page.type === 'cover' && page.spotlightDesignRevision === 1 && ownOverride.coverApproval !== undefined ? { coverApproval: ownOverride.coverApproval } : {}),
         ...(page.layoutVariant === 'spotlight-v6-diary-page' && ownOverride.diaryFontSize !== undefined ? { diaryFontSize: ownOverride.diaryFontSize } : {}),

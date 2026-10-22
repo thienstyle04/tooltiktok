@@ -13,6 +13,7 @@ import { BUDGET_4N3D_WALLET_TEMPLATE_VERSION, CAROUSEL_MAU_1_TEMPLATE_VERSION, G
 import { normalizeText, stableHash } from './logic/image-resolver';
 import { ITINERARY_NOTE_DARK_ID, ITINERARY_NOTE_DARK_TEMPLATE_VERSION, ITINERARY_NOTE_TEMPLATE_VERSION } from './logic/itinerary-note';
 import { THREADS_BUDGET_ID, THREADS_BUDGET_TEMPLATE_VERSION } from './logic/itinerary-note-threads-budget';
+import { THREADS_RECAP_ID, THREADS_RECAP_VERSION } from './logic/threads-trip-recap';
 import { isThreadsExpense, THREADS_EXPENSE_TEMPLATE_VERSION } from './logic/threads-expense-sheet';
 import { ITINERARY_NOTE_TIMED_TEMPLATE_VERSION } from './logic/itinerary-note-timed';
 import { SPOTLIGHT_DESIGN_DECKS, prepareSpotlightDesign } from './logic/spotlight-design';
@@ -100,6 +101,9 @@ export function pickFreshCandidateImage(
 }
 
 export function templateVersionForDeck(deckId: string): number | undefined {
+  if(deckId==='threads-note-dark-list')return 1;
+  if (deckId === 'threads-grid6-collage') return 1;
+  if (deckId === THREADS_RECAP_ID) return THREADS_RECAP_VERSION;
   if (deckId === 'spotlight-v6-cherry-blossom') return 1;
   if (deckId === 'spotlight-v6-diary') return DIARY_TEMPLATE_VERSION;
   if (deckId === 'itinerary-3n2d') return ITINERARY_3N2D_TEMPLATE_VERSION;

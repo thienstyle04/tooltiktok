@@ -216,6 +216,12 @@ export class GuideController {
     return this.guideService.updateDestinationSheetLink(id, request);
   }
 
+  @Put('api/destinations/:id/partner-logic')
+  setDestinationPartnerLogic(@Param('id') id: string, @Body() request: { off?: boolean }): DestinationListResponse {
+    this.automationScheduler.assertUserMutationAllowed();
+    return this.guideService.setDestinationPartnerLogic(id, request);
+  }
+
   @Post('api/destinations/:id/refresh-from-sheet')
   refreshDestinationFromSheet(@Param('id') id: string, @Query('background') background?: string) {
     if (background === '1') return this.guideService.startDestinationSync(id);

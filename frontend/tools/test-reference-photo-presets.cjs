@@ -45,22 +45,22 @@ async function main() {
     };
     await mount();
     for (const preset of recipes) {
-      await page.locator('.photo-preset-trigger').click(); assert.equal(await page.locator('.photo-preset-options input').count(), 8);
+      await page.locator('.photo-preset-trigger').click(); assert.equal(await page.locator('.photo-preset-options input').count(), catalog.presets.length);
       await page.getByRole('radio', { name: preset.label, exact: true }).click();
       assert.match(await page.locator('.photo-preset-trigger').textContent(), new RegExp(preset.label));
       await page.locator('#nonAiBatchCountSelect').selectOption('1'); await page.locator('#createDeckFromCaptionBtn').click();
       await page.waitForFunction(() => !document.querySelector('#createDeckFromCaptionBtn')?.disabled);
       assert.equal(posted.at(-1).request.photoPreset, preset.id);
     }
-    await mount(); assert.match(await page.locator('.photo-preset-trigger').textContent(), /06 · Sân vườn dịu/);
+    await mount(); assert.match(await page.locator('.photo-preset-trigger').textContent(), /07 · Dark Crisp/);
     await page.locator('#nonAiBatchCountSelect').selectOption('3'); await page.locator('#createDeckFromCaptionBtn').click();
     await page.waitForFunction(() => !document.querySelector('#createDeckFromCaptionBtn')?.disabled);
-    assert.equal(posted.at(-1).request.photoPreset, recipes[5].id); assert.equal(posted.at(-1).request.count, 3);
+    assert.equal(posted.at(-1).request.photoPreset, recipes.at(-1).id); assert.equal(posted.at(-1).request.count, 3);
     for (const width of [1920, 1280, 768, 390]) {
       await page.setViewportSize({ width, height: 900 }); await page.locator('.photo-preset-trigger').click();
       const bounds = await page.locator('.photo-preset-options').evaluate(e => ({ left: e.getBoundingClientRect().left, right: e.getBoundingClientRect().right, width: innerWidth }));
       assert.ok(bounds.left >= 0 && bounds.right <= bounds.width + 1, 'Palette menu stays inside viewport');
-      await page.getByRole('radio', { name: recipes[5].label, exact: true }).scrollIntoViewIfNeeded();
+      await page.getByRole('radio', { name: recipes.at(-1).label, exact: true }).scrollIntoViewIfNeeded();
       if (width === 390 || width === 1280) await page.screenshot({ path: path.join(output, `picker-${width}.png`) });
       await page.keyboard.press('Escape'); assert.equal(await page.locator('.photo-preset-options').count(), 0);
     }
@@ -69,7 +69,7 @@ async function main() {
     await row.locator('input[type=checkbox]').check();
     for (const preset of recipes) { await row.locator('select').selectOption(preset.id); const draft = await page.evaluate(() => JSON.parse(localStorage.getItem('dalat-carousel:automation-schedule-draft:v2'))); assert.equal(draft.templates[0].photoPreset, preset.id); }
     await mount(); await openScheduler();
-    assert.equal(await row.locator('select').inputValue(), recipes[5].id, 'Scheduled palette survives draft reload');
+    assert.equal(await row.locator('select').inputValue(), recipes.at(-1).id, 'Scheduled palette survives draft reload');
     // Actual shared page renderer and PNG/JPG capture: only image URLs receive the preset.
     const exported = esbuild.buildSync({ stdin: { contents: "export {renderCoverPage} from './lib/pageMarkup';export {renderPageBlobWithRetry} from './lib/exporter/render';", resolveDir: path.join(frontend, 'lib/..') }, bundle: true, write: false, format: 'iife', globalName: 'PaletteExport' }).outputFiles[0].text;
     await page.goto('http://preset.test'); await page.addScriptTag({ content: exported });
@@ -92,7 +92,7 @@ async function main() {
       for (const capture of captures.results) { const expected = capture.type === 'image/png' ? 'png' : 'jpeg', bytes = Buffer.from(capture.bytes); assert.equal((await sharp(bytes).metadata()).format, expected); await sharp(bytes).stats(); fs.writeFileSync(path.join(output, preset.id + (expected === 'png' ? '.png' : '.jpg')), bytes); }
     }
     assert.deepEqual(errors, []);
-    console.log('PASS six palettes: create/batch payloads, memory/reload, scheduler draft/reload, 4 viewport sizes, Escape, 12 actual PNG/JPG captures, immutable source/text.');
+    console.log('PASS seven palettes: create/batch payloads, memory/reload, scheduler draft/reload, 4 viewport sizes, Escape, 14 actual PNG/JPG captures, immutable source/text.');
   } finally { await browser.close(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

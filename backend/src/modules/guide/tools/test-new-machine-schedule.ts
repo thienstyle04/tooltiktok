@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { AutomationSchedulerService } from '../automation-scheduler.service';
 import { GuideService } from '../guide.service';
+process.env.DALAT_SHOW_HIDDEN_DECKS = '1'; // Spotlight V4 đang tạm ẩn khỏi thư viện nhưng vẫn là mẫu thử của test này.
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dalat-new-schedule-'));
 const originalNow = Date.now;

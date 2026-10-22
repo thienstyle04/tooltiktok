@@ -3,7 +3,7 @@ import { COLOR_EDIT_PRESET, COLOR_EDIT_SETTINGS, REFERENCE_PHOTO_PRESETS, photoP
 import type { GuideDeckList } from '../../common/interfaces/guide.types';
 
 export type { PhotoPresetId } from '../../common/photo-preset-catalog';
-export const TEXT_ONLY_DECKS = ['summary-note', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'threads-toplist-dalat', 'threads-mix-text'];
+export const TEXT_ONLY_DECKS = ['threads-note-dark-list', 'summary-note', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'threads-toplist-dalat', 'threads-mix-text'];
 export function supportsPhotoPreset(deckId: string): boolean {
   return Boolean(deckId) && !TEXT_ONLY_DECKS.includes(deckId) && !deckId.startsWith('itinerary-note-threads-');
 }

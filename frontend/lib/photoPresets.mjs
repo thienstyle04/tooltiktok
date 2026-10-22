@@ -8,9 +8,16 @@ export const DEFAULT_PHOTO_PRESETS = [
   { id: 'photo-ref-04-cafe-sunlit-v1', label: '04 · Cà phê nắng', description: 'Không gian cà phê sáng, màu nổi' },
   { id: 'photo-ref-05-vintage-deep-v1', label: '05 · Vintage trầm', description: 'Giảm màu, tương phản đậm, nét rõ' },
   { id: 'photo-ref-06-courtyard-calm-v1', label: '06 · Sân vườn dịu', description: 'Cảnh sân vườn dịu, giảm độ rực' },
+  { id: 'photo-ref-07-dark-crisp-v1', label: '07 · Dark Crisp — Tối rõ nét', description: 'Tông tối, tương phản mạnh, rõ chi tiết' },
 ];
 export function isKnownPhotoPreset(value) { return DEFAULT_PHOTO_PRESETS.some(p => p.id === value); }
-const textOnly = new Set(['summary-note', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'threads-toplist-dalat', 'threads-mix-text']);
+// Bộ màu chọn sẵn theo Sheet góp ý 2026-10-22 ("đồng bộ màu / 1 tone / bớt rực"). Chỉ là lựa chọn ban đầu:
+// người dùng đã tự chọn bộ khác (kể cả Ảnh gốc) cho mẫu thì giữ lựa chọn đó.
+const CALM = 'photo-ref-06-courtyard-calm-v1';
+export const DECK_DEFAULT_PHOTO_PRESETS = Object.freeze({ 'grid-6': CALM, 'spotlight-v2': CALM, 'spotlight-v3': CALM, 'spotlight-v6': CALM,
+  'spotlight-v6-diary': CALM, 'itinerary-4n3d-stack': CALM, 'one-way-story': CALM, 'grid-8-feed': CALM });
+export function defaultPhotoPreset(deckId) { return DECK_DEFAULT_PHOTO_PRESETS[deckId] || null; }
+const textOnly = new Set(['threads-note-dark-list', 'summary-note', 'itinerary-note-2days', 'itinerary-note-dark', 'itinerary-note-timed', 'threads-toplist-dalat', 'threads-mix-text']);
 export function supportsPhotoPreset(deckId) { return Boolean(deckId) && !textOnly.has(deckId) && !deckId.startsWith('itinerary-note-threads-'); }
 export function photoDisplayUrl(source, preset) {
   if (!source || !preset || source.startsWith('/assets/color-edit?')) return source;
